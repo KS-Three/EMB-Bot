@@ -68,7 +68,7 @@ from .stage5_overlap import PlannedRegion, _largest_polygon, clip_piece_floor_mm
 from .silhouette_underfill import RIDER_HOLES_KEY, STRIPE_HOST_KEY, STRIPE_ON_KEY, UNDERFILL_KEY
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import (HANDBACK_COVER_MIN, is_fine_bar, is_lettering, is_thin_stem,
+from .columns import (HANDBACK_COVER_MIN, handback_wins, is_fine_bar, is_lettering, is_thin_stem,
                       lettering_columns_shape, satin_cover,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
@@ -926,6 +926,44 @@ def split_long_inshape(cfg) -> bool:
     """`cfg.extra["split_long_inshape_stitches"]` (built OFF 2026-11-07)."""
     extra = getattr(cfg, "extra", None) or {}
     return bool(extra.get("split_long_inshape_stitches"))
+
+
+def lift_piece(prev: list[StitchRun], nxt: list[StitchRun], shape_id: str, art,
+               trim_at: float) -> list[StitchRun]:
+    """`cfg.inshape_piece_lift` (built OFF 2026-11-14): `nxt` (one
+    `stitch_shape` call's runs, first run needle-down) as it follows `prev`
+    (the same shape's runs so far). The step between them stays needle-down
+    only where it lies on the shape -- `art` (the region's own polygon, holes
+    and all) grown by the stage-5 seam tolerance -- and is then sewn as
+    travel at `machine.MAX_STITCH_MM` at most, as `join_piece` sews it. A step
+    that leaves the shape (across a hole: Becker's border body hopping over
+    the white letters, 15.0 and 37.5 mm) becomes a lift: `jump`, cut past
+    `trim_at`, the rule `_shade_blocks` applies to a run rejoining its
+    bucket. `_chain` runs later over the finished group and buries the lift
+    under later thread where a covered route exists; where none does it is
+    cut, as the pro cuts every such move on Becker (`docs/float-census-
+    2026-11-06.md`). The first run is replaced, never mutated: a memoized
+    `stitch_shape` result may be read again (`shape_memo`)."""
+    if not prev or not nxt or nxt[0].jump or not prev[-1].points or not nxt[0].points:
+        return nxt
+    a, b = prev[-1].points[-1], nxt[0].points[0]
+    d = math.dist(a, b)
+    if d < TINY_STITCH_MM:
+        return nxt
+    if art is not None and not art.is_empty and art.buffer(_PIECE_SEAM_MM).covers(LineString([a, b])):
+        inner = stitches.split_long_moves([a, b], machine.MAX_STITCH_MM)[1:-1]
+        if not inner:
+            return nxt
+        return [StitchRun(points=inner, kind=stitches.TRAVEL, shape_id=shape_id,
+                          shade_thread_index=nxt[0].shade_thread_index)] + list(nxt)
+    return [replace(nxt[0], jump=True, trim=d > trim_at)] + list(nxt[1:])
+
+
+# `lift_piece`: a step within this of the shape's own polygon is on it --
+# the hairline seam between two vectorized pieces of one region, as stage 5
+# reads a seam (`2 x simplify_tol_mm` at the default 0.2 mm). Not a fabric
+# quantity: a raster tolerance of the outline.
+_PIECE_SEAM_MM = 0.4
 
 
 def join_piece(prev: list[StitchRun], nxt: list[StitchRun], shape_id: str
@@ -3104,6 +3142,9 @@ def sequence(
                     and is_fine_bar(_pr.region, _pr.region.polygon, _sewn, cfg)):
                 fine_bars.add(_pr.shape_id)
     fine_bar_trying: set[str] = set()
+    # `cfg.lettering_columns_cover_handback`: shapes being sewn down the ladder
+    # as the Column lane's trial alternative (`stitch_one`)
+    handback_trying: set[str] = set()
     # `cfg.group_consistent_tier` (built OFF 2026-11-13): the area floor below
     # decided once per line of like shapes (`group_consistency.
     # run_floor_overrides`) -- K-Line's 2.5 mm subline sewed 17 letters as
@@ -3394,6 +3435,10 @@ def sequence(
     # `stitch_shape` calls is split at the machine ceiling (`join_piece`).
     # Off, never read past this line.
     split_inshape = split_long_inshape(cfg)
+    # `cfg.inshape_piece_lift` (built OFF 2026-11-14): that step lifted when
+    # it leaves the shape, sewn as split travel when it stays on it
+    # (`lift_piece`). Off, never read past this line.
+    piece_lift = bool(cfg.inshape_piece_lift)
     if art_outlines and cfg.border_from_outline:
         _sewn = {_p.shape_id for _p in planned}
         for _oid, _bodies in art_outlines.items():
@@ -3778,6 +3823,8 @@ def sequence(
                             start_near=o_runs[-1].points[-1] if o_runs else entry)
                         if split_inshape:
                             f_runs = join_piece(o_runs, f_runs, p.shape_id)
+                        elif piece_lift:
+                            f_runs = lift_piece(o_runs, f_runs, p.shape_id, art, trim_at)
                         o_runs += f_runs
                         o_jumps += f_report["jumps"]
                     seam = 2.0 * cfg.simplify_tol_mm
@@ -3886,11 +3933,12 @@ def sequence(
             # was kept in stage 5 because `_sews_satin` says so). "auto"
             # only; a letter the cut cannot construct falls through to the
             # ladder below, the contract every rung has.
-            # `cfg.lettering_columns_cover_handback`: True once the lane gave this
-            # shape back; the ladder below then reads it as untagged.
-            handed_back = False
+            # `cfg.lettering_columns_cover_handback`: True while this shape is
+            # sewn down the ladder as the lane's trial alternative
+            # (`handback_trying`); the ladder then reads it as untagged.
+            handed_back = p.shape_id in handback_trying
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
-                    and is_lettering(p.region, cfg)):
+                    and not handed_back and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
                 _small = max(_ax1 - _ax0, _ay1 - _ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
                 # Small print (`cfg.small_print_floor`, default OFF): the
@@ -3964,12 +4012,25 @@ def sequence(
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
                 # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
-                # lane covers under `HANDBACK_COVER_MIN` falls through to the
-                # ladder and sews as it would untagged. Off, unread.
+                # lane covers under `HANDBACK_COVER_MIN` is sewn down the ladder
+                # as well, as it would be untagged, ONCE (`handback_trying`), and
+                # the ladder's runs replace the lane's only when
+                # `columns.handback_wins` says they are better. A trial that
+                # loses leaves nothing behind (`border_seams` is cut back).
+                # Off, unread.
                 if (not report["empty"] and cfg.lettering_columns_cover_handback
                         and satin_cover(runs, _letter) < HANDBACK_COVER_MIN):
-                    handed_back = True
-                elif not report["empty"]:
+                    _seams = len(border_seams)
+                    handback_trying.add(p.shape_id)
+                    try:
+                        alt_runs, alt_report, alt_filled = stitch_one(p, entry, exit_near)
+                    finally:
+                        handback_trying.discard(p.shape_id)
+                    if handback_wins(runs, alt_runs, _letter):
+                        alt_report["cover_handback"] = 1
+                        return alt_runs, alt_report, alt_filled
+                    del border_seams[_seams:]
+                if not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False
             # Satin or fill is decided per shape, not per design: one logo
@@ -4050,6 +4111,8 @@ def sequence(
                         start_near=k_runs[-1].points[-1] if k_runs else entry)
                     if split_inshape:
                         f_runs = join_piece(k_runs, f_runs, p.shape_id)
+                    elif piece_lift:
+                        f_runs = lift_piece(k_runs, f_runs, p.shape_id, art, trim_at)
                     k_runs += f_runs
                     k_jumps += f_report["jumps"]
                 # Closed by the seam tolerance (twice the contour

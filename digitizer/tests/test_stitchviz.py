@@ -579,3 +579,32 @@ def test_the_js_side_still_guards_its_own_sew_order():
         "preview.spec.js no longer asserts that a recurring colour keeps its "
         "own place in sew order"
     )
+
+
+def test_a_fields_tone_does_not_follow_which_way_its_rows_advance():
+    """Two identical tatami fields, one spool, rows at one angle 0.15 mm
+    apart, advancing opposite ways. With the lit core off-centre toward the
+    light (before 2026-11-14) each row hid the next one's highlight or its
+    shadow depending on the advance: mean grey 155.8 against 105.8, which Kent
+    read as "feet are differnt colors". Thread's sheen follows its direction,
+    not which row went down last."""
+    pitch, stitch, w, h = 1.5, 30.0, 120.0, 200.0        # 0.1 mm units
+
+    def field(x0, advance):
+        pts, up = [], True
+        n = int(w / pitch)
+        for k in (range(n) if advance > 0 else range(n - 1, -1, -1)):
+            x = x0 + k * pitch
+            ys = list(np.arange(0.0, h + 1e-9, stitch))
+            if not up:
+                ys = ys[::-1]
+            up = not up
+            pts += [{"x": x, "y": float(y), "type": "stitch"} for y in ys]
+        return [{"x": pts[0]["x"], "y": pts[0]["y"], "type": "jump"}] + pts
+
+    img = render_design(_design(field(0.0, +1) + field(160.0, -1)), px_per_mm=12.0)
+    g = img.mean(axis=2)
+    H, W = g.shape
+    left = g[int(H * .3):int(H * .7), int(W * .08):int(W * .40)].mean()
+    right = g[int(H * .3):int(H * .7), int(W * .60):int(W * .92)].mean()
+    assert abs(left - right) < 2.0, (left, right)

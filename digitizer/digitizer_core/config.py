@@ -2147,6 +2147,23 @@ class PipelineConfig:
     # `border_from_outline`. Off, byte-identical.
     # Tests: `tests/test_outline_follow_shape.py`.
     border_from_outline_follow_shape: bool = False
+    # `inshape_piece_lift` (2026-11-14, built OFF): where stage 7 sews ONE
+    # shape as several `stitch_shape` pieces and concatenates them
+    # (`border_from_outline`'s body pieces, `enclosed_white_keyline`'s, both
+    # off `keyline_rest`), the step from one piece's last stitch to the next
+    # piece's first was written as a single needle-down stitch whatever its
+    # length and whatever it crossed: on Becker hat large a 15.0 mm and a
+    # 37.5 mm straight thread across the white letters, both pinned by Kent as
+    # "Random Cross over stitch shouldn't be here" (`docs/long-stitch-joins-
+    # 2026-11-14.md`). Longer than a DST record holds, so the writer flies it
+    # as jump records with the thread down. ON, a step that stays on the
+    # shape is sewn as travel split at `machine.MAX_STITCH_MM`; one that
+    # leaves it is a lift (`jump`, cut past `trim_at`, `_shade_blocks`' rule),
+    # which stage 7's own chain then buries under later thread where it can.
+    # `cfg.extra["split_long_inshape_stitches"]` (2026-11-07) tacks the same
+    # line down where it lies; this one stops laying it. Off, never read.
+    # Tests: `tests/test_inshape_piece_lift.py`.
+    inshape_piece_lift: bool = False
     # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
     # yellow cells of the disc they sit on) reads as one, and ON sews each
@@ -3761,8 +3778,13 @@ class PipelineConfig:
     # across `textcluster.LETTER_STROKE_CV_MAX`), sewed one arm: cover 0.656,
     # against >= 0.964 sewn untagged (docs/monarch-size-cliff-2026-11-13.md).
     # It acts where the area is lost, whatever the tagger read; the shape stays
-    # tagged for every other reader. False: the lane's output is final, as
-    # before, byte for byte. Flipping it is Kent's.
+    # tagged for every other reader. NARROWED 2026-11-13 (Kent: "Narrow it,
+    # re-census"): the ladder is sewn as a trial and its runs replace the
+    # lane's only when `columns.handback_wins` says they are better; the first
+    # census handed back small letters whose ladder satin spilled about one
+    # shape-area outside them (docs/column-cover-handback-census-2026-11-13.md).
+    # False: the lane's output is final, as before, byte for byte. Flipping it
+    # is Kent's.
     lettering_columns_cover_handback: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,

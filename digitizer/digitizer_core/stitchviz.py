@@ -59,13 +59,29 @@ DEFAULT_PX_PER_MM = 8.0
 #    row running across the light is bright; one running along it is dim.
 #    Without this term a tatami field of parallel rows is one flat tone --
 #    which is precisely what hatching looks like.
-# 2. WHERE the highlight sits is off-centre, pushed toward the light, with the
-#    far side falling into shadow. That shadow is what separates one row from
-#    the next and makes the surface read as raised rather than printed.
+# 2. A shadowed edge on BOTH sides of a lit core. That shadow is what
+#    separates one row from the next and makes the surface read as raised
+#    rather than printed.
+#
+# The core sat off-centre, toward the light, until 2026-11-14, and that made
+# a fill's tone follow which way its rows ADVANCED. Fill rows are 0.15 mm
+# apart under a 0.4 mm filament, so each row hides most of the one before
+# and only its trailing strip shows: rows advancing away from the light left
+# their highlights in view, rows advancing toward it their shadows. Two
+# identical fields, one spool, one row angle, opposite advance: mean grey
+# 155.8 against 105.8. Kent pinned exactly that as "feet are differnt
+# colors" (gradient_mascot, one spool at 39 deg on both feet with
+# `group_consistent_fill_angle`), and AHORA's AH and RA rendered olive and
+# yellow at one 90 deg row axis. Thread's sheen follows its own direction
+# (term 1), not which row was laid last. Centred, whichever edge stays in
+# view looks the same: 127.8 against 127.9. Drawing a run's footprints
+# before its highlights was tried first and is wrong: packed highlights
+# merge, and a fill reads flat -- the vector look of 2026-08-25 again.
 #
 # `preview.js` in the Studio implements this same model against a canvas; the
 # two are kept in step deliberately, so what Kent rules on and what a customer
-# sees agree. Change one, change both.
+# sees agree. Change one, change both. (2026-11-14: `preview.js` still offsets
+# its highlight toward the light; bringing it in step is its own change.)
 # In IMAGE coordinates, where y increases DOWNWARD: this points up and to the
 # LEFT, the direction thread catalogues shoot to.
 #
@@ -86,10 +102,12 @@ AMBIENT, DIFFUSE = 0.80, 0.42     # tone = AMBIENT + DIFFUSE * |axis x light|
 # `_band` below, and the widest is exactly `tw` -- so the drawn FOOTPRINT is
 # unchanged by shading. That is not cosmetic: `coverage` is measured by
 # rendering, so a band spilling half a pixel past the filament would inflate
-# every coverage figure ever recorded, silently.
+# every coverage figure ever recorded, silently. Every offset is 0 since
+# 2026-11-14 (it was 0.14 and 0.26 for the lit body and the specular): an
+# off-centre core made row ADVANCE visible as tone (term 2 above).
 _BANDS = ((1.00, 0.00, 0.62),     # shadowed body -- defines the footprint
-          (0.66, 0.14, 1.00),     # lit body
-          (0.28, 0.26, 1.22))     # specular
+          (0.66, 0.00, 1.00),     # lit body
+          (0.28, 0.00, 1.22))     # specular
 
 # A light garment. Deliberately not white: bare cloth has to be
 # distinguishable from white thread, or a highlight and a hole look alike.
