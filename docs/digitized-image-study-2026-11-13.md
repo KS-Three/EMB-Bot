@@ -75,7 +75,7 @@ of our own stitch files showed that reading wrong. See "Rule 7, measured".
 | 9 | A column too wide for satin is split (sections, or two lengthwise columns) or becomes outline-plus-fill before it becomes plain fill | Keeps the sheen of the mark; long stitches snag | 8 | Does (`split_satin` above 5.0 mm; `wide_columns` off) |
 | 10 | Shading becomes 2 to 5 flat steps as separate shapes (cartoons, logos, metal) | Thread has no continuous tone | 14 | Partial (`max_colors`, `color_cap_sewn`) |
 | 11 | A ground that matches the cloth is left unsewn. Six of the seven real uniform patches fill nothing | Saves stitches, keeps the piece flat, avoids fill pull | 12 | Does (`enclosed_by_garment_de00`, `enclosed_white_skip_transparent`) |
-| 12 | A light shape on a dark field, or a dark subject on a mid-tone, gets a contrast outline | Separation, and a second chance to cover the edge | 10 | Does not. No step adds an outline the art lacks; the white-keyline recipes act only on art that already carries one |
+| 12 | A light shape on a dark field, or a dark subject on a mid-tone, gets a contrast outline | Separation, and a second chance to cover the edge | 10 | Adds none, and neither does Kent's professional. Measured 2026-11-14: every outline in his files is in the artwork, and 0 added outlines were found on either side. See "Rule 12, measured" |
 | 13 | A patch border is its own satin ring, perpendicular to the edge, sewn last; two colours are two stacked rings; a subject that breaks the border is sewn after it | It locks and hides everything beneath | 14 | Partial: the ring exists, its place in the order is UNKNOWN |
 | 14 | Against the art: thin keylines dropped or thickened, tiny text fattened, hatching thinned out, drop shadows made separate flat objects, stray marks removed, colours moved to the thread chart | Detail below sewable size turns to mush | 12 | Partial (`min_detail_mm`, `small_text_cap_mm` 4.0 with bolding) |
 | 15 | Fur and feathers: direction follows growth or radiates from the nose; edges left ragged with NO outline; tones interleaved; each feather one fanned satin; hard features (nose, eye, beak) smooth for contrast | A satin edge "makes fur look like plastic"; direction is the drawing | 20 | Partial (`fur_style` in the photo lane; direction-follows-growth UNKNOWN) |
@@ -124,10 +124,79 @@ read in `docs/pro-digitizer-rules-2026-10-21.md` remain the only measured source
 2. Rule 7, wide pieces: the professional knocks out above about 5.2 mm with a
    1 to 2 mm underlap; we sew solid at 5 to 8 mm. That is thread he does not
    spend. Not priced here.
-3. Rule 12: a count of light-on-dark shapes we sew with no separating edge.
+3. Rule 12 on our side: the art outlines the professional keeps on Golden Tee's
+   "1" and beside Fremont's rope were not found as ringed pieces in our output,
+   and our plans carry border runs the reader never matched to a piece. Where
+   those outlines go in our file was not traced.
 4. Rule 4: where bean and dark-ink runs land in the order on flat cartoon art.
    The professionals put the ink line last without exception.
 5. Rule 16: how the house angle reads a text line that sits on an arc.
+
+## Rule 12, measured (2026-11-14)
+
+Kent asked for the contrast-outline rule to be counted. It was, from stitch
+files on both sides, with the rule 7 reader.
+
+**Method.** For every piece that sits on a ground: is there a thin ring of
+thread hugging its edge in a thread other than its own (a contrast ring), or in
+its own (an edge finish, counted apart)? Checked first on a synthetic square
+with satin bars: bare reads 0 of 5; a contrast ring reads 5 of 5 at every
+width from 0.2 to 2.0 mm, a single run line included; an own-colour ring reads
+on pieces 4.5 mm wide or more and is invisible on narrower ones. Whether a
+ring was in the customer's artwork was decided by eye, from a crop of the art
+beside the render; each call is listed. Thread colours: the professional's from
+the PES twin of each DST, ours from the pipeline's own output. Our DSTs are the
+rule 7 ones, generated on main `19013abe`.
+
+**The professional** (28 files): 373 pieces on a ground, a contrast ring on 32,
+an own-colour ring on 3. Sixteen of the 32 are specks under 2 mm2 and were not
+called one by one. The rest:
+
+| ring | in the artwork? |
+|---|---|
+| Golden Tee, black ring round the bevel of the "1" | yes |
+| Fremont patch and hat, black line beside the rope band (one side only) | yes |
+| MFab hat and LC, white panels with an own-colour edge | yes, the art's white keyline |
+| Precision Drone crosshair | not an outline; a neighbouring tone |
+| 12 Gaulke Plowing / JB pieces | cannot call: no artwork, no PES colours |
+
+**Outlines he added that the art lacks: 0 found.** The director checked the
+Golden Tee and Fremont calls against their crops; both hold.
+
+**Ours, the six paired jobs:** 129 pieces, 11 contrast rings, 0 own-colour.
+Three MFab letter groups keep the art's white keyline; the Drone and Golden Tee
+ones are neighbouring tones and band fragments, not outlines. **Outlines we
+add: 0 found.**
+
+**Contrast of pairs with no ring** (dE00 between the piece's thread and the
+thread beside its edge):
+
+| | pairs | lowest | quartiles |
+|---|---|---|---|
+| Professional | 210 | 10.7 | 42.6 / 93.0 / 93.0 |
+| Ours | 115 | 17.3 | 27.5 / 71.4 / 73.2 |
+
+Lowest pair per job, his against ours: Fremont 38.3 and 26.7, Drone 10.7 and
+17.3, Becker 42.6 and 71.4, MFab 93.0 and 100.0. None of our 115 pairs falls
+below his lowest. Same thread on both sides of an edge: his 1, ours 3 (MFab
+letters where the keyline does not reach).
+
+**Character art, ours only** (Pooh, owl, Tux, Bison): 18 pieces, 2 contrast
+rings (both specks), 1 own-colour. Four of 16 unringed pairs fall below the
+professional's lowest, all of them greys on the owl (2.6, 2.6, 8.0, 10.0).
+
+**What it means for rule 12.** The pictures showed outlines round light-on-dark
+shapes; they could not show whether the digitizer added them or the artwork
+had them. On the one professional whose files and artwork we hold, he keeps the
+art's outlines and adds none, and so do we. The rule stands as "keep the
+outline the art gives you", not "add one".
+
+**Limits.** A colour difference between two threads says nothing about how the
+pair looks sewn. Ring calls rest on the reader's geometric constants. The
+reader cannot see a ring in the ground's own colour block, or an own-colour
+ring on a piece under 4.5 mm. Machine's colours were not read. A re-run of MFab
+on a later commit was cut off and is unverified. Scripts are throwaway, in the
+session scratchpad.
 
 ## Rule 7, measured (2026-11-13, same day)
 
