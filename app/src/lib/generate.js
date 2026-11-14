@@ -45,6 +45,18 @@ function decodeCached(dstBase64) {
   return hit;
 }
 
+// The decoded stitches an element rides buildImportedDesign with — the same
+// lookups generateElement makes below — or null for a kind that does not
+// (satin lettering, image, manual, shape) or has nothing to draw yet. The
+// rotation controls measure a turned design's width from it (hoop.js
+// rotationPatch, 2026-11-13).
+export function importedSourceOf(element) {
+  if (!element) return null;
+  if (element.type === "design") return element.dstBase64 ? decodeCached(element.dstBase64) : null;
+  const baked = element.type === "digitized" || (element.type === "text" && isOutlineKey(element.fontKey));
+  return baked && element.result ? decodedFromDesignCached(displayResult(element)) : null;
+}
+
 // The fabric preset a garment sews under, adjusted by the project's
 // calibration profile when it carries one (`project.fabricProfile`, drafted
 // by digitizer/tools/sewout_reader.py from a photo of the calibration card
