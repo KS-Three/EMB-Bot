@@ -1024,11 +1024,24 @@
       const order = chars.map((_, i) => i);
       if (rtl) order.reverse();
       let penX = 0, prev = null;
+      // Pen x where the first non-blank character starts and where the last
+      // one ends, in pen (visual) order. Justification measures between them
+      // at the TRAILING end, so a trailing space no longer pushes a centred or
+      // right-aligned line off ("HELLO \nHELLO" centred sat 2.12 mm left;
+      // fixed 2026-11-13, Kent approved, catch "none for single-line text").
+      // A LEADING space still counts, as typed: it is plausibly indentation,
+      // and it already behaves that way under left align.
+      let headX = null, tailX = 0, inInk = false;
       const glyphs = [];
       for (const i of order) {
         const ch = chars[i];
         const charIdx = lineStart + i;
-        if (ch === " " || ch === "\t") { penX += (font.advSpace || font.advDefault); prev = null; continue; }
+        if (ch === " " || ch === "\t") {
+          if (inInk) { tailX = penX; inInk = false; }
+          penX += (font.advSpace || font.advDefault); prev = null; continue;
+        }
+        if (headX === null) headX = penX;
+        inInk = true;
         const g = glyphFor(font, ch);
         // A character the font has no glyph for advances the pen and stitches
         // NOTHING, silently. That was survivable while the library was all
@@ -1074,9 +1087,18 @@
       }
       globalIdx = lineStart + chars.length;
       if (lineNum < rawLines.length - 1) globalIdx++; // the "\n" separator itself
-      return { glyphs, adv: penX };
+      if (inInk) tailX = penX;
+      // `justAdv` is the width justification works with; `justOff` is how far
+      // into the pen line it starts. Logical TRAILING spaces sit at the pen
+      // END of a left-to-right line and at the pen START of a right-to-left
+      // one (it is walked reversed), so RTL drops the head, LTR the tail.
+      // A line with no trailing space gets justAdv === adv and justOff === 0,
+      // so it is placed exactly as before.
+      const justAdv = headX === null ? 0 : rtl ? penX - headX : tailX;
+      const justOff = headX === null || !rtl ? 0 : headX;
+      return { glyphs, adv: penX, justAdv, justOff };
     });
-    const maxAdvUnits = lineList.reduce((m, ln) => Math.max(m, ln.adv), 0);
+    const maxAdvUnits = lineList.reduce((m, ln) => Math.max(m, ln.justAdv), 0);
 
     const runs = [];
     let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
@@ -1125,8 +1147,12 @@
     lineList.forEach((line, lineIdx) => {
       const lineYunits = lineIdx * leadingUnits;                  // font units, y-down: later lines sit below
       // Straight multi-line: place this line against the widest per `align`.
-      const slack = maxAdvUnits - line.adv;
-      const lineOriginXunits = arcDeg ? 0 : align === "left" ? 0 : align === "right" ? slack : slack / 2;
+      // Against each line's advance at its last glyph (justAdv above), not
+      // its full advance. One line has nothing to justify against and is
+      // never moved, so single-line output stays byte-identical.
+      const slack = maxAdvUnits - line.justAdv;
+      const justOff = lineList.length > 1 ? line.justOff : 0;
+      const lineOriginXunits = arcDeg ? 0 : (align === "left" ? 0 : align === "right" ? slack : slack / 2) - justOff;
       // Arc geometry references the line's INK span, not its advance span:
       // advance carries invisible width (side bearings + one trailing
       // letter-spacing gap), and centering/radius built from it tilt the arch
