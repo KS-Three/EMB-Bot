@@ -18,7 +18,7 @@
   import { chartIdForProject } from "../lib/designChart.js";
   import { getCachedPalette, loadPalette, loadPreferredPaletteId, STUDIO_PALETTE } from "../lib/threads.js";
   import { EMB } from "../lib/emb.js";
-  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizeInBox, resizeTargetMm, resizeStartTargetMm } from "../lib/interact.js";
+  import { designRectPx, hitTest, pickElement, dragResize, clampOffsets, clampPan, MIN_ZOOM, MAX_ZOOM, clampZoom, buildSnapLines, snapMove, snapResizeWidth, rotateHandlePx, dragRotate, unionBBox, clampGroupDelta, groupResizeInBox, resizeTargetMm, resizeStartTargetMm, resizeIsAdditive } from "../lib/interact.js";
   import { selectedIdsOf } from "../lib/project.js";
   import { effectiveHoop, hoopFitNote, rotateToFitPatches, rotationPatch } from "../lib/hoop.js";
   import { garmentOf, placementBoxOf } from "../lib/placement.js";
@@ -423,6 +423,7 @@
   let rotateBadgeDeg = null; // live degrees during a rotate drag
   let dragStartBBoxMm = null; // dragged element's absolute mm bbox at pointerdown
   let dragStartTargetMm = 0; // element's sizeMm at pointerdown (see size-match note below)
+  let dragResizeAdditive = false; // interact.js resizeIsAdditive, at pointerdown
   // A corner press is a click until the pointer travels CLICK_PX (latched):
   // under it a resize patches nothing, so a touch cannot resize (2026-11-13).
   let resizeArmed = false;
@@ -4958,6 +4959,7 @@
     // An auto-fit (null) sizeMm resizes from the request that auto-fit made:
     // lettering's fit width, else the sewn width (a stitch file's own).
     dragStartTargetMm = resizeStartTargetMm(el, pe.design, dragStartWidthMm);
+    dragResizeAdditive = resizeIsAdditive(el, el.type === "text" && isOutlineKey(el.fontKey));
     resizeArmed = false;
     setCanvasCursor(cursorForHandle(handle));
 
@@ -5213,7 +5215,7 @@
       // badge does.
       const f = dragStartWidthMm > 0 ? newWidthMm / dragStartWidthMm : 1;
       sizeBadge = { wMm: dragStartWidthMm * f, hMm: dragStartHeightMm * f, xMm: dragStartOffXMm, yMm: dragStartOffYMm };
-      pendingPatch = { id: dragTargetId, patch: { sizeMm: resizeTargetMm(dragStartTargetMm, dragStartWidthMm, newWidthMm) } };
+      pendingPatch = { id: dragTargetId, patch: { sizeMm: resizeTargetMm(dragStartTargetMm, dragStartWidthMm, newWidthMm, dragResizeAdditive) } };
     } else if (dragMode === "move") {
       // Raw (unclamped) offset first so snapping sees the true pointer
       // position; hoop containment is applied AFTER the snap — the clamp

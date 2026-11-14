@@ -574,3 +574,13 @@ test("resizeTargetMm falls back to the sewn width with nothing to map through", 
   expect(resizeTargetMm(0, 50, 60)).toBe(60);
   expect(resizeTargetMm(40, 0, 60)).toBe(60);
 });
+
+test("resizeIsAdditive: satin lettering on a quarter turn only", async () => {
+  const { resizeIsAdditive, resizeTargetMm: map } = await import("./interact.js");
+  for (const r of [0, 90, 180, 270, -90, 360]) expect(resizeIsAdditive({ type: "text", rotationDeg: r }), `${r}`).toBe(true);
+  for (const r of [45, 30, 135]) expect(resizeIsAdditive({ type: "text", rotationDeg: r })).toBe(false);
+  expect(resizeIsAdditive({ type: "text", rotationDeg: 0 }, true)).toBe(false); // an outline font sews a stitch file
+  expect(resizeIsAdditive({ type: "design", rotationDeg: 0 })).toBe(false);
+  expect(map(120, 120.2, 60, true)).toBeCloseTo(59.8, 9);
+  expect(map(120, 120.2, 120.2, true)).toBe(120);
+});

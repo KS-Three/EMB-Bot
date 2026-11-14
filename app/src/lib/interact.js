@@ -72,18 +72,6 @@ export function dragResize(startWidthMm, startHeightMm, handle, dxMm, dyMm, minW
   return newW;
 }
 
-// The corner handle sits on the SEWN box, so dragResize measures the pointer
-// in sewn mm; what the field writes is `sizeMm`, the REQUESTED width. The
-// two differ by pull compensation (+0.2 mm upright) and, on turned
-// lettering, by the gap between the engine's rotated-rect fit and the
-// letters (-2.5 mm on 120 mm at 45 degrees), and the field used to write the
-// sewn number as the request: one touch with 1 px of jitter took that
-// lettering from 120 to 117.5, and five to 108.1 (review repro,
-// 2026-11-13). The request now moves in proportion to the sewn width, so a
-// zero-distance resize is the identity and a drag changes the sewn width by
-// what the handle moved. The snap path converts its matched sewn width
-// through the same line, so the two paths agree. Without a sewn width or a
-// request there is nothing to map through, and the sewn width is the answer.
 // The request a resize starts from, single element or group member: the
 // element's sizeMm, or for an auto-fit (null) one the request auto-fit made:
 // lettering's fit width (`design.fitMm.w`), else the sewn width (a stitch
@@ -97,9 +85,39 @@ export function resizeStartTargetMm(el, design, sewnWmm) {
   return fitW > 0 ? fitW : sewnWmm;
 }
 
-export function resizeTargetMm(startTargetMm, startSewnWmm, newSewnWmm) {
+// The corner handle sits on the SEWN box, so dragResize measures the pointer
+// in sewn mm; what the field writes is `sizeMm`, the REQUESTED width. The
+// two differ by pull compensation (+0.2 mm upright) and, on turned
+// lettering, by the gap between the engine's rotated-rect fit and the
+// letters (-2.5 mm on 120 mm at 45 degrees), and the field used to write the
+// sewn number as the request: one touch with 1 px of jitter took that
+// lettering from 120 to 117.5, and five to 108.1 (review repro,
+// 2026-11-13). The request moves with the sewn width, so a zero-distance
+// resize is the identity and a drag changes the sewn width by what the
+// handle moved. The snap path converts its matched sewn width through the
+// same line, so the two paths agree. Without a sewn width or a request there
+// is nothing to map through, and the sewn width is the answer.
+//
+// Two lines, each exact where the other is not (measured 2026-11-13, HELLO
+// WORLD, review follow-up): `additive` (request + sewn change) for satin
+// lettering on a quarter turn, where the sewn box is the fit plus a FIXED
+// pull-comp margin (120 -> snap 60, 61, 80, 30 and 60 -> 120 all land
+// exactly, the ratio missed by 0.1-0.2 mm); in proportion everywhere else,
+// where the gap scales with the size (45 and 135 degrees: snap 100 and 140
+// exact by ratio, 0.3-0.6 mm off additively) or there is no margin at all (a
+// stitch file scales exactly). resizeIsAdditive says which.
+export function resizeTargetMm(startTargetMm, startSewnWmm, newSewnWmm, additive = false) {
   if (!(startSewnWmm > 0) || !(startTargetMm > 0)) return newSewnWmm;
+  if (additive) return startTargetMm + (newSewnWmm - startSewnWmm);
   return (startTargetMm * newSewnWmm) / startSewnWmm;
+}
+
+// Satin lettering (not an outline font, whose result is a stitch file) on a
+// multiple of 90 degrees. `outline` is isOutlineKey(el.fontKey), passed in so
+// this module stays free of the service client.
+export function resizeIsAdditive(el, outline = false) {
+  if (!el || el.type !== "text" || outline) return false;
+  return ((((el.rotationDeg || 0) % 90) + 90) % 90) === 0;
 }
 
 // Clamps an absolute design offset (from hoop center, mm, +y UP) so the

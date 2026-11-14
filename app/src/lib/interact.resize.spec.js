@@ -10,7 +10,7 @@ import { test, expect, beforeAll } from "vitest";
 import { createRequire } from "node:module";
 import { preloadAllFontsSync } from "./testFonts.js";
 
-let EMB, generateElement, bboxMmFromStitches, dragResize, resizeTargetMm;
+let EMB, generateElement, bboxMmFromStitches, dragResize, resizeTargetMm, resizeIsAdditive;
 beforeAll(async () => {
   const require = createRequire(import.meta.url);
   globalThis.window = globalThis;
@@ -19,7 +19,7 @@ beforeAll(async () => {
   ({ EMB } = await import("./emb.js"));
   ({ generateElement } = await import("./generate.js"));
   ({ bboxMmFromStitches } = await import("./combine.js"));
-  ({ dragResize, resizeTargetMm } = await import("./interact.js"));
+  ({ dragResize, resizeTargetMm, resizeIsAdditive } = await import("./interact.js"));
 });
 
 const textEl = (o = {}) => ({
@@ -39,8 +39,23 @@ function fieldResize(el, dMm, snapSewnW = null) {
   const T = el.sizeMm;
   let w = dragResize(S, H, "se", dMm, (dMm * H) / S, 5, garment().widthIn * 25.4);
   if (snapSewnW != null) w = snapSewnW;
-  return resizeTargetMm(T, S, w);
+  return resizeTargetMm(T, S, w, resizeIsAdditive(el, false));
 }
+
+// The size-match snap lands the sewn width EXACTLY (to the stitch box's
+// 0.1 mm), upright, on every quarter turn and off them (review follow-up,
+// 2026-11-13; the reviewer's table plus 90/270 and 135).
+test("a snap to another element's width lands on it, upright, turned a quarter, and at 45/135", () => {
+  const cases = [[0, 120, [60, 61, 80, 120, 30]], [0, 60, [120, 30]], [180, 120, [60, 30]],
+    [90, 10, [5, 8, 12, 15]], [270, 10, [8, 15]], [45, 120, [100, 140]], [135, 120, [100, 140]]];
+  for (const [rot, T, snaps] of cases) {
+    const el = textEl({ rotationDeg: rot, sizeMm: T });
+    for (const s of snaps) {
+      const got = sewnBox({ ...el, sizeMm: fieldResize(el, 0, s) }).w;
+      expect(Math.abs(got - s), `rot ${rot}, ${T} -> snap ${s}: ${got}`).toBeLessThan(0.05);
+    }
+  }
+});
 
 test("a zero-distance resize is the identity, upright and turned", () => {
   for (const rot of [0, 30, 45]) {
