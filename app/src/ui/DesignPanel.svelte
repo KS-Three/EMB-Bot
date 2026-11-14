@@ -15,6 +15,8 @@
   // panel only ever decodes for DISPLAY (block list, stats) — generation
   // decodes through generate.js's cache.
   export let element;
+  // The field's report of the selected element's drawn size (App's designDims).
+  export let designDims = null;
 
   const d = createEventDispatcher();
   const MAX_BYTES = 1024 * 1024; // 1MB — DSTs are KB-scale; localStorage isn't infinite
@@ -162,7 +164,14 @@
   // the decoded design's extents in the CURRENT orientation.
   $: rotation = element.rotationDeg || 0;
   $: nativeWidthNow = rotatedWidth(decoded, rotation);
-  $: scaleFactor = decoded && element.sizeMm ? element.sizeMm / Math.max(0.1, nativeWidthNow) : 1;
+  // The width it is DRAWN at: the typed/dragged `sizeMm`, or -- while sizeMm
+  // is null, i.e. auto-fit -- the width the field reports (`designDims`, the
+  // selected element's stitch bbox). A garment switch re-fits an auto-fit
+  // design (hat: 91 -> 60 mm) without touching sizeMm, so reading sizeMm alone
+  // said "100%" and "sews exactly as digitized" over a design scaled to 66%
+  // (2026-11-14). Derived, not stored: one Undo of the switch restores it.
+  $: drawnWidthMm = element.sizeMm || (designDims && designDims.widthMM) || 0;
+  $: scaleFactor = decoded && drawnWidthMm ? drawnWidthMm / Math.max(0.1, nativeWidthNow) : 1;
   // Kent's rule (2026-07-29): ANY resize of an uploaded stitch file gets a
   // warning — density silently changes from the first percent, not just
   // past the old 75–150% band. The band still marks the "expect visible
@@ -188,7 +197,7 @@
   {#if decoded}
     <p class="dp-stats">
       {element.name || "Imported design"} — {decoded.stitchCount.toLocaleString()} stitches ·
-      {decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)} mm ·
+      {#if resized && designDims}{designDims.widthMM.toFixed(0)}×{designDims.heightMM.toFixed(0)} mm (file: {decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)}) ·{:else}{decoded.widthMM.toFixed(0)}×{decoded.heightMM.toFixed(0)} mm ·{/if}
       {decoded.colorCount} color{decoded.colorCount === 1 ? "" : "s"} · {decoded.trimCount} trims
     </p>
 
