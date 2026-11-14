@@ -48,7 +48,12 @@
   // clamp bit and the design therefore did not change at all — see
   // onWidthChange, where the field used to keep "150" over a 102 mm design.
   // Falls back to the requested sizeMm only before anything has stitched.
-  $: widthMm = designDims ? designDims.widthMM : project.sizeMm;
+  // `shownWidthMm` (ContentStep, undigitized art only): the Design width the
+  // first run will digitize at. There are no stitches to measure yet, and the
+  // box used to be empty with a typed width going nowhere (lib/placement.js
+  // preRunSizePatch). Wins over `designDims`, which is not this art's.
+  export let shownWidthMm = null;
+  $: widthMm = shownWidthMm != null ? shownWidthMm : designDims ? designDims.widthMM : project.sizeMm;
   // Height is never user-editable -- it's always whatever the last
   // generated design came out to, so aspect ratio follows automatically.
   $: heightMm = designDims ? designDims.heightMM : null;
@@ -90,7 +95,9 @@
     if (mm == null) return "";
     if (u === "in") return (mm / MM_PER_INCH).toFixed(2);
     if (u === "cm") return (mm / 10).toFixed(1);
-    return String(Math.round(mm));
+    // To a tenth, like the Design width the stitches are digitized at and
+    // like the cm box: whole millimetres showed a 90.5 mm design as "91".
+    return String(Math.round(mm * 10) / 10);
   }
 
   function toMm(v, u) {
@@ -100,7 +107,7 @@
   }
 
   function stepFor(u) {
-    return u === "in" ? "0.01" : u === "cm" ? "0.1" : "1";
+    return u === "in" ? "0.01" : "0.1";
   }
 
   $: wDisplay = fromMm(widthMm, unit);
