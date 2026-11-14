@@ -301,6 +301,21 @@ def test_materialise_uses_a_scratch_kent_that_already_holds_the_files(tmp_path, 
     assert not (tmp_path / "unused").exists()
 
 
+# ------------------------------------------------------------------ the capture workflow
+def test_the_capture_workflow_measures_five_passes_and_builds_the_ledger_from_all_of_them():
+    """Three agreeing passes read 8 jittery rows as spread 0 (2026-11-14); a matrix and a
+    `--from` list that drift apart would drop a pass silently."""
+    import re
+    text = (DIGITIZER.parent / ".github" / "workflows" / "nightly-tripwire.yml").read_text(encoding="utf-8")
+    matrix = re.search(r"pass:\s*\[([^\]]*)\]", text)
+    assert matrix, "capture matrix not found"
+    passes = [int(x) for x in matrix.group(1).split(",")]
+    assert passes == [1, 2, 3, 4, 5]
+    from_args = re.search(r"--from\s+((?:\.\./passes/tripwire-pass-\d+\.json\s*)+)", text)
+    assert from_args, "capture --from list not found"
+    assert re.findall(r"tripwire-pass-(\d+)\.json", from_args.group(1)) == [str(p) for p in passes]
+
+
 # ------------------------------------------------------------------ the committed ledger
 def test_the_committed_ledger_is_well_formed_and_covers_every_committed_pair():
     assert tw.LEDGER.is_file(), f"{tw.LEDGER} is missing: capture it on the Linux runner (nightly-tripwire.yml, capture)"
