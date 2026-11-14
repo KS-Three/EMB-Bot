@@ -15,11 +15,16 @@ ordered), with a 95% bootstrap interval resampled within each group.
 """
 from __future__ import annotations
 
+import argparse
 import json
 import sys
 from pathlib import Path
 
 import numpy as np
+
+# Lives in `subject_detail` (reads nothing outside digitizer/), so a test of it
+# does not become a CI "wire" test by importing this file's docs path.
+from tools.subject_detail import somers_d
 
 DOCS = Path(__file__).resolve().parents[2] / "docs"
 SITTINGS = ("defect-marks-2026-11-10", "defect-marks-2026-11-11")
@@ -49,12 +54,6 @@ def labels() -> dict[str, dict]:
     return out
 
 
-def somers_d(lost: np.ndarray, good: np.ndarray, sign: int) -> float:
-    a, b = sign * lost[:, None], sign * good[None, :]
-    auc = float(((a > b).sum() + 0.5 * (a == b).sum()) / (len(lost) * len(good)))
-    return 2.0 * auc - 1.0
-
-
 def score(rows: dict, n_boot: int = 5000, seed: int = 0) -> dict:
     lab = labels()
     rng = np.random.default_rng(seed)
@@ -77,8 +76,10 @@ def score(rows: dict, n_boot: int = 5000, seed: int = 0) -> dict:
 
 
 def main(argv: list[str] | None = None) -> int:
-    argv = sys.argv[1:] if argv is None else argv
-    rows = json.loads(Path(argv[0]).read_text(encoding="utf-8"))
+    ap = argparse.ArgumentParser(description=__doc__.splitlines()[0])
+    ap.add_argument("rows", type=Path, help="the json `python -m tools.subject_detail --out` wrote")
+    a = ap.parse_args(argv)
+    rows = json.loads(a.rows.read_text(encoding="utf-8"))
     print(json.dumps({"labels": labels(), "scores": score(rows)}, indent=1))
     return 0
 

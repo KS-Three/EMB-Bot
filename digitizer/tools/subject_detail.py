@@ -165,6 +165,16 @@ def design_segments(design: dict) -> list:
     return out
 
 
+def somers_d(lost, good, sign: int) -> float:
+    """2 x AUC - 1 for "a LOST value sits on the lost side of a GOOD one":
+    `sign` +1 when high means lost, -1 when low does; ties count half. 0 is
+    chance, 1 every pair ordered."""
+    a = sign * np.asarray(lost, float)[:, None]
+    b = sign * np.asarray(good, float)[None, :]
+    auc = float(((a > b).sum() + 0.5 * (a == b).sum()) / (a.size * b.size))
+    return 2.0 * auc - 1.0
+
+
 def score_capture(json_path: Path, row_path: Path, photo: Path) -> dict:
     from digitizer_core import PipelineConfig
     from digitizer_core.stage1_prep import prep

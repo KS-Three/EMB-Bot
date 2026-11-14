@@ -5,8 +5,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from tools.subject_detail import design_segments, readings, thread_map
-from tools.subject_detail_score import somers_d
+from tools.subject_detail import design_segments, readings, somers_d, thread_map
 
 PPM = 8.0
 GARMENT = (235, 232, 223)
