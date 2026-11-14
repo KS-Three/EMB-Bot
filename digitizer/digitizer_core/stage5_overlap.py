@@ -116,6 +116,8 @@ not ink anyone drew, and cut off from its shape it underlaps nothing of it.
 """
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import math
 from dataclasses import dataclass, replace
 
@@ -815,6 +817,27 @@ def _hairline_ground(regions: list[Region], hairline: dict,
     return {sid: unary_union(v) for sid, v in pieces.items()}
 
 
+# `cfg.proofread_guard_clipped` (built OFF, `proofread_guard`): the shapes whose
+# ARTWORK sews over the colours already down instead of being clipped away by
+# them, for the length of one guarded re-plan. Empty: the clip as always.
+_KEEP_ART: contextvars.ContextVar[frozenset] = contextvars.ContextVar("stage5_keep_art", default=frozenset())
+
+
+@contextlib.contextmanager
+def keep_art_scope(shape_ids):
+    """Shapes the proof-read guard re-plans with their artwork kept over
+    earlier colours (`proofread_guard.guard_clipped`). Empty sets nothing."""
+    ids = frozenset(shape_ids or ())
+    if not ids:
+        yield
+        return
+    token = _KEEP_ART.set(ids)
+    try:
+        yield
+    finally:
+        _KEEP_ART.reset(token)
+
+
 # GROWTH WHERE THE THREAD PULLS, AND GAPS KEPT (2026-11-13, both built OFF in
 # `cfg.extra`). The width ledger (`tools/width_ledger.py`, the Director's
 # fat-ink brief; sheets under `eye_pairs_out/fat-ink-1113/`) read where our
@@ -1300,6 +1323,12 @@ def resolve_overlaps(
                 if (small_keep and r.meta.get("rescued_small_shape")
                         and clipped.intersection(poly).area <= 1e-9):
                     clipped = poly
+                elif r.shape_id in _KEEP_ART.get():
+                    # the proof-read guard: the clip cut this shape's own ink
+                    # away (`SHAPE_NOT_STITCHED` / `CLIP_DROPPED_SLIVER`), so
+                    # its artwork sews over the colour beneath, its growth
+                    # only where the cloth is bare
+                    clipped = clipped.union(poly)
                 grown = clipped
 
             # A bean letter sews the paths of its whole ink and a hairline
