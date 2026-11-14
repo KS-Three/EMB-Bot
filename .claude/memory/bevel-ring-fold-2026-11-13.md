@@ -46,9 +46,13 @@ page decides "page showing through".
 (they are the bevel noise between bands and body); a band on the page has one
 other side, so the hug is judged on its off-page outline; a band inside its
 parent touches it on both sides (halve the contact before the 60% wrap test);
-re-threaded regions must move to their cone's layer (one spool, one position);
-folding before the cap can FREE a slot, so a colour the cap used to merge comes
-back (Golden Tee's teal, Drone's second orange).
+re-threaded regions must move to their cone's layer (one spool, one position).
+**The pass runs AFTER the colour cap, not before (the brief said before):**
+folding first FREED a slot, the cap stopped merging the art's teal bevel (50
+mm2) into black, and GOLF's O sewed dark teal. Cap first, then fold: the count
+still only falls. A band lining a counter (the O's inner wall) folds; a shape
+filling its own hole far from the edge (Drone's crosshair) stays. No shadow on a
+cut-out (the crest's white dome read as one on the garment).
 
 **Not done / open:** GT's G keeps a black inner bevel where the pro has gold;
 grey highlight patches stay inside GOLF's G and O (bodies of the page's colour);

@@ -1347,7 +1347,7 @@ class PipelineConfig:
     # Shading the pro flattens sews as the shape it shades (built OFF
     # 2026-11-13, Kent on Golden Tee, 20 pins: "The bean stitching makes
     # 'golf' look to bust"; Drone pin 3, "border changes colour too much")
-    # (`bevel_fold.apply_bevel_fold`). Before the colour cap: a light band on
+    # (`bevel_fold.apply_bevel_fold`). Just after the colour cap: a light band on
     # the page hugging one side of the art (a drop shadow) goes to the page;
     # two shapes within 15 dE00 sharing a long seam (a ramp the palette split)
     # become one thread and one shape; a band no wider than two laid threads

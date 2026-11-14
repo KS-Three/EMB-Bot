@@ -11,7 +11,8 @@ ring, where the pro sews one ring.
 
 No step before this knew a bevel: the only flattening was the colour COUNT
 (`enforce_color_cap`) and the 6.0 CIE76 same-colour merge. This module reads
-the stage-4 regions just before the cap and folds what the pro folds, by ROLE
+the stage-4 regions just after the colour cap (see `pipeline.py` for why after)
+and folds what the pro folds, by ROLE
 (how a shape sits against its neighbours), in three passes:
 
 1. **Shadow.** A band of a colour near the art's own page colour, lying
