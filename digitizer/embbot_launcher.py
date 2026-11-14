@@ -533,14 +533,32 @@ def _dump_stacks_if_slow(port: int, after: float = SLOW_START_DUMP_S, out=None) 
     return thread
 
 
+def bundled_tessdata_wins(env=None) -> None:
+    """In a frozen build, point `TESSDATA_PREFIX` at the bundled data, over
+    whatever the machine set: the shipped app's OCR is its own, as the
+    launcher's `service_env` already makes it for the child it starts. This
+    covers `<exe> --serve` started directly, which is how the release smoke
+    and the installer check start the shipped exe on a port of their own."""
+    env = os.environ if env is None else env
+    data = bundled("tessdata")
+    if data is not None and data.is_dir():
+        env["TESSDATA_PREFIX"] = str(data)
+
+
 def serve(argv: list[str]) -> None:
     """The child: `python -m digitizer_service --studio DIR --port N`, by
     calling that command's own `main` (the route its tests cover; setting the
-    environment variable alone once printed a URL and served a 404)."""
+    environment variable alone once printed a URL and served a 404).
+    `--studio` defaults to the bundled Studio (or app/dist in a checkout), so
+    `<exe> --serve --port N` is the whole command for a check that wants the
+    shipped service on a port other than 8721."""
     ap = argparse.ArgumentParser(prog="embbot_launcher --serve")
-    ap.add_argument("--studio", required=True)
+    ap.add_argument("--studio", default=None)
     ap.add_argument("--port", type=int, default=PORT)
     args = ap.parse_args(argv)
+    if args.studio is None:
+        args.studio = str(default_studio())
+    bundled_tessdata_wins()
     for name in ("stdout", "stderr"):
         # A windowed exe started with no handles has None here, and uvicorn's
         # log setup calls `sys.stderr.isatty()`.

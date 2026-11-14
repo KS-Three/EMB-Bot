@@ -18,6 +18,12 @@
   const MAX_BYTES = 1024 * 1024; // 1MB — DSTs are KB-scale; localStorage isn't infinite
 
   let error = "";
+  // ContentStep remounts this panel when the open design changes, but that
+  // does not stop a file still being read: its patch, addressed by element
+  // id, would land on design B's element with the same id (2026-11-13
+  // review). A torn-down panel's read is dropped.
+  let destroyed = false;
+  onDestroy(() => (destroyed = true));
 
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
@@ -34,6 +40,7 @@
     }
     try {
       const bytes = new Uint8Array(await file.arrayBuffer());
+      if (destroyed) return;
       // Validates BEFORE storing — a bad file never lands on the element.
       patch(designFilePatch(bytes, file.name));
     } catch (err) {

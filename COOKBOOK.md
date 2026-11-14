@@ -2551,9 +2551,10 @@ Thirty-nine rows: the 18 photo genres of the census plus the 21 styles of
 `docs/logo-style-census-2026-10-27.md` (`kind: "logo"`, mostly PNG; fetch names
 the file by the Commons mime and `load_photo` composites alpha onto the
 garment colour before any number is read). The Desktop app's browser pane
-refuses `file://`, so `.claude/launch.json` has a `corpus-sxs` entry that
-serves `digitizer/corpus_runs/` on 127.0.0.1:8731 (`preview_start` by that
-name, then open `/sxs-<a>-<b>.html`). `summary RUN_DIR` writes the
+refuses `file://`, so serve by hand: from `digitizer/corpus_runs`, run
+`python -m http.server 8731 --bind 127.0.0.1` and open
+`http://127.0.0.1:8731/sxs-<a>-<b>.html`. (The `corpus-sxs` launch.json entry
+was removed 2026-11-13 at Kent's request.) `summary RUN_DIR` writes the
 run's numbers without designs or images; that is what `baseline-<sha>.json`
 under the scoreboard folder is.
 

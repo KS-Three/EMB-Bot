@@ -64,11 +64,12 @@ from .config import PipelineConfig
 from .fabrics import Fabric, fill_underlay_for, pro_values_for, pull_by_stroke_for
 from .machine import FILL_ROW_MM, FILL_STITCH_MM, SATIN_MAX_WIDTH_MM, TINY_STITCH_MM, satin_ceiling_mm
 from .beanletters import BEAN_LETTER_KEY
-from .stage5_overlap import PlannedRegion, clip_piece_floor_mm2, widened_lettering
+from .stage5_overlap import PlannedRegion, _largest_polygon, clip_piece_floor_mm2, widened_lettering
 from .silhouette_underfill import RIDER_HOLES_KEY, STRIPE_HOST_KEY, STRIPE_ON_KEY, UNDERFILL_KEY
 from .stage6_applique import applique_pass, nn_group_key
 from .stage6_beanletter import bean_letter
-from .columns import (is_fine_bar, is_lettering, is_thin_stem, lettering_columns_shape,
+from .columns import (HANDBACK_COVER_MIN, is_fine_bar, is_lettering, is_thin_stem,
+                      lettering_columns_shape, satin_cover,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
 from .words import is_text, word_key
@@ -91,6 +92,12 @@ from .stage6_small_letter import REPORT_KEY as SMALL_LETTER_KEY
 from .stage6_small_letter import glyph_polygon, skeleton_letter_runs, text_line_members
 from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
+from .art_outline import shaped_stations, shaped_width_mm
+from .keyline_bean import body_limits as keyline_body_limits
+from .keyline_bean import held as keyline_held
+from .keyline_bean import keyline_bean_runs, keyline_regions
+from .keyline_bean import stations as keyline_stations
+from .stage6_border import _bean_loop as bean_loop
 from .stage6_hairline_lines import applies as hairline_lines_apply
 from .stage6_hairline_lines import strand_blocks
 from .stage6_hairline_lines import supplement_test as hairline_supplement_test
@@ -165,6 +172,25 @@ CAP_GARMENTS = ("hat_front", "beanie")
 #    here; the tests pin it stays true.
 _PHOTO_FILL_UNDERLAY = "edge_lattice"
 _PHOTO_SATIN_UNDERLAY = "center_run"
+
+
+def grown_body(poly: Polygon, pull_mm: float) -> Polygon:
+    """`poly` grown by the pull with a mitre join, as ONE polygon.
+
+    A mitre join can leave a corner's wedge touching the grown shape at a
+    single vertex, and shapely returns that wedge as a separate polygon: the
+    buffer of one valid Polygon comes back a MultiPolygon. Measured
+    2026-11-13 on the starter lighthouse at targets 25.125 and 25.63 mm: a
+    14.48 mm2 body under its outline loop grew to 36.02 mm2 plus four wedges
+    of 0.002-0.15 mm2, and `stitch_shape` -- which takes a Polygon, and whose
+    `principal_angle_deg` reads `.exterior` -- crashed the job. The part kept
+    is the largest, as stage 5's `_largest_polygon` keeps it: an outward
+    buffer's wedges are pull growth only, and the artwork lies wholly inside
+    the largest part. A buffer that is already one polygon comes back as it
+    is, so every job that did not crash is byte-identical.
+    """
+    grown = poly.buffer(pull_mm, join_style=2)
+    return _largest_polygon(grown) or grown
 
 
 def _rel_luminance(rgb: tuple[int, int, int]) -> float:
@@ -2692,8 +2718,13 @@ def sequence(
     ink_source=None,
     counter_holes: list | None = None,
     art_outlines: dict | None = None,
+    keyline_beans: set | None = None,
 ) -> tuple[list[StitchBlock], list[dict]]:
     """-> (blocks in sew order, warnings).
+
+    `keyline_beans` (`cfg.border_from_outline_hairline_run`, built OFF
+    2026-11-13): the shapes `keyline_bean.keyline_regions` read as hairline
+    keylines; None reads them here. Ignored with the flag off.
 
     `art_outlines` (`cfg.border_from_outline`, 2026-10-24): the art's own
     outlines, `art_outline.find_art_outlines` over EVERY region (a body the
@@ -2791,7 +2822,7 @@ def sequence(
             fill_technique=fill_technique, streamline_mode=streamline_mode,
             detail_layer=detail_layer, palette_spools=palette_spools,
             hairline=hairline, ink_source=ink_source, counter_holes=counter_holes,
-            art_outlines=art_outlines)
+            art_outlines=art_outlines, keyline_beans=keyline_beans)
         off_rank = {}
         for _b in off_blocks:
             for _r in _b.runs:
@@ -3314,6 +3345,23 @@ def sequence(
                 continue
             outline_rings[_oid] = [(_hole, _w) for _bid, _hole, _w in _bodies]
             outline_bodies.update(_bid for _bid, _hole, _w in _bodies)
+    # `cfg.border_from_outline_hairline_run` (built OFF 2026-11-13): an
+    # outline the hairline tier's width gate admits whole is a drawn line,
+    # not a border. It sews as a bean on its own centreline
+    # (`keyline_bean`), a needle point on every corner, instead of a loop at
+    # `machine.OUTLINE_WIDTH_MM`'s floor (Kent's keyline logo: a 0.4 mm
+    # keyline sewn 1.5 mm); so does every other hairline ring of its thread
+    # (the keyline round a dot). Its bodies stay `outline_bodies`: plain
+    # fills, no ring of their own. Off, empty and never read.
+    # `plan_stitches` reads them once, ahead of stage 5 (it sews them last
+    # and holds their bodies' fill to the line), and hands the set in; a
+    # direct caller that passes none gets them read here.
+    if not getattr(cfg, "border_from_outline_hairline_run", False):
+        keyline_beans = set()
+    elif keyline_beans is None:
+        keyline_beans = (keyline_regions([_p.region for _p in planned], set(outline_rings),
+                                         cfg, ink=ink_source) if outline_rings else set())
+    keyline_limits = keyline_body_limits(planned, keyline_beans) if keyline_beans else {}
     # Seam ownership's "still to sew" set — see `border_later`'s declaration
     # above for the predicate and its blind spots.
     for _p in planned:
@@ -3322,9 +3370,15 @@ def sequence(
             continue
         if _sews_satin(_p.region, cfg, satin_max, design_class, outline_rings):
             continue
-        if (_border_wanted(_p.region, border_style, border_total_area,
-                           border_share_min, border_iso_max)[0]
-                or _border_by_size_width(_p.region, cfg) is not None):
+        if _border_wanted(_p.region, border_style, border_total_area,
+                          border_share_min, border_iso_max)[0]:
+            border_later[_p.shape_id] = _p.visible_geom
+        elif (_border_by_size_width(_p.region, cfg) is not None
+              and not cfg.border_by_size_fabric_edges):
+            # A size ring owns its seams only with fabric-edges OFF. ON, it
+            # skips every seam with another sewn region, so counting it as a
+            # later owner would leave a seam an earlier explicitly bordered
+            # neighbour handed it sewn by neither shape.
             border_later[_p.shape_id] = _p.visible_geom
     # Every region's edge, for `cfg.border_by_size_fabric_edges`'s seam test
     sewn_geoms = ({_p.shape_id: _p.visible_geom for _p in planned}
@@ -3414,6 +3468,20 @@ def sequence(
             # (`rest_planned`) goes down the ladder below as a shape of its
             # own, FIRST — the hairlines are laid over it, like a strand over
             # any ground.
+            # `cfg.border_from_outline_hairline_run` (built OFF 2026-11-13): a
+            # hairline keyline (`keyline_beans`) sews as a bean on its own
+            # centreline, ahead of every rung that would read the band as a
+            # shape: the run rung traces BOTH its edges (two lines 0.4 mm
+            # apart), the hairline tier walks a raster skeleton, the outline
+            # rung loops it in satin. On the ARTWORK polygon, for the run
+            # rung's reason. Empty (a tail no loop follows) takes the ladder.
+            if tier == "auto" and p.shape_id in keyline_beans:
+                runs, report = keyline_bean_runs(p.region.polygon, p.shape_id,
+                                                 entry=entry, trim_at_mm=trim_at)
+                if not report["empty"]:
+                    report["as_run"] = 1
+                    report["keyline_bean"] = 1
+                    return runs, report, False
             # `cfg.fine_bars_satin`: a fine bar goes down the ladder below
             # ONCE (`fine_bar_trying`), the hairline tier skipped; satin out
             # of it is the bar, anything else becomes today's ring exactly
@@ -3588,6 +3656,20 @@ def sequence(
                     rest_art = Polygon(art.exterior,
                                        [r for r in art.interiors
                                         if Polygon(r).exterior.wkb not in ridden])
+                # `cfg.border_from_outline_follow_shape` (built OFF 2026-11-13):
+                # a band whose OUTER edge has a shape of its own (a gear round
+                # a disc) is not widened to one width. Every loop takes the
+                # band's thickest reading and each cross is cut where it
+                # leaves the ART, so it is as long as the band is thick where
+                # it stands (`art_outline.shaped_width_mm`). All of an
+                # outline's loops or none: a band shared by two bodies has one
+                # outer edge.
+                shaped_band = False
+                if rings and getattr(cfg, "border_from_outline_follow_shape", False):
+                    _shaped = [shaped_width_mm(art, h) for h, _w in rings]
+                    if all(w is not None for w in _shaped):
+                        rings = [(h, w) for (h, _w), w in zip(rings, _shaped)]
+                        shaped_band = True
                 # no hole of the outline survives on the artwork polygon (the
                 # region-level read found one): nothing to loop, fall through
                 if rings:
@@ -3607,26 +3689,56 @@ def sequence(
                         o_jumps += f_report["jumps"]
                     seam = 2.0 * cfg.simplify_tol_mm
                     o_holes = unary_union([Polygon(r) for r in art.interiors])
-                    o_reach = unary_union([art.buffer(max(w for _h, w in rings), join_style=2),
+                    # a shaped band's crosses stop at the art's own edge; any
+                    # other outline is the pro's, widened
+                    o_reach = unary_union([art if shaped_band
+                                           else art.buffer(max(w for _h, w in rings), join_style=2),
                                            p.polygon]).difference(o_holes)
                     if p.covered_by is not None:
                         o_reach = o_reach.union(p.covered_by.difference(o_holes))
+                    # a shaped band's needle is locked to its teeth
+                    loop_holes = ([(h, w, shaped_stations(art, h, machine.BORDER_DENSITY_MM))
+                                   for h, w in rings] if shaped_band else rings)
                     l_runs, l_report = keyline_runs(
                         art, p.shape_id, reach=o_reach,
                         entry=o_runs[-1].points[-1] if o_runs else entry,
                         trim_at_mm=trim_at, underlay=satin_underlay != "none",
-                        holes=rings)
+                        holes=loop_holes)
                     if not l_report["empty"]:
+                        if shaped_band:
+                            # ... and the shaped edge itself is drawn: one
+                            # bean round the band's outer ring, a needle
+                            # point on every corner of it
+                            # (`keyline_bean.stations`). A satin's stitches
+                            # end in round thread; a tooth 1 mm square is
+                            # three of them side by side, and only a line on
+                            # its edge gives it corners.
+                            e_pts = keyline_stations(list(art.exterior.coords))
+                            if len(e_pts) >= 3:
+                                e_lap = bean_loop(e_pts, l_runs[-1].points[-1],
+                                                  machine.BEAN_STITCH_MM, machine.BEAN_PASSES)
+                                hop = math.dist(l_runs[-1].points[-1], e_lap[0])
+                                l_runs.append(StitchRun(
+                                    points=stitches.split_long_moves(e_lap), kind=stitches.RUN,
+                                    jump=hop >= TINY_STITCH_MM, trim=hop > trim_at,
+                                    shape_id=p.shape_id))
+                                if hop >= TINY_STITCH_MM:
+                                    l_report["jumps"] += 1
                         return (o_runs + l_runs,
                                 {"jumps": o_jumps + l_report["jumps"], "empty": False,
-                                 "outline_loops": l_report["loops"]}, False)
+                                 "outline_loops": l_report["loops"],
+                                 **({"shaped_band": 1} if shaped_band else {})}, False)
             # ... and the body it holds is a plain fill under that loop, on
             # stage 5's polygon, grown by the pull here when stage 5 kept it
             # on its artwork for satin rails (`satin_rail_comp`).
             if tier == "auto" and p.shape_id in outline_bodies:
                 body = p.polygon
                 if p.satin_tier and fabric.pull_comp_mm > 0:
-                    body = body.buffer(fabric.pull_comp_mm, join_style=2)
+                    body = grown_body(body, fabric.pull_comp_mm)
+                    # `cfg.border_from_outline_hairline_run`: the pull grown
+                    # here stops at the keyline's own needle line, as stage
+                    # 5's growth already does (`keyline_bean.hold_bodies`)
+                    body = keyline_held(body, keyline_limits.get(p.shape_id))
                 runs, report = stitch_shape(
                     small_print_cut(p, body, bar_mm=row_mm), p.shape_id,
                     angle_deg=_fill_angle_for(p, cfg), row_mm=row_mm,
@@ -3665,6 +3777,9 @@ def sequence(
             # was kept in stage 5 because `_sews_satin` says so). "auto"
             # only; a letter the cut cannot construct falls through to the
             # ladder below, the contract every rung has.
+            # `cfg.lettering_columns_cover_handback`: True once the lane gave this
+            # shape back; the ladder below then reads it as untagged.
+            handed_back = False
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
                     and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
@@ -3739,7 +3854,13 @@ def sequence(
                     # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
                     **({"inside_connectors": True}
                        if cfg.lettering_columns_inside_connectors else {}))
-                if not report["empty"]:
+                # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
+                # lane covers under `HANDBACK_COVER_MIN` falls through to the
+                # ladder and sews as it would untagged. Off, unread.
+                if (not report["empty"] and cfg.lettering_columns_cover_handback
+                        and satin_cover(runs, _letter) < HANDBACK_COVER_MIN):
+                    handed_back = True
+                elif not report["empty"]:
                     report["lettering_columns"] = 1
                     return runs, report, False
             # Satin or fill is decided per shape, not per design: one logo
@@ -3909,7 +4030,7 @@ def sequence(
                     join_square=cfg.satin_join_square,
                     free_end_square=cfg.satin_free_end_square,
                     junction_square=(cfg.satin_junction_square
-                                     and bool(p.region.meta.get("text_candidate"))),
+                                     and bool(p.region.meta.get("text_candidate")) and not handed_back),
                     slab_serifs=cfg.satin_slab_serifs,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
@@ -3970,7 +4091,7 @@ def sequence(
                     and ribbon is not None and not ribbon.satin
                     and ribbon.reason == "aspect" and not rides_ramp
                     and by_size_width is None
-                    and not is_lettering(p.region, cfg)
+                    and not (is_lettering(p.region, cfg) and not handed_back)
                     and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
                 runs, report = small_solid_satin(
                     p.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
@@ -4353,7 +4474,7 @@ def sequence(
             # sewing it as a run beats leaving a hole in the artwork.
             if (rescue and not runs
                     and not (cfg.bean_only_lines and tier == "auto"
-                             and not bean_rule.allows_bean(p.region.polygon, letter=is_lettering(p.region, cfg)))):
+                             and not bean_rule.allows_bean(p.region.polygon, letter=(is_lettering(p.region, cfg) and not handed_back)))):
                 # (`cfg.bean_only_lines`: a letter or a solid both tiers refused
                 # is left unsewn, as the reference file leaves it; a line still
                 # gets its outline run)

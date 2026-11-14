@@ -668,6 +668,53 @@ describe("the shape/color recount in the reading row -- POST /recount", () => {
   });
 });
 
+describe("the thin-outline prompt (Keep / Remove)", () => {
+  const ASK = '[data-testid="outline-ask"]';
+  const GONE = '[data-testid="outline-removed"]';
+  const rows = () => [shapeRow("s1"), shapeRow("k1", { hairlineOutline: true }), shapeRow("k2", { hairlineOutline: true })];
+
+  test("no marked shape, no prompt", () => {
+    const { container } = renderPanel([shapeRow("s1")]);
+    expect(container.querySelector(ASK)).toBeNull();
+    expect(container.querySelector(GONE)).toBeNull();
+  });
+
+  test("asks about the marked shapes, counted", () => {
+    const { container } = renderPanel(rows());
+    expect(container.querySelector(ASK).textContent).toMatch(/thin outline \(2 shapes/);
+  });
+
+  test("Keep remembers the answer in one discrete patch and hides nothing", async () => {
+    const { getByRole, patches } = renderPanel(rows());
+    await fireEvent.click(getByRole("button", { name: "Keep" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch).toEqual({ keptOutlineIds: ["k1", "k2"] });
+    expect(patches[0].discrete).toBe(true);
+  });
+
+  test("Remove hides every marked shape in one discrete patch", async () => {
+    const { getByRole, patches } = renderPanel(rows(), { deletedShapeIds: ["s1"] });
+    await fireEvent.click(getByRole("button", { name: "Remove" }));
+    expect(patches).toHaveLength(1);
+    expect(patches[0].patch).toEqual({ deletedShapeIds: ["s1", "k1", "k2"] });
+    expect(patches[0].discrete).toBe(true);
+  });
+
+  test("answered Keep: no prompt", () => {
+    const { container } = renderPanel(rows(), { keptOutlineIds: ["k1", "k2"] });
+    expect(container.querySelector(ASK)).toBeNull();
+    expect(container.querySelector(GONE)).toBeNull();
+  });
+
+  test("removed: offers Put back, which un-hides only the outlines", async () => {
+    const { container, getByRole, patches } = renderPanel(rows(), { deletedShapeIds: ["s1", "k1", "k2"] });
+    expect(container.querySelector(ASK)).toBeNull();
+    expect(container.querySelector(GONE)).not.toBeNull();
+    await fireEvent.click(getByRole("button", { name: "Put back" }));
+    expect(patches[0].patch).toEqual({ deletedShapeIds: ["s1"], keptOutlineIds: ["k1", "k2"] });
+  });
+});
+
 describe("hiding, restoring, and BACKGROUND_ENCLOSED restore", () => {
   test("hiding a shape adds it to deletedShapeIds", async () => {
     const { container, patches } = renderPanel([shapeRow("s1")]);
@@ -1698,6 +1745,26 @@ describe("the run button while Download is locked", () => {
   test("with the service down the button cannot run, so it is not lit and Download is not locked", async () => {
     const { run } = await panel({ project: HAT, health: null });
     expect(run()).toBeDisabled();
+    expect(run()).not.toHaveClass("dgp-run-lit");
+    expect(run().dataset.blocksDownload).toBe("false");
+  });
+
+  // Art uploaded but never digitized locks Download too (lib/staleness.js
+  // isUndigitizedArt, 2026-11-13), and Download says nothing in words, so the
+  // halo is the only pointer to the way out. Not "stale": there are no
+  // stitches to be behind, so the button stays solid and no "Changed since
+  // the last run" / "Restitch now" appears before any run.
+  test("art uploaded but never digitized lights it without calling it stale", async () => {
+    const { run, queryByTestId } = await panel({ extra: { result: null, appliedConfig: null, review: null } });
+    expect(run()).toHaveClass("dgp-run-lit");
+    expect(run().dataset.blocksDownload).toBe("true");
+    expect(run()).not.toHaveClass("dgp-run-stale");
+    expect(queryByTestId("digitize-stale")).toBeNull();
+    expect(queryByTestId("digitize-restitch-now")).toBeNull();
+  });
+
+  test("never-digitized art with the service down is not lit", async () => {
+    const { run } = await panel({ health: null, extra: { result: null, appliedConfig: null, review: null } });
     expect(run()).not.toHaveClass("dgp-run-lit");
     expect(run().dataset.blocksDownload).toBe("false");
   });

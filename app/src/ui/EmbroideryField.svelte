@@ -49,6 +49,7 @@
   import { digitizeBusy } from "../lib/digitizeBusy.js";
   import Icon from "./Icon.svelte";
   import { prefersReducedMotion } from "../lib/reducedMotion.js";
+  import { undecidedOutlineIds, throbAt, STILL_GLOW } from "../lib/outlinePrompt.js";
   import ShapePopover from "./ShapePopover.svelte";
 
   // Task 4 (Slice 5): the field now renders every element in the project
@@ -2874,6 +2875,7 @@
     if (!renderResult || !renderResult.toCanvas || !project) return;
     const now = performance.now();
     let stillPulsing = false;
+    let glowing = 0;    // rings drawn with the thin-outline prompt's glow (data-outline-glow)
     let selNodes = 0;   // nodes drawn on the selected shape's rings (data-reshape-nodes)
     const selNodePx = [];   // the same nodes' canvas px, in Reshape mode only (data-reshape-node-px, for e2e aiming)
 
@@ -2913,11 +2915,37 @@
       const inMode = !!reshape && reshape.elId === el.id && project.selectedId === el.id && !multiSel;
       const similarSet = applyToSimilar && popModel && popModel.similar && el.id === selectedShapeElId
         ? new Set(popModel.similar.ids) : null;
+      // The thin-outline prompt (lib/outlinePrompt.js): the hairline outlines
+      // the customer has not said Keep or Remove on glow, whatever the
+      // Outlines toggle says, until they answer in the panel.
+      const asking = el.type === "digitized" ? new Set(undecidedOutlineIds(el)) : null;
+      const throb = reduced ? STILL_GLOW : throbAt(now);
 
       ctx.save();
       ctx.lineJoin = "round";
       for (const o of outlines) {
         if (hidden.has(o.id)) continue;
+        if (asking && asking.has(o.id)) {
+          const g = o.points.map(([x, y]) => renderResult.toCanvas(x, y));
+          if (g.length >= 3) {
+            // A green halo: the one colour on this canvas that is neither a
+            // selection (amber), a hover (white), a group (blue) nor a plain
+            // outline (cyan), and it shows on red fill and on pale fabric.
+            ctx.save();
+            ctx.beginPath();
+            ctx.moveTo(g[0].x, g[0].y);
+            for (let i = 1; i < g.length; i++) ctx.lineTo(g[i].x, g[i].y);
+            ctx.closePath();
+            ctx.shadowColor = `rgba(60, 255, 130, ${0.55 + 0.45 * throb})`;
+            ctx.shadowBlur = 5 + 11 * throb;
+            ctx.strokeStyle = `rgba(60, 255, 130, ${0.45 + 0.5 * throb})`;
+            ctx.lineWidth = 1.6 + 2.2 * throb;
+            ctx.stroke();
+            ctx.restore();
+            glowing += 1;
+            if (!reduced) stillPulsing = true;
+          }
+        }
         // Mid-drag, the shape being edited renders from the working ring
         // rather than from the last committed review — otherwise the outline
         // would sit still until the pointer came up.
@@ -3058,6 +3086,7 @@
     if (canvas && canvas.getAttribute("data-reshape-nodes") !== String(selNodes)) canvas.setAttribute("data-reshape-nodes", String(selNodes));
     const nodePxJson = selNodePx.length ? JSON.stringify(selNodePx) : "";
     if (canvas && (canvas.getAttribute("data-reshape-node-px") || "") !== nodePxJson) canvas.setAttribute("data-reshape-node-px", nodePxJson);
+    if (canvas && canvas.getAttribute("data-outline-glow") !== String(glowing)) canvas.setAttribute("data-outline-glow", String(glowing));
     if (stillPulsing) schedulePulseFrame();
   }
 
@@ -3592,7 +3621,7 @@
     // — it was the one place printing a bare 1289 where the rest say 1,289.
     stats = `${c.stitchCount.toLocaleString()} stitches · ${c.widthMM.toFixed(0)}×${c.heightMM.toFixed(0)} mm · ${hoop.label} hoop`;
     hoopNote = hoopFitNote(c.widthMM, c.heightMM, hoop) || "";
-    rotateFix = rotateToFitPatches(project.elements, c, hoop);
+    rotateFix = rotateToFitPatches(project.elements, c, hoop, result.perElement, placementBoxOf(project));
     // Something DID stitch, but not all of it — e.g. Latin mixed into Hebrew.
     // Rides the stats line next to the other warnings rather than blocking.
     unsupportedNote = (result.unsupported && result.unsupported.length)
@@ -5728,6 +5757,6 @@
     <!-- &nbsp; before each separator, not a plain space: Svelte strips leading
          whitespace inside an element, so " · " rendered as "…hoop· This font".
          Pre-existing on the two older warnings; visible on all three now. -->
-    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{#if rotateFix}&nbsp;<button type="button" class="twolines" data-testid="rotate-to-fit" on:click={() => dispatch("elupdatemany", rotateFix)}>Rotate to fit</button>{/if}{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
+    {:else if stats}<span class="stats">{stats}</span>{#if warn}<span class="warn">&nbsp;· Smaller than 5 mm — thread can't stitch this cleanly</span>{/if}{#if hoopNote}<span class="warn">&nbsp;· {hoopNote}</span>{#if rotateFix}&nbsp;<button type="button" class="twolines" data-testid="rotate-to-fit" on:click={() => dispatch("elupdatemanydiscrete", rotateFix)}>Rotate to fit</button>{/if}{/if}{#if unsupportedNote}<span class="warn">&nbsp;· {unsupportedNote}</span>{/if}{#if letterNote}<span class="warn">&nbsp;· {letterNote}</span>{#if twoLinesFix}&nbsp;<button type="button" class="twolines" on:click={() => dispatch("elupdate", { id: twoLinesFix.id, patch: { text: twoLinesFix.text } })}>Put on two lines</button>{/if}{/if}{#if contrastNote}<span class="warn" data-testid="contrast-note">&nbsp;· {contrastNote}</span>{/if}{/if}
   </div>
 </div>

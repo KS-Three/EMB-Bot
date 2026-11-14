@@ -2037,6 +2037,24 @@ class PipelineConfig:
     # top; pro 8,694 / 40). False is the engine as it was, byte for byte;
     # `tests/conftest.py` PRE_FLIP pins it False.
     border_from_outline: bool = True
+    # A SHAPED band follows its own outer edge (built OFF 2026-11-13, Kent on
+    # Commons "Ahora": "now fix the Ahora gear so it sews as a gear"). The
+    # rule above sews an outline as a loop of ONE width on the body's edge.
+    # The gear is a white ring round a yellow disc with 17 teeth on its outer
+    # edge, and it sewed a ring of spokes at every size: the loop never looks
+    # at the outer edge. ON, a band that (a) fits one satin everywhere (never
+    # thicker than `machine.SATIN_MAX_WIDTH_MM`) and (b) whose thickness
+    # swings by at least `machine.SATIN_MIN_CROSS_MM` (p90 - p10: the outer
+    # edge moves by more than the shortest stitch) keeps the loop, but each
+    # cross is cut where it leaves the ART instead of the art widened: long
+    # on a tooth, short in a root (`art_outline.shaped_width_mm`). No new
+    # constant. Of the corpus's outlines only the gear is shaped: To-a-T's
+    # frame swings 0.14-0.19 mm (one width, the pro widens it), Becker's,
+    # MFab's and the Drone's bands all pass 7 mm somewhere. The gear at 40 mm
+    # swings 0.36, under a stitch, and stays a ring. Pull on a 0.6 mm tooth
+    # is a sew-out question (gate 1). Acts only with `border_from_outline`.
+    # Off, byte-identical. Tests: `tests/test_outline_follow_shape.py`.
+    border_from_outline_follow_shape: bool = False
     # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
     # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
     # yellow cells of the disc they sit on) reads as one, and ON sews each
@@ -2059,6 +2077,46 @@ class PipelineConfig:
     # on the hat). False is the engine as it was, byte for byte;
     # `tests/conftest.py` PRE_FLIP pins it False.
     border_from_outline_line_art_guard: bool = True
+    # A HAIRLINE keyline is not a border (built OFF 2026-11-13, Kent: "Build
+    # guard, OFF"). The rule above widens every outline to at least
+    # `machine.OUTLINE_WIDTH_MM`'s 1.5 mm; that floor was read off outlines
+    # 0.8 mm and up (To-a-T's frame, Becker, MFab). Kent's keyline logo
+    # draws a 0.36-0.42 mm white keyline at 100 mm wide, and ON by default it
+    # sewed 1.50 mm satin loops, 3.7x the art: counters plugged, the notches
+    # between letters gone, its small letters a blob at 60 mm. ON, a THREAD
+    # whose art outlines, pooled, are at or under the hairline width (2 x
+    # area / perimeter against `machine.HAIRLINE_MAX_WIDTHS` laid threads,
+    # 0.6 mm at 40 wt) and which draws nearly nothing but keyline (its rings
+    # at least `machine.OUTLINE_REACH_FRAC` of its sewn area) sews every such
+    # ring as a BEAN on its own centreline
+    # instead of the loop (`keyline_bean`): the path is the body's vector
+    # edge moved out half the keyline's width, a needle point exactly on
+    # every corner, even stations between, the loop closed on its first
+    # hole, three passes in the same holes (Kent 2026-11-13: "building a
+    # swiss watch, and not a playhouse out of logs"). So does every other
+    # hairline ring of the same thread (the keyline round a dot, too short
+    # a loop to be an outline). Its bodies still sew as plain fills under
+    # it. The same art drawn larger (keyline over 0.6 mm) takes the loop as
+    # before. Acts only with `border_from_outline`. The 0.6 is the hairline
+    # tier's candidate, gate 1: unsewn. No pro file shows what a digitizer
+    # does with a 0.4 mm keyline; one logo
+    # (`testdata/art/commons_lettering/hed_p_e_logo.png`, taken whole from 40
+    # to 140 mm). The gate is per thread because the first build, per ring,
+    # was WRONG on the two other repo logos it touched (2026-11-13, 22 logos
+    # at 60 and 100 mm): To-a-T Machine's black frame, which the pro borders
+    # in satin, went to a wire and the O and A of its lettering to hollow
+    # outlines (the frame is 0.23 of its thread); Commons "Ahora"'s white
+    # gear lost its teeth (0.86 mm by area). Neither is taken now. Off,
+    # byte-identical. Tests: `tests/test_outline_hairline_run.py`.
+    # **ON since 2026-11-13, Kent's flip**, answering "what does the first
+    # digitize show": "sewn thin, but do not include letters for this". So a
+    # ring the lettering lane takes is never one (`keyline_bean`), and the
+    # shapes taken carry `meta["hairline_outline"]` (the service's
+    # `review.shapes[].hairline_outline`), which the Studio throbs and asks
+    # Keep / Remove on (his words: "throb/pulse and glow (ask user to keep
+    # or remove)"). False is the engine as it was; `tests/conftest.py`
+    # PRE_FLIP pins it False.
+    border_from_outline_hairline_run: bool = True
     # A white FIELD that `sew_enclosed_white` sews is never a letter
     # (2026-10-25, built OFF; Kent: "Ship 3, fix white next"). Becker's five
     # white BECKER faces sit inside the word's outline and carry its text
@@ -3602,6 +3660,18 @@ class PipelineConfig:
     # screenshot only: 33 -> 30 lane shapes); False reads nothing.
     # Tests: `tests/test_column_capture.py`.
     lettering_columns_icon_guard: bool = True
+    # Under `lettering_columns`, hand a text-tagged shape BACK to the ordinary
+    # ladder when the Column lane's satin covers under
+    # `columns.HANDBACK_COVER_MIN` of it (`columns.satin_cover`), so it sews as
+    # it would untagged (2026-11-13, built OFF; Kent's ruling that day:
+    # "Hand-back, built OFF"). The starter monarch's V-shaped wing cell, read
+    # as a letter only at targets 90.50 and 91.75 mm (a stroke CV jittering
+    # across `textcluster.LETTER_STROKE_CV_MAX`), sewed one arm: cover 0.656,
+    # against >= 0.964 sewn untagged (docs/monarch-size-cliff-2026-11-13.md).
+    # It acts where the area is lost, whatever the tagger read; the shape stays
+    # tagged for every other reader. False: the lane's output is final, as
+    # before, byte for byte. Flipping it is Kent's.
+    lettering_columns_cover_handback: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

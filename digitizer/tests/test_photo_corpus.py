@@ -202,6 +202,14 @@ STUB_OK = (
     "'warnings':[],'preflight':{'grade':'A','score':100,'metrics':{'raw_score':100}},"
     "'design':{'stitches':[{'x':0,'y':0},{'x':10,'y':0},{'x':10,'y':10}],'colors':[{'r':0,'g':0,'b':0}]},"
     "'_meta':{'elapsed_s':0.1,'stamps':{},'class':'photo_subject','class_conf':0.8,'tree_sha':s.get('tree_sha')}}))")
+STUB_OUTPUT = json.dumps({
+    "state": "done", "stats": {"stitch_count": 3, "trims": 0, "color_changes": 0, "size_mm": [80, 40],
+                               "thread_m_total": 0.1}, "warnings": [],
+    "preflight": {"grade": "A", "score": 100, "metrics": {"raw_score": 100}},
+    "design": {"stitches": [{"x": 0, "y": 0}, {"x": 10, "y": 0}, {"x": 10, "y": 10}],
+               "colors": [{"r": 0, "g": 0, "b": 0}]},
+    "_meta": {"elapsed_s": 0.1, "stamps": {}, "class": "photo_subject", "class_conf": 0.8,
+              "tree_sha": "abc"}})
 STUB_HANG = "import time; time.sleep(30)"
 
 
@@ -237,6 +245,42 @@ def test_capture_resumes_past_finished_rows(tmp_path, monkeypatch):
     monkeypatch.setattr(pc, "WORKER", "raise SystemExit('must not run')")
     run = pc.capture([ROW], photos, tmp_path, out, "abc", 10, 1)
     assert run["rows"]["a"]["stitches"] == 3
+
+
+def test_capture_reuses_a_row_only_when_its_overrides_match(tmp_path, monkeypatch):
+    """Resuming into a label with other `--set` overrides must recapture the
+    row, not reuse it (a side-by-side would compare a setting with itself).
+    A row written before overrides were recorded counts as "no overrides"."""
+    photos, out = _photos(tmp_path), tmp_path / "run"
+    calls = []
+
+    def fake_run_row(tree, photo, worker_json, cfg, timeout, tree_sha=None):
+        calls.append(dict(cfg))
+        output = json.loads(STUB_OUTPUT)
+        worker_json.write_text(json.dumps(output), encoding="utf-8")
+        return output
+    monkeypatch.setattr(pc, "run_row", fake_run_row)
+
+    def cap(ov=None):
+        return pc.capture([ROW], photos, tmp_path, out, "abc", 10, 1, cfg={}, overrides=ov)
+    cap()
+    assert len(calls) == 1 and json.loads((out / "a.row.json").read_text())["overrides"] == {}
+    cap()
+    assert len(calls) == 1                                    # same (none): reused
+    run = cap({"photo_cutout_min_kept": 0.0})
+    assert len(calls) == 2 and calls[-1]["photo_cutout_min_kept"] == 0.0   # recaptured
+    assert run["rows"]["a"]["overrides"] == {"photo_cutout_min_kept": 0.0}
+    cap({"photo_cutout_min_kept": 0.0})
+    assert len(calls) == 2                                    # same overrides: reused
+    cap()
+    assert len(calls) == 3                                    # back to none: recaptured
+    row = json.loads((out / "a.row.json").read_text())
+    del row["overrides"]                                      # a pre-change row
+    (out / "a.row.json").write_text(json.dumps(row), encoding="utf-8")
+    cap()
+    assert len(calls) == 3                                    # reads as "no overrides"
+    cap({"x": 1})
+    assert len(calls) == 4
 
 
 def test_capture_row_without_a_photo_is_an_error_row_with_a_placeholder(tmp_path, monkeypatch):
@@ -492,3 +536,13 @@ def test_kents_logo_grades_name_corpus_rows_on_one_tree():
     assert g["tally"] == {k: sum(r["grade"] == k for r in g["rows"].values()) for k in GRADES}
     readme = (pc.SCOREBOARD_DIR / "README.md").read_text(encoding="utf-8")
     assert "grades-5ff48c5-2026-10-28.json" in readme
+
+
+def test_worker_samples_stacks_from_a_thread_not_the_c_watchdog():
+    # 2026-11-13: dump_traceback_later walks frames without the GIL and killed workers
+    # with 0xC0000005 on Windows. A Python thread's dump holds the GIL.
+    assert "dump_traceback_later(" not in pc.WORKER
+    assert "threading.Thread(target=_sampler, daemon=True" in pc.WORKER
+    assert "_stop_sampler()" in pc.WORKER.split("spec = json.loads")[1]
+    assert "faulthandler.dump_traceback(file=sys.stderr, all_threads=True)" in pc.WORKER
+    compile(pc.WORKER, "<worker>", "exec")

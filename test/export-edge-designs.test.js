@@ -130,10 +130,11 @@ test("one stitch: EXP writes a 2-byte record and PES decodes to the same point",
 
 // ---- 200 colour changes --------------------------------------------------
 
-test("200 colour changes: DST header CO is the 201 colours defined, and 200 colour records are written", () => {
+test("200 colour changes: DST header CO is the 200 changes written, and 200 colour records are written", () => {
   const out = dst.encodeDST(manyColours(200));
-  // CO is colors.length (export-writers.test.js pins 2 colours -> "002").
-  assert.strictEqual(hfield(out, "CO"), "201");
+  // CO is the colour-change count, as pystitch.DstWriter writes it; it was
+  // colors.length (201) until 2026-11-13.
+  assert.strictEqual(hfield(out, "CO"), "200");
   const colourRecs = [];
   for (let i = 512; i + 5 < out.length; i += 3) if ((out[i + 2] & 0xc3) === 0xc3) colourRecs.push(i);
   assert.strictEqual(colourRecs.length, 200);

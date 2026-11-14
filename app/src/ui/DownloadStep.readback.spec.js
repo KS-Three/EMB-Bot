@@ -62,6 +62,29 @@ test("a clean DST saves and says so", async () => {
   expect(v.container.textContent).toMatch(/Saved DST/);
 });
 
+test("a clean DST says it was re-read, with the stitch and colour counts it read back", async () => {
+  const v = view();
+  await fireEvent.click(button(v, "DST"));
+  await waitFor(() => expect(saved).toEqual(["design.dst"]));
+  expect(v.container.querySelector("p[aria-live]").textContent).toBe(
+    "Saved DST (browser encoder) - re-read and verified: 6 stitches, 0 colour changes",
+  );
+});
+
+test("a clean PES and EXP say the same; SVG, which has no reader, says it was not re-read", async () => {
+  const v = view();
+  for (const [name, pattern] of [
+    ["PES", /^Saved PES \(browser encoder\) - re-read and verified: \d+ stitches?, 0 colour changes$/],
+    ["EXP", /^Saved EXP \(browser encoder\) - re-read and verified: \d+ stitches?, 0 colour changes$/],
+    ["SVG", /^Saved SVG \(browser encoder\) - not re-read \(SVG is a picture of the design, not a stitch file\)$/],
+  ]) {
+    saved.length = 0;
+    await fireEvent.click(button(v, name));
+    await waitFor(() => expect(saved).toHaveLength(1));
+    expect(v.container.querySelector("p[aria-live]").textContent, name).toMatch(pattern);
+  }
+});
+
 test("a DST that loses a stitch in the writer saves NOTHING and shows the check", async () => {
   // drops the 5th record: the file is whole, the design is not in it
   globalThis.EMB.encodeDST = (d, o) => {
@@ -77,6 +100,8 @@ test("a DST that loses a stitch in the writer saves NOTHING and shows the check"
   expect(saved).toEqual([]);
   expect(v.container.textContent).toMatch(/Export failed: stitch count \(expected \d+, read back \d+\)/);
   expect(v.container.textContent).not.toMatch(/Saved DST/);
+  // no confirmation of any kind, least of all a "verified" one
+  expect(v.container.querySelector("p[aria-live]").textContent).not.toMatch(/verified|re-read and/);
 });
 
 test("the other machine formats are guarded the same way", async () => {

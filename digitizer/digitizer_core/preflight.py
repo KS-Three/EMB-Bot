@@ -91,6 +91,18 @@ baby_deck_laugh 110/12, 6.10/30.13, 0.00/13.18, 95; face_closeup_blur
 mis-assignment and still blocks, which is why this rescores rather than
 exempting photos wholesale.
 
+WHICH pixels are "the artwork" there changed on 2026-11-13. When photo prep
+ran (the cutout accepted, PHOTO_PREP_APPLIED), stage 2 and stage 4 match
+spools to the PREPPED raster, so thread match is graded on that raster too
+(`_prepped_view`, the pipeline's own array on the result); grading the raw
+re-read blocked "reassign" on 9 of the 14 cutout jobs in the 77-image sweep
+whose prepped grade had zero thread findings. The gap to the raw photo is
+kept as metrics (`thread_raw_worst_delta_e`, `thread_raw_median_delta_e`),
+never a finding. The dropped-element check's `folded` cause shares those
+graded rows (its question is the same one: is this region's thread clearly
+off the colour it was matched to); every other check, coverage and the
+enclosed-hole colour included, still reads the raw re-read.
+
 The gradient route is scored the same way since 2026-10-30
 (`cfg.thread_match_excess_gradient`, Kent's flip). The flat route keeps the
 raw yardstick byte-for-byte.
@@ -3138,6 +3150,54 @@ _ARTWORK_REACH_MM = 1.0
 _ARTWORK_REACHED_FLOOR = 0.90
 
 
+def _held_out_enclosed(p, result: PipelineResult, cx: float, cy: float
+                       ) -> np.ndarray:
+    """Pixels of the enclosed background the design leaves unsewn ON PURPOSE.
+
+    Stage 1's `bg_mask` is only the border flood, so an enclosed
+    background-coloured area (`p.enclosed_mask`) reads as artwork. Whether it
+    sews is decided per region in `finish_generation`: an
+    `enclosed_background` region sews only when `apply_enclosed_white`
+    marked it (a field under `sew_enclosed_white`, a counter under
+    `sew_enclosed_counters` or inside a sewn field), the garment rule took
+    it, or a review `stitched` turned it on. Its final `meta["stitched"]` is
+    that verdict, so this reads it rather than re-deriving it; a region
+    with no `stitched` yet gets `finish_generation`'s own default.
+
+    Measured 2026-11-13 before this: the bold word "OBOD" on white at
+    100 mm read 0.836 reached and BLOCKED (its counters stay open by
+    default); a filled ring on white with "Sew white areas" off read 0.599.
+    Held to `p.enclosed_mask` as well as the polygon, so a tagged region's
+    edge wobble (the tag needs only 60% overlap) cannot carry real ink out.
+    """
+    held = np.zeros(p.bg_mask.shape, np.uint8)
+    enclosed = getattr(p, "enclosed_mask", None)
+    if enclosed is None or enclosed.shape != held.shape or not enclosed.any():
+        return held.astype(bool)
+    one = np.zeros_like(held)
+
+    def to_px(coords) -> np.ndarray:
+        a = np.asarray(coords, np.float64)
+        return np.round(np.column_stack(
+            [a[:, 0] * p.px_per_mm + cx, a[:, 1] * p.px_per_mm + cy]
+        )).astype(np.int32)
+
+    for r in result.regions:
+        m = r.meta or {}
+        if not m.get("enclosed_background"):
+            continue
+        sews = m.get("stitched", bool(m.get("sew_enclosed_white"))
+                     or bool(m.get("enclosed_by_garment")))
+        if sews:
+            continue
+        one[:] = 0
+        cv2.fillPoly(one, [to_px(r.polygon.exterior.coords)], 1)
+        for ring in r.polygon.interiors:
+            cv2.fillPoly(one, [to_px(ring.coords)], 0)
+        held |= one
+    return (held > 0) & enclosed
+
+
 def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
                             ) -> tuple[list[dict], dict]:
     """How much of the uploaded artwork has any thread near it.
@@ -3148,7 +3208,9 @@ def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
     B 88. The ground truth here is NOT the pipeline's own idea of the art:
     `p` is preflight's re-run of stage 1, which a rembg cutout never touched,
     narrowed only by a cutout the pipeline accepted (`result.subject_mask`),
-    since that background was removed on purpose.
+    since that background was removed on purpose, and by the enclosed
+    background the design leaves unsewn on purpose (`_held_out_enclosed`:
+    letter counters, and every enclosed area with "Sew white areas" off).
     """
     empty = {"artwork_checked": False, "artwork_reached_frac": None,
              "artwork_mm2": None}
@@ -3156,12 +3218,13 @@ def _artwork_reach_findings(p, result: PipelineResult, plan: StitchPlan
     subject = getattr(result, "subject_mask", None)
     if subject is not None and subject.shape == art.shape:
         art = art & subject
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    art = art & ~_held_out_enclosed(p, result, cx, cy)
     n_art = int(art.sum())
     if n_art == 0:
         return [], empty
 
-    x0, y0, x1, y1 = p.art_bbox
-    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
     reach = np.zeros(art.shape, np.uint8)
     thick = max(1, int(round(2 * _ARTWORK_REACH_MM * p.px_per_mm)))
     for _b, run in plan.iter_runs():
@@ -4329,6 +4392,56 @@ def _two_tone_view(p, plan: StitchPlan, cfg: PipelineConfig):
     return q if two_tone.apply(q) else p
 
 
+# Stage 1.5's announcement (warnings_codes.PHOTO_PREP_APPLIED), re-read by
+# string like the codes above: the only record that prep actually RAN, since
+# the cfg flag alone does not say so (a requested cutout that fails or is
+# refused skips prep entirely).
+_PHOTO_PREP_APPLIED = "PHOTO_PREP_APPLIED"
+
+
+def _prepped_view(view, result: PipelineResult, cfg: PipelineConfig):
+    """The thread grader's view on the raster the pipeline CHOSE THREADS FROM,
+    or None when photo prep did not run on this job.
+
+    Why (2026-11-13): with the cutout accepted, stage 1.5's photo prep
+    (contrast stretch + CLAHE, then the texture kill) overwrites `p.rgb`, and
+    stage 2 and stage 4's `revalidate_threads` match spools to THOSE pixels.
+    Graded on the raw re-read instead, the excess yardstick found a different
+    loaded spool closer to the raw pixels and blocked "reassign" on 9 of the
+    14 sweep jobs whose cutout ran; regraded on the prepped raster all 14 had
+    zero thread-match findings, every worst shape already wearing its best
+    loaded spool. The gap to the customer's raw photo is prep's choice, not a
+    mis-assignment, and rides out as `thread_raw_*` metrics, not a finding.
+
+    The raster is the pipeline's own (`result.photo_prep_rgb`, a reference
+    to the array stage 2 read), because that is equal by construction. Only
+    a result without it (hand-built, or a grid that does not match this
+    re-read) recomputes, in the pipeline's ORDER: `view` is already the
+    two-tone replay of stage 1.3, then prep on stage 1's mask joined with the
+    cutout's background, as `run_stages` hands it. Snapping the prepped
+    raster instead fires two-tone where the pipeline never did (bw_street).
+
+    Only `rgb` changes: `bg_mask` stays the re-read's, so the raw and
+    prepped grades judge the identical pixel set and their gap is colour
+    alone."""
+    if result is None or not any(
+            w.get("code") == _PHOTO_PREP_APPLIED
+            for w in (getattr(result, "warnings", None) or ())):
+        return None
+    rgb = getattr(result, "photo_prep_rgb", None)
+    if rgb is None or rgb.shape != view.rgb.shape:
+        from .stage1_photo_prep import photo_prep
+        bg = view.bg_mask
+        subject = getattr(result, "subject_mask", None)
+        if subject is not None and subject.shape == bg.shape:
+            bg = bg | ~subject
+        rgb = photo_prep(view.rgb, bg, view.px_per_mm, cfg).rgb
+    import copy
+    q = copy.copy(view)
+    q.rgb = rgb
+    return q
+
+
 def run_preflight(result: PipelineResult, plan: StitchPlan,
                   cfg: PipelineConfig | None = None,
                   image=None) -> dict:
@@ -4362,14 +4475,35 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     worst_de: float | None = None
     colour_rows: list[dict] | None = None
+    raw_rows: list[dict] | None = None
     if p is not None and result is not None:
         view = _two_tone_view(p, plan, cfg)
-        colour_rows = _region_color_errors(view, result, plan, cfg)
+        # Graded on the raster the pipeline matched spools to (2026-11-13,
+        # `_prepped_view`); the raw view is graded too only to measure prep's
+        # gap. Unprepped, `graded is view` and this is the old path exactly.
+        prepped = _prepped_view(view, result, cfg)
+        graded = view if prepped is None else prepped
+        colour_rows = _region_color_errors(graded, result, plan, cfg)
         thread_findings, worst_de = _thread_match_findings(
-            view, result, plan, cfg, rows=colour_rows)
+            graded, result, plan, cfg, rows=colour_rows)
         findings.extend(thread_findings)
+        if prepped is not None:
+            skip = _enlarged_text_ids(result, cfg)
+            raw_rows = [r for r in _region_color_errors(view, result, plan, cfg)
+                        if str(r["shape_id"]).split(" shade ")[0] not in skip]
     metrics["thread_match_checked"] = p is not None and result is not None
     metrics["thread_worst_delta_e"] = None if worst_de is None else round(worst_de, 1)
+    if raw_rows is not None:
+        # The gap to the customer's RAW photo on a prepped job: the same rows,
+        # same spools, scored on the unprepped re-read — what
+        # `thread_worst_delta_e` read before 2026-11-13. A measurement only:
+        # no finding, no score. Absent when prep did not run, so an unprepped
+        # report's keys are the ones it always had.
+        raw_de = [r["delta_e"] for r in raw_rows]
+        metrics["thread_raw_worst_delta_e"] = (
+            round(max(raw_de), 1) if raw_de else None)
+        metrics["thread_raw_median_delta_e"] = (
+            round(float(np.median(raw_de)), 1) if raw_de else None)
     if (getattr(cfg, "extra", None) or {}).get(_SKIP_ENLARGED_TEXT_KEY):
         # Only under the flag, so a default report's metrics keys are unchanged.
         metrics["thread_match_enlarged_text_skipped"] = (

@@ -62,6 +62,14 @@ const LEGACY = {
 // is the last field; it always contains a digit in these charts, which is how
 // we tell it apart from a name-only line (some palettes ship without codes --
 // then the whole remainder is the name and code is "").
+//
+// Two Simthread charts (63 Brother Colors, Glow In The Dark) add a FIFTH
+// column after the number: the spool's measured L,a,b ("Black 900
+// 22.34,-0.6,-0.46"). Taking the last field shipped that triple as the code
+// and "Black 900" as the name for all 78 rows (found 2026-11-13). The triple
+// is not a catalogue number, so drop it first; the Glow chart's number
+// column is a literal "n/a", which means "no number", not a name word.
+const LAB_TRIPLE = /\s+-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?,-?\d+(?:\.\d+)?$/;
 function parseGpl(text) {
   const entries = [];
   for (const raw of text.split(/\r\n|\r|\n/)) {
@@ -71,11 +79,14 @@ function parseGpl(text) {
     if (!m) continue;
     const rgb = [Number(m[1]), Number(m[2]), Number(m[3])];
     if (rgb.some((v) => v > 255)) continue;
-    const rest = m[4].trim();
+    const rest = m[4].trim().replace(LAB_TRIPLE, "");
     const lastSpace = rest.search(/\s\S+$/);
     const lastTok = lastSpace >= 0 ? rest.slice(lastSpace).trim() : "";
     let name, code;
-    if (lastTok && /\d/.test(lastTok)) {
+    if (/^n\/a$/i.test(lastTok)) {
+      name = rest.slice(0, lastSpace).trim();
+      code = "";
+    } else if (lastTok && /\d/.test(lastTok)) {
       name = rest.slice(0, lastSpace).trim();
       code = lastTok;
     } else {

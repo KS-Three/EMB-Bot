@@ -1,5 +1,5 @@
 <script>
-  import { createEventDispatcher, onMount } from "svelte";
+  import { createEventDispatcher, onDestroy, onMount } from "svelte";
   import { flattenRGBA, flatToRGBA, flatShares, mergeFlat, WORK_MAX_PX, ALPHA_CUTOFF, MIN_SWATCH_SHARE } from "../lib/flatten.js";
   import { engineLabel } from "../lib/project.js";
   import { loadImage, rasterSize, isVectorFile } from "../lib/rasterize.js";
@@ -21,8 +21,11 @@
   // "image"/"flat" events stay id-less on purpose -- App always applies them
   // to whichever element is CURRENTLY SELECTED (project.selectedId), which
   // is safe because this panel only ever edits the selected element (it's
-  // remounted via ContentStep's `{#key el.id}` whenever selection changes,
-  // so there's never a stale in-flight upload for a different element).
+  // remounted via ContentStep's `{#key}` whenever selection or the open
+  // design changes). A remount does NOT stop an upload already awaiting
+  // loadImage, though: its continuation would land on whatever is selected
+  // by then -- another element, or design B's `e1` (2026-11-13 review). So
+  // a torn-down panel's upload drops everything it would have sent.
   export let element;
   // Working image state is owned by App (not this component) and passed
   // down as props, so it survives ImagePanel being destroyed and recreated
@@ -35,6 +38,8 @@
   // flat: current flattened palette state, derived from workImage.
   export let flat = null;
   const d = createEventDispatcher();
+  let destroyed = false;
+  onDestroy(() => (destroyed = true));
 
   function patch(p) {
     d("elupdate", { id: element.id, patch: p });
@@ -153,6 +158,7 @@
     sourceIsVector = isVectorFile(file);
     try {
       const img = await loadImage(file);
+      if (destroyed) return; // see the comment on `element` above
       const prep = prepRGBA(img);
       // Persist the working image BEFORE anything else can fail: without it
       // the pixels live only in App's runtime and a refresh destroys them.
@@ -176,6 +182,8 @@
       d("image", prep);
       flattenFrom(prep, element.nColors, element.removeBg);
     } catch (err) {
+      // A failed load must not clear the art of whatever is selected NOW.
+      if (destroyed) return;
       error = friendlyError(err, "upload");
       fileName = "";
       patch({ sourcePng: null, name: "" });

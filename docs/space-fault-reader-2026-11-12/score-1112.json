@@ -1,0 +1,704 @@
+{
+ "fault": "space",
+ "radius_mm": 3.0,
+ "items": {
+  "C_lt_bukit_asam": {
+   "pins": 1,
+   "flags": 18,
+   "by_radius": {
+    "3.0": {
+     "hit": 1,
+     "hit_rate": 1.0,
+     "chance_area": 0.35,
+     "chance_edge": 0.406,
+     "chance_cand": 0.6985,
+     "chance_pick": 0.6481481481481481,
+     "flags_near_pin": 3,
+     "precision": 0.16666666666666666,
+     "precision_pick": 0.07407407407407407
+    },
+    "2.0": {
+     "hit": 1,
+     "hit_rate": 1.0,
+     "chance_area": 0.2275,
+     "chance_edge": 0.2655,
+     "chance_cand": 0.484,
+     "chance_pick": 0.4444444444444444,
+     "flags_near_pin": 1,
+     "precision": 0.05555555555555555,
+     "precision_pick": 0.037037037037037035
+    },
+    "5.0": {
+     "hit": 1,
+     "hit_rate": 1.0,
+     "chance_area": 0.5505,
+     "chance_edge": 0.639,
+     "chance_cand": 0.855,
+     "chance_pick": 0.8518518518518519,
+     "flags_near_pin": 4,
+     "precision": 0.2222222222222222,
+     "precision_pick": 0.1111111111111111
+    }
+   },
+   "candidates": 54,
+   "notes": {
+    "2": {
+     "pins": 1,
+     "hit": {
+      "3.0": 1,
+      "2.0": 1,
+      "5.0": 1
+     }
+    }
+   },
+   "auc_area": 0.98825,
+   "auc_edge": 0.987,
+   "pin_nearest_mm": [
+    0.51
+   ],
+   "unpinned": [
+    {
+     "x_mm": 39.42,
+     "y_mm": 8.58,
+     "class": 0,
+     "kind": "gap",
+     "space_mm": 1.054,
+     "strength": 1.5
+    },
+    {
+     "x_mm": 66.0,
+     "y_mm": 20.0,
+     "class": 4,
+     "kind": "gap",
+     "space_mm": 0.527,
+     "strength": 1.333
+    },
+    {
+     "x_mm": 56.33,
+     "y_mm": 13.33,
+     "class": 0,
+     "kind": "gap",
+     "space_mm": 0.972,
+     "strength": 1.25
+    },
+    {
+     "x_mm": 76.83,
+     "y_mm": 4.33,
+     "class": 2,
+     "kind": "bay",
+     "space_mm": 0.527,
+     "strength": 1.25
+    },
+    {
+     "x_mm": 24.67,
+     "y_mm": 11.58,
+     "class": 0,
+     "kind": "gap",
+     "space_mm": 1.0,
+     "strength": 1.167
+    },
+    {
+     "x_mm": 33.42,
+     "y_mm": 13.0,
+     "class": 0,
+     "kind": "bay",
+     "space_mm": 1.167,
+     "strength": 1.083
+    },
+    {
+     "x_mm": 33.33,
+     "y_mm": 9.58,
+     "class": 0,
+     "kind": "bay",
+     "space_mm": 1.0,
+     "strength": 1.0
+    },
+    {
+     "x_mm": 37.83,
+     "y_mm": 8.33,
+     "class": 0,
+     "kind": "gap",
+     "space_mm": 0.833,
+     "strength": 1.0
+    },
+    {
+     "x_mm": 51.67,
+     "y_mm": 13.25,
+     "class": 0,
+     "kind": "gap",
+     "space_mm": 0.972,
+     "strength": 0.917
+    },
+    {
+     "x_mm": 36.83,
+     "y_mm": 9.33,
+     "class": 0,
+     "kind": "gap",
+     "space_mm": 1.067,
+     "strength": 0.833
+    }
+   ],
+   "pin_ids": [
+    2
+   ]
+  },
+  "C_lt_n_sync": {
+   "pins": 1,
+   "flags": 6,
+   "by_radius": {
+    "3.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.1615,
+     "chance_edge": 0.124,
+     "chance_cand": 0.267,
+     "chance_pick": 0.2608695652173913,
+     "flags_near_pin": 0,
+     "precision": 0.0,
+     "precision_pick": 0.0
+    },
+    "2.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.0715,
+     "chance_edge": 0.082,
+     "chance_cand": 0.206,
+     "chance_pick": 0.15217391304347827,
+     "flags_near_pin": 0,
+     "precision": 0.0,
+     "precision_pick": 0.0
+    },
+    "5.0": {
+     "hit": 0,
+     "hit_rate": 0.0,
+     "chance_area": 0.374,
+     "chance_edge": 0.2515,
+     "chance_cand": 0.3515,
+     "chance_pick": 0.3695652173913043,
+     "flags_near_pin": 0,
+     "precision": 0.0,
+     "precision_pick": 0.06521739130434782
+    }
+   },
+   "candidates": 46,
+   "notes": {
+    "1": {
+     "pins": 1,
+     "hit": {
+      "3.0": 0,
+      "2.0": 0,
+      "5.0": 0
+     }
+    }
+   },
+   "auc_area": 0.41925,
+   "auc_edge": 0.44425,
+   "pin_nearest_mm": [
+    9.01
+   ],
+   "unpinned": [
+    {
+     "x_mm": 12.5,
+     "y_mm": 9.5,
+     "class": 0,
+     "kind": "bay",
+     "space_mm": 1.167,
+     "strength": 2.0
+    },
+    {
+     "x_mm": 16.75,
+     "y_mm": 6.42,
+     "class": 0,
+     "kind": "bay",
+     "space_mm": 1.167,
+     "strength": 1.75
+    },
+    {
+     "x_mm": 59.75,
+     "y_mm": 6.83,
+     "class": 1,
+     "kind": "bay",
+     "space_mm": 0.972,
+     "strength": 1.333
+    },
+    {
+     "x_mm": 55.33,
+     "y_mm": 8.58,
+     "class": 1,
+     "kind": "bay",
+     "space_mm": 0.667,
+     "strength": 1.167
+    },
+    {
+     "x_mm": 7.92,
+     "y_mm": 4.75,
+     "class": 0,
+     "kind": "bay",
+     "space_mm": 1.213,
+     "strength": 1.083
+    },
+    {
+     "x_mm": 42.92,
+     "y_mm": 4.42,
+     "class": 1,
+     "kind": "bay",
+     "space_mm": 0.972,
+     "strength": 0.833
+    }
+   ],
+   "pin_ids": [
+    1
+   ]
+  }
+ },
+ "pooled": {
+  "3.0": {
+   "chance_area": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.2557,
+    "diff": 0.2443,
+    "kappa": 0.3282,
+    "ci95": [
+     -0.1615,
+     0.65
+    ]
+   },
+   "chance_edge": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.265,
+    "diff": 0.235,
+    "kappa": 0.3197,
+    "ci95": [
+     -0.124,
+     0.594
+    ]
+   },
+   "chance_cand": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4828,
+    "diff": 0.0172,
+    "kappa": 0.0333,
+    "ci95": [
+     -0.267,
+     0.3015
+    ]
+   },
+   "chance_pick": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4545,
+    "diff": 0.0455,
+    "kappa": 0.0834,
+    "ci95": [
+     -0.2609,
+     0.3519
+    ]
+   }
+  },
+  "2.0": {
+   "chance_area": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.1495,
+    "diff": 0.3505,
+    "kappa": 0.4121,
+    "ci95": [
+     -0.0715,
+     0.7725
+    ]
+   },
+   "chance_edge": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.1738,
+    "diff": 0.3262,
+    "kappa": 0.3949,
+    "ci95": [
+     -0.082,
+     0.7345
+    ]
+   },
+   "chance_cand": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.345,
+    "diff": 0.155,
+    "kappa": 0.2366,
+    "ci95": [
+     -0.206,
+     0.516
+    ]
+   },
+   "chance_pick": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.2983,
+    "diff": 0.2017,
+    "kappa": 0.2874,
+    "ci95": [
+     -0.1522,
+     0.5556
+    ]
+   }
+  },
+  "5.0": {
+   "chance_area": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4622,
+    "diff": 0.0378,
+    "kappa": 0.0702,
+    "ci95": [
+     -0.374,
+     0.4495
+    ]
+   },
+   "chance_edge": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4453,
+    "diff": 0.0547,
+    "kappa": 0.0987,
+    "ci95": [
+     -0.2515,
+     0.361
+    ]
+   },
+   "chance_cand": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.6032,
+    "diff": -0.1032,
+    "kappa": -0.2602,
+    "ci95": [
+     -0.3515,
+     0.145
+    ]
+   },
+   "chance_pick": {
+    "items": 2,
+    "pins": 2,
+    "hit_rate": 0.5,
+    "chance": 0.6107,
+    "diff": -0.1107,
+    "kappa": -0.2844,
+    "ci95": [
+     -0.3696,
+     0.1481
+    ]
+   }
+  }
+ },
+ "pooled_notes": {
+  "3.0": {
+   "chance_area": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.2557,
+    "diff": 0.2443,
+    "kappa": 0.3282,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.1615,
+     0.65
+    ]
+   },
+   "chance_edge": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.265,
+    "diff": 0.235,
+    "kappa": 0.3197,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.124,
+     0.594
+    ]
+   },
+   "chance_cand": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4828,
+    "diff": 0.0172,
+    "kappa": 0.0333,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.267,
+     0.3015
+    ]
+   },
+   "chance_pick": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4545,
+    "diff": 0.0455,
+    "kappa": 0.0834,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.2609,
+     0.3519
+    ]
+   }
+  },
+  "2.0": {
+   "chance_area": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.1495,
+    "diff": 0.3505,
+    "kappa": 0.4121,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.0715,
+     0.7725
+    ]
+   },
+   "chance_edge": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.1738,
+    "diff": 0.3262,
+    "kappa": 0.3949,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.082,
+     0.7345
+    ]
+   },
+   "chance_cand": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.345,
+    "diff": 0.155,
+    "kappa": 0.2366,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.206,
+     0.516
+    ]
+   },
+   "chance_pick": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.2983,
+    "diff": 0.2017,
+    "kappa": 0.2874,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.1522,
+     0.5556
+    ]
+   }
+  },
+  "5.0": {
+   "chance_area": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4622,
+    "diff": 0.0378,
+    "kappa": 0.0702,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.374,
+     0.4495
+    ]
+   },
+   "chance_edge": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.4453,
+    "diff": 0.0547,
+    "kappa": 0.0987,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.2515,
+     0.361
+    ]
+   },
+   "chance_cand": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.6032,
+    "diff": -0.1032,
+    "kappa": -0.2602,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.3515,
+     0.145
+    ]
+   },
+   "chance_pick": {
+    "items": 2,
+    "notes": 2,
+    "hit_rate": 0.5,
+    "chance": 0.6107,
+    "diff": -0.1107,
+    "kappa": -0.2844,
+    "notes_above_null": 1,
+    "ci95": [
+     -0.3696,
+     0.1481
+    ]
+   }
+  }
+ },
+ "precision": {
+  "3.0": {
+   "items": 2,
+   "flags": 24,
+   "precision": 0.125,
+   "chance": 0.0556,
+   "diff": 0.0694,
+   "ci95": [
+    0.0,
+    0.0926
+   ]
+  },
+  "2.0": {
+   "items": 2,
+   "flags": 24,
+   "precision": 0.0417,
+   "chance": 0.0278,
+   "diff": 0.0139,
+   "ci95": [
+    0.0,
+    0.0185
+   ]
+  },
+  "5.0": {
+   "items": 2,
+   "flags": 24,
+   "precision": 0.1667,
+   "chance": 0.0996,
+   "diff": 0.067,
+   "ci95": [
+    -0.0652,
+    0.1111
+   ]
+  }
+ },
+ "leave_one_out": {
+  "3.0": {
+   "C_lt_bukit_asam": {
+    "notes": {
+     "items": 1,
+     "notes": 1,
+     "hit_rate": 0.0,
+     "chance": 0.2609,
+     "diff": -0.2609,
+     "kappa": -0.3529,
+     "notes_above_null": 0,
+     "ci95": null
+    },
+    "pins": {
+     "items": 1,
+     "pins": 1,
+     "hit_rate": 0.0,
+     "chance": 0.2609,
+     "diff": -0.2609,
+     "kappa": -0.3529,
+     "ci95": [
+      -0.2609,
+      -0.2609
+     ]
+    }
+   },
+   "C_lt_n_sync": {
+    "notes": {
+     "items": 1,
+     "notes": 1,
+     "hit_rate": 1.0,
+     "chance": 0.6481,
+     "diff": 0.3519,
+     "kappa": 1.0,
+     "notes_above_null": 1,
+     "ci95": null
+    },
+    "pins": {
+     "items": 1,
+     "pins": 1,
+     "hit_rate": 1.0,
+     "chance": 0.6481,
+     "diff": 0.3519,
+     "kappa": 1.0,
+     "ci95": [
+      0.3519,
+      0.3519
+     ]
+    }
+   }
+  }
+ },
+ "overlap": {
+  "per_pin": [
+   {
+    "item": "C_lt_bukit_asam",
+    "pin": 2,
+    "note_pin": 2,
+    "space": true,
+    "letter": true
+   },
+   {
+    "item": "C_lt_n_sync",
+    "pin": 1,
+    "note_pin": 1,
+    "space": false,
+    "letter": false
+   }
+  ],
+  "pins": {
+   "both": 1,
+   "space_only": 0,
+   "letter_only": 0,
+   "neither": 1
+  },
+  "notes_any_hit": {
+   "both": 1,
+   "space_only": 0,
+   "letter_only": 0,
+   "neither": 1
+  },
+  "per_note": [
+   {
+    "item": "C_lt_bukit_asam",
+    "note_pin": 2,
+    "pins": 1,
+    "space": 1,
+    "letter": 1
+   },
+   {
+    "item": "C_lt_n_sync",
+    "note_pin": 1,
+    "pins": 1,
+    "space": 0,
+    "letter": 0
+   }
+  ]
+ },
+ "predicted": []
+}
