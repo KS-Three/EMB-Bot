@@ -1173,11 +1173,6 @@ def build_generation(
                            # baseline (2026-11-13, built OFF): absent, the call as it was
                            **({"one_baseline": True}
                               if cfg.extra.get("small_text_reset_one_baseline") else {}),
-                           # a line set on an arc re-set along its arc, and a grown
-                           # letter's bean spines re-read from its grown polygon
-                           # (2026-11-14, both built OFF): absent, the call as it was
-                           **({"arc": True} if cfg.extra.get("small_text_arc_reset") else {}),
-                           **({"respine": True} if cfg.extra.get("small_text_reset_respine") else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
