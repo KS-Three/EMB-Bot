@@ -270,8 +270,8 @@
     // did. 4-connected, not 8: art is drawn 8-connected (a one-pixel diagonal
     // stroke is a closed line), so the background must be 4-connected or it
     // leaks through the corners of every diagonal stroke into what the
-    // stroke encloses; on the repo's logos 8 keys out up to 503 more art
-    // pixels (logo_gaulke_roofing's letters) and saves none.
+    // stroke encloses; on the repo's 27 test images 8 keys out up to 340
+    // more pixels (logo_hotel_fremont_patch's counters) and never fewer.
     // `connected: false` is the off arm: the per-pixel test, byte for byte.
     const connected = options.connected !== false;
     // bit 1: passes the near-white test; bit 2: passes the corner test
