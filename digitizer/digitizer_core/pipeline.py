@@ -1102,6 +1102,10 @@ def build_generation(
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
                          **({"nest_guard_rotated": True} if cfg.text_cluster_nest_guard_rotated else {}),
+                         # a row of solid blobs is no word (2026-11-13, built
+                         # OFF): absent, the call as it was
+                         **({"solid_guard": True}
+                            if cfg.extra.get("text_cluster_solid_guard") else {}),
                          # a letter turned on a ring joins its line (2026-11-07,
                          # ON since 2026-11-08, Kent's flip)
                          **({"nest_door_aspect": True}
@@ -1142,6 +1146,10 @@ def build_generation(
                            # each bay's mouth kept open (W3-02, ON since 2026-10-26):
                            # False, the call as it was word for word
                            **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
+                           # the height classes of a lowercase line re-set on one
+                           # baseline (2026-11-13, built OFF): absent, the call as it was
+                           **({"one_baseline": True}
+                              if cfg.extra.get("small_text_reset_one_baseline") else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
@@ -1188,6 +1196,17 @@ def build_generation(
                                 grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k,
                                 words=cfg.lettering_words)
 
+    # Outline redraw (2026-11-13, `cfg.outline_redraw_k`, DEFAULT None): every
+    # shape's rings refit to lines and arcs within max(k source pixels, one
+    # grid pixel) of the trace -- the same place and the same reason as the
+    # letterform pass above, for the shapes that are not letters. Imported
+    # inside the branch: off, nothing runs (`tests/test_outline_redraw.py`).
+    if cfg.outline_redraw_k and p.input_px_per_mm > 0.0 and p.px_per_mm > 0.0:
+        from .outline_redraw import apply_outline_redraw
+        apply_outline_redraw(regions, src_px_mm=1.0 / p.input_px_per_mm,
+                             grid_px_mm=1.0 / p.px_per_mm, k=cfg.outline_redraw_k,
+                             native=cfg.outline_redraw_native)
+
     # OCR-suggested text (Studio "Convert to text" entry point): a read-only,
     # additive per-member OCR read of each tagged member's FINAL polygon —
     # runs after regularization for the same "computed fact reflects this
@@ -1223,6 +1242,18 @@ def build_generation(
     if cfg.lettering_columns_ink_link and not cfg.lettering_words:
         from .columns import tag_ink_strays
         tag_ink_strays(regions, chart_for(cfg))
+
+    # Regular structure (`cfg.regular_structure`, built OFF 2026-11-13): what
+    # the art repeats becomes one shape repeated -- congruent shapes on a
+    # fitted arrangement take their mean shape, a region that repeats itself
+    # round its centre takes the mean of its rotations. After every text
+    # tagger (lettering is never a member) and before the stitch-width read,
+    # so widths, angles and tiers see the shape that will sew. Logos only: a
+    # photograph's fragments repeat nothing and would cost minutes of
+    # alignment. Off, the module never loads.
+    if cfg.regular_structure and classification.class_ not in PHOTO_CLASSES:
+        from .regular_structure import apply_regular_structure
+        apply_regular_structure(regions, p, cfg)
 
     # Stitch width (2026-09-29, `stitchwidth.py`): what column each shape
     # measures, and the one width a detected word's letters will share.

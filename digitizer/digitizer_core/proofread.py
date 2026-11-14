@@ -65,10 +65,10 @@ on the ink; ink within `tol` of its colour's thread is sewn.
            >= `EXTRA_MIN_MM2`) with under `EXTRA_ON_ART` of its pixels within
            `tol` of its colour's ink: an invented border, in-fill or shape.
   CLOSED   a hole of the ink (fabric or garment enclosed by any ink), at
-           least `SPACE_MIN_HALF_MM` half-wide, where the sewn thread leaves
+           least `GAP_MIN_HALF_MM` half-wide, where the sewn thread leaves
            no clear circle of `SPACE_KEEP_HALF_MM` (glyph_read's numbers,
            with the keep floor raised to a quarter of the art's half-width).
-  MERGED   two ink components whose gap (at least `SPACE_MIN_HALF_MM`
+  MERGED   two ink components whose gap (at least `GAP_MIN_HALF_MM`
            half-wide, at most `GAP_MAX_HALF_MM`) has thread at least two
            filaments wide lying across its midline for `BRIDGE_MIN_MM`: one
            running stitch across a gap is travel, not a join (the letter
@@ -135,7 +135,7 @@ MOVE_SEARCH_MM = 4.0        # a missing component's moved partner is looked for 
 MOVE_COV0 = 0.75            # the general search runs on a shape under this share sewn in place ...
 MOVE_COV1 = 0.9             # ... and calls it moved when this share is sewn after the shift
 MOVE_GAIN_COV = 0.3         # ... and the shift sews this much more of it
-SPACE_MIN_HALF_MM = 0.3     # a hole / gap judged when a circle this big fits (1.5 filaments across)
+GAP_MIN_HALF_MM = 0.3     # a hole / gap judged when a circle this big fits (1.5 filaments across)
 SPACE_KEEP_HALF_MM = 0.10   # glyph_read: a space survives with a clear circle this big
 SPACE_KEEP_FRAC = 0.25      # ... or a quarter of the art's, whichever is bigger
 GAP_MAX_HALF_MM = 3.0       # gaps wider than this are fields, not joins
@@ -772,7 +772,7 @@ def read_arrays(art: np.ndarray, top: np.ndarray, runs: list[RunInfo], classes, 
             continue
         hole = _crop(lab, i, stats, pad=tol_px + 1)
         a_half = float(hole.of(depth_non_ink).max())
-        if a_half < SPACE_MIN_HALF_MM:
+        if a_half < GAP_MIN_HALF_MM:
             continue
         zone = _dilate(hole.m, tol_px) & ~ink_vis[hole.sl]
         clear = float(d_solid[hole.sl][zone].max()) if zone.any() else 0.0
@@ -805,7 +805,7 @@ def read_arrays(art: np.ndarray, top: np.ndarray, runs: list[RunInfo], classes, 
         b[:, :-1] |= owner[:, :-1] != owner[:, 1:]
         b[:-1, :] |= owner[:-1, :] != owner[1:, :]
         gap_half = _dist_to(shapes, px)
-        b &= gap_on & (gap_half >= SPACE_MIN_HALF_MM) & (gap_half <= GAP_MAX_HALF_MM)
+        b &= gap_on & (gap_half >= GAP_MIN_HALF_MM) & (gap_half <= GAP_MAX_HALF_MM)
         bridged = b & (d_bridge <= SPACE_KEEP_HALF_MM)
         bridged = _dilate(bridged, 1) & _dilate(b, 1)
         nb, labb, statsb, _cb = _components(bridged, 8)
