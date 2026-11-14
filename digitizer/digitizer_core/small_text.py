@@ -92,7 +92,14 @@ MIN_STROKE_MM = 0.6
 MAX_SHIFT_CAPS = 1.0
 SHIFT_STEP_MM = 0.25
 # A cluster whose box is much taller than its letters is not one horizontal
-# line (an arc, a stack); this pass does not know how to grow one.
+# line (an arc, a stack); this pass does not know how to grow one. An arc
+# re-set (unroll about the fitted circle, re-set, roll back) was built and
+# measured 2026-11-14 and NOT shipped: every arc-text design in Kent's kits
+# reads tall enough (Bridge's letters 3.875 mm across the arc against the
+# 4.0 cap; the pro's x1.2 there came from redrawing the band and anchor).
+# Re-reading a grown letter's dark-ink bean spines from its grown polygon
+# was measured the same day and read worse (Fremont's EAT -> "BAJ"). Memory
+# `arc-reset-2026-11-14`; both are in the first commit of its PR.
 MAX_LINE_HEIGHT_RATIO = 1.6
 # Ink and ground must differ by at least this (RGB distance) to retrace.
 MIN_INK_CONTRAST = 30.0

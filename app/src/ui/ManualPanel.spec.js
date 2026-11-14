@@ -1691,3 +1691,37 @@ describe("the pen", () => {
     expect(patches[0].patch.shapes.at(-1).colorRgb).toEqual([200, 30, 30]);
   });
 });
+
+// "Join touching strokes" (pen + auto-branch spec 2026-11-13 §3). Kent,
+// 2026-11-13: "Checkbox, built OFF".
+describe("Join touching strokes", () => {
+  const tick = (container) => container.querySelector(".mp-join input[type=checkbox]");
+
+  test("no Column drawn and not in Column mode: the tick is not shown", () => {
+    const { container } = renderColumnPanel();
+    expect(tick(container)).toBeNull();
+  });
+
+  test("Column mode shows it, unticked, and ticking it patches the drawing", async () => {
+    const { container, getByRole, patches } = renderColumnPanel();
+    await fireEvent.click(columnBtn(getByRole));
+    const box = tick(container);
+    expect(box).not.toBeNull();
+    expect(box.checked).toBe(false);
+    await fireEvent.click(box);
+    expect(patches).toHaveLength(1);
+    expect(patches[0].id).toBe("e1");
+    expect(patches[0].patch).toEqual({ joinStrokes: true });
+  });
+
+  test("a drawing that already holds a Column shows it in any mode, and reads the saved value", async () => {
+    const patches = [];
+    const { container } = render(Harness, {
+      props: { element: { ...baseElement([COL()]), joinStrokes: true }, onPatch: (d) => patches.push(d) },
+    });
+    const box = tick(container);
+    expect(box.checked).toBe(true);
+    await fireEvent.click(box);
+    expect(patches[0].patch).toEqual({ joinStrokes: false });
+  });
+});

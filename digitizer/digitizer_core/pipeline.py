@@ -293,6 +293,10 @@ class PipelineResult:
     # pixels (`preflight._prepped_view` carries the measurement). No stitch
     # depends on it.
     photo_prep_rgb: np.ndarray | None = None
+    # `Generation.small_text_reset` handed on (2026-11-14): the re-set's
+    # rows, or None. Read by preflight only, under
+    # `cfg.extra["small_text_reset_report"]`. No stitch depends on it.
+    small_text_reset: list[dict] | None = None
     # The traced raster for the proof-read guards (`proofread_guard`): the
     # stage-1 picture stage 2 read, its background mask, art box and grid,
     # as references. Set by `finish_generation` only when a guard flag is
@@ -368,6 +372,11 @@ class Generation:
     # stage 6's frame. None for every other class and for a hand-built
     # Generation.
     design_ramp: DesignRamp | None = None
+    # `small_text.enlarge_small_text`'s report (one row per text cluster:
+    # grown, or skipped and why), or None when the re-set did not run.
+    # Read by preflight only, under `cfg.extra["small_text_reset_report"]`
+    # (2026-11-14); no stitch depends on it.
+    small_text_reset: list[dict] | None = None
 
     def fork(self) -> "Generation":
         """A copy safe to finish from, sharing what is immutable.
@@ -404,6 +413,8 @@ class Generation:
             # reason `p`'s rasters are (this docstring's own rule): nothing
             # in stages 5-7 assigns into it.
             subject_mask=self.subject_mask,
+            small_text_reset=(copy.deepcopy(self.small_text_reset)
+                              if self.small_text_reset is not None else None),
         )
 
 
@@ -1148,9 +1159,13 @@ def build_generation(
                            min_counter_mm=true_size_min_counter(cfg),
                            thread_wts=block_thread_wt(regions, cfg),
                            default_wt=int(cfg.thread_wt))
+    # The re-set's own record, one row per text cluster: what it grew, and
+    # why it skipped a line (2026-11-14). Kept on the generation; preflight
+    # reports it as metrics only under `cfg.extra["small_text_reset_report"]`.
+    small_text_rows = None
     if cfg.small_text_cap_mm:
         from .small_text import enlarge_small_text
-        enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm,
+        small_text_rows = enlarge_small_text(regions, p, cap_mm=cfg.small_text_cap_mm,
                            max_width_scale=cfg.small_text_cap_max_width_scale,
                            min_stroke_mm=cfg.small_text_cap_min_stroke_mm,
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
@@ -1338,6 +1353,7 @@ def build_generation(
         # "which of these pixels are the artwork", and spelling each one the
         # way its consumer thinks removes a `~` from every call site.
         subject_mask=(~subject_bg_mask if subject_bg_mask is not None else None),
+        small_text_reset=small_text_rows,
     )
 
 
@@ -1933,6 +1949,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         white_keyline_art=keyline_art,
         photo_prep_rgb=(p.rgb if any(w.get("code") == PHOTO_PREP_APPLIED
                                      for w in prep_warnings) else None),
+        small_text_reset=gen.small_text_reset,
         proof_art=(_proof_art(p) if getattr(cfg, "proofread_guard_clipped", False) else None),
     )
 
