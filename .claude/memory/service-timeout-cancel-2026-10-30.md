@@ -1,6 +1,6 @@
 ---
 name: service-timeout-cancel-2026-10-30
-description: a digitize job past JOB_TIMEOUT_S now STOPS at the next stage seam (digitizer_core.deadline, ContextVar scope armed by the registry worker) instead of holding the one worker; the next upload waited 497.9 s behind a dead job before, 10.5 s after; no flag; stage 2's region former and the rembg/SAM2 subprocesses still run to their end
+description: a digitize job past JOB_TIMEOUT_S (or cancelled) STOPS at the next deadline.check (digitizer_core.deadline, ContextVar scope armed by the registry worker; stage seams since 10-30, inner loops since 11-12/13) instead of holding the one worker; the next upload waited 497.9 s behind a dead job before, 10.5 s after; no flag; Abandoned is a BaseException since 11-13; rembg/SAM2 children are killed
 metadata:
   type: project
 ---
@@ -45,3 +45,18 @@ cancel or the timeout frees the worker in 1-2 s inside stage 7 instead of up to
 76 s (meadow at 100 mm). What stays uninterruptible is a single numpy/cv2/GEOS
 call: stage 2's photo segmenter, stage 3's small-region dilation, stage 1's
 `prep` (3-8 s on the 100 mm fixtures). Byte-identical on every pin tried.
+
+**Update 2026-11-13 (review of #1408, 15 findings fixed in one follow-up).**
+`deadline.Abandoned` is now a `BaseException`: the six hand-placed `except
+Abandoned: raise` are gone, and `stage6_fill._slant_for` (an `lru_cache` around
+`except Exception: return None`) can no longer cache a cancel as `None` for the
+next job. Anything that catches `BaseException` or a bare `except:` in the
+pipeline must re-raise it. Added checks: stage 3's small-region loop, the
+streamline ordering, legibility, stage 4's vectorize, the photo segmenter (the
+region merge callback, thin ink, the per-label component loops), the ETF
+direction field, stage 7's `chain_links` passes. `deadline.run_subprocess`
+replaces `subprocess.run` for rembg and SAM2 and kills the child on a cancel.
+`border_runs` clears `_UNSEWN_MEMO` in a `finally`; `JobRegistry.run` strips the
+traceback so a cancelled job does not pin its frames in the 32-job registry.
+Longest single call left, default path: about 2.4 s before stage 0; with
+`chain_links`, `_link_cover`'s GEOS union, 7.8 s.

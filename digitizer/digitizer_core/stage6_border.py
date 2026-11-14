@@ -892,6 +892,21 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
     density = machine.BORDER_DENSITY_MM if density_mm is None else float(density_mm)
     if width <= 0 or density <= 0:
         return [], report
+    try:
+        return _border_runs(visible, shape_id, entry=entry, trim_at_mm=trim_at_mm,
+                            style=style, width=width, density=density, omit=omit,
+                            role=role, report=report)
+    finally:
+        # In a `finally` so a cancel at one of the checkpoints below cannot
+        # leave this shape's unsewn-area memo for the next job's first shape.
+        if _CUT_EXPOSED.get():
+            _UNSEWN_MEMO.clear()    # as `stitch_shape` does: its rim routes filled it
+
+
+def _border_runs(visible, shape_id: str, *, entry, trim_at_mm: float, style: str,
+                 width: float, density: float, omit, role: str,
+                 report: dict) -> tuple[list[StitchRun], dict]:
+    """`border_runs`' body, once its arguments are checked."""
     half = width / 2.0
     inset = _centre_inset(half)
     # A zigzag holds `density` between consecutive penetrations on the SAME
@@ -1034,8 +1049,6 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                     else:
                         report["loops"] += 1
 
-    if _CUT_EXPOSED.get():
-        _UNSEWN_MEMO.clear()    # as `stitch_shape` does: its rim routes filled it
     report["empty"] = not runs
     return runs, report
 
