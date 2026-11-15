@@ -436,6 +436,75 @@ _APEX_GUARD: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_guard",
 APEX_GUARD_SHARE = 0.9
 
 
+# `rail_pair_bars` (`cfg.extra["lettering_columns_rail_pair_bars"]`,
+# 2026-11-14, built OFF): a piece whose outline is not coherent enough to
+# read an axis (`straight_axis`' 0.55) and whose spine bends is still a
+# STRAIGHT stroke when two long sides of its own run parallel across it --
+# its rails (`_rail_pair_axis`, the longer at least `RAIL_PAIR_MIN_W` stroke
+# widths, the other at least `RAIL_PAIR_MIN_FRAC` of it). and_pizza's Z under
+# `apex_cut`: each bar is a short slab with one slanted end on a tip cut,
+# coherence 0.46 both; the bottom bar's spine scraped through and sewed
+# straight, the top bar's did not and sewed as a curved column whose
+# crosses swung round into the cut -- the one joint of each Z that fanned
+# (#1514's "only the top-right one fans"). The 180-degree pair now builds
+# alike.
+_RAIL_PAIR_BARS: contextvars.ContextVar[bool] = contextvars.ContextVar("rail_pair_bars", default=False)
+RAIL_PAIR_MIN_W = 1.0
+RAIL_PAIR_MIN_FRAC = 0.5
+# ... and the two rails are most of the piece's own outline: a bowl or curl
+# with two straight parallel stretches is not a bar (Becker's MARINE R: its
+# bowl straightened without this). The Z's bar: 0.73.
+RAIL_PAIR_MIN_SHARE = 0.6
+
+
+@contextlib.contextmanager
+def rail_pair_bars_scope(on: bool):
+    """`cfg.extra["lettering_columns_rail_pair_bars"]` for one plan, beside
+    `apex_cut_scope`. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _RAIL_PAIR_BARS.set(True)
+    try:
+        yield
+    finally:
+        _RAIL_PAIR_BARS.reset(token)
+
+
+def _rail_pair_bar_axis(own, W: float):
+    """`rail_pair_bars`: the piece's longest own side, at least
+    `RAIL_PAIR_MIN_W` stroke widths, and an own side parallel to it (within
+    the upright snap's 7 deg), at least `RAIL_PAIR_MIN_FRAC` of its length,
+    lying ACROSS the stroke from it (half a stroke width off its line), the
+    two together at least `RAIL_PAIR_MIN_SHARE` of the piece's own outline
+    -- two rails; their length-weighted direction, or None."""
+    if not own:
+        return None
+    own = sorted(own, key=lambda e: -e[0])
+    L1, p1, q1 = own[0]
+    if L1 < RAIL_PAIR_MIN_W * W:
+        return None
+    d1 = np.array([q1[0] - p1[0], q1[1] - p1[1]]) / L1
+    n1 = np.array([-d1[1], d1[0]])
+    tol = math.cos(math.radians(7))
+    for L2, p2, q2 in own[1:]:
+        if L2 < RAIL_PAIR_MIN_FRAC * L1:
+            break
+        d2 = np.array([q2[0] - p2[0], q2[1] - p2[1]]) / L2
+        if abs(float(d1 @ d2)) < tol:
+            continue
+        mid = np.array([(p2[0] + q2[0]) / 2 - p1[0], (p2[1] + q2[1]) / 2 - p1[1]])
+        if abs(float(mid @ n1)) < 0.5 * W:
+            continue
+        if L1 + L2 < RAIL_PAIR_MIN_SHARE * sum(e[0] for e in own):
+            return None
+        if float(d1 @ d2) < 0:
+            d2 = -d2
+        u = L1 * d1 + L2 * d2
+        return u / float(np.hypot(*u))
+    return None
+
+
 @contextlib.contextmanager
 def apex_guard_scope(on: bool):
     """`cfg.extra["lettering_columns_apex_guard"]` for one plan, beside
@@ -1388,16 +1457,21 @@ def straight_axis(piece: Polygon, W: float, cut_lines=(), rail_axis: bool = Fals
     else:
         # caps and a serif can outweigh a short stem's sides: fall back to the spine's chord
         sp = _spine_ends(piece)
-        if sp is None or len(sp) < 4:
-            return None
-        Q = np.array(sp)
-        chord = Q[-1] - Q[0]
-        Lc = float(np.hypot(*chord))
-        if Lc < 1e-6:
-            return None
-        u = chord / Lc
-        if np.abs((Q - Q[0]) @ np.array([-u[1], u[0]])).max() > max(0.12 * Lc, 0.2 * W):
-            return None
+        bent = sp is None or len(sp) < 4
+        if not bent:
+            Q = np.array(sp)
+            chord = Q[-1] - Q[0]
+            Lc = float(np.hypot(*chord))
+            bent = Lc < 1e-6
+            if not bent:
+                u = chord / Lc
+                bent = bool(np.abs((Q - Q[0]) @ np.array([-u[1], u[0]])).max() > max(0.12 * Lc, 0.2 * W))
+        if bent:
+            # `rail_pair_bars`: a slab with two long parallel sides is a bar
+            rb = _rail_pair_bar_axis(own, W) if _RAIL_PAIR_BARS.get() else None
+            if rb is None:
+                return None
+            u, rail_axis = rb, False
         if rail_axis:
             # the chord is kept within the upright snap's 7 deg of the rails
             # (Proseal's L stem: 5.1 off, kept); past it the rails win
@@ -2281,7 +2355,7 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
         return _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     key = ("build_column", piece.wkb, _lines_key(cut_lines), float(W), float(pitch_mm),
            bool(mitre_ends), bool(rail_axis), _SMALL_BOLD.get(), _SMALL_BOLD_SIMPLIFY.get(),
-           _APEX_CUT.get(), _CORNER_FOLD.get())
+           _APEX_CUT.get(), _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get())
     if key not in memo:
         memo[key] = _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     return _fresh(memo[key])

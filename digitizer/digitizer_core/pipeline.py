@@ -2104,6 +2104,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
     from .outline_cut import apex_guard_scope    # `cfg.extra["lettering_columns_apex_guard"]` (built OFF), the same way
+    from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
     from .outline_cut import apex_pro_scope      # `cfg.extra["lettering_columns_apex_pro"]` (built OFF), the same way
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
@@ -2120,6 +2121,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     with apex_cut_scope(cfg.lettering_columns_apex_cut), \
             curve_chord_scope(cfg.curve_chord_mm), \
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
+            rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
             apex_pro_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
