@@ -84,7 +84,7 @@ MIN_SCALE = 1.15
 # Stage 5 grows both by the fabric's pull (0.3 mm by default), so 0.4 here
 # rendered the date's T and 1 touching the emblem between them.
 CLEAR_MM = 0.8
-# `_is_ground` under `cfg.extra["small_text_reset_ground_ring"]` (built OFF
+# `_is_ground` under `cfg.small_text_reset_ground_ring` (ON since 2026-11-15, Kent; built OFF
 # 2026-11-14): a region round the line covering this share of a ring this
 # wide round its hull, and this much of the hull itself, is the line's ground.
 GROUND_RING_MM = 0.3
@@ -648,7 +648,7 @@ def _traced_stroke(shapes) -> float:
 def _is_ground(poly, hull, ring: bool = False) -> bool:
     """Is `poly` the ground a line of lettering sits on (not in its way)?
     As always: it covers half the line's hull. `ring`
-    (`cfg.extra["small_text_reset_ground_ring"]`, built OFF 2026-11-14): also
+    (`cfg.small_text_reset_ground_ring`, ON since 2026-11-15, Kent: "Flip both ON"): also
     when it SURROUNDS the line -- `GROUND_RING_SHARE` of a `GROUND_RING_MM`
     ring round the hull -- and still covers `GROUND_MIN_IN` of the hull.
     Fremont's "1895" sits in a hole of the design-wide white field, which

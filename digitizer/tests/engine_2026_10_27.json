@@ -305,6 +305,7 @@
  "small_text_keep_stray_lines": null,
  "small_text_reset_grow_away": false,
  "small_text_reset_one_baseline": false,
+ "small_text_reset_ground_ring": false,
  "small_text_restore_mm": null,
  "small_text_true_size": true,
  "small_text_true_size_min_counter_mm": 0.45,

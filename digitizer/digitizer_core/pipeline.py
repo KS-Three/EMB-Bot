@@ -1199,10 +1199,10 @@ def build_generation(
                            # False, the call as it was
                            **({"one_baseline": True}
                               if cfg.small_text_reset_one_baseline else {}),
-                           # the ground a line sits IN counts as ground (2026-11-14,
-                           # built OFF): absent, the call as it was
+                           # the ground a line sits IN counts as ground (ON since
+                           # 2026-11-15, Kent: "Flip both ON"): False, the call as it was
                            **({"ground_ring": True}
-                              if cfg.extra.get("small_text_reset_ground_ring") else {}),
+                              if cfg.small_text_reset_ground_ring else {}),
                            # a grown dark-ink letter's bean spines move with it (read at
                            # its drawn size; 2026-11-14, built OFF): absent, as it was
                            **({"bean_follows": True}

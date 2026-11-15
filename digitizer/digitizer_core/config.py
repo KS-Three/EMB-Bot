@@ -4351,6 +4351,18 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_small_text_one_baseline.py`.
     small_text_reset_one_baseline: bool = True
+    # The ground a re-set line sits IN is its ground (`small_text._is_ground`,
+    # built OFF 2026-11-14 as `cfg.extra["small_text_reset_ground_ring"]`):
+    # Fremont's EST 1895 sits in a hole of the design-wide white field, which
+    # covers only 0.48 of "1895"'s hull, so it read as an obstacle at distance
+    # 0 and the date stayed `no_room`. A region covering half of a 0.3 mm ring
+    # round the hull and a quarter of the hull is the line's ground.
+    # **ON since 2026-11-15, Kent's flip** ("Flip both ON", with
+    # `small_text_reset_bean_follows`), promoted to a field so the default can
+    # be ON. False is the re-set as it was, byte for byte; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_small_text_ground_ring.py`.
+    small_text_reset_ground_ring: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose

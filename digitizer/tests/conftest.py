@@ -1026,6 +1026,11 @@ PRE_FLIP.update(CORNER_APEX_2026_11_14_OFF)
 # `tests/test_fine_bar.py`.
 FINE_BAR_2026_11_15_OFF = {"fine_bar_survive": False}
 PRE_FLIP.update(FINE_BAR_2026_11_15_OFF)
+# `small_text_reset_ground_ring` + `_bean_follows` ("Flip both ON"), fields
+# since (`cfg.extra` was their only door, unset = off):
+# `tests/test_small_text_ground_ring.py`.
+GROUND_RING_2026_11_15_OFF = {"small_text_reset_ground_ring": False}
+PRE_FLIP.update(GROUND_RING_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
