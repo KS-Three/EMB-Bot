@@ -1449,6 +1449,17 @@ class PipelineConfig:
     # before the flag, byte for byte; `tests/conftest.py` PRE_FLIP and
     # `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_fine_bar.py`.
     fine_bar_survive: bool = True
+    # The satin rail push kept out of bays and gaps (`stage6_satin._push_rails`'
+    # `keep`, built OFF 2026-11-14 as `cfg.extra["satin_push_keeps_gaps"]`,
+    # Kent's merged-letter pins: Gaulke's E and S kept their gaps through
+    # stage 5 and lost them to the rail push). True holds a gap as a counter
+    # is held (`cfg.min_detail_mm`); a number is the floor in mm a gap keeps.
+    # **0.5 since 2026-11-15, Kent's flip** ("Flip both, value 0.5", with
+    # `compact_satin_keeps_gaps`), promoted to a field so the default can be
+    # set. None is the push as it was, byte for byte; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it None. Tests:
+    # `tests/test_satin_push_keeps_gaps.py`.
+    satin_push_keeps_gaps: bool | float | None = 0.5
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a

@@ -1037,6 +1037,11 @@ PRE_FLIP.update(BEAN_FOLLOWS_2026_11_15_OFF)
 # since: `tests/test_small_text_handover.py`.
 HANDOVER_2026_11_15_OFF = {"small_text_handover": False}
 PRE_FLIP.update(HANDOVER_2026_11_15_OFF)
+# `satin_push_keeps_gaps` ("Flip both, value 0.5", with
+# `compact_satin_keeps_gaps`; the counters worker's #1529), a field since
+# (`cfg.extra` was its only door): `tests/test_satin_push_keeps_gaps.py`.
+PUSH_KEEPS_GAPS_2026_11_15_OFF = {"satin_push_keeps_gaps": None}
+PRE_FLIP.update(PUSH_KEEPS_GAPS_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

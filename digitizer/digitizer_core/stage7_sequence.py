@@ -3381,7 +3381,7 @@ def sequence(
             seam_by_layer[p.layer] = (prep(ground.buffer(0.1)), ground) if down else None
         return seam_by_layer[p.layer]
 
-    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14): the rail
+    # `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14): the rail
     # push of a satin or a lettering column is held out of the bays of its
     # own shape and its gaps to same-thread ink, as from a counter
     # (`stage6_satin.PUSH_KEEP_MARGIN_MM`). The ink near one shape, its own
@@ -3389,7 +3389,8 @@ def sequence(
     # True holds a gap as a counter is held (`cfg.min_detail_mm`); a number
     # is the floor in mm a gap keeps instead (the pro's E and S at Gaulke
     # keep about what a 0.5 floor leaves).
-    _kg = (cfg.extra or {}).get("satin_push_keeps_gaps")
+    # 0.5 since 2026-11-15, Kent: "Flip both, value 0.5"
+    _kg = cfg.satin_push_keeps_gaps
     keep_gaps = bool(_kg)
     keep_floor = (float(_kg) if isinstance(_kg, (int, float)) and not isinstance(_kg, bool)
                   else cfg.min_detail_mm)
@@ -4128,7 +4129,7 @@ def sequence(
                     # the walk whose hops lie under satin still to come; off, today's call
                     **({"edge_walk": True}
                        if cfg.lettering_columns_connectors_edge_walk else {}),
-                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14):
+                    # `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14):
                     # the push held out of bays and gaps; off, today's call
                     **({"pull_keep": push_keep(p)} if keep_gaps else {}))
                 # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
@@ -4317,7 +4318,7 @@ def sequence(
                     rail_comp_floor_mm=cfg.min_detail_mm,
                     rail_held=(stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
                                else seam_ground(p) if cfg.satin_seam_hold else None),
-                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF): off, today's call
+                    # `cfg.satin_push_keeps_gaps` (built OFF): off, today's call
                     **({"rail_keep": push_keep(p)} if keep_gaps else {}),
                     cap_skew_inset=cfg.satin_cap_skew_inset,
                     use_shapefield=use_shapefield,

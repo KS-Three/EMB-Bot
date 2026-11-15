@@ -3696,7 +3696,7 @@ def _tip_corner_angle(spine: list, poly, half_sewn: float,
 # stroke-2026-10-22`), while a thin column still needs all of it (+0.42 at 2.6 mm).
 _SEAM_HOLD_MIN_CROSS_MM = 3.0
 
-# `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14; Kent's merged-
+# `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14; Kent's merged-
 # letter pins, `docs/closed-counters-traced-2026-11-14.md`). The rail push
 # below holds back from a COUNTER (a hole of the shape) so it stays
 # `floor_mm` wide, but sews the full pull into every other gap the art keeps:
@@ -3857,7 +3857,7 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
     holes = [Polygon(ring) for ring in poly.interiors]
     holes = [h for h in holes if not h.is_empty]
     reach = 2.0 * pull_mm + floor_mm + 0.5
-    # `keep` (`cfg.extra["satin_push_keeps_gaps"]`, built OFF; None is the
+    # `keep` (`cfg.satin_push_keeps_gaps`, built OFF; None is the
     # engine as it was): the counter rule above for the gaps a counter test
     # cannot see -- comment at `PUSH_KEEP_MARGIN_MM`
     kept_a = kept_b = None
