@@ -1,0 +1,183 @@
+{
+ "n_lost": 14,
+ "n_good": 0,
+ "table": [
+  {
+   "item": "P_dark_dog",
+   "grade": "Okay",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "pins": 4,
+   "label": "LOST",
+   "edge_recall": 0.8045
+  },
+  {
+   "item": "P_fireworks",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.772
+  },
+  {
+   "item": "P_flower_macro",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 1,
+   "label": "LOST",
+   "edge_recall": 0.7143
+  },
+  {
+   "item": "P_food_plate",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.8596
+  },
+  {
+   "item": "P_group_people",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.915
+  },
+  {
+   "item": "P_night_skyline",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.5587
+  },
+  {
+   "item": "P_oil_painting",
+   "grade": "Bad",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy"
+   ],
+   "pins": 4,
+   "label": "LOST",
+   "edge_recall": 0.8234
+  },
+  {
+   "item": "P_pencil_sketch",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.8791
+  },
+  {
+   "item": "P_snow_highkey",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.7915
+  },
+  {
+   "item": "P_sports_action",
+   "grade": "Terrible",
+   "ticks": [
+    "colours_off",
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.9679
+  },
+  {
+   "item": "P_toadstool_dof_meadow",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 2,
+   "label": "LOST",
+   "edge_recall": 0.9402
+  },
+  {
+   "item": "P_underwater_reef",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.8081
+  },
+  {
+   "item": "P_vintage_sepia",
+   "grade": "Bad",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.8596
+  },
+  {
+   "item": "P_watercolor",
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "pins": 0,
+   "label": "LOST",
+   "edge_recall": 0.8095
+  }
+ ],
+ "verdict": "no verdict: class not filled"
+}
