@@ -1360,7 +1360,11 @@ class PipelineConfig:
     # shape read, not a stitch value: gate 1 does not apply. False is the
     # engine before the flag, byte for byte.
     # Tests: `tests/test_outline_frame_guard.py`.
-    outline_frame_guard: bool = False
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON; Kent was shown Ahora's gear
+    # ring turning to a rough fill as the catch). False is the engine as it
+    # was; `tests/conftest.py` PRE_FLIP (FRAME_GUARD_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    outline_frame_guard: bool = True
     # Tiny details kept whole (built OFF 2026-11-14, Kent's heraldic crest,
     # 2 pins "Missing the eye"). Each eagle eye is about 12 x 6 source pixels:
     # two white specks either side of a black pupil in a navy head. Stage 2's
