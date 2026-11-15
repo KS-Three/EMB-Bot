@@ -987,6 +987,9 @@ def resolve_overlaps(
     flags_extra = getattr(cfg, "extra", None) or {}
     along = bool(flags_extra.get("pull_comp_along_stitch_only")) and pull > 0
     keep_gaps = bool(flags_extra.get("growth_keeps_gaps"))
+    keep_inlets = bool(flags_extra.get("outline_inlets_kept")) and pull > 0
+    if keep_inlets:
+        from . import outline_inlets
     # a fill with no angle of its own keeps the angle it sewed at (`_off_angles`)
     pinned = _off_angles(regions, fabric, cfg, design_class, hairline) if along or keep_gaps else {}
     # `cfg.satin_rail_comp` (2026-09-09): a satin-tier shape keeps its
@@ -1302,6 +1305,14 @@ def resolve_overlaps(
                 near = [regions[int(i)] for i in gap_tree.query(poly.buffer(GAP_PROTECT_MM))
                         if regions[int(i)] is not r]
                 grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap)
+
+            # `cfg.extra["outline_inlets_kept"]` (built OFF, `outline_inlets`):
+            # a fill's growth stays out of its own outline's inlets (a notch,
+            # a tooth gap), as `growth_keeps_gaps` keeps it out of counters.
+            # A satin on its rails takes no growth here.
+            if (keep_inlets and not on_rails and not satin_by_id[r.shape_id]
+                    and grown is not None and not grown.is_empty):
+                grown = outline_inlets.kept_inlets(poly, grown, all_art, pull)
 
             # Never grow back over a color that is already down — except
             # widened lettering. A glyph on a ground was vectorized as a hole
