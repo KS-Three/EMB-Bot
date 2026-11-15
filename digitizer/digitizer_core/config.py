@@ -3957,6 +3957,20 @@ class PipelineConfig:
     # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin
     # it False. Tests: `tests/test_column_apex_pro.py`.
     lettering_columns_apex_pro: bool = True
+    # The N's two joints and a flat A's top band sewn as the pro sews them
+    # (`outline_cut._APEX_PRO_JOINTS`, 2026-11-14, #1550; built OFF as
+    # `cfg.extra["lettering_columns_apex_pro_joints"]`): the right-hand stroke
+    # owns each joint and the other ends on a level line -- the N's stem stops
+    # 0.95 W below its top under the diagonal's fan, its diagonal ends level
+    # 0.70 W above the baseline into the stem, and a flat A's top is a band of
+    # upright crosses 0.65 W deep (`docs/apex-pro-construction-2026-11-14.md`,
+    # section 5). **ON since 2026-11-15, Kent's flip** ("Flip all three ON",
+    # with `lettering_columns_apex_pro` and `lettering_columns_corner_fold_cap_flared`),
+    # promoted from `cfg.extra` to a field so the default can be ON. False is
+    # the cut as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_column_apex_pro_joints.py`.
+    lettering_columns_apex_pro_joints: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

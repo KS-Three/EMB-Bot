@@ -362,5 +362,6 @@
  "stage0_scale_relative_grad": false,
  "regular_structure": false,
  "bevel_ring_fold": false,
- "lettering_columns_apex_pro": false
+ "lettering_columns_apex_pro": false,
+ "lettering_columns_apex_pro_joints": false
 }

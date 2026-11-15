@@ -2137,7 +2137,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
     from .outline_cut import apex_pro_scope      # `cfg.lettering_columns_apex_pro` (ON since 2026-11-15, Kent's flip), the same way
     from .columns import ring_floor_scope        # `cfg.extra["lettering_columns_ring_floor"]` (built OFF), the same way
-    from .outline_cut import apex_pro_joints_scope   # `cfg.extra["lettering_columns_apex_pro_joints"]` (built OFF), the same way
+    from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.extra["lettering_columns_corner_fold_cap_flared"]` (built OFF), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
@@ -2159,7 +2159,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
             apex_pro_scope(cfg.lettering_columns_apex_pro), \
             ring_floor_scope(bool((cfg.extra or {}).get("lettering_columns_ring_floor"))), \
-            apex_pro_joints_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_joints"))), \
+            apex_pro_joints_scope(cfg.lettering_columns_apex_pro_joints), \
             fold_cap_flared_scope(bool((cfg.extra or {}).get("lettering_columns_corner_fold_cap_flared"))), \
             apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))), \
             fill_section_travel.enabled(cfg), \
