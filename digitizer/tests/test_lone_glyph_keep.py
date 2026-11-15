@@ -1,4 +1,5 @@
-"""`cfg.extra["lone_glyph_keep"]` (built OFF 2026-11-14): a tittle over a
+"""`cfg.lone_glyph_keep` (built OFF 2026-11-14 in `cfg.extra`; ON since 2026-11-15,
+Kent's tick): a tittle over a
 joined (cursive) word is admitted by the dot rung as a printed i's dot is.
 
 The eye sweep's "Seriously" read "Senaudy" at 70.9 and 80.2 mm: its i-dot
@@ -8,7 +9,7 @@ stroke is one region with its whole word. ON, a dot inside its own colour's
 word, with that word's ink in the dot's columns under it, is kept; a speck
 is not, nor a dot over another colour, nor a speck touching the region it
 is read against, nor anything on the photo lane.
-Absent or false: the engine as it was.
+False: the engine as it was.
 """
 from __future__ import annotations
 
@@ -48,7 +49,7 @@ def _scene(word_layer=1, body_top=120):
 
 
 def _kept(regions, *, on, chain_rescue=True):
-    cfg = PipelineConfig(extra={"lone_glyph_keep": True} if on else {})
+    cfg = PipelineConfig(lone_glyph_keep=bool(on))
     kept, _w = resolve_small_regions(regions, cfg, PX, layer_lab=rgb_to_lab(RGB),
                                      chain_rescue=chain_rescue)
     return [any(k is r for k in kept) for r in regions]
@@ -96,7 +97,7 @@ def _star_scene():
 
 
 def _tagged(regions, *, on):
-    cfg = PipelineConfig(extra={"lone_glyph_keep": True} if on else {})
+    cfg = PipelineConfig(lone_glyph_keep=bool(on))
     kept, _w = resolve_small_regions(regions, cfg, PX, layer_lab=rgb_to_lab(RGB))
     return [(any(k is r for k in kept), bool(getattr(r, "dot_rung", False))) for r in regions]
 
@@ -122,3 +123,8 @@ def _rim_scene():
 def test_a_speck_touching_its_word_is_not_a_tittle():
     assert _tagged(_rim_scene(), on=True) == _tagged(_rim_scene(), on=False)
     assert not _tagged(_rim_scene(), on=True)[2][1]           # never sewn as the rung's tack
+
+
+def test_on_by_default():
+    """`lone_glyph_keep` ON since 2026-11-15 (Kent's tick)."""
+    assert PipelineConfig().lone_glyph_keep is True

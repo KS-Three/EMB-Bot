@@ -252,7 +252,7 @@ _STEM_MAX_WIDTH_DOTS = 2.0
 _STEM_MAX_ROW_DOTS = 1.5
 _STEM_MIN_ROW_FILL = 0.75
 
-# `cfg.extra["lone_glyph_keep"]` (built OFF 2026-11-14, the eye sweep's
+# `cfg.lone_glyph_keep` (built OFF 2026-11-14 in `cfg.extra`, ON since 2026-11-15; the eye sweep's
 # "Seriously" -> "Senaudy" at 70.9 and 80.2 mm): a TITTLE over a joined
 # (cursive) word. Its i has no stem of its own -- the stroke under the dot is
 # one connected region with the whole word -- so `has_stem_below` finds
@@ -879,10 +879,11 @@ def resolve_small_regions(
         return (not dot_scope or has_stem_below(i, box)
                 or (tittle_on and tittle_of_word(i, box, halo, win)))
 
-    # `cfg.extra["lone_glyph_keep"]` (built OFF): a tittle over a joined word
-    # (comment at `_TITTLE_GAP_DOTS`). The flat lane only (`chain_rescue`):
-    # a photo's specks sit inside big same-colour regions everywhere.
-    tittle_on = bool(dot_scope and chain_rescue and (getattr(cfg, "extra", None) or {}).get("lone_glyph_keep"))
+    # `cfg.lone_glyph_keep` (ON since 2026-11-15, Kent's tick): a tittle over a
+    # joined word (comment at `_TITTLE_GAP_DOTS`). The flat lane only
+    # (`chain_rescue`): a photo's specks sit inside big same-colour regions
+    # everywhere.
+    tittle_on = bool(dot_scope and chain_rescue and getattr(cfg, "lone_glyph_keep", False))
 
     def ring_owner(i: int, halo, win) -> int | None:
         """The one full-size region of ANOTHER colour holding nine tenths of

@@ -2718,6 +2718,22 @@ class PipelineConfig:
     # unscoped rung costs Fremont's star, PR #991). False is the unscoped
     # rung; the pre-flip engine pins both False (`PRE_FLIP`).
     small_dot_rung_lettering: bool = True
+    # A tittle over a joined word (`stage3_segment`, `_TITTLE_GAP_DOTS`;
+    # 2026-11-14, #1555, built OFF as `cfg.extra["lone_glyph_keep"]`). The eye
+    # sweep read "Seriously" as "Senaudy" at 70.9 and 80.2 mm: its cursive
+    # i-dot (0.74 x 0.96 mm) fails the run tier's loop proxy (1.92 < 2.2 mm)
+    # and the rung's lettering scope needs a separate stem under the dot. ON,
+    # a dot inside the box of its own colour's word, with that word's ink in
+    # its columns within six dot heights under it, and on the word's own ground
+    # (#1569: Hotel Fremont's star in the black Wisconsin is not a tittle), and
+    # not touching it (TOAT beanie's rim specks are not), is admitted by the
+    # rung as a printed i's dot is. Flat lane only. Shape
+    # reads, no stitch value (gate 1 does not apply).
+    # **ON since 2026-11-15, Kent's tick** (relayed by the director),
+    # promoted from `cfg.extra` to a field. False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_lone_glyph_keep.py`.
+    lone_glyph_keep: bool = True
     # Small SOLIDS as one satin dot (2026-10-20, built OFF). The run tier sews
     # a shape under the area floor (`min_detail_mm` ** 2) as a bean circuit on
     # its OUTLINE, which reads solid only when the stroke is narrower than the
