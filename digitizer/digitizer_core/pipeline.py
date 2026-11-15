@@ -2132,8 +2132,17 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             from . import outline_inlets
             over = outline_inlets.satin_over_inlets(result.regions, plan)
             if over:
-                plan = _plan_stitches(
-                    replace(result, regions=outline_inlets.as_fill(result.regions, over)), cfg)
+                # `cfg.extra["outline_inlets_teeth"]` (built OFF): a toothed
+                # edge splits into its teeth (sewn first) and its body (sewn
+                # over their roots), the pro's ring-and-handles construction,
+                # instead of one fill; the moves between teeth are buried
+                # along the root, under the body
+                teeth = bool(cfg.extra.get("outline_inlets_teeth"))
+                regions, bodies = outline_inlets.rebuild(result.regions, over, teeth)
+                plan = _plan_stitches(replace(result, regions=regions), cfg)
+                if bodies:
+                    from . import machine
+                    outline_inlets.bury_tooth_moves(plan, bodies, machine.TRAVEL_STITCH_MM)
         # `cfg.proofread_guard_clipped` (built OFF): the proof-read reads
         # this plan against the traced raster and, where stage 5's clip cut
         # a shape's own ink away, re-plans inside these same scopes with that
