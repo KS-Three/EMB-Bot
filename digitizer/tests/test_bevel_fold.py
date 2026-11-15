@@ -121,10 +121,24 @@ def test_a_ramp_sews_its_deeper_end_and_a_patch_its_body():
     substantial share of the merged shape are a ramp: the deeper one sews.
     A small patch on a large body (the crest's navy, 4%) is shading: the
     body's tone stays."""
-    top, bottom = box(0, 0, 10, 2.2), box(0, 2.2, 10, 4)       # yellow 55%, orange 45%
-    regions = [_r(top, GOLD_LIGHT, "Y"), _r(bottom, GOLD, "O")]
+    regions = []
+    for k in range(2):                                         # two letters, each yellow over orange
+        x = 15.0 * k
+        regions += [_r(box(x, 0, x + 10, 2.2), GOLD_LIGHT, f"Y{k}"), _r(box(x, 2.2, x + 10, 4), GOLD, f"O{k}")]
     rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
     assert rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD}
+
+
+def test_two_colours_meeting_once_are_no_ramp():
+    """The isometric icon (2026-11-14, evening): an apricot sausage touching a
+    salmon one, 71 / 29, meet in ONE place. That is no evidence of a ramp, so
+    the deeper tone is not chosen: the larger keeps its own, as before the
+    ramp rule (it had turned the apricot sausage salmon). One shape split
+    in two still merges, by area."""
+    big, small = box(0, 0, 10, 7.1), box(0, 7.1, 10, 10)        # light 71%, deeper 29%
+    regions = [_r(big, GOLD_LIGHT, "BIG"), _r(small, GOLD, "SMALL")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert not rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD_LIGHT}
     body, patch = box(0, 0, 10, 9.6), box(0, 9.6, 10, 10)       # orange body, 4% yellow edge patch
     regions = [_r(body, GOLD, "B"), _r(patch, GOLD_LIGHT, "P")]
     rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
