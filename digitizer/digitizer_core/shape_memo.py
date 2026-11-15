@@ -71,6 +71,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("stage6_border", "_LOOP_MITRE"),
     ("stage6_border", "_LOOP_CHAIN"),
     ("column_lean", "_ITALIC"),
+    ("column_lean", "_LEAN_FLAT_ENDS"),
     ("stage6_satin", "_CHORD_AIM"),
 )
 #: ContextVars that are caches, not knobs. `stage6_fill._BRIDGE_MEMO` is one

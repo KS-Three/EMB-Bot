@@ -138,10 +138,52 @@ def lean_stations(piece: Polygon, axis, c, pitch_mm: float):
     return (out, dropped) if len(out) >= 3 else None
 
 
-def lean_column(col: Column, house_deg: float, pitch_mm: float) -> Column:
+# `lean_flat_ends` (`cfg.extra["lettering_columns_lean_flat_ends"]`,
+# 2026-11-14, built OFF): a leaned column's end on a FLAT face of the letter
+# (its top, its baseline, a slanted cut-off) is mitred to that face, as the
+# cut mitres a square column's end (`outline_cut._mitre_ends`) -- measured
+# against the house cross, not the column's own normal. Re-stationed under
+# the house cross, a stroke's last cross no longer lay on its face: Becker
+# MARINE's N at 101.9 mm (Kent's #10 at its top, #11 at its foot, "The
+# letters should be flat") ended in crosses 10-12 deg off its top line and
+# baseline, so the edge was drawn by a tilted cross's body. The pro's needles
+# there (read stitch by stitch, `docs/flat-ends-pro-2026-11-14.md`): his
+# last cross lies ON the baseline at #11, and at #10 every cross end sits on
+# the one top line.
+_LEAN_FLAT_ENDS: contextvars.ContextVar[bool] = contextvars.ContextVar("lean_flat_ends", default=False)
+
+
+@contextlib.contextmanager
+def lean_flat_ends_scope(on: bool):
+    """`cfg.extra["lettering_columns_lean_flat_ends"]` for one plan. False
+    sets nothing."""
+    if not on:
+        yield
+        return
+    token = _LEAN_FLAT_ENDS.set(True)
+    try:
+        yield
+    finally:
+        _LEAN_FLAT_ENDS.reset(token)
+
+
+def _flat_ends(st, col: Column, c, cut_lines, pitch_mm: float):
+    """`lean_flat_ends`: `outline_cut._mitre_ends` on leaned stations, its
+    axis the normal of the house cross `c` (so the crosses read square to
+    it and a face `MITRE_MIN_DEG`..`MITRE_MAX_DEG` off the CROSS is mitred)."""
+    from .outline_cut import _mitre_ends
+    u = (c[1], -c[0])
+    if u[0] * col.axis[0] + u[1] * col.axis[1] < 0:
+        u = (-u[0], -u[1])
+    return _mitre_ends(st, col.piece, u, cut_lines, pitch_mm, col.width_mm)
+
+
+def lean_column(col: Column, house_deg: float, pitch_mm: float, cut_lines=()) -> Column:
     """`col` re-stationed under the house cross, or `col` itself where the
     convention leaves it: not straight, no axis, a lean under
-    `MIN_LEAN_DEG`, or a scan that cannot station it."""
+    `MIN_LEAN_DEG`, or a scan that cannot station it. `cut_lines`
+    (`lean_flat_ends` only): the letter's other pieces' outlines, so a face
+    on one is a cut, not an end."""
     if col.kind != "straight" or col.axis is None or not col.stations:
         return col
     cx, cy, lean = cross_direction(col.axis, house_deg)
@@ -151,6 +193,8 @@ def lean_column(col: Column, house_deg: float, pitch_mm: float) -> Column:
     if sc is None:
         return col
     st, dropped = sc
+    if _LEAN_FLAT_ENDS.get():
+        st = _flat_ends(st, col, (cx, cy), cut_lines, pitch_mm)
     return Column(stations=st, piece=col.piece, kind=col.kind, axis=col.axis,
                   width_mm=col.width_mm, rail_a=list(col.rail_a), rail_b=list(col.rail_b),
                   dropped_mm=dropped)
@@ -164,10 +208,18 @@ def lean_columns(columns: list[Column], house_deg: float | None, pitch_mm: float
         return columns
     words = _ITALIC.get()
     word = _word_of(columns, words) if words else None
+
+    def cuts(i):
+        # `lean_flat_ends`: a face that lies on another piece of the letter
+        # is a cut between two strokes, never an end to mitre
+        if not _LEAN_FLAT_ENDS.get():
+            return ()
+        return [LineString(o.piece.exterior.coords) for j, o in enumerate(columns)
+                if j != i and o.piece is not None and not o.piece.is_empty]
     if word is None:
-        return [lean_column(c, float(house_deg), pitch_mm) for c in columns]
-    return [italic_bar(c, word, pitch_mm) or lean_column(c, float(house_deg), pitch_mm)
-            for c in columns]
+        return [lean_column(c, float(house_deg), pitch_mm, cuts(i)) for i, c in enumerate(columns)]
+    return [italic_bar(c, word, pitch_mm) or lean_column(c, float(house_deg), pitch_mm, cuts(i))
+            for i, c in enumerate(columns)]
 
 
 # ------------------------------------------------------------- italic bars

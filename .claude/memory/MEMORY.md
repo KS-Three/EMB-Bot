@@ -48,6 +48,7 @@ the OLDEST lines whole to the archive.
 - [Fill-slant sitting](fill-slant-sitting-2026-11-09.md) — Kent blind, 16 live pro pairs: slant ON 0, OFF 7, tie 9 = favours OFF (4 designs, Becker 4 of 7); "Keep OFF, record"; pro-direction kappa gain did not read better
 - [Fine bars whole](fine-bar-survive-2026-11-14.md) — `fine_bar_survive` OFF: To a T bars split (stages 2-4), kinked (AA sliver), lost at stage 5 (white under-fill covers them); broken bar redrawn from art, kept at stage 5; 5/5 pins fixed by eye
 - [Flag under-fill](flag-stripe-underfill-2026-11-12.md) — Kent 11-12, OFF: `stripe_underfill` white fill under red satin (3.86/3.96 vs 4.67/3.14), +32%; `satin_free_end_chord_aim` squares ends
+- [Flat ends, pro's construction](flat-ends-pro-2026-11-14.md) — pro edge = cross ends on the line / last cross ON a flat face; text_lean undid the mitre; `lean_flat_ends` (extra, OFF); Becker #10/#11 flat
 - [Flat soft ramp](flat-fringe-soft-ramp-2026-11-06.md) — Bridge flat-lane blue split = 3-src-px JPEG edge at x3.25: page band 5 -> 11 + ramp dissolve (kept-colour chords); both OFF, enlarged only; 4 inks, hat trims 157 -> 23
 - [Flat page fringe](flat-page-fringe-2026-11-03.md) — `flat_page_fringe_exclude` OFF: page-edge blend leaves the flat fit + chain rescue; Pooh pale flecks 59 -> 25; band = upscale+1; page = median; + outline INNER blend (B)
 - [Flip candidates 11-14](flip-candidates-2026-11-14.md) — inshape_piece_lift ON (Kent 11-14 "Flip ON"): Becker/MFab 13.7-60.6 mm stitches gone, +1-2 trims; apex_cut corpus 25 of 43 moved: 10 better, 4 worse, wants a guard
@@ -59,7 +60,6 @@ the OLDEST lines whole to the archive.
 - [Group consistency](group-consistency-2026-11-13.md) — "like things differ" pins: 2 tier straddles, 2 thread, 2 fill angle, 2 fixed; tier+angle ON 11-14, body+thread held for guards (Kent); decide by ink; tone = row order
 - [Hairline keyline bean](hairline-keyline-bean-2026-11-13.md) — `border_from_outline_hairline_run` OFF: 0.4 mm keyline sewed 1.5 mm satin; ON = corner-exact bean
 - [heatstitch floor row](heatstitch-floor-row-2026-11-05.md) — `tripwire floor`: ours' sttype kappa beside heatstitch's untuned rule per job, margin, flag < 0.05 (never fails); laptop-only, n/a without scratch_bench files
-- [Holes in the Studio](holes-studio-2026-11-03.md) — holes drawn/edited like the outline, Delete hole, `holes_override` only when a hole was edited; a 3 mm drag shares with a chamfer partner, arrows move one; no add-hole yet
 - [Inconsistency reader](inconsistency-fault-reader-2026-11-12.md) — unlike siblings: -0.04 vs pick, CI [-0.42,+0.42] = not shown; "colour" feet = fill direction lit
 - [In-fill fault reader](infill-fault-reader-2026-11-11.md) — thread in art-empty spaces (sew_enclosed_white) vs Kent's 36 in-fill pins: per note 0.29 vs candidate-pick null 0.27, CI [-0.31,+0.28] = not shown; finds the region, not which spaces
 - [Jag source](jag-source-2026-11-13.md) — 49 smooth pins by stage: chord facets 18, source px 10, satin construction 21 (ends 14); `outline_redraw_k` 0.75 (Kent 11-14 "Set 0.75", upscaled only)
@@ -77,7 +77,6 @@ the OLDEST lines whole to the archive.
 - [Move shape](move-shape-2026-11-05.md) — Kent 11-05: translate one digitized shape (shell, holes, nodes); outline live, stitches follow on commit; one discrete elupdate; ignores the similar tick; e2e (m1)-(m7)
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
-- [Node reshape spec](node-reshape-spec-2026-11-03.md) — "entire spline follows" = pullRing's 2x-drag radius (not a bug); 7 rulings 11-03: 3 mm fixed, Reshape mode both lanes, holes_override, marquee crosses shapes for seams
 - [Outline-body guard](outline-body-guard-2026-11-14.md) — group_consistent_outline_body (still OFF): width tie-break needs > MARGIN; redraw had tipped MFab 113.5's small line to bodies on 3.4% (riders 12 -> 0); AHORA decided by ink, kept
 - [Outline fonts on demand](outline-fonts-on-demand-2026-11-06.md) — Kent 11-06: TTF/OTF fonts sewn by the service via the Column lane (POST /lettering), 21 OFL families, `outline:<key>`; 07-24 ruling = browser trace
 - [Pen stroke](pen-stroke-2026-11-13.md) — drag draws a Column/Line; Join tick built OFF (Kent 11-13): touching Columns sew as one path, own touch rule not the glyph's; same-colour shapes still stop
@@ -86,7 +85,6 @@ the OLDEST lines whole to the archive.
 - [Proof-read](proofread-2026-11-13.md) — `cfg.proofread` OFF metrics: thread vs art per colour in mm, tag-attributed; 20/34 pins vs 0.38; census of 34 kit items; guard `proofread_guard_clipped` OFF (qr squares back); kanji claim retracted 11-14
 - [Regular structure](regular-structure-2026-11-13.md) — `regular_structure` OFF: Bridge's 8 handles 0.18 -> 0.006 mm apart; census of 11: only Bridge is geometry, rest of the "alike" family = angle/tag/pull/text; group tag for later stages
 - [Re-set on one baseline](reset-one-baseline-2026-11-13.md) — Jakarta/Bukit 'letters jumped': re-set grew a lowercase line's x-height and ascender clusters as 2 lines; `small_text_reset_one_baseline` + `text_cluster_solid_guard` ON (Kent 11-14)
-- [Reshape mode](reshape-mode-2026-11-03.md) — "Edit points" on both lanes: cross-shape marquee so a seam moves as one gesture; arrows 0.1/1 mm, Delete per ring, one patch + one undo (elupdate.discrete); panel SVG editor retired
 - [Robust-PC sweep](robust-pc-sweep-2026-11-13.md) — 77 images both photo lanes: cutout runs on 14, changes all 14; CI lane = no rembg venv; THREAD_MATCH_POOR false blocks (#1460); tone pass OFF; faulthandler crash = the tool; SAM2 GPU no gain per job
 - [Satin/fill oracle split](satin-fill-oracle-2026-11-06.md) — C3 bound: cutting our grounds along the pro's 10+ cell blobs lifts mean kappa 0.381 -> 0.482 (5 cells 0.561, 20 cells 0.427): no verdict; reads the pro, a max
 - [Scorecard recapture 11-05](scorecard-recapture-2026-11-05.md) — ruler d000e370 -> 292418a8 via the new `Corpus scorecard` CI button (diff/capture): 9/18/7/6/12 -> 10/20/8/10/4, mean 61.8 -> 71.9 = THREAD_MATCH_POOR quiet (#1200); Fremont F 28/16
