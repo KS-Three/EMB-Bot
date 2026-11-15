@@ -1,6 +1,6 @@
 ---
 name: outline-body-guard-2026-11-14
-description: group_consistent_outline_body's guard (flag still OFF, Kent "G4 alone looks the best") - the vote's width tie-break needs one side wider by more than MARGIN, else no verdict; redraw's re-fit had tipped MFab hat 113.5's small line to bodies on a 3.4% width gap, riders 12 -> 0
+description: group_consistent_outline_body's guard (flag ON with it since 11-14, Kent "Flip ON with guard") - the vote's width tie-break needs one side wider by more than MARGIN, else no verdict; redraw's re-fit had tipped MFab hat 113.5's small line to bodies on a 3.4% width gap, riders 12 -> 0
 metadata:
   type: project
 ---
@@ -41,6 +41,12 @@ longer enough.
 - Across all 21 pro and corpus sheet designs (shipping flags, body ON), AHORA
   is the only vote, so the guard changes nothing else.
 - Sheets: `eye_pairs_out/body-guard-1114/`.
+
+**Ruled 2026-11-14 (Kent): "Flip ON with guard"**, from the MFab 113.5
+small-line and AHORA sheets. The flag ships ON with this guard; PRE_FLIP
+and the snapshot pin it False. AHORA's O fills at ~75 deg against AH/RA/!
+at ~95 deg: a real angle difference, not the render (the O is not like
+them, so the fill-angle rule does not group it).
 
 **How to apply:** a vote that goes to a tie-break is a near-tie. Hold the
 tie-break to the same evidence bar as the main rule, or a 1% geometry change

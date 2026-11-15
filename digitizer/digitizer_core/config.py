@@ -4116,12 +4116,13 @@ class PipelineConfig:
     # dot fill under the loop like AH and RA. A two-piece glyph (the ! and
     # its dot) joins a line its pieces span together. A candidate made a body
     # must be `machine.MIN_FILL_WIDTH_MM` across on average.
-    # HELD OFF (Kent 2026-11-14, "G4 alone looks the best"): beside
-    # `outline_redraw_k` 0.75 the re-fit tips MFab hat's small line (113.5 mm,
-    # Studio hat config) into outline bodies -- thick white borders over the
-    # black letters -- where each flag alone reads clean. Wants a guard so the
-    # re-fit cannot tip the vote.
-    group_consistent_outline_body: bool = False
+    # Held 2026-11-14 ("G4 alone looks the best": beside `outline_redraw_k`
+    # 0.75 the re-fit tipped MFab hat's small line into outline bodies); the
+    # guard (#1517, `group_consistency.outline_side`) needs a width tie-break
+    # wider by more than MARGIN. **ON since 2026-11-14, Kent's "Flip ON with
+    # guard"** (from the MFab 113.5 small-line and AHORA sheets). PRE_FLIP and
+    # the snapshot pin it False.
+    group_consistent_outline_body: bool = True
     # A word's THREAD decided once (`lettering_thread.word_thread`): a
     # text-cluster letter on a thread under a quarter of its word takes the
     # thread over half the word sews, within `lettering_thread.STRAY_MAX_DE00`
@@ -4134,12 +4135,13 @@ class PipelineConfig:
     # and takes the ladder with them (ON: Caribbean satin like the rest). A
     # customer's own recolour is never moved; the cap still has the last
     # word. Not the (hed)p.e. e: no cluster fires there.
-    # HELD OFF (Kent 2026-11-14, "Hold it, guard first"): on the drone render
-    # (80 mm left_chest) it moved a Pumpkin 1102 shape onto its word's Fox
-    # Fire 1305, whose thread match went warn -> block (scorecard D -> F).
-    # Wants a guard: never move a shape onto a thread that matches its art
-    # worse.
-    group_consistent_thread: bool = False
+    # Held 2026-11-14 ("Hold it, guard first": the drone render's Pumpkin 1102
+    # shape moved onto Fox Fire 1305, thread match warn -> block); the guard
+    # (#1516, `lettering_thread.word_thread`) refuses a move onto a thread
+    # that matches the letter's own art worse. **ON since 2026-11-14, Kent's
+    # "Flip ON with guard"** (from the Drone and Bridge OFF | ON | ON+guard
+    # sheets). PRE_FLIP and the snapshot pin it False.
+    group_consistent_thread: bool = True
     # ONE ANGLE per group of like shapes (`group_consistency.shared_angles`,
     # read in stage 7). Kent: "feet are differnt colors" (gradient_mascot: one
     # spool, fills at 39 and 134 deg, two directions read as two shades) and
