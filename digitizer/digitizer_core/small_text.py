@@ -2019,11 +2019,57 @@ def passes_counter_guard(members: list[Region], p: Prep, floor_base_mm: float | 
     return narrow is None or narrow >= counter_floor_mm(floor_base_mm, wt)
 
 
+# `cfg.extra["small_text_handover"]` (built OFF 2026-11-14): a second
+# true-size pass, after the re-set, for the lines it leaves as tall enough --
+# from 0.9 of `small_text_cap_mm` up to this many caps -- so no size of a line
+# gets neither repair. ProSeal's tagline at the Studio's hat auto-fit (109.6
+# mm) measures 4.01 mm: past the re-set's 3.6, and past the first restore's 3.0
+# (`small_text_restore_mm`), it sewed its raw trace -- FOAM's A without its
+# crossbar, COATINGS' T broken, a 0.13 mm anti-aliased edge of the P kept and
+# snapped to teal -- where at 85.7 mm (3.1) the re-set retraced and read it.
+# 1.25 was tried first: at a 5.0 mm cap (ProSeal 136.5 mm) the retrace broke
+# an R, an O and a G that read OFF; the band stops where it was seen to help.
+HANDOVER_RATIO = 1.15
+# A region of ANOTHER thread lying this much inside the retraced line, and no
+# wider than this, is the letters' own anti-aliased edge traced as a shape:
+# the retraced letter covers it, so it is not sewn.
+HANDOVER_SLIVER_INSIDE = 0.8
+HANDOVER_SLIVER_MAX_W_MM = 0.2
+
+
+def _handover_slivers(regions: list[Region], group: list[Region]) -> set[int]:
+    """ids of thin other-thread regions the retraced line covers."""
+    if not group:
+        return set()
+    letters = unary_union([r.polygon for r in group]).buffer(0.15)
+    threads = {r.thread_index for r in group}
+    gone: set[int] = set()
+    for r in regions:
+        if r.thread_index in threads or id(r) in {id(g) for g in group}:
+            continue
+        poly = r.polygon
+        if poly.is_empty or not poly.intersects(letters):
+            continue
+        rect = poly.minimum_rotated_rectangle
+        try:
+            xs, ys = rect.exterior.coords.xy
+            sides = sorted(((xs[i + 1] - xs[i]) ** 2 + (ys[i + 1] - ys[i]) ** 2) ** 0.5 for i in range(2))
+        except Exception:  # noqa: BLE001 - a point or a line: no width
+            continue
+        if sides[0] > HANDOVER_SLIVER_MAX_W_MM:
+            continue
+        if poly.intersection(letters).area >= HANDOVER_SLIVER_INSIDE * poly.area:
+            gone.add(id(r))
+    return gone
+
+
 def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        keep_stray_lines: bool = False,
                        min_counter_mm: float | None = None,
                        thread_wts: dict[int, int] | None = None,
-                       default_wt: int = 40) -> list[dict]:
+                       default_wt: int = 40,
+                       min_cap_mm: float = 0.0,
+                       handover: bool = False) -> list[dict]:
     """The true-size half of this module (`cfg.small_text_restore_mm`): no
     scale, no move. For every line of lettering under `cap_mm`, ADOPT the
     untagged letters of the line into its text cluster and RETRACE every
@@ -2072,6 +2118,14 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 continue
             cap = float(np.median([_height(r) for r in members]))
             row["cap_mm"] = round(cap, 3)
+            if handover and (cap < min_cap_mm or any(
+                    r.meta.get("small_text_enlarged") or r.meta.get("small_text_restored")
+                    for r in clusters[cid])):
+                # the hand-over pass (`HANDOVER_RATIO`): only a line the
+                # re-set left as tall enough, never one it or the first
+                # restore already set
+                row["skipped"] = "not_handover"
+                continue
             if cap <= 0 or cap >= cap_mm:
                 row["skipped"] = "tall_enough"
                 continue
@@ -2132,6 +2186,11 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 row["stray_line"] = _release(kept, f"{cid}.line{at}", clusters, order)
             row.update(adopted=len(group) - len(members), retraced=len(traced),
                        strays=len(strays))
+            if handover:
+                gone = _handover_slivers(regions, group)
+                if gone:
+                    row["slivers_absorbed"] = len(gone)
+                    regions[:] = [r for r in regions if id(r) not in gone]
         except Exception as exc:  # fail open
             row["skipped"] = f"error:{type(exc).__name__}"
     return report
