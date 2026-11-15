@@ -74,6 +74,11 @@ own-ink bands never fold; "page showing through" = the page's OWN ink (<= 3 dE00
 Golden Tee tick ON: 5 -> 3 threads (white, black, gold), 10,482 -> 8,753 st (pro 5,973);
 19 of 20 pins read fixed by eye, pin 10 partial. **Still open:** our gold is Candlelight
 yellow, his orange (#fe9e32): "keep the darker tone" fits GT but turns the crest's eagles navy.
+**Gold, settled same evening:** his worksheet PDF names the spool, Madeira Classic 1172
+("PMS 123 Yellow Gold" is the label; 1172 is orange, (231,152,45)); the PES's #fe9e32 is only
+Brother's palette. Art under our Pumpkin regions is 1.5 dE00 from it, under Candlelight 18.0:
+"a ramp (each tone >= 1/4) sews its deeper end" built; the crest's navy is a 4% patch, body wins.
+**Read a pro's worksheet PDF (`pdftotext -layout`) for his real threads before trusting PES colours.**
 **Trap:** a hole-wall fold must check the hole is a COUNTER (holds only page colours) -- Drone's
 greys inset in the black badge each sit in a hole of their own, and folding them blacked out
 the scene.
