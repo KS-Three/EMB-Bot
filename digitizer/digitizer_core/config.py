@@ -1374,7 +1374,12 @@ class PipelineConfig:
     # gate 1 does not apply. A DESIGN CHANGE (pro-digitizer-rules 10-21 s4):
     # the default is Kent's. Golden Tee hat: 6 -> 4 threads; Drone's ring one
     # colour. False is the engine before the flag, byte for byte. Tests:
-    # `tests/test_bevel_fold.py`.
+    # `tests/test_bevel_fold.py`. 2026-11-14, read off the pro's own Golden
+    # Tee file (`docs/flatten-shading-pro-read-2026-11-14.md`): the bevel ring
+    # between a white face and its outline sews as ONE band in the design's
+    # body gold, shading in an ink the cap gave no spool (GOLF's teal) and
+    # light shading in counters go to the page, darkest-ink bands (the tee's
+    # shadow) are drawn and stay: Golden Tee 3 threads, as he sews it.
     bevel_ring_fold: bool = False
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
