@@ -276,8 +276,8 @@ its own thread:
   863adf49 tree.
 - **Strokes under `APEX_PRO_MIN_W_MM`** (2 mm) are left alone.
 
-**Instrument** (angle error deg / split-line offset mm). Tree: 2051f77f-era
-main plus both flags. Columns:
+**Instrument** (angle error deg / split-line offset mm). Tree: 21fb07d8
+(main 10d1d863 plus apex_pro) with this flag. Columns:
 - **NEW:** apex_pro + apex_pro_joints.
 - **+walk+fold:** NEW plus `lettering_columns_connectors_edge_walk` and
   `lettering_columns_corner_fold_apex_side`, both ruled ON by Kent.
