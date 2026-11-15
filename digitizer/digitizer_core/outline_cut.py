@@ -1138,6 +1138,7 @@ def _apex_pro_joint_cuts(poly: Polygon, W: float, cuts: list, reflex) -> list:
 _FOLD_CAP_FLARED: contextvars.ContextVar[bool] = contextvars.ContextVar("fold_cap_flared", default=False)
 FLARE_W = 0.12                 # a bulge this far (in W) past the stem's edge line is a flare (MARINE 0.2+)
 FLARE_NEAR_W = 1.5             # ... within this much outline of the corner
+FLARE_CAP_DEPTH_W = 1.6        # the arm's lower edge lies this close under the flare (E 1.1, R 0.94; the A's crossbar 2.1 is not a cap)
 
 
 @contextlib.contextmanager
@@ -1198,7 +1199,7 @@ def _cap_flared_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> lis
         # ... an L: the concave corner carries the arm's level lower edge (an
         # M's or N's crotch between diagonals is a joint, `apex_pro`'s)
         cand = [r for r in rf_all if r["p"][0] > q[0] + 0.3 * W
-                and 0.5 * W < r["p"][1] - q[1] < 2.6 * W and math.dist(r["p"], q) < 3.0 * W
+                and 0.5 * W < r["p"][1] - q[1] < FLARE_CAP_DEPTH_W * W and math.dist(r["p"], q) < 3.0 * W
                 and any(_off_upright(e) > 65.0 for e in _edge_dirs(r))]
         if not cand:
             continue

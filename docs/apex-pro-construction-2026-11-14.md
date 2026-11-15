@@ -338,7 +338,7 @@ off by size.
 - `sheets_joints_walk_fold/`: OFF | NEW | NEW+walk+fold for hat large and
   chest small.
 
-## 6. L corners: when he caps and when he fans (read; not built)
+## 6. L corners: when he caps and when he fans (`lettering_columns_corner_fold_cap_flared`, built OFF)
 
 **The question.** `lettering_columns_corner_fold_apex_side` (#1518, ruled ON
 by Kent today) fans MARINE's E round its top-left corner. Does his file?
@@ -396,16 +396,56 @@ OFF | `corner_fold_apex_side`):
 - **The R's top-left** is a counter corner, and the fold does not act there,
   but he caps it too.
 
-**Status: not built.** The cap construction was started on branch
-`claude/corner-cap-wip` (`cfg.extra["lettering_columns_corner_fold_cap_flared"]`,
-OFF, no PR) and is wrong as it stands:
-- On MARINE's pointed-slot E (cut by the slot rule) the cap lands across the
-  stem at the middle arm and splits the top-left into scraps.
-- On the R it caps the leg's junction, not the top-left.
+**Built (OFF):** `cfg.extra["lettering_columns_corner_fold_cap_flared"]`.
 
-**The flare test** (`_flared` on that branch) is the reusable part. The
-outline within 1.5 W of the corner is checked against the straight edge
-fitted from 2 W to 4 W along it: a bulge of 0.12 W or more counts as a flare.
+**The flare test** (`outline_cut._flared`) looks at a corner at the letter's
+top, on a left-hand stem. Walking down the stem's outer side, the outline
+must step OUT by `FLARE_W` (0.12 W) and come back by as much within 1.5 W.
+- An italic stem slants steadily and never comes back.
+- A plain corner never steps out.
+- Over every left-hand top or bottom corner of MARINE's E and R and
+  ProSeal's P, R, E and L, it marks exactly the two his files cap: MARINE's
+  E and R at the top-left.
+
+**The cap** (`_cap_flared_cuts`): at a flared top corner, take the nearest
+concave corner below it and to its right, within `FLARE_CAP_DEPTH_W`
+(1.6 W). That is the arm's lower edge: the E's top slot (1.1 W), the R's
+counter (0.94 W). A cut runs level from it across the stem.
+- **The slot rule's stem line stops at the cap line** (`_trim_under_caps`),
+  so the cap is one piece over the stem's top, as his is.
+- **`_fold_corners` skips a capped corner.** That is a one-line edit in the
+  fold's own function.
+- **The A's flared top-left is not capped.** Its nearest level corner is the
+  counter's crossbar, 2.1 W down, and capping there read 1.3-1.7 deg worse.
+
+**Instrument** (angle deg / split-line offset mm). Columns:
+- **OFF:** this tree's default.
+- **FOLD:** `corner_fold_apex_side` ON.
+- **FOLD+CAP:** FOLD plus this flag.
+
+| Becker | E top-left (he caps) | E bottom-left (he fans) | R top-left (he caps) |
+|---|---|---|---|
+| hat large | 52.3/2.03, 34.6/1.18, **13.1/0.26** | 24.8/1.80, **8.9/0.31**, 9.6/0.30 | 31.5/1.42, 31.5/1.42, **12.8/0.67** |
+| LC large | 52.8/1.95, 35.0/1.17, **14.0/0.28** | 25.6/1.49, **9.3/0.36**, 9.9/0.35 | 35.1/1.88, 35.1/1.88, **11.4/0.52** |
+| hat small | 50.4/1.80, 36.8/0.67, **8.5/0.07** | 24.1/0.70, **18.9/0.69**, 20.1/0.68 | 33.9/1.14, 33.9/1.14, **16.6/0.59** |
+| chest small | 46.6/1.18, 36.7/1.06, **13.2/0.40** | 27.4/1.04, **13.8/0.69**, 15.3/0.68 | 35.2/1.26, 35.2/1.26, **15.6/0.47** |
+| beanie (IoU 0.41) | 37.9/0.48, 39.0/0.49, **27.4/0.37** | **29.6**/0.69, 32.3/0.47, 33.2/0.46 | 35.9/0.39, 35.9/0.39, **16.8/0.19** |
+
+**Reading the table:**
+- **The cap's gains.** At both corners he caps, FOLD+CAP is far closer than
+  FOLD and OFF at all five sizes. The E's top-left goes from about 35 deg to
+  8-14 deg (27 at beanie); the R's from about 34 deg to 11-17 deg.
+- **The cost.** At the E's bottom-left, which he fans, the fold's fan is
+  kept, but its angle reads 0.6-1.5 deg worse than FOLD alone at every size.
+  The stem column now starts at the cap line, and its fan is a little
+  shorter. Its seam is the same or better.
+- **Untouched.** M, N and A windows are unchanged (md5-equal there).
+
+**By eye** (`sheets_corners/`, art | OFF | FOLD | FOLD+CAP | pro):
+- **E:** the top arm and the stem's top are one piece of upright crosses, the
+  stem runs level from under it, and it fans round the bottom-left into the
+  foot. That is his E.
+- **R:** the top bar's upright crosses cover the stem's top, as his do.
 
 **Sheets:** `eye_pairs_out/apex-like-pro-1114/sheets_corners/`, art | OFF |
 fold | pro, at the E's two corners and the R's top-left, every Becker size.
