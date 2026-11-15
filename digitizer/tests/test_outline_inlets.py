@@ -129,7 +129,7 @@ def test_a_satin_over_its_tooth_gaps_is_named_and_a_letter_never_is():
     gear = _gear()
     plan = _satin_plan("G", _zigzag_over(gear))
     over = oi.satin_over_inlets([_r(gear, "G")], plan)
-    assert set(over) == {"G"} and over["G"] >= oi.SATIN_OVER_INLET_FRAC
+    assert set(over) == {"G"} and over["G"] >= oi.SATIN_OVER_INLET_SHARE
     assert oi.satin_over_inlets([_r(gear, "G", text_candidate=True)], plan) == {}
     assert oi.satin_over_inlets([_r(gear, "G", tier="satin")], plan) == {}
 
@@ -147,6 +147,22 @@ def test_a_satin_that_keeps_to_its_root_is_left_alone():
                                           [StitchRun(points=_zigzag_over(gear), kind=FILL, shape_id="G")])],
                       palette=[])
     assert oi.satin_over_inlets([_r(gear, "G")], fill) == {}
+
+
+def test_a_wide_band_whose_satin_crosses_one_small_dip_is_left_alone():
+    # Becker's black border: inlets 0.2% of its area; the pro sews it as a
+    # satin band too. One 0.8 x 1 mm dip in a 40 x 6 mm band, sewn over.
+    band = box(0, 0, 40, 6).difference(box(20, 5, 20.8, 6))
+    assert len(oi.inlets(band)) == 1
+    pts = [(x * 0.2, 0.0 if k % 2 else 6.0) for k, x in enumerate(range(200))]
+    assert oi.satin_over_inlets([_r(band, "B")], _satin_plan("B", pts)) == {}
+
+
+def test_a_letters_notch_is_the_lettering_lanes():
+    art = _notched_disc()
+    off = _plan([_r(art, "D", tier="fill", fill_angle_deg=90.0, text_candidate=True)])
+    on = _plan([_r(art, "D", tier="fill", fill_angle_deg=90.0, text_candidate=True)], outline_inlets_kept=True)
+    assert _md5(on) == _md5(off)
 
 
 def test_as_fill_moves_only_the_named_shapes_on_copies():

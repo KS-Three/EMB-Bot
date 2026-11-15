@@ -1310,8 +1310,10 @@ def resolve_overlaps(
             # `cfg.extra["outline_inlets_kept"]` (built OFF, `outline_inlets`):
             # a fill's growth stays out of its own outline's inlets (a notch,
             # a tooth gap), as `growth_keeps_gaps` keeps it out of counters.
-            # A satin on its rails takes no growth here.
+            # A satin on its rails takes no growth here; a letter's openings
+            # are the lettering lane's (counters, spacing).
             if (keep_inlets and not on_rails and not satin_by_id[r.shape_id]
+                    and not outline_inlets.is_letter(r)
                     and grown is not None and not grown.is_empty):
                 grown = outline_inlets.kept_inlets(poly, grown, all_art, pull)
 

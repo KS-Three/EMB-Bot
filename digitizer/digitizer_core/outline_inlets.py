@@ -52,6 +52,12 @@ INLET_MIN_AREA_MM2 = 0.1
 #: a satin covering at least this share of one inlet with its thread has
 #: sewn over it: the column cannot draw that shape
 SATIN_OVER_INLET_FRAC = 0.5
+#: ... and only when the inlets it covers are a feature OF the shape: at
+#: least this share of its area. Measured 2026-11-14: Ahora's gear 0.104
+#: (all its inlets), Becker's black border 0.002 -- a band whose few dips
+#: between letters the pro's own satin band sews over too, so it must not
+#: move (the first build re-planned it as a fill)
+SATIN_OVER_INLET_SHARE = 0.03
 #: half a laid 40 wt thread (mm), the width a cross covers either side of
 #: its centre line
 THREAD_HALF_MM = 0.2
@@ -115,10 +121,11 @@ def is_letter(region) -> bool:
 
 
 def satin_over_inlets(regions, plan) -> dict[str, float]:
-    """{shape id: the largest share of one of its inlets its satin thread
-    covers} for every satin shape (not a letter) at or over
-    `SATIN_OVER_INLET_FRAC`. The cover is the satin runs' needle path
-    widened by `THREAD_HALF_MM`."""
+    """{shape id: the share of its area that is inlet its satin thread
+    covers} for every satin shape (not a letter, tier not hand-set) that
+    covers at least `SATIN_OVER_INLET_FRAC` of one inlet and
+    `SATIN_OVER_INLET_SHARE` of its area in all. The cover is the satin
+    runs' needle path widened by `THREAD_HALF_MM`."""
     from .stitches import SATIN
     paths: dict[str, list] = {}
     for _blk, run in plan.iter_runs():
@@ -133,10 +140,18 @@ def satin_over_inlets(regions, plan) -> dict[str, float]:
         bays = inlets(r.polygon)
         if not bays:
             continue
-        cover = unary_union(lines).buffer(THREAD_HALF_MM)
-        worst = max(cover.intersection(b).area / b.area for b in bays)
-        if worst >= SATIN_OVER_INLET_FRAC:
-            out[str(r.shape_id)] = round(float(worst), 3)
+        # only the needle path near the inlets is widened: a whole column's
+        # zigzag, noded and buffered, cost minutes on Becker's border
+        window = unary_union(bays).buffer(THREAD_HALF_MM)
+        near = [ln.intersection(window) for ln in lines if ln.intersects(window)]
+        near = [g for g in near if not g.is_empty]
+        if not near:
+            continue
+        cover = unary_union([g.buffer(THREAD_HALF_MM) for g in near])
+        shares = [cover.intersection(b).area / b.area for b in bays]
+        covered = sum(s * b.area for s, b in zip(shares, bays))
+        if max(shares) >= SATIN_OVER_INLET_FRAC and covered >= SATIN_OVER_INLET_SHARE * r.polygon.area:
+            out[str(r.shape_id)] = round(float(covered / r.polygon.area), 3)
     return out
 
 
