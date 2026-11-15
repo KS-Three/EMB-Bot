@@ -1374,6 +1374,37 @@ def _top_run(poly: Polygon, top: float, W: float) -> float | None:
     return best or None
 
 
+# `apex_pro_band_knots` (`cfg.extra["lettering_columns_apex_pro_band_knots"]`,
+# 2026-11-15, built OFF): a gate on `apex_pro_joints`' flat A. The fold look's
+# sewn judge (`_judged_overlong`, `_fold_refine`) refuses a cut that sews more
+# SHORT legs, or more CROSSED legs, than the cut it is measured against, each
+# count on its own. The band moves where a leg's knots fall: at Becker LC
+# large (95.7 mm) it took two short legs off the level cut across the A's
+# left leg (folds / short / crossed 4/6/6 -> 4/4/6), and the diagonal cut
+# main takes there (2/6/0) was refused for its two short legs although it
+# sews two fewer folds and six fewer crossed legs. The leg below the crossbar
+# then sewed as one curved column with the bar, at a steep slant where the
+# pro and main sew it level. Reading the band as sewn (upright) does not
+# cure it (5/6/4 against 3/8/0, the same refusal). ON, in a letter that
+# carries a band the judge counts short and crossed legs as ONE knot count.
+# Layout, not a cloth number (gate 1).
+_APEX_BAND_KNOTS: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_pro_band_knots", default=False)
+
+
+@contextlib.contextmanager
+def apex_band_knots_scope(on: bool):
+    """`cfg.extra["lettering_columns_apex_pro_band_knots"]` for one plan.
+    False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _APEX_BAND_KNOTS.set(True)
+    try:
+        yield
+    finally:
+        _APEX_BAND_KNOTS.reset(token)
+
+
 def _apex_pro_cap_column(pc: Polygon, caps, cut_lines, pitch_mm: float, W: float) -> Column | None:
     """`apex_pro_joints`: the band above a flat A's cap cut, crossed upright
     (stationed along the line of text). None for any other piece."""
@@ -3408,6 +3439,9 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         # candidate columns sewn beside the rest of the letter as the
         # shipped look builds it (a junction knots with its neighbour).
         rest = []
+        # `apex_pro_band_knots` (built OFF): under a flat A's band the
+        # judge's knots are one count, short and crossed legs together
+        knots_one = _APEX_BAND_KNOTS.get() and any(c[2] == "apex_pro_cap" for c in cuts)
         for pc in pieces:
             for sub, lines, _extra in _refine(pc, cut_lines, W, pitch_mm, 0):
                 col = build_column(sub, lines, W, pitch_mm, mitre_ends=mitre_ends)
@@ -3426,7 +3460,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
                     put = True
             if not put:
                 out += [k for k in cols if k is not None]
-            return judge(out, poly)
+            k = judge(out, poly)
+            return (k[0], k[1] + k[2], 0) if knots_one else k
     columns, unsewn = [], []
     apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"] if apex else []
     apro = [(c[0], c[1]) for c in cuts if c[2] == "apex_pro"]   # `apex_pro` (built OFF): none without it
