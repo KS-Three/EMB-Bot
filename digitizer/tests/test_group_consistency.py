@@ -26,12 +26,12 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
 from digitizer_core.textcluster import MIN_CLUSTER_MEMBERS
-from tests.conftest import GROUP_2026_11_14_OFF
+from tests.conftest import GROUP_2026_11_14_OFF, THREAD_2026_11_14_OFF
 
 
 def _cfg(**kw) -> PipelineConfig:
     """The engine with the group flags as they were before the flip, `kw` over it."""
-    return PipelineConfig(**{**GROUP_2026_11_14_OFF, **kw})
+    return PipelineConfig(**{**GROUP_2026_11_14_OFF, **THREAD_2026_11_14_OFF, **kw})
 
 
 def _region(sid, poly, thread, **meta):
@@ -277,13 +277,13 @@ def test_a_far_colour_a_pinned_letter_and_a_two_colour_word_keep_their_threads()
     assert lt.word_thread(two_tone, CHART, {}) == 0
 
 
-def test_word_thread_is_held_off_by_default():
+def test_word_thread_is_on_by_default_with_its_guard():
     word = _cluster([CARIBBEAN] * 10 + [SWISS_IVY])
     lt.apply_lettering_thread(word, CHART, _cfg(), {})
     assert word[-1].thread_index == SWISS_IVY
     lt.apply_lettering_thread(word, CHART, _cfg(group_consistent_thread=True), {})
     assert word[-1].thread_index == CARIBBEAN
-    assert PipelineConfig().group_consistent_thread is False    # held OFF by Kent 2026-11-14
+    assert PipelineConfig().group_consistent_thread is True     # Kent 2026-11-14, "Flip ON with guard"
 
 
 def test_a_moved_dark_ink_bean_letter_takes_the_ladder_with_its_word():

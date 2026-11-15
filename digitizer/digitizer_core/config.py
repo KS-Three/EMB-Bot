@@ -4109,12 +4109,13 @@ class PipelineConfig:
     # and takes the ladder with them (ON: Caribbean satin like the rest). A
     # customer's own recolour is never moved; the cap still has the last
     # word. Not the (hed)p.e. e: no cluster fires there.
-    # HELD OFF (Kent 2026-11-14, "Hold it, guard first"): on the drone render
-    # (80 mm left_chest) it moved a Pumpkin 1102 shape onto its word's Fox
-    # Fire 1305, whose thread match went warn -> block (scorecard D -> F).
-    # Wants a guard: never move a shape onto a thread that matches its art
-    # worse.
-    group_consistent_thread: bool = False
+    # Held 2026-11-14 ("Hold it, guard first": the drone render's Pumpkin 1102
+    # shape moved onto Fox Fire 1305, thread match warn -> block); the guard
+    # (#1516, `lettering_thread.word_thread`) refuses a move onto a thread
+    # that matches the letter's own art worse. **ON since 2026-11-14, Kent's
+    # "Flip ON with guard"** (from the Drone and Bridge OFF | ON | ON+guard
+    # sheets). PRE_FLIP and the snapshot pin it False.
+    group_consistent_thread: bool = True
     # ONE ANGLE per group of like shapes (`group_consistency.shared_angles`,
     # read in stage 7). Kent: "feet are differnt colors" (gradient_mascot: one
     # spool, fills at 39 and 134 deg, two directions read as two shades) and
