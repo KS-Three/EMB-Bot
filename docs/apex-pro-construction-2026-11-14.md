@@ -240,3 +240,212 @@ large stayed at 10.0 / 0.56.
   stem's level cut sits ~0.7 W below the top. Not built.
 - **The defaults moved on.** #1515 changed defaults after this tree (redraw
   0.75, piece lift). The numbers above are this tree's; re-run before a flip.
+
+## 5. The joints read but not built: `lettering_columns_apex_pro_joints` (built OFF)
+
+The second flag is `cfg.extra["lettering_columns_apex_pro_joints"]`. Its code
+is `outline_cut._apex_pro_joint_cuts`, `_apex_pro_cap_column`, and the notes at
+`_APEX_PRO_JOINTS`. It builds rows 6-8 of section 1. In each joint the
+right-hand stroke owns it and the other stroke ends on a LEVEL line.
+
+**Depths.** The stopping depths are his, read with each letter registered on
+its own thread:
+- **N, top-left (`n_top`).**
+  - The stem's level crosses stop `APEX_PRO_NECK_W` = 0.95 W below the top.
+  - The diagonal's piece takes the stem's top, with upright crosses fanning
+    into the diagonal.
+  - **Correction to row 6:** it said ~0.7 W. That was read without the
+    letter's own registration shift.
+- **N, foot (`n_foot`).**
+  - The diagonal ends on a level line `APEX_PRO_FOOT_W` = 0.70 W above the
+    baseline.
+  - The stem's edge runs down to that line.
+  - The stem's level crosses take the foot below it.
+- **A flat-topped A (`a_cap`).**
+  - It applies to a counter that comes to a point on top, under a straight top
+    run of 1.5 W or more.
+  - A band `APEX_PRO_CAP_W` = 0.65 W deep is laid across the top, crossed
+    upright, over the legs.
+  - **The counter must be pointed.** ProSeal's O (flat-topped counter) took
+    the band in the first run. The test now requires the counter's width
+    0.25 W under its top to be under 0.6 W.
+
+**What it does not cover:**
+- **ProSeal's A** is not a flat top: its run is 1.1 W. Its level cap is what
+  apex_cut ON already sews: 7.2 / 0.23 against OFF 17.4 / 0.26 on the
+  863adf49 tree.
+- **Strokes under `APEX_PRO_MIN_W_MM`** (2 mm) are left alone.
+
+**Instrument** (angle error deg / split-line offset mm). Tree: 21fb07d8
+(main 10d1d863 plus apex_pro) with this flag. Columns:
+- **NEW:** apex_pro + apex_pro_joints.
+- **+walk+fold:** NEW plus `lettering_columns_connectors_edge_walk` and
+  `lettering_columns_corner_fold_apex_side`, both ruled ON by Kent.
+
+| design | joint | IoU | OFF | NEW | NEW +walk+fold | NEW vs OFF |
+|---|---|---|---|---|---|---|
+| becker hat large | N top | 0.59 | 33.8 / 1.25 | **11.4 / 0.80** | 6.5 / 0.27 | closer on both |
+| becker hat large | N foot | 0.59 | 13.4 / - | **7.1 / -** | 2.7 / - | closer (angle) |
+| becker hat large | A top | 0.63 | 50.3 / 5.00 | **20.0 / 0.71** | 18.9 / 0.71 | closer on both |
+| becker LC large | N top | 0.60 | 39.5 / 5.42 | **9.8 / 0.73** | 10.0 / 0.73 | closer on both |
+| becker LC large | N foot | 0.60 | 13.7 / - | **7.6 / -** | 6.1 / - | closer (angle) |
+| becker LC large | A top | 0.65 | 49.5 / 4.70 | **34.4 / 1.59** | 26.5 / 1.15 | closer on both |
+| becker hat small | N top | 0.58 | 36.8 / 4.13 | **9.5 / 0.44** | 8.3 / 0.26 | closer on both |
+| becker hat small | N foot | 0.58 | 14.7 / - | **9.1 / -** | 3.2 / - | closer (angle) |
+| becker hat small | A top | 0.51 | 48.1 / 3.75 | **17.0 / 0.27** | 16.0 / 0.27 | closer on both |
+| becker chest small | N top | 0.59 | 38.0 / 3.30 | **10.2 / 0.54** | 7.1 / 0.15 | closer on both |
+| becker chest small | N foot | 0.59 | 14.6 / - | **9.2 / -** | 3.3 / - | closer (angle) |
+| becker chest small | A top | 0.51 | 47.2 / 3.75 | **17.4 / 0.29** | 16.4 / 0.29 | closer on both |
+| becker beanie | N top | 0.41 | 30.8 / 0.95 | **11.9 / 0.50** | 13.8 / 0.67 | closer on both |
+| becker beanie | N foot | 0.41 | 15.2 / - | **9.8 / -** | 5.1 / - | closer (angle) |
+| becker beanie | A top | 0.33 | 37.9 / 1.35 | **22.8 / 0.49** | 21.8 / 0.49 | closer on both |
+| proseal hat | A apex, small M | 0.33-0.47 | | = OFF (md5) | | not touched |
+| proseal beanie | A apex, small M | 0.16-0.26 | | = OFF (md5) | | not touched |
+
+**Notes on the table:**
+- **The N foot has no split-line number.** Neither side has a seam in that
+  window: his diagonal turns level into the stem, and so do ours.
+- **The M's V rows** (apex_pro, unchanged by this flag) on this tree:
+  - hat large 16.4 -> 9.5 deg;
+  - LC large 50.1 -> 9.5;
+  - hat small 13.3 -> 10.1;
+  - chest small 12.2 -> 11.4;
+  - beanie 14.2 -> 11.3.
+- **+walk+fold** is closer than NEW alone everywhere except:
+  - beanie N top, 13.8 vs 11.9 (still closer than OFF);
+  - chest small M's V angle, 12.4 vs NEW 11.4 and OFF 12.2. Its seam is
+    better.
+
+**By eye, against the pro (sheets below):**
+- **N top.** The stem stops level and the diagonal's piece fans from upright
+  over the stem's top into the diagonal, as his does.
+- **A top.** The upright band over level legs is his. His band also fans at
+  its right end into the slanted leg; ours stays upright to the edge.
+- **N foot, NEW alone.**
+  - The foot is level and the stem's, as his.
+  - The diagonal's crosses do not turn level the way his do; they meet the line.
+  - A travel stitch runs on top along the diagonal's lower edge into the foot.
+    OFF has the same kind of stitch at chest small.
+- **N foot, +walk+fold.** That stitch is gone and the foot reads clean. Ship
+  the foot with edge-walk on.
+
+**Every case is closer than OFF at every Becker size**, so nothing is gated
+off by size.
+
+**Sheets** (primary checkout, gitignored, under
+`digitizer/eye_pairs_out/apex-like-pro-1114/`):
+- `sheets_joints/`: art | OFF | NEW | pro, every stitch outlined.
+- `sheets_joints_walk_fold/`: OFF | NEW | NEW+walk+fold for hat large and
+  chest small.
+
+## 6. L corners: when he caps and when he fans (`lettering_columns_corner_fold_cap_flared`, built OFF)
+
+**The question.** `lettering_columns_corner_fold_apex_side` (#1518, ruled ON
+by Kent today) fans MARINE's E round its top-left corner. Does his file?
+
+**Read stitch by stitch** (`tools/apex_pro.py`), every L corner a column
+lane can reach:
+- **Becker's BECKER line** is sewn as tatami fill under a satin border in his
+  files, so it has no column corners to read.
+- **MFab's letters** are fill (MFAB) or 1.2 mm strokes that register at IoU
+  0.09-0.20, too low to read.
+
+| corner | his construction | outline at the corner |
+|---|---|---|
+| Becker MARINE E, top-left (5 sizes, one design) | **cap**: the top arm's upright crosses run on over the stem's top; the stem's level crosses start under the arm's edge | **flared**: a wedge bulges past the stem's edge line |
+| Becker MARINE R, top-left | **cap**: the top bar's crosses over the stem's top | **flared** |
+| Becker MARINE E, bottom-left | **fan**: the stem's level crosses turn round the corner into the foot (Kent's "nice corner", Becker #14) | plain, square |
+| ProSeal PROSEAL P, top-left (hat 85.9 mm) | **fan** | plain (italic, no flare) |
+| ProSeal R, top-left | **fan** | plain |
+| ProSeal E, top-left | **fan** | plain |
+| ProSeal E, bottom-left | **fan** | plain |
+| ProSeal L, bottom-left | **fan** (his L registers poorly, IoU 0.52) | plain |
+
+**The rule, from geometry only.** A corner whose outline bulges past the
+stem's own straight edge near it (a flare or wedge serif) is CAPPED. A plain
+corner is FANNED. It gets **8 of 8 distinct corners** right: 3 on Becker,
+5 on ProSeal hat. As instances that is 15 Becker (one design scaled) and 5
+ProSeal hat; ProSeal beanie was not read.
+
+What the rule does not use:
+- **The corner's angle.** ProSeal's italic top-lefts turn 78 deg and MARINE's
+  flared ones 76.
+- **Which stroke ends there, or top versus bottom.** Every plain corner fans,
+  top or bottom.
+
+**What the fold does now** (instrument: angle error deg / split offset mm,
+OFF | `corner_fold_apex_side`):
+
+| Becker | E top-left (he caps) | E bottom-left (he fans) | R top-left (he caps) |
+|---|---|---|---|
+| hat large | 52.3/2.03 -> 34.6/1.18 | 24.8/1.80 -> 8.9/0.31 | 31.5/1.42, fold does not act |
+| LC large | 52.8/1.95 -> 35.0/1.17 | 25.6/1.49 -> 9.3/0.36 | 35.1/1.88, no change |
+| hat small | 50.4/1.80 -> 36.8/0.67 | 24.1/0.70 -> 18.9/0.69 | 33.9/1.14, no change |
+| chest small | 46.6/1.18 -> 36.7/1.06 | 27.4/1.04 -> 13.8/0.69 | 35.2/1.26, no change |
+| beanie (IoU 0.41) | 37.9/0.48 -> 39.0/0.49 | 29.6/0.69 -> 32.3/0.47 | 35.9/0.39, no change |
+
+**What follows:**
+- **At the fanned corner,** the fold is his construction and the numbers say
+  so. At beanie, where the letter registers worst, they do not.
+- **At the E's top-left, which he caps,** the fold is still closer than OFF at
+  four sizes. OFF runs the stem to the top and butts the arm against it, and
+  the fold's fan at least crosses the stem's top upright-ish, as his cap does.
+  So a gate that only refuses the fold there makes it worse. The gate has to
+  BUILD the cap: the arm's lower edge continued level across the stem, and the
+  arm's piece takes the stem's top (as section 5 does for the N and the flat A).
+- **The R's top-left** is a counter corner, and the fold does not act there,
+  but he caps it too.
+
+**Built (OFF):** `cfg.extra["lettering_columns_corner_fold_cap_flared"]`.
+
+**The flare test** (`outline_cut._flared`) looks at a corner at the letter's
+top, on a left-hand stem. Walking down the stem's outer side, the outline
+must step OUT by `FLARE_W` (0.12 W) and come back by as much within 1.5 W.
+- An italic stem slants steadily and never comes back.
+- A plain corner never steps out.
+- Over every left-hand top or bottom corner of MARINE's E and R and
+  ProSeal's P, R, E and L, it marks exactly the two his files cap: MARINE's
+  E and R at the top-left.
+
+**The cap** (`_cap_flared_cuts`): at a flared top corner, take the nearest
+concave corner below it and to its right, within `FLARE_CAP_DEPTH_W`
+(1.6 W). That is the arm's lower edge: the E's top slot (1.1 W), the R's
+counter (0.94 W). A cut runs level from it across the stem.
+- **The slot rule's stem line stops at the cap line** (`_trim_under_caps`),
+  so the cap is one piece over the stem's top, as his is.
+- **`_fold_corners` skips a capped corner.** That is a one-line edit in the
+  fold's own function.
+- **The A's flared top-left is not capped.** Its nearest level corner is the
+  counter's crossbar, 2.1 W down, and capping there read 1.3-1.7 deg worse.
+
+**Instrument** (angle deg / split-line offset mm). Columns:
+- **OFF:** this tree's default.
+- **FOLD:** `corner_fold_apex_side` ON.
+- **FOLD+CAP:** FOLD plus this flag.
+
+| Becker | E top-left (he caps) | E bottom-left (he fans) | R top-left (he caps) |
+|---|---|---|---|
+| hat large | 52.3/2.03, 34.6/1.18, **13.1/0.26** | 24.8/1.80, **8.9/0.31**, 9.6/0.30 | 31.5/1.42, 31.5/1.42, **12.8/0.67** |
+| LC large | 52.8/1.95, 35.0/1.17, **14.0/0.28** | 25.6/1.49, **9.3/0.36**, 9.9/0.35 | 35.1/1.88, 35.1/1.88, **11.4/0.52** |
+| hat small | 50.4/1.80, 36.8/0.67, **8.5/0.07** | 24.1/0.70, **18.9/0.69**, 20.1/0.68 | 33.9/1.14, 33.9/1.14, **16.6/0.59** |
+| chest small | 46.6/1.18, 36.7/1.06, **13.2/0.40** | 27.4/1.04, **13.8/0.69**, 15.3/0.68 | 35.2/1.26, 35.2/1.26, **15.6/0.47** |
+| beanie (IoU 0.41) | 37.9/0.48, 39.0/0.49, **27.4/0.37** | **29.6**/0.69, 32.3/0.47, 33.2/0.46 | 35.9/0.39, 35.9/0.39, **16.8/0.19** |
+
+**Reading the table:**
+- **The cap's gains.** At both corners he caps, FOLD+CAP is far closer than
+  FOLD and OFF at all five sizes. The E's top-left goes from about 35 deg to
+  8-14 deg (27 at beanie); the R's from about 34 deg to 11-17 deg.
+- **The cost.** At the E's bottom-left, which he fans, the fold's fan is
+  kept, but its angle reads 0.6-1.5 deg worse than FOLD alone at every size.
+  The stem column now starts at the cap line, and its fan is a little
+  shorter. Its seam is the same or better.
+- **Untouched.** M, N and A windows are unchanged (md5-equal there).
+
+**By eye** (`sheets_corners/`, art | OFF | FOLD | FOLD+CAP | pro):
+- **E:** the top arm and the stem's top are one piece of upright crosses, the
+  stem runs level from under it, and it fans round the bottom-left into the
+  foot. That is his E.
+- **R:** the top bar's upright crosses cover the stem's top, as his do.
+
+**Sheets:** `eye_pairs_out/apex-like-pro-1114/sheets_corners/`, art | OFF |
+fold | pro, at the E's two corners and the R's top-left, every Becker size.

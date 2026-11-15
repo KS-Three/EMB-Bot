@@ -309,6 +309,7 @@
  "small_text_true_size_min_counter_mm": 0.45,
  "snap_region_edges": true,
  "speck_prune": false,
+ "tiny_detail_keep": false,
  "split_satin": true,
  "split_satin_above_mm": null,
  "split_shapes": {},

@@ -70,7 +70,7 @@
     uploadFullResEnabled, wantsFullRes, renderForService } from "../lib/rasterize.js";
   import { friendlyError } from "../lib/friendlyError.js";
   import CropBox from "./CropBox.svelte";
-  import { proposeCrop } from "../lib/cropProposal.js";
+  import { inkBox, proposeCrop } from "../lib/cropProposal.js";
   import { fitTargetWidthMm } from "../lib/placement.js";
   import { rotationPatch } from "../lib/hoop.js";
   import { getSource, putSource, sourceKeyFor, sourceStoreAvailable } from "../lib/sourceStore.js";
@@ -219,9 +219,19 @@
       // Propose a crop from the preview we already drew. Measuring this
       // canvas is fine; SENDING it is the 2026-09-19/20 regression.
       let crop = null;
+      // ...and the INK box inside that proposal: what the engine sizes to the
+      // Design width, so what the auto-fit below fits (cropProposal.inkBox;
+      // the proposal pads its crop on every side). A crop the customer draws
+      // later clears it (the CropBox handler) and fits as it always did.
+      let inkBoxFr = null;
       try {
         const px = cv.getContext("2d").getImageData(0, 0, cv.width, cv.height);
         crop = proposeCrop(px, (element.params && element.params.target_width_mm) || 80);
+        try {
+          inkBoxFr = inkBox(px, crop) || null;
+        } catch {
+          inkBoxFr = null; // no ink box: the fit reads the crop, as before
+        }
       } catch {
         crop = null; // tainted canvas or no 2d context: no proposal, no crash
       }
@@ -296,7 +306,7 @@
       // customer has typed a width, which is theirs. `sourcePx` is kept so a
       // later garment or placement change can re-fit the same way.
       const sourcePx = { w, h };
-      const fitW = element.widthTyped ? null : fitTargetWidthMm(sourcePx, crop, project);
+      const fitW = element.widthTyped ? null : fitTargetWidthMm(sourcePx, crop, project, inkBoxFr);
       // "Sew as flat art" (`forced_class`) was said about the OLD art's
       // reading, not about the design: a photo replacing a flat logo must be
       // read fresh, so the key is REMOVED (useAutomatic's convention). Every
@@ -325,7 +335,7 @@
       // customer's lettering now. Placement (offset, rotation), `widthTyped`
       // and the garment are about the design and stay too.
       patch({
-        sourcePng: b64, sourceFile, sourcePx, crop, params, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
+        sourcePng: b64, sourceFile, sourcePx, crop, inkBox: inkBoxFr, params, name: file.name, result: null, warnings: [], blockColors: {}, sizeMm: null,
         review: null, shapeOverrides: {}, deletedShapeIds: [], appliedEdits: null,
         appliedConfig: null, mergeGroups: [], splitLines: {},
         textConversions: {}, preflight: null, stats: null, priorRun: null, appliedBase: null,
@@ -2113,7 +2123,7 @@
       <CropBox
         src={"data:image/png;base64," + element.sourcePng}
         crop={element.crop}
-        onchange={(c) => patch({ crop: c })}
+        onchange={(c) => patch({ crop: c, inkBox: null })}
         minFrac={cropMinFrac}
       />
       <span class="dgp-srcname">{element.name || "Artwork"}</span>

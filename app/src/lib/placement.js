@@ -48,14 +48,20 @@ export function placementBoxOf(project) {
 // area cap apply exactly as they do to lettering — in the 10-400 mm range the
 // Design width field accepts, to a tenth. `px` is the uploaded image's pixel
 // size and `crop` the element's crop box in fractions of it (null = whole
-// image): the aspect that is fitted is the cropped image's. null when there
-// is nothing to fit (no image size, unknown garment, or no engine fit).
-export function fitTargetWidthMm(px, crop, project) {
+// image): the aspect that is fitted is the cropped image's. `ink`, when given,
+// is the INK box inside the crop the upload proposed (cropProposal.inkBox,
+// fractions of the image) and is fitted instead: the engine sizes the ink box
+// to the Design width, not the padded crop (review 2026-11-14). A crop the
+// customer drew carries no `ink` (the panel clears it), so it fits as before.
+// null when there is nothing to fit (no image size, unknown garment, or no
+// engine fit).
+export function fitTargetWidthMm(px, crop, project, ink = null) {
   if (!px || !(px.w > 0) || !(px.h > 0)) return null;
   const g = garmentOf(project);
   if (!g || !EMB.fitScale) return null;
-  const fx = crop ? Math.max(1e-6, (crop.x1 - crop.x0)) : 1;
-  const fy = crop ? Math.max(1e-6, (crop.y1 - crop.y0)) : 1;
+  const box = ink || crop;
+  const fx = box ? Math.max(1e-6, (box.x1 - box.x0)) : 1;
+  const fy = box ? Math.max(1e-6, (box.y1 - box.y0)) : 1;
   const fit = EMB.fitScale(px.w * fx, px.h * fy, g);
   if (!fit || !(fit.targetWmm > 0) || !isFinite(fit.targetWmm)) return null;
   return Math.min(400, Math.max(10, Math.round(fit.targetWmm * 10) / 10));
@@ -83,7 +89,7 @@ export function refitDigitized(project) {
   const elements = project.elements.map((el) => {
     if (!el || el.type !== "digitized" || el.widthTyped || !el.sourcePx) return el;
     if (resizedTargetWidth(el, nativeWidthOf(el)) != null) return el;
-    const w = fitTargetWidthMm(el.sourcePx, el.crop, project);
+    const w = fitTargetWidthMm(el.sourcePx, el.crop, project, el.inkBox || null);
     if (w == null || (el.params && el.params.target_width_mm === w)) return el;
     changed = true;
     return { ...el, params: { ...(el.params || {}), target_width_mm: w } };
@@ -122,7 +128,7 @@ export function preRunSizePatch(el, patch, project) {
   if (!undigitizedImage(el) || !patch || !("sizeMm" in patch)) return patch;
   const { sizeMm, ...rest } = patch;
   if (sizeMm == null) {
-    const fit = el.sourcePx ? fitTargetWidthMm(el.sourcePx, el.crop, project) : null;
+    const fit = el.sourcePx ? fitTargetWidthMm(el.sourcePx, el.crop, project, el.inkBox || null) : null;
     return {
       ...rest,
       sizeMm: null,
