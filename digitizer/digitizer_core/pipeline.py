@@ -1947,7 +1947,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             _ip = float(getattr(p, "input_px_per_mm", 0.0) or 0.0)
             _marked = keyline_bean.keyline_regions(
                 regions, set(_outlines), cfg, sewn_only=False,
-                min_width_mm=(sliver_prune.SLIVER_WIDTH_SRC_PX / _ip) if _ip > 0 else 0.0)
+                min_width_mm=(sliver_prune.SLIVER_WIDTH_SRC_PX / _ip) if _ip > 0 else 0.0,
+                bodies=_outlines)   # read only with `cfg.extra["keyline_loop_fit"]`
             # `cfg.border_from_outline_follow_shape`: a band with teeth is not
             # a hairline. The gate's width is 2 x area / perimeter, and teeth
             # are perimeter: Commons "Ahora"'s gear at 40 mm is 0.57 to 0.93 mm
