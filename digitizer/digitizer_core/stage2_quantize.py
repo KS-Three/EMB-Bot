@@ -311,9 +311,29 @@ def _edge_mask(labels: np.ndarray, valid: np.ndarray) -> np.ndarray:
     return e
 
 
-def _majority_filter(labels: np.ndarray, valid: np.ndarray, k: int, passes: int) -> np.ndarray:
+#: `cfg.tiny_detail_keep`: a pixel within this CIE76 distance of its own
+#: cluster centre IS that colour, not a blend (the merge tolerance's own
+#: scale, `cfg.merge_delta_e` 6, doubled for JPEG noise) ...
+PURE_PIXEL_DE = 12.0
+#: ... and one at least this far from the centre the filter would give it is
+#: not a halo of that colour either. A blend sits on the chord between the
+#: two centres, near both; the crest's eye pixels (pure white and black in a
+#: navy head) sit 1-3 from their own centres and 60-70 from the navy.
+FAR_PIXEL_DE = 30.0
+
+
+def _majority_filter(labels: np.ndarray, valid: np.ndarray, k: int, passes: int,
+                     keep_pure: tuple[np.ndarray, np.ndarray] | None = None) -> np.ndarray:
     """Reassign edge pixels to the dominant label in their 3x3 non-edge
-    neighborhood. Vectorized per label via box filtering."""
+    neighborhood. Vectorized per label via box filtering.
+
+    `keep_pure` (`cfg.tiny_detail_keep`, built OFF 2026-11-14; (h, w, 3) Lab
+    image, (k, 3) Lab centres): an edge pixel whose own colour is within
+    `PURE_PIXEL_DE` of its label's centre and at least `FAR_PIXEL_DE` from
+    the centre it would take keeps its label. A feature two or three pixels
+    across has no interior pixel of its own, so without this every pixel of
+    it takes its surroundings' label (the crest's eagle eyes, gone after two
+    passes). None: the filter as it always was."""
     out = labels.copy()
     for _ in range(passes):
         deadline.check("stage 2")
@@ -328,7 +348,13 @@ def _majority_filter(labels: np.ndarray, valid: np.ndarray, k: int, passes: int)
             counts[j] = cv2.boxFilter(m, -1, (3, 3), normalize=False)
         best = np.argmax(counts, axis=0).astype(np.int32)
         has = counts.max(axis=0) > 0
-        out = np.where(edge & has, best, out)
+        move = edge & has
+        if keep_pure is not None:
+            lab_img, centers = keep_pure
+            own = np.linalg.norm(lab_img - centers[np.clip(out, 0, k - 1)], axis=2)
+            far = np.linalg.norm(lab_img - centers[np.clip(best, 0, k - 1)], axis=2)
+            move &= ~((best != out) & (own <= PURE_PIXEL_DE) & (far >= FAR_PIXEL_DE))
+        out = np.where(move, best, out)
     return out
 
 
@@ -504,7 +530,12 @@ def _quantize_population(
             labels[sel] = target[sel]
 
     # --- anti-alias: majority filter, then phantom-blend dissolve -----------
-    labels = _majority_filter(labels, valid, k, cfg.aa_iterations)
+    keep_pure = None
+    if getattr(cfg, "tiny_detail_keep", False):
+        lab_img = np.zeros((h * w, 3), np.float64)
+        lab_img[idx] = lab
+        keep_pure = (lab_img.reshape(h, w, 3), np.asarray(centers, np.float64))
+    labels = _majority_filter(labels, valid, k, cfg.aa_iterations, keep_pure=keep_pure)
 
     edge = _edge_mask(labels, valid)
     # `ramp_px`: the edge as deep as the soft ramp, for the second test below.

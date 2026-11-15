@@ -2104,7 +2104,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
     from .outline_cut import apex_guard_scope    # `cfg.extra["lettering_columns_apex_guard"]` (built OFF), the same way
-    from .stage6_border import loop_mitre_scope   # `cfg.outline_loop_mitre` (built OFF), the same way
+    from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
+    from .outline_cut import apex_pro_scope      # `cfg.extra["lettering_columns_apex_pro"]` (built OFF), the same way
+    from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
     # fill reads it from here, so a `stitch_shape` call outside a plan is the
@@ -2119,6 +2121,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     with apex_cut_scope(cfg.lettering_columns_apex_cut), \
             curve_chord_scope(cfg.curve_chord_mm), \
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
+            rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
+            apex_pro_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
             cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \
@@ -2131,6 +2135,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         # it replanned `result`, and a gear the inlet rule had moved to fill
         # went back to satin whenever the guard kept its replan)
         planned = result
+        bodies: dict = {}        # `outline_inlets_teeth`: the split shapes' bodies
         # `cfg.extra["outline_inlets_kept"]` (built OFF): a satin that sewed
         # over its own outline's inlet (a gear's tooth gaps, an open beak)
         # cannot draw that shape; it is planned again as a fill on a copy of
@@ -2139,8 +2144,18 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             from . import outline_inlets
             over = outline_inlets.satin_over_inlets(result.regions, plan)
             if over:
-                planned = replace(result, regions=outline_inlets.as_fill(result.regions, over))
+                # `cfg.extra["outline_inlets_teeth"]` (built OFF): a toothed
+                # edge splits into its teeth (sewn first) and its body (sewn
+                # over their roots), the pro's ring-and-handles construction,
+                # instead of one fill; the moves between teeth are buried
+                # along the root, under the body
+                teeth = bool(cfg.extra.get("outline_inlets_teeth"))
+                regions, bodies = outline_inlets.rebuild(result.regions, over, teeth)
+                planned = replace(result, regions=regions)
                 plan = _plan_stitches(planned, cfg)
+                if bodies:
+                    from .machine import TRAVEL_STITCH_MM
+                    outline_inlets.bury_tooth_moves(plan, bodies, TRAVEL_STITCH_MM)
         # `cfg.proofread_guard_clipped` (built OFF): the proof-read reads
         # this plan against the traced raster and, where stage 5's clip cut
         # a shape's own ink away, re-plans inside these same scopes with that
@@ -2152,7 +2167,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
 
             def replan(ids):
                 with keep_art_scope(ids):
-                    return _plan_stitches(planned, cfg)
+                    p = _plan_stitches(planned, cfg)
+                if bodies:      # the teeth's moves, buried again on the replan
+                    from . import outline_inlets
+                    from .machine import TRAVEL_STITCH_MM
+                    outline_inlets.bury_tooth_moves(p, bodies, TRAVEL_STITCH_MM)
+                return p
             plan = guard_clipped(planned, cfg, plan, replan)
         return plan
 
