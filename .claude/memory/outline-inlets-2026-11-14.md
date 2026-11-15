@@ -30,6 +30,15 @@ as fill (copy, `tier="fill"`); letters and hand-set tiers never move. The 3%
 gate exists because the first build turned Becker's black border (share
 0.002, a satin band in the pro's file) into a fill; the gear is 0.104.
 
+Second flag `outline_inlets_teeth` (OFF, Director 11-14: the gear as one fill
+read ragged): a toothed shape (>= 3 inlets of one depth) splits into teeth
+(fills, rows square to each tooth, sewn first) + body (keeps its tier: the
+ring stays radial satin, sewn over the teeth's roots); moves between teeth
+buried as travel along the body edge. Read off the pro's Bridge wheel (ring
+satin + a column per handle). Body-first/teeth-on-top and a satin teeth run
+under the ring both read worse. Catch: ring rail pull hides the teeth's
+inner part.
+
 **Why:** Kent 11-14 "exactly like the pros"; these are geometry, not gate 1.
 **How to apply:** sheets show the shape right but Ahora's 1.1 mm ring as
 short fill rows reads rougher than the OFF satin: a flip is Kent's, from the

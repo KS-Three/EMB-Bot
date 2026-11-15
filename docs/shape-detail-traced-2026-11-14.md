@@ -99,21 +99,57 @@ the shape: Ahora's gear 0.104, Becker's border 0.002.
 Only where thread goes changes. Whether a kept inlet stays open on the cloth
 is the sew-out's to settle.
 
-## What it does (sheets in `eye_pairs_out/detail-1114/sheets/`)
+## A toothed edge sewn cleanly: `cfg.extra["outline_inlets_teeth"]`, built OFF
+
+With `outline_inlets_kept` alone, Ahora's gear keeps its teeth but sews as
+one fill: a 1.1 mm ring and sixteen 0.85 mm teeth in short tatami rows with
+crossing travel. The Director read it as ragged and could not recommend the
+flip. The pro has no gear on file. His nearest is Bridge's steering wheel, a
+ring with eight handles, and his needles there
+(`sheets/pro_bridge_*_needles.png`) show:
+- one satin ring with radial crosses;
+- a separate short column per handle, crosses square to the handle;
+- the ring's satin over the handles' feet.
+
+So under the second flag a TOOTHED shape (at least three inlets of about one
+depth; a notch or a mouth is not) splits in two:
+- **its body**, the shape inside the teeth's root. It keeps its own tier, so
+  the gear's ring stays the smooth radial satin it was OFF, now ending at the
+  root, and sews LAST.
+- **one piece per tooth**, sewn FIRST, round the shape in turn. Each is a
+  fill whose rows run square to the tooth's own axis: across a sub-millimetre
+  tooth a row is one stitch, the pro's cross. It reaches 0.2 mm under the
+  body, down its own axis.
+
+The moves between teeth would otherwise be needle-up jumps across the gaps
+(26 on Ahora). Stage 7 cannot bury them: the body is the same colour, so it
+is not `covered_by`. They are sewn as travel along the body's edge, where the
+body's satin then covers them. Ahora's white block: 2 jumps and 1 trim,
+against 1 and 0 OFF and 3 and 2 with the gear as one fill.
+
+**Two orders were tried and read worse:**
+- the body first and the teeth on top put the travel and the teeth's feet
+  over the finished ring;
+- one continuous satin run of teeth under the ring left only 0.3 mm of each
+  tooth showing past the ring's own pull.
+
+## What it does (sheets in `eye_pairs_out/detail-1114/sheets/`, art | OFF | kept | new)
 
 - **dot_music #1:** the notch is cut into the disc and open at its mouth, as
-  the art draws it.
-- **Ahora #1:** the gear sews as a fill and its teeth show. The catch: a
-  1.1 mm ring sewn as short fill rows reads rougher than OFF's smooth satin
-  ring. The shape is right; the texture is the price.
-- **crest #3:** see the PR body (run still out when this was written).
-- **Must not move:** k_line, byte-identical ON (design md5 `213ff7a7...`
-  both ways); Becker and and_pizza in the PR body.
+  the art draws it. New = kept: a notch is not a row of teeth.
+- **Ahora #1:** kept: the teeth show, ragged. New: a smooth radial ring with
+  square tooth blocks round it. The catch: the ring's satin (with its rail
+  pull) covers the inner part of each tooth, so the teeth read shorter than
+  the art's 0.85 mm.
+- **crest #3:** kept: the open mouth and the curled tongue now read as in the
+  art (the beak re-planned as a fill). New = kept.
+- **Must not move:** Becker hat large, and_pizza and k_line come out
+  byte-identical under both flags (design md5s in the PR body).
 
 ## Not built
 
 - Satin rails that follow a toothed edge. The rail smoother and the envelope
   exist to stop exactly that ("on the cloth a tooth", `_drop_short_reaches`),
   so a satin that keeps teeth is a construction question with sew-out
-  history, not this PR.
+  history, not this PR. The teeth split goes round it instead.
 - low_poly's facets: a tier and colour-cap question on one shaded design.
