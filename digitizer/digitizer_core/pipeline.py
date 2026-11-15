@@ -2113,6 +2113,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
     from .outline_cut import apex_guard_scope    # `cfg.extra["lettering_columns_apex_guard"]` (built OFF), the same way
+    from .column_lean import lean_flat_ends_scope   # `cfg.extra["lettering_columns_lean_flat_ends"]` (built OFF), the same way
     from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
     from .outline_cut import apex_pro_scope      # `cfg.extra["lettering_columns_apex_pro"]` (built OFF), the same way
     from .outline_cut import apex_pro_joints_scope   # `cfg.extra["lettering_columns_apex_pro_joints"]` (built OFF), the same way
@@ -2132,6 +2133,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     with apex_cut_scope(cfg.lettering_columns_apex_cut), \
             curve_chord_scope(cfg.curve_chord_mm), \
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
+            lean_flat_ends_scope(bool((cfg.extra or {}).get("lettering_columns_lean_flat_ends"))), \
             rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
             apex_pro_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro"))), \
             apex_pro_joints_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_joints"))), \
