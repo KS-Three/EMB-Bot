@@ -34,3 +34,5 @@ not an order.
 
 Write-up: `docs/z-joints-rail-pair-2026-11-14.md`. See
 [[flip-candidates-2026-11-14]].
+
+**Kent 2026-11-15:** `lettering_columns_rail_pair_bars` stays OFF (not ticked).

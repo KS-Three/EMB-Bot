@@ -69,3 +69,5 @@ The 14 satin-end pins, traced 2026-11-14:
 10-10 iso-contour) WAS built (#818) and Kent ruled it no on 10-12. Related:
 [[edge-fault-reader-2026-11-10]], [[defect-marks-sitting-2026-11-10]],
 [[eye-first-diagnosis-2026-11-13]].
+
+**Why the redraw adds trims (2026-11-14, #1560, `docs/redraw-trims-2026-11-14.md`):** the fit seats edges about 0.07 mm inside the source. A uniform +0.07 mm grow (`outline_redraw_grow_mm`, built OFF) restores the trims (Becker hat large 20 -> 15 = no redraw) but fattens MFab's small-line keyline, so it is the instrument, not the fix; it stays OFF (11-15). The redraw's cap checks are vectorized (byte-identical; To a T machine 31.8 -> 19.2 s). The 11-14 timing pass (#1546) found the redraw the only #1515 flip costing over 15% CPU (To a T x1.52).

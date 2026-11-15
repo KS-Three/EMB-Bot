@@ -1,6 +1,6 @@
 ---
 name: group-consistency-2026-11-13
-description: Kent's "like things sewn unlike" pins traced on main — 2 of 11 tier straddles (AHORA outline body, K-Line run floor), 2 thread, 2 fill angle, 2 fixed; 4 flags built OFF; tier + fill angle ON since 11-14, outline body + thread held OFF for guards (Kent); outline body decided by ink; render tone follows row order
+description: Kent's "like things sewn unlike" pins traced on main — 2 of 11 tier straddles (AHORA outline body, K-Line run floor), 2 thread, 2 fill angle, 2 fixed; all 4 ON since 11-14 (body + thread with guards, Kent "Flip ON with guard"); outline body decided by ink; render tone follows row order
 metadata:
   type: project
 ---
@@ -26,7 +26,7 @@ first:** `_outline_body` ("G4 alone looks the best": beside `outline_redraw_k`
 outline bodies, white borders over black letters; each alone clean) and
 `_thread` ("Hold it, guard first": the drone render's Pumpkin shape moved to
 Fox Fire, thread match warn -> block, scorecard D -> F). Guards queued:
-thread never to a worse-matching spool; redraw cannot tip the body vote.
+thread never to a worse-matching spool; redraw cannot tip the body vote. Both built (#1516, #1517) and ON the same day (#1554): "Flip ON with guard".
 Flags: `group_consistent_tier` (run floor per line; a moved letter
 skips `small_solids_satin`, which sewed W/K as one column), `group_consistent_
 outline_body` (outline body test per line), `group_consistent_thread` (lone

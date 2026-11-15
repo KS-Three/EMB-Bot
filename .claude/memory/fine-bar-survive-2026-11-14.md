@@ -32,7 +32,7 @@ stage 5 when the clip would leave under half. First cut redrew every bar and
 widened Fremont's "|" divider (anti-aliased ink): a whole bar keeps its
 outline. On: 8 of 11 other pro jobs byte-identical (see the PR for the list).
 
-**Flipped ON 2026-11-15**, Kent: "Flip both ON" (with `small_text_handover`),
-in the flip PR that also carries the small-text and gap flags; PRE_FLIP pins
-it OFF. Next lever if wanted: the lost beanie bar keeps its narrow trace and
-sews a thin tail at one end.
+Next lever if wanted: the lost beanie bar keeps its narrow trace and sews a
+thin tail at one end.
+
+**Kent 2026-11-15:** "Flip both ON" (`fine_bar_survive` and `small_text_handover`, [[small-text-handover-2026-11-14]]). **Flipped ON 11-15** in flip PR 2 with the small-text and gap flags; PRE_FLIP pins it OFF.

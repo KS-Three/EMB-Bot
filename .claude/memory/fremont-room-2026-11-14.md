@@ -29,6 +29,6 @@ letters as columns with counters filled ("1895" read "1896", gross fault);
 (art 20.9), grown DOWN to 0.4 mm above THE; EAT|STAY|PLAY 4.6 mm (art 2.4,
 1.9x; ours 1.575x on main). His letters are bold satin; ours stay bean lines.
 Respine stays rejected (EAT read "BAJ", #1510). Sheets:
-`eye_pairs_out/fremont-room-1114/sheets/`. **Flipped ON 2026-11-15**, Kent:
-"Flip both ON"; both are `PipelineConfig` fields now, PRE_FLIP pins them OFF.
-Satin for the date stays blocked (gate 1).
+`eye_pairs_out/fremont-room-1114/sheets/`.
+
+**Kent 2026-11-15:** "Flip both ON" (`small_text_reset_ground_ring`, `small_text_reset_bean_follows`). **Flipped ON 11-15** (flip PR 2): both are `PipelineConfig` fields now, PRE_FLIP pins them OFF. Open, needs a sew-out: small satin counters (Fremont's date in satin, gate 1).

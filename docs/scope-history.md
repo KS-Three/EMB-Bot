@@ -13,6 +13,17 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-11-15 (Kent's 11-15 review filed; the 11-14 night's notes; main `8cfa2fc4`)
+
+Snapshots, not live status:
+
+- **#1515's seven flips, timed (PR #1546, laptop, CPU s pre-flip / main):** Golden Tee 66 / 63, To a T machine 22 / 33 (the redraw's ring fit), Becker hat large 20 / 21, Gaulke 24 / 24, MFab 65 / 47, Fremont 64 / 63. The four flags then about to flip (edge-walk, corner fold apex side, group thread, group outline body) cost 0.93-1.06 of main.
+- **`photo_work_grid`, MFab OFF / ON (PR #1556):** 60 mm hollow letters / readable; 85.1 and 96 W+E under a white slab / E back, W broken; 100.8 W+E+L slab / readable; 105.3 readable / readable; 113.5 readable / E under a slab, A 100 -> D 58.
+- **`curve_chord_stage4` on Tires #0 (PR #1530):** the edge stitches' worst turn 23.1 -> 8.1 deg, off a fitted circle 0.08 -> 0.02 mm.
+- **On main at this date:** #1515, #1533, #1542 and #1554 ON; twenty more flags ruled ON 11-15 with their flips pending (MASTER_SCOPE Waiting on Kent 80).
+
+---
+
 **Last updated:** 2026-11-15 (rim flag, three worse images) — fix branch tree `6f0a2312`
 
 Snapshots, not live status:

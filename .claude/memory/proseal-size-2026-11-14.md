@@ -32,7 +32,5 @@ the room). md5 unchanged, so no flag was kept. Next lever: a re-set at
 scale 1.0 (retrace + widen only, no growth, no room needed) for lines just
 over the cap. Sheets: `eye_pairs_out/proseal-size-1114/sheets/`.
 
-**That lever, built and flipped:** `small_text_handover` (#1561): a line at
-0.9 to 1.15 caps gets the true-size retrace and loses its own thin
-other-thread slivers. **ON since 2026-11-15**, Kent: "Flip both ON" (with
-`fine_bar_survive`); PRE_FLIP pins it OFF.
+**That lever, built and flipped:** `small_text_handover` (#1561), ON since
+2026-11-15 (Kent: "Flip both ON"): [[small-text-handover-2026-11-14]].
