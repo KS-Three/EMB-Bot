@@ -141,5 +141,64 @@ What it does not do:
 
 ## 4. OFF | ON | NEW, every joint
 
-(filled from `tools/apex_pro.py measure`; see the table in the PR body and
-`eye_pairs_out/apex-like-pro-1114/sheets/`, primary checkout, gitignored)
+**How the arms were made.**
+- **Tree:** 863adf49, with each design's own request (`pro_pair.request`,
+  the corpus's).
+- **OFF:** this tree. Its md5 equals the apex-cut corpus's OFF
+  (d0b4981a) on every design, so ON is the corpus's ON pickle.
+- **ON+guard:** md5 = ON on Becker x5 and ProSeal x2
+  (`docs/apex-guard-2026-11-14.md`). It was not captured on MFab.
+- **NEW:** `lettering_columns_apex_pro` alone.
+- **NEW+buried:** NEW with `lettering_columns_connectors_buried`, which is
+  itself OFF (see the catch below).
+
+Each cell is **angle error deg / split-line offset mm** (lower is closer to
+the pro).
+
+| design | joint | letter IoU | OFF | ON (= ON+guard) | NEW | NEW+buried | NEW vs OFF, instrument | by eye |
+|---|---|---|---|---|---|---|---|---|
+| becker_hat_large | M's V | 0.82 | 16.6 / 2.26 | 10.3 / 1.53 | **9.6 / 0.57** | 10.0 / 0.56 | closer on both | closer: fan over the shoulder, level crosses from the point up the right leg, as his |
+| becker_lc_large | M's V | 0.82 | 51.3 / 1.14 | 13.8 / 1.55 | **10.2 / 0.53** | - | closer on both | closer: OFF's 12-end fan at the crotch is gone |
+| becker_hat_small | M's V | 0.73 | 14.0 / 1.31 | 14.3 / 0.48 | **10.3 / 0.37** | - | closer on both | closer |
+| becker_chest_small | M's V | 0.74 | 12.6 / 1.13 | 10.6 / 0.64 | 14.3 / 0.84 | **12.2 / 0.48** | NEW: mixed (angle +1.8, seam -0.29). NEW+buried: closer on both | NEW **reads worse**: a 4.7 mm hop runs back up over the finished level crosses (the walk). NEW+buried: no hop, closer |
+| becker_beanie | M's V | 0.46 | 14.9 / 1.23 | 13.5 / 1.65 | 16.5 / 1.18 | **14.0 / 1.17** | NEW: mixed (angle +1.6). NEW+buried: closer on both | as chest small; weakest registration |
+| becker x5 | N's top-left, N's foot, A's top | 0.41-0.64 | unchanged | unchanged | = OFF | | not touched (out of scope) | - |
+| proseal_hat | A's apex | 0.46 | 17.4 / 0.26 | 7.2 / 0.23 | = OFF | | not touched (points up) | - |
+| proseal_hat / beanie | FOAM's M (0.8 mm strokes) | 0.15-0.35 | | | = OFF | | under the 2 mm gate | - |
+| mfab_hat / lc | WELDING's W, N, G (1.2 mm) | 0.09-0.20 | | | = OFF | | under the 2 mm gate | - |
+
+**Before the 2 mm gate,** NEW moved MFab's small W, N and G and ProSeal's
+small M:
+- MFab hat W 38.2 -> 32.6 deg; N 25.5 -> 23.9; G 28.1 -> 33.4.
+- MFab LC W, N and G each read 0.4-3.7 deg worse.
+- At IoU 0.09-0.20 those numbers carry no weight either way. No joint at
+  that size was read, so `APEX_PRO_MIN_W_MM` leaves them as OFF.
+
+**The catch: the walk.** apex_pro changes the cut, not the order.
+- **What goes wrong.** On chest small and beanie the lane's walk sews the
+  level column from the top of the right leg down to the point. It then hops
+  4.7 mm back up over it to reach the fan, and that bar shows on finished
+  satin.
+- **What he does.** He sews the fan first and lays the travel under the
+  level column he sews next.
+- **What fixes it today.** With `lettering_columns_connectors_buried` the
+  hop becomes a jump and trim, and both numbers beat OFF at all three sizes
+  tried.
+- **Flip pairing.** apex_pro should flip only with buried (or with the
+  edge-walk, #1512), or after the walk learns his order. That is the
+  jag-source lane's walk.
+
+**Sheets** (primary checkout, gitignored):
+- `digitizer/eye_pairs_out/apex-like-pro-1114/sheets/<design>_<joint>.png`:
+  art | OFF | NEW | pro, every stitch outlined.
+- `sheets_with_buried/`: art | OFF | NEW+buried | pro, for hat large,
+  chest small and beanie.
+- `read/`: the reading panels.
+
+**Not settled here:**
+- **Kent's eye.** The instrument says closer on the M's V. It does not say
+  the M reads better at arm's length.
+- **The N's tips.** Read (rows 6-7): the right-hand stroke owns them, and the
+  stem's level cut sits ~0.7 W below the top. Not built.
+- **The defaults moved on.** #1515 changed defaults after this tree (redraw
+  0.75, piece lift). The numbers above are this tree's; re-run before a flip.

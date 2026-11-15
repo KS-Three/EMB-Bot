@@ -757,6 +757,10 @@ _APEX_PRO: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_pro", def
 APEX_PRO_DOWN_DEG = 30.0       # the point lies within this of straight below its crotch
 APEX_PRO_SPLIT_W = 2.6         # the split line runs at most this many stroke widths
 APEX_PRO_SNAP_DEG = 25.0       # a concave corner this near the line's direction ends it
+# Read only on strokes 3.8-5.4 mm wide (MARINE). MFab's 1.2 mm WELDING and
+# ProSeal's 0.8 mm FOAM registered too poorly to read (IoU 0.09-0.35), so
+# below this the letter cuts as OFF: the reach of the evidence, not a cloth number.
+APEX_PRO_MIN_W_MM = 2.0
 
 
 @contextlib.contextmanager
@@ -826,6 +830,8 @@ def _apex_pro_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> list:
     -- is cut by `_apex_pro_split` alone, in place of the junction rules'
     cuts from that crotch. Records as `find_cuts`'."""
     through = [c[k] for c in cuts if c[2] == "through" for k in (0, 1)]
+    if W < APEX_PRO_MIN_W_MM:
+        return cuts
     drop, add = [], []
     for r in reflex:
         p = r["p"]

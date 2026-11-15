@@ -101,6 +101,12 @@ def test_an_a_apex_points_up_and_is_left_as_off():
     assert _same(_cut(poly, True), _cut(poly, False))
 
 
-def test_a_narrow_v_takes_the_split():
-    lc = _cut(_v(20.0, 1.2, 8.0), True)
+def test_a_3mm_v_takes_the_split():
+    lc = _cut(_v(20.0, 3.0, 12.0), True)
     assert [c[2] for c in lc.cuts].count("apex_pro") == 1
+
+
+def test_a_stroke_under_the_read_width_is_left_as_off():
+    # MFab's 1.2 mm WELDING: no pro reading reached it (`APEX_PRO_MIN_W_MM`)
+    poly = _v(20.0, 1.2, 8.0)
+    assert _same(_cut(poly, True), _cut(poly, False))

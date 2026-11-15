@@ -405,7 +405,8 @@ BECKER = [("M_V", -40.0, 22.0, 6.0), ("N_top", 20.5, 19.5, 5.5), ("N_foot", 29.0
 PROSEAL_REF_W = 85.9
 PROSEAL = [("A_top", 24.0, 17.5, 4.0), ("small_M", -2.4, 30.4, 2.4)]
 MFAB_REF_W = 104.9
-MFAB = [("W_small", -14.3, 8.7, 4.0)]
+MFAB = [("W_small", -14.3, 8.7, 4.0), ("N_small", 15.8, 9.5, 3.5), ("G_small", 22.7, 10.5, 4.0),
+        ("LLC_small", 33.8, 8.7, 4.0)]
 REF = {**{d: (BECKER, BECKER_REF_W) for d in SLUG if d.startswith("becker")},
        **{d: (PROSEAL, PROSEAL_REF_W) for d in SLUG if d.startswith("proseal")},
        **{d: (MFAB, MFAB_REF_W) for d in SLUG if d.startswith("mfab")}}
