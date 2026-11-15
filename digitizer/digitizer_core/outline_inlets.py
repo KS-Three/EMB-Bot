@@ -208,6 +208,48 @@ TEETH_DEPTH_SPREAD = 2.0
 TIP_ENVELOPE_MM = 3.0
 #: meta key a tooth piece carries: the shape it was cut from
 TOOTH_OF_KEY = "inlet_tooth_of"
+#: a row of TEETH is regular: the spread of the pieces' areas (standard
+#: deviation over mean) at most this. Ahora's gear reads 0.07; a feathered
+#: or lobed edge that splits reads far wider, and is left a satin
+#: (2026-11-15, the crest's lobes; Director's pick: teeth only)
+TEETH_AREA_CV_MAX = 0.35
+
+
+def toothed_satins(regions, cfg, design_class: str = "flat") -> set[str]:
+    """Ids of the shapes `outline_inlets_kept` re-tiers before the plan: an
+    auto-tier non-letter shape stage 7 would sew as a satin (the same
+    `is_satin_candidate` call stage 5's `_comp_axis` makes), whose inlets are
+    `SATIN_OVER_INLET_SHARE` of its area, and whose outline `tooth_split`
+    reads as a REGULAR row of teeth (`TEETH_AREA_CV_MAX`). Geometry only: no
+    plan is read, so the design is planned once."""
+    import statistics
+    from .config import satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
+    from .machine import satin_ceiling_mm
+    from .stage6_satin import is_satin_candidate
+    satin_max = satin_ceiling_mm(cfg)
+    out: set[str] = set()
+    for r in regions:
+        if is_letter(r) or str(r.meta.get("tier", "auto")).lower() != "auto":
+            continue
+        bays = inlets(r.polygon)
+        if len(bays) < TEETH_MIN or sum(b.area for b in bays) < SATIN_OVER_INLET_SHARE * r.polygon.area:
+            continue
+        try:
+            if not is_satin_candidate(r.polygon, satin_max, design_class=design_class,
+                                      per_stroke=cfg.satin_per_stroke,
+                                      floor_applies=satin_floor_applies(cfg, design_class),
+                                      vote=satin_fill_vote(cfg), hysteresis=satin_fill_hysteresis(cfg)):
+                continue
+            split = tooth_split(r)
+        except Exception:  # noqa: BLE001 -- GEOS on a traced ring: left as it was
+            continue
+        if split is None:
+            continue
+        areas = [t.polygon.area for t in split[1]]
+        if statistics.pstdev(areas) > TEETH_AREA_CV_MAX * statistics.mean(areas):
+            continue
+        out.add(str(r.shape_id))
+    return out
 
 
 def _inlet_depth(bay: Polygon, envelope: Polygon) -> float:

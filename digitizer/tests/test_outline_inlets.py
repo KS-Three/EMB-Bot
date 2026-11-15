@@ -223,3 +223,38 @@ def test_as_fill_moves_only_the_named_shapes_on_copies():
     out = oi.as_fill([a, b], {"A"})
     assert out[0].meta["tier"] == "fill" and out[0] is not a
     assert out[1] is b and "tier" not in a.meta
+
+
+def _lobed(lobes=(0.25, 0.9, 0.4, 1.3, 0.3, 1.0), r_root=3.0, r_tip=3.8, r_hole=2.0):
+    """A ring whose protrusions differ in width from one to the next: a lobed or
+    feathered edge, not a row of teeth."""
+    pts, a = [], 0.0
+    gap = 0.35
+    for w in lobes:
+        for ang, r in ((a, r_root), (a, r_tip), (a + w, r_tip), (a + w, r_root)):
+            pts.append((r * math.cos(ang), r * math.sin(ang)))
+        a += w + gap
+    shell = Polygon(pts)
+    return Polygon(shell.exterior, [Point(0, 0).buffer(r_hole, quad_segs=32).exterior.coords])
+
+
+def test_toothed_satins_picks_a_regular_row_of_teeth_and_nothing_else():
+    """2026-11-15 (Director's pick after the crest's 4.9x STOP): the re-tier is
+    decided from geometry before the one plan, and only for REGULAR teeth."""
+    cfg = PipelineConfig()
+    gear = _gear()
+    split = oi.tooth_split(_r(gear, "G"))
+    assert split is not None
+    picked = oi.toothed_satins([_r(gear, "G")], cfg)
+    from digitizer_core.stage6_satin import is_satin_candidate  # noqa: F401 -- the call it shares with stage 5
+    assert picked in ({"G"}, set())                  # set() only if stage 7 would sew it as a fill anyway
+    lobes = _lobed()
+    s = oi.tooth_split(_r(lobes, "L"))
+    if s is not None:                                # it may split, but its pieces are not alike
+        areas = [t.polygon.area for t in s[1]]
+        import statistics
+        assert statistics.pstdev(areas) > oi.TEETH_AREA_CV_MAX * statistics.mean(areas)
+    assert oi.toothed_satins([_r(lobes, "L")], cfg) == set()
+    assert oi.toothed_satins([_r(_notched_disc(), "D")], cfg) == set()     # one notch: not teeth
+    assert oi.toothed_satins([_r(gear, "G", text_candidate=True)], cfg) == set()
+    assert oi.toothed_satins([_r(gear, "G", tier="satin")], cfg) == set()
