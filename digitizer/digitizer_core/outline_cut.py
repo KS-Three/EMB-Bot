@@ -343,6 +343,8 @@ def find_cuts(poly: Polygon, W: float):
         kept = _apex_pro_cuts(poly, W, kept, reflex, convex)
     elif _APEX_CUT.get():
         kept = _apex_cuts(poly, W, kept, reflex, convex)
+    if _APEX_PRO_JOINTS.get():    # `apex_pro_joints` (built OFF): the N's joints, a flat A's band
+        kept = _apex_pro_joint_cuts(poly, W, kept, reflex)
     return [k[:4] for k in kept], reflex, convex
 
 
@@ -942,6 +944,201 @@ def _apex_pro_column(pc: Polygon, splits, cut_lines, pitch_mm: float, W: float) 
         m = ((a[0] + b[0]) / 2 + 0.05 * n[0], (a[1] + b[1]) / 2 + 0.05 * n[1])
         if pc.contains(Point(m)):
             return _apex_column(pc, ((0.0, 0.0), (1.0, 0.0)), cut_lines, pitch_mm, W)
+    return None
+
+
+# `apex_pro_joints` (`cfg.extra["lettering_columns_apex_pro_joints"]`,
+# 2026-11-14, built OFF): the joints `apex_pro` read but did not build
+# (`docs/apex-pro-construction-2026-11-14.md`, rows 6-8). In every one the
+# right-hand stroke owns the joint, and the other ends on a LEVEL line:
+# - an N's top-left (a diagonal leaving a stem at the top): the stem's level
+#   crosses stop `APEX_PRO_NECK_W` stroke widths below the top, and the
+#   diagonal's piece takes the stem's top (its crosses fan from upright).
+# - an N's foot (a diagonal reaching a stem at the bottom): the diagonal ends
+#   on a level line `APEX_PRO_FOOT_W` W above the baseline, the stem's edge
+#   runs on down to it, and the stem's level crosses take the foot below.
+# - a flat-topped A (a counter that comes to a POINT at its top, under a
+#   straight top run of `APEX_PRO_CAP_RUN_W` W or more): a band
+#   `APEX_PRO_CAP_W` W deep across the top, crossed upright, over the legs.
+#   An O's counter is flat on top and is not an A (ProSeal's O took the band
+#   before that test).
+# The depths are read off his MARINE files, each letter registered on its
+# own thread (`tools/apex_pro.py`).
+# Each case is judged against the pro by `tools/apex_pro.py measure`. A case
+# that did not come out closer is not in this list. Layout, not a cloth
+# number (gate 1).
+_APEX_PRO_JOINTS: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_pro_joints", default=False)
+APEX_PRO_CAP_W = 0.65          # a flat A's band: his split 0.65 W below the top (MARINE)
+APEX_PRO_NECK_W = 0.95         # an N's stem stops this far below the top (MARINE's N, registered per letter)
+APEX_PRO_FOOT_W = 0.70         # an N's foot band: his level line this far above the baseline
+APEX_PRO_CAP_RUN_W = 1.5       # a top this flat (in W) is a band, not a point (Becker's A 1.8, ProSeal's 1.1)
+APEX_PRO_JOINT_CASES = ("n_top", "n_foot", "a_cap")
+
+
+@contextlib.contextmanager
+def apex_pro_joints_scope(on: bool):
+    """`cfg.extra["lettering_columns_apex_pro_joints"]` for one plan, beside
+    `apex_pro_scope`. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _APEX_PRO_JOINTS.set(True)
+    try:
+        yield
+    finally:
+        _APEX_PRO_JOINTS.reset(token)
+
+
+def _edge_dirs(r: dict):
+    """A corner record's two outline edges, as unit directions AWAY from it."""
+    return (-r["cd_in"][0], -r["cd_in"][1]), (-r["cd_out"][0], -r["cd_out"][1])
+
+
+def _off_upright(d) -> float:
+    """Degrees between direction d and the vertical (either way)."""
+    return math.degrees(math.acos(min(1.0, abs(d[1]))))
+
+
+def _stem_and_diagonal(edges, side: float) -> bool:
+    """`apex_pro_joints`: two edges leaving a crotch on one side (both up or
+    both down): one a stem's (within 25 deg of upright, not toward `side`),
+    the other a diagonal's leaning toward `side` (x sign) 20-70 deg off
+    upright, and further off it than the stem's. MARINE's N chamfers its
+    crotches: the stem's chord reads 20 deg there."""
+    a, b = edges
+    for stem, diag in ((a, b), (b, a)):
+        s, d = _off_upright(stem), _off_upright(diag)
+        if (s < 25.0 and stem[0] * side <= 0.35 and diag[0] * side > 0
+                and 20.0 < d < 70.0 and d > s + 5.0):
+            return True
+    return False
+
+
+def _clip_ray(poly: Polygon, p, d, far: float, cuts, bis=None):
+    """`_ray_hit`, stopped at the first other cut it meets."""
+    h = _ray_hit(poly, p, d, far, bis)
+    if h is None:
+        return None
+    seg = LineString([p, h])
+    for k in cuts:
+        x = seg.intersection(LineString([k[0], k[1]]))
+        for g in getattr(x, "geoms", [x]):
+            if g.geom_type == "Point" and 1e-6 < math.dist(p, (g.x, g.y)) < math.dist(p, h):
+                h = (g.x, g.y)
+    return h
+
+
+def _apex_pro_joint_cuts(poly: Polygon, W: float, cuts: list, reflex) -> list:
+    """`apex_pro_joints`: the N's two joints and a flat A's top band (notes
+    above). Records as `find_cuts`'."""
+    if W < APEX_PRO_MIN_W_MM:
+        return cuts
+    x0, top, x1, base = poly.bounds
+    drop, add = [], []
+    rf_all = corners(poly, W)[0]        # unclustered: a chamfered notch is two corners
+    for r in rf_all:
+        c = r["p"]
+        a, b = _edge_dirs(r)
+        up = [e for e in (a, b) if e[1] < 0]
+        down = [e for e in (a, b) if e[1] > 0]
+        mine = [k for k in cuts if math.dist(k[0], c) < 1e-6 or math.dist(k[1], c) < 1e-6]
+        others = [k for k in cuts if k not in mine]
+        if any(k[2].startswith("apex") for k in mine):
+            continue            # `apex_pro` (or apex_cut) already cut this joint
+        # an N's top-left: the stem's edge runs straight DOWN from the crotch,
+        # the diagonal's lower edge down-RIGHT; the junction cut runs up-left
+        # to the top along the diagonal
+        if (len(down) == 2 and "n_top" in APEX_PRO_JOINT_CASES
+                and _stem_and_diagonal(down, 1.0)):
+            y_cap = top + APEX_PRO_NECK_W * W
+            if not top + 0.3 * W < y_cap < c[1] - 0.5 * W:
+                continue
+            m = (c[0], y_cap)
+            if not _inside(poly, c, m):
+                continue
+            h = _clip_ray(poly, m, (-1.0, 0.0), 3.0 * W, others)
+            if h is None or not 0.5 * W < math.dist(m, h) < 2.0 * W:
+                continue
+            drop += mine
+            add += [(c, m, "ext", math.dist(c, m), 1), (m, h, "apex_pro_shoulder", math.dist(m, h), 1)]
+            continue
+        # an N's foot: the stem's edge runs straight UP from the crotch, the
+        # diagonal's upper edge up-LEFT
+        if (len(up) == 2 and "n_foot" in APEX_PRO_JOINT_CASES
+                and _stem_and_diagonal(up, -1.0)):
+            # his foot band is as deep as his cap: the diagonal ends level
+            # `APEX_PRO_FOOT_W` W above the baseline (0.70 W on MARINE's N),
+            # the stem's edge runs on down to that line, and the stem's level
+            # crosses take the band below it
+            y_f = base - APEX_PRO_FOOT_W * W
+            if not c[1] + 0.5 * W < y_f < base - 0.3 * W:
+                continue
+            m = (c[0], y_f)
+            if not _inside(poly, c, m):
+                continue
+            h = _clip_ray(poly, m, (-1.0, 0.0), 3.0 * W, others)
+            if h is None or not 0.15 * W < math.dist(m, h) < 2.5 * W:
+                continue
+            drop += mine
+            add += [(c, m, "ext", math.dist(c, m), 1), (m, h, "apex_pro_foot", math.dist(m, h), 1)]
+            continue
+    # a flat-topped A: a counter whose apex sits under a straight top run
+    if "a_cap" in APEX_PRO_JOINT_CASES:
+        for ring in poly.interiors:
+            cs = list(ring.coords)[:-1]
+            if not cs:
+                continue
+            apex = min(cs, key=lambda q: q[1])
+            hole = Polygon(ring)
+            probe = LineString([(x0 - 1.0, apex[1] + 0.25 * W), (x1 + 1.0, apex[1] + 0.25 * W)]).intersection(hole)
+            if probe.is_empty or probe.length > 0.6 * W:
+                continue        # the counter is flat or round on top (an O), not pointed (an A)
+            run = _top_run(poly, top, W)
+            if run is None or run < APEX_PRO_CAP_RUN_W * W:
+                continue
+            y_cap = top + APEX_PRO_CAP_W * W
+            if not y_cap < apex[1] - 0.2 * W:
+                continue
+            mid = (apex[0], y_cap)
+            hl = _ray_hit(poly, (mid[0] + 1e-3, mid[1]), (-1.0, 0.0), x1 - x0 + 1.0)
+            hr = _ray_hit(poly, (mid[0] - 1e-3, mid[1]), (1.0, 0.0), x1 - x0 + 1.0)
+            if hl is None or hr is None:
+                continue
+            band = LineString([hl, hr])
+            mine = [k for k in cuts if LineString([k[0], k[1]]).crosses(band)
+                    or math.dist(k[0], apex) < 1e-6 or math.dist(k[1], apex) < 1e-6]
+            keep = []
+            for k in mine:             # a cut from the counter's apex up to the top keeps its part below the band
+                lo = k[0] if math.dist(k[0], apex) < 1e-6 else (k[1] if math.dist(k[1], apex) < 1e-6 else None)
+                if lo is None:
+                    continue
+                x = LineString([k[0], k[1]]).intersection(band)
+                if x.geom_type == "Point":
+                    keep.append((lo, (x.x, x.y), k[2], math.dist(lo, (x.x, x.y)), 1))
+            drop += mine
+            add += keep + [(hl, hr, "apex_pro_cap", math.dist(hl, hr), 1)]
+            break
+    return [k for k in cuts if k not in drop] + add
+
+
+def _top_run(poly: Polygon, top: float, W: float) -> float | None:
+    """The length of the outline's straight run along the letter's top (within
+    a twentieth of a stroke of it), or None."""
+    best = 0.0
+    cs = list(poly.exterior.coords)
+    for p0, p1 in zip(cs[:-1], cs[1:]):
+        if abs(p0[1] - top) < 0.05 * W and abs(p1[1] - top) < 0.05 * W:
+            best = max(best, abs(p1[0] - p0[0]))
+    return best or None
+
+
+def _apex_pro_cap_column(pc: Polygon, caps, cut_lines, pitch_mm: float, W: float) -> Column | None:
+    """`apex_pro_joints`: the band above a flat A's cap cut, crossed upright
+    (stationed along the line of text). None for any other piece."""
+    for a, b in caps:
+        m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2 - 0.05)
+        if pc.contains(Point(m)):
+            return _apex_column(pc, ((0.0, 0.0), (0.0, 1.0)), cut_lines, pitch_mm, W)
     return None
 
 
@@ -2925,7 +3122,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         # `apex_pro`: the leg its split line stops is often a sliver beside
         # its stem (MARINE's M), and it is his fan, not a scrap
         small = [g for g in small if not any(
-            k[2] == "apex_pro" and LineString([k[0], k[1]]).intersection(g.buffer(0.02)).length > 0.5 * k[3]
+            k[2] in ("apex_pro", "apex_pro_cap", "apex_pro_foot") and LineString([k[0], k[1]]).intersection(g.buffer(0.02)).length > 0.5 * k[3]
             for k in cuts)]
         if apex:
             # `apex_cut`: a tip piece is small by nature, and its cross is the point
@@ -2937,7 +3134,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         pc = min(small, key=lambda g: g.area)
         near = [k for k in cuts if LineString([k[0], k[1]]).intersection(pc.buffer(0.02)).length > 0.5 * k[3]
                 and not (apex and k[2] in ("apex", "apex_stub", "apex_stem"))
-                and k[2] not in ("apex_pro", "apex_pro_shoulder")]
+                and k[2] not in ("apex_pro", "apex_pro_shoulder", "apex_pro_cap", "apex_pro_foot")]
         if not near:
             break
         cuts.remove(max(near, key=lambda k: k[3]))
@@ -2971,9 +3168,15 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     columns, unsewn = [], []
     apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"] if apex else []
     apro = [(c[0], c[1]) for c in cuts if c[2] == "apex_pro"]   # `apex_pro` (built OFF): none without it
+    acap = [(c[0], c[1]) for c in cuts if c[2] == "apex_pro_cap"]   # `apex_pro_joints` (built OFF): none without it
     for pc in pieces:
         if apro:
             col = _apex_pro_column(pc, apro, cut_lines, pitch_mm, W)
+            if col is not None:
+                columns.append(col)
+                continue
+        if acap:
+            col = _apex_pro_cap_column(pc, acap, cut_lines, pitch_mm, W)
             if col is not None:
                 columns.append(col)
                 continue
