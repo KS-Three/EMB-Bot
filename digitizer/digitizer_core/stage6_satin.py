@@ -2902,7 +2902,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
                  rail_comp_floor_mm: float = 0.0,
-                 rail_held=None,
+                 rail_held=None, rail_keep=None,
                  square_ends: bool = False,
                  siblings: list | None = None) -> tuple[list, list]:
     """Cast the smoothed, unwrapped normals both ways to find the two rails.
@@ -3535,7 +3535,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
         i = j
     if rail_comp_mm > 0:
         ref_a, ref_b = _push_rails(ref_a, ref_b, poly, rail_comp_mm, rail_comp_floor_mm,
-                                   held=rail_held)
+                                   held=rail_held, keep=rail_keep)
     return ref_a, ref_b
 
 
@@ -3696,9 +3696,131 @@ def _tip_corner_angle(spine: list, poly, half_sewn: float,
 # stroke-2026-10-22`), while a thin column still needs all of it (+0.42 at 2.6 mm).
 _SEAM_HOLD_MIN_CROSS_MM = 3.0
 
+# `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14; Kent's merged-
+# letter pins, `docs/closed-counters-traced-2026-11-14.md`). The rail push
+# below holds back from a COUNTER (a hole of the shape) so it stays
+# `floor_mm` wide, but sews the full pull into every other gap the art keeps:
+# the bays of an S, the slots between an E's arms, the gap to the next
+# letter or pane of the same thread. Gaulke's E and S kept their 1.0 and
+# 0.78 mm gaps through stage 5 and lost them here (thread 0.1 and 0.0 mm,
+# the pro's 0.36 and 0.36). ON, the same rule reads those gaps: a ray from
+# the rail along its push that leaves the shape and meets the shape again,
+# or meets other ink of the same thread, is a gap, held exactly as a
+# counter is. The pull's size is untouched (gate 1); this is where it goes.
+#: same-thread ink this close to the shape is the shape's own edge, not a
+#: neighbour (mm): the artwork polygon and the polygon a rail is cast on
+#: differ by raster lean
+PUSH_KEEP_MARGIN_MM = 0.25
+#: rays per numpy block in `_kept_limits` (bounds the rays x edges arrays)
+_KEEP_RAY_BLOCK = 256
+
+
+def _ring_segments(geom) -> np.ndarray:
+    """Every edge of every polygon in `geom` as rows (ax, ay, bx, by)."""
+    import shapely
+    if geom is None or geom.is_empty:
+        return np.zeros((0, 4))
+    parts = shapely.get_parts(shapely.get_parts(geom))       # a collection's multis too
+    polys = parts[shapely.get_type_id(parts) == 3]
+    if not len(polys):
+        return np.zeros((0, 4))
+    xy, idx = shapely.get_coordinates(shapely.get_rings(polys), return_index=True)
+    same = idx[1:] == idx[:-1]                                # consecutive points of one ring
+    return np.hstack([xy[:-1][same], xy[1:][same]])
+
+
+def _segs_in_box(segs: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> np.ndarray:
+    """The edges whose bounding box meets the box [lo, hi]."""
+    if len(segs) == 0:
+        return segs
+    x0, x1 = np.minimum(segs[:, 0], segs[:, 2]), np.maximum(segs[:, 0], segs[:, 2])
+    y0, y1 = np.minimum(segs[:, 1], segs[:, 3]), np.maximum(segs[:, 1], segs[:, 3])
+    return segs[(x1 >= lo[0]) & (x0 <= hi[0]) & (y1 >= lo[1]) & (y0 <= hi[1])]
+
+
+def _ray_hits(starts: np.ndarray, dirs: np.ndarray, segs: np.ndarray, reach: float) -> np.ndarray:
+    """(rays, edges): distance along each unit ray to each edge it crosses
+    within `reach`, NaN where it does not."""
+    if len(segs) == 0 or len(starts) == 0:
+        return np.full((len(starts), 0), np.nan)
+    a, e = segs[:, :2], segs[:, 2:] - segs[:, :2]
+    den = dirs[:, None, 0] * e[None, :, 1] - dirs[:, None, 1] * e[None, :, 0]
+    wx = a[None, :, 0] - starts[:, None, 0]
+    wy = a[None, :, 1] - starts[:, None, 1]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = (wx * e[None, :, 1] - wy * e[None, :, 0]) / den
+        s = (wx * dirs[:, None, 1] - wy * dirs[:, None, 0]) / den
+    ok = (np.abs(den) > 1e-12) & (s >= -1e-9) & (s <= 1.0 + 1e-9) & (t >= -1e-9) & (t <= reach)
+    return np.where(ok, np.clip(t, 0.0, reach), np.nan)
+
+
+def _kept_limits(rail_a: list, rail_b: list, poly: Polygon, other, reach: float,
+                 pull_mm: float, floor_mm: float) -> tuple[np.ndarray, np.ndarray]:
+    """`satin_push_keeps_gaps`: per cross, the most each rail may be pushed
+    so the bare fabric its push crosses first keeps `floor_mm` (inf: no gap).
+
+    A gap is the first stretch of a rail's outward ray that lies outside
+    `poly`, starting within the push, and closed by `poly` itself (a bay) or
+    by `other` (same-thread ink) inside `reach`. Its width along the ray is
+    shared by the two sides that push into it, as a counter's is. One numpy
+    ray-edge pass and one vectorised containment test per block of rays."""
+    import shapely
+    pa, pb = np.asarray(rail_a, float), np.asarray(rail_b, float)
+    n = len(pa)
+    dv = pa - pb
+    dl = np.hypot(dv[:, 0], dv[:, 1])
+    good = dl >= 1e-9
+    u = np.zeros_like(dv)
+    u[good] = dv[good] / dl[good, None]
+    starts, dirs = np.vstack([pa, pb]), np.vstack([u, -u])
+    valid = np.concatenate([good, good])
+    lim = np.full(2 * n, np.inf)
+    psegs = _ring_segments(poly)
+    osegs = _ring_segments(other)
+    shapely.prepare(poly)
+    for b0 in range(0, 2 * n, _KEEP_RAY_BLOCK):
+        deadline.check("satin rail push keep")
+        rays = [r for r in range(b0, min(2 * n, b0 + _KEEP_RAY_BLOCK)) if valid[r]]
+        if not rays:
+            continue
+        # only the edges inside the block's reach can be crossed
+        ends = np.vstack([starts[rays], starts[rays] + dirs[rays] * reach])
+        lo, hi = ends.min(axis=0) - 1e-6, ends.max(axis=0) + 1e-6
+        rays = np.asarray(rays)
+        tp = _ray_hits(starts[rays], dirs[rays], _segs_in_box(psegs, lo, hi), reach)
+        to = _ray_hits(starts[rays], dirs[rays], _segs_in_box(osegs, lo, hi), reach)
+        # past the rail, nothing: the ray leaves into open fabric
+        live = (tp > 0.05).any(axis=1) | ~np.isnan(to).all(axis=1)
+        if not live.any():
+            continue
+        rays, tp, to = rays[live], tp[live], to[live]
+        # the ray's crossings of the shape's edge cut it into spans, in order
+        hits = np.sort(np.where(np.isnan(tp), np.inf, tp), axis=1)
+        k = int(np.isfinite(hits).sum(axis=1).max()) if hits.size else 0
+        cuts = np.minimum(np.hstack([np.zeros((len(rays), 1)), hits[:, :k],
+                                     np.full((len(rays), 1), reach)]), reach)
+        d0, d1 = cuts[:, :-1], cuts[:, 1:]
+        real = (d1 - d0) >= 1e-6
+        mid = 0.5 * (d0 + d1)
+        sx = starts[rays, 0][:, None] + dirs[rays, 0][:, None] * mid
+        sy = starts[rays, 1][:, None] + dirs[rays, 1][:, None] * mid
+        inside = np.ones_like(real)
+        inside[real] = shapely.contains_xy(poly, sx[real], sy[real])
+        out = real & ~inside
+        has = out.any(axis=1)
+        first = out.argmax(axis=1)                    # the first span outside the shape
+        rows = np.arange(len(rays))
+        near, far = d0[rows, first], d1[rows, first]
+        end = np.where(far < reach - 1e-6, far, np.inf)
+        within = (to >= near[:, None] - 1e-9) & (to <= far[:, None] + 1e-9)
+        end = np.minimum(end, np.where(within, to, np.inf).min(axis=1, initial=np.inf))
+        held = has & (near <= pull_mm) & np.isfinite(end)
+        lim[rays[held]] = np.minimum(pull_mm, np.maximum(0.0, (end[held] - near[held] - floor_mm) / 2.0))
+    return lim[:n], lim[n:]
+
 
 def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
-                floor_mm: float, held=None) -> tuple[list, list]:
+                floor_mm: float, held=None, keep=None) -> tuple[list, list]:
     """Move every real cross's two rails outward along the cross by `pull_mm`
     each -- the rail-side form of stage 5's `poly.buffer(pull)`.
 
@@ -3725,10 +3847,37 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
     so without this the last-sewn colour is the only one that keeps its pull:
     the flag's white stripes sewed 4.53 mm against the red's visible 3.57 mm,
     from equal 4.05 mm artwork (2026-10-30).
+
+    `keep` (None: off): the same-thread ink near the shape, the shape's own
+    artwork included, or (that ink, the floor in mm a gap keeps; else
+    `floor_mm`). Given, a push is also held where the ray crosses bare
+    fabric into the shape itself (a bay) or into that ink (comment at
+    `PUSH_KEEP_MARGIN_MM`).
     """
     holes = [Polygon(ring) for ring in poly.interiors]
     holes = [h for h in holes if not h.is_empty]
     reach = 2.0 * pull_mm + floor_mm + 0.5
+    # `keep` (`cfg.extra["satin_push_keeps_gaps"]`, built OFF; None is the
+    # engine as it was): the counter rule above for the gaps a counter test
+    # cannot see -- comment at `PUSH_KEEP_MARGIN_MM`
+    kept_a = kept_b = None
+    if isinstance(keep, tuple):                       # (ink, the floor a gap keeps)
+        keep, keep_floor = keep
+    else:
+        keep_floor = floor_mm
+    if keep is not None:
+        other = None
+        if not keep.is_empty and rail_a:
+            # only the ink within the column's reach: clip before the overlay
+            import shapely
+            xy = np.asarray(list(rail_a) + list(rail_b), float)
+            (x0, y0), (x1, y1) = xy.min(axis=0) - reach - 1.0, xy.max(axis=0) + reach + 1.0
+            near_ink = shapely.clip_by_rect(keep, x0, y0, x1, y1)
+            if not near_ink.is_empty:
+                own = shapely.clip_by_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
+                o = near_ink.difference(own.buffer(PUSH_KEEP_MARGIN_MM))
+                other = None if o.is_empty else o
+        kept_a, kept_b = _kept_limits(rail_a, rail_b, poly, other, reach, pull_mm, keep_floor)
 
     def room(p: tuple, ux: float, uy: float) -> float:
         if not holes:
@@ -3754,7 +3903,7 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         return min(k, held[1].distance(SPoint(p)))
 
     out_a, out_b = [], []
-    for pa, pb in zip(rail_a, rail_b):
+    for i, (pa, pb) in enumerate(zip(rail_a, rail_b)):
         deadline.check("satin rail push")
         dx, dy = pa[0] - pb[0], pa[1] - pb[1]
         d = math.hypot(dx, dy)
@@ -3765,6 +3914,8 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         ux, uy = dx / d, dy / d
         ka = room(pa, ux, uy)
         kb = room(pb, -ux, -uy)
+        if kept_a is not None:
+            ka, kb = min(ka, float(kept_a[i])), min(kb, float(kept_b[i]))
         if held is not None and d >= _SEAM_HOLD_MIN_CROSS_MM:
             ka = held_push(pa, ux, uy, ka)
             kb = held_push(pb, -ux, -uy, kb)
@@ -4844,7 +4995,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   fold_guard: bool = False,
                   rail_comp_mm: float = 0.0,
                   rail_comp_floor_mm: float = 0.0,
-                  rail_held=None,
+                  rail_held=None, rail_keep=None,
                   cap_skew_inset: bool = False,
                   junction_stack: bool = False,
                   cap_recentre: bool = False,
@@ -4911,7 +5062,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              free_end_square=free_end_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                             rail_held=rail_held, cap_skew_inset=cap_skew_inset,
+                             rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
                              tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=member_sibs,
                              # only the joined stroke's OUTER ends are free
@@ -4964,7 +5115,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  fold_guard: bool = False,
                  rail_comp_mm: float = 0.0,
                  rail_comp_floor_mm: float = 0.0,
-                 rail_held=None,
+                 rail_held=None, rail_keep=None,
                  cap_skew_inset: bool = False,
                  junction_stack: bool = False,
                  cap_recentre: bool = False,
@@ -5032,7 +5183,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              free_end_square=free_end_square,
                              max_width_mm=max_width_mm, fold_guard=fold_guard,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                             rail_held=rail_held, cap_skew_inset=cap_skew_inset,
+                             rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
                              tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
 
@@ -5067,7 +5218,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                   rails_follow_edge=rails_follow_edge, outer_rail_pitch=outer_rail_pitch,
                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                   rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                  rail_held=rail_held, cap_skew_inset=cap_skew_inset,
+                  rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                   junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate)
         arm = Stroke(spine=raw, free_start=stroke.free_start, free_end=stroke.free_end,
                      closed=False, capped_start=stroke.capped_start, capped_end=stroke.capped_end,
@@ -5287,7 +5438,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                                   rail_comp_mm=rail_comp_mm,
                                   rail_comp_floor_mm=rail_comp_floor_mm,
-                                  rail_held=rail_held,
+                                  rail_held=rail_held, rail_keep=rail_keep,
                                   square_ends=cap_skew_inset,
                                   siblings=siblings)
     crosses = _short_stitch_guard(rail_a, rail_b)
@@ -6791,7 +6942,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 fold_guard: bool = False,
                 rail_comp_mm: float = 0.0,
                 rail_comp_floor_mm: float = 0.0,
-                rail_held=None,
+                rail_held=None, rail_keep=None,
                 cap_skew_inset: bool = False,
                 polygon_axis: bool | str = False,
                 stroke_order: str = "nearest",
@@ -6994,7 +7145,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                              free_end_square=free_end_square,
                      max_width_mm=max_width_mm, fold_guard=fold_guard,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
-                     rail_held=rail_held, cap_skew_inset=cap_skew_inset,
+                     rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
                      tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
         mixed = len(parts) > 1
