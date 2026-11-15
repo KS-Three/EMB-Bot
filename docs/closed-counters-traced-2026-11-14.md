@@ -115,18 +115,49 @@ pull's size is untouched (gate 1); the flag decides where it goes.
 | Gaulke E | 0.10 | 0.82 | 0.36 | 0.36 | both ON arms: the arms read apart; `0.5` looks like the pro's |
 | Gaulke S | 0.00 | 0.67 | 0.28 | 0.36 | both bays open, reads S; `0.5` looks like the pro's |
 | Gaulke window | 0.22 | 0.54 | 0.50 | 0.73 | the vertical divider opens; the horizontal one stays shut (those panes are fills) |
-| TOAT T against the border | 0.60 | 0.98 | not run | 0.32 | ON: the bar stands clear of the line |
+| TOAT T against the border | 0.60 | 0.98 | as OFF | 0.32 | `true`: the bar stands clear of the line. `0.5`: still touching, as in the pro's own file |
 | ProSeal S | | | | | no visible change in either arm (a re-set small S; thread width) |
 | Bridge, MFab, k_line, bukit, Fremont | | | | | no visible change: their causes are above |
 
-So the flag cures 3 of Kent's pins outright (Gaulke E and S, TOAT T) and one
-in half (Gaulke's window). The `0.5` floor lands on the pro's own gap at the E
-(0.36 against 0.36) and near it at the S (0.28 against 0.36); `true` opens
-both about twice as wide as he did.
+`true` cures 3 of Kent's pins outright (Gaulke E and S, TOAT T) and one in
+half (Gaulke's window). It opens the E and S about twice as wide as the pro.
+
+`0.5` lands on the pro's own gap at the E (0.36 against 0.36) and near it at
+the S (0.28 against 0.36). It leaves the TOAT T touching the border, as the
+pro's file does there.
 
 *(measured 2026-11-14 — `runs/*_on/pins.jsonl`, `runs/*_on05/pins.jsonl`)*
 
-GUARDS_SECTION
+## What else moves (whole design, OFF → ON)
+
+Share of the render's pixels that change, and stitch count.
+
+| Design | `true` | `0.5` | By eye, `true` |
+|---|---|---|---|
+| Gaulke | 3.85%, 7413 → 7373 | 0.35%, 7413 → 7419 | letter bays and the roof band's inner edge near its apex; nothing reads worse |
+| TOAT beanie | 2.48%, 18081 → 18055 | 0.07%, 18081 → 18081 | the T clears the border. **Catch: the parallel speed-line bars sew thinner**: their facing sides are a same-thread gap under the floor, so they lose the pull there |
+| bukit_asam | 2.52% | | the rings' satin edges; still merged |
+| MFab | 1.81% | | AND WELDING's edges; no visible gain or loss |
+| Becker (guard) | 0.21%, 16049 → 16023 | 0.04%, 16049 → 16041 | MARINE's letter edges; nothing reads worse |
+| Jakarta (guard) | 0.83%, 3100 → 3097 | 0.57%, 3100 → 3106 | the edges of k, a and t; nothing reads worse |
+| Ahora (guard) | 0.42%, 9208 → 9206 | AHORA05 | round the O; nothing reads worse |
+| hed_p_e (guard) | 0.01% | | nothing |
+| Bridge, ProSeal, k_line, Fremont | 0.4-0.9% | | edges only |
+
+*(measured 2026-11-14 — `scripts/guard_sheet.py`, sheets in `counters-1114/sheets/`)*
+
+**Cost.** ON spends about ten times as long in `_push_rails` (Gaulke: 1 s
+OFF, 11-12 s ON, one shared generation, a loaded laptop); stage 7 rose from
+about 35 to 50-60 s there. Built OFF this costs nothing. It wants a faster
+ray test (one vectorised pass per column) before any flip.
+
+## Kent's pick
+
+1. `0.5`: what the pro left open at Gaulke's E and S. It moves least
+   (0.04-0.35% of a design), and the T stays on the border as in his file.
+2. `true`: every gap under 1.5 mm keeps all of it. It clears the T, opens E
+   and S wider than the pro, and thins close parallel bars.
+3. Keep OFF.
 
 ## Not done
 
