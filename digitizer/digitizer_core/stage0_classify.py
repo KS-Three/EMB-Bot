@@ -83,6 +83,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from . import deadline
 from .alpha_edge import extend_opaque_colour, extension_applies
 from .config import PipelineConfig
 from .crop import apply_crop
@@ -273,6 +274,12 @@ def _kmeans_lab(lab: np.ndarray, k: int, seed: int, iters: int = 40,
 def _assign(lab: np.ndarray, centers: np.ndarray, chunk: int = 200_000) -> np.ndarray:
     out = np.empty(len(lab), np.int32)
     for s in range(0, len(lab), chunk):
+        # A Cancel lands here, not after the whole classification: k-means
+        # calls this once an iteration, and on Tires at 114 mm the nine calls
+        # were 3.7 of classify's 6.4 s, all before stage 0's first check
+        # (2026-11-14, `tools/flip_timing.py`). A check reads a clock and
+        # moves no number.
+        deadline.check("stage 0 colour mass")
         block = lab[s:s + chunk]
         d = ((block[:, None, :] - centers[None, :, :]) ** 2).sum(2)
         out[s:s + chunk] = np.argmin(d, axis=1)
