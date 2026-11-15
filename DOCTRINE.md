@@ -34,6 +34,22 @@ Moved verbatim 2026-08-28 — no section was rewritten in the move.
 
 ## Standing rulings — decided, do not re-litigate
 
+- **The target is what the pro's file sews, read stitch by stitch, and "closer" gets a number. Kent, 2026-11-14.**
+  On the apex sheet (`apex-guard-1114/sheets/gain_becker_hat_large.png`) he
+  withdrew his own "Flip both ON" for `lettering_columns_apex_cut` + its guard:
+  "Off was closer to the pros here, but still not perfect, let's get an agent
+  working on this." and "I want it exactly like the pros." The director had
+  described the pro's M's V as "level crosses"; it is not. Read stitch by
+  stitch (`tools/apex_pro.py`, all five Becker files), the right leg owns the
+  point and the left leg is one fan stopping on a split line, and neither OFF
+  nor ON sewed that. **What to do:** where a pro file exists, read the pro
+  panel with an instrument (angle error and split-line offset at the joint,
+  gap mm, stitch spacing), not a one-line description by eye, and put the
+  OFF | ON | pro closeness in numbers on the sheet before a flip is offered.
+  A tidier idea of the pro's file is not the target.
+  *(ruled 2026-11-14 — Kent, relayed by the director; measured 2026-11-14 —
+  `docs/apex-pro-construction-2026-11-14.md`, memory `apex-pro-2026-11-14`)*
+
 - **`satinSmallShapes` is ON whole: a sharp tip is capped like a round end. Kent, 2026-10-20.**
   Asked with the OFF-beside-ON sheet in front of him
   (`docs/renders/browser-satin-small-shapes/`) whether to flip the browser's
@@ -9636,3 +9652,48 @@ CPU against 7.0–7.6 s on the GPU. Only a worker kept alive between jobs would
 pay. The opt-in is on unmerged `feat/sam2-device-opt-in` (commit `102854dc`);
 SAM2 stays off by default (`photo_segment_sam2`). *(measured 2026-11-13 —
 memory `robust-pc-sweep-2026-11-13`)*
+
+
+## 2026-11-15 — Four ways a night of parallel flips went wrong, and the rule each leaves
+
+The 2026-11-13/14 director nights ran about twelve workers and merged about
+eighty PRs. Each of these cost a session or put a wrong claim in front of Kent.
+
+- **A flip PR checks ALL its flags together, on every design any of them
+  touches.** `outline_redraw_k` 0.75 and `group_consistent_outline_body` were
+  each clean alone on MFab. Together the redraw's re-fit moved two letters'
+  widths inside the outline-body vote's margin, tipped the hat's small line
+  (113.5 mm) into outline bodies, and white borders sewed over the black
+  letters. A guard (#1517) was needed before the second could flip.
+  **What to do:** one combined run of the flip PR's whole flag set on every
+  affected design, OFF | ON beside the art, before it is offered.
+  *(measured 2026-11-14 — PR #1517, memory `group-consistency-2026-11-13`,
+  `outline-body-guard-2026-11-14`)*
+- **Code a flip turns ON gets a timing and Cancel pass the same day.** Review
+  found two Cancel-latency regressions in #1515's newly-ON code (a 3.12 s
+  stretch without a `deadline.check` on a Becker ring in the redraw; the group
+  code's pair loops), fixed in #1521 and #1524. The timing pass found the
+  redraw the one flip costing over 15% CPU (To a T machine x1.52), and gaps
+  of 6-15 s in older code (classify, the script lane, the art-outline search,
+  stage 1's intrusion warning). **What to do:** time the corpus with the flip
+  and without it, read CPU seconds rather than wall on a shared laptop (wall
+  ran 2-4x CPU), and measure the longest stretch between checks
+  (`tools/flip_timing.py`) before the flip PR merges.
+  *(measured 2026-11-14 — PRs #1521, #1524, #1546)*
+- **Judge at the sizes the Studio picks, through the real upload path.** The
+  eye sweep fitted designs with `crop` null and reported auto-fit sewing
+  Gaulke 29.6 mm wide (the pro 114.2); the director repeated it to Kent as the
+  biggest find after checking only the `fitTargetWidthMm` call. The Studio's
+  `DigitizePanel.ingestFile` runs `proposeCrop` first: Gaulke fits 113.5 mm.
+  The real bug was smaller (14 of 126 fits off by more than 5%, fixed in
+  #1542). **What to do:** drive a size claim through `ingestFile` (or the
+  service with the Studio's crop), and read the code path end to end before
+  repeating a worker's headline.
+  *(corrected 2026-11-14 — PR #1542, `eye_pairs_out/director-1113/REPORT.md`)*
+- **Many PRs at once collide on the memory index.** Thirteen PRs went dirty
+  in one evening: each added a line to `.claude/memory/MEMORY.md` (and some to
+  `MASTER_SCOPE.md`) at the same place. **What to do:** on a night of parallel
+  workers, no PR edits `.claude/memory/`, `MASTER_SCOPE.md` or `docs/scope/`;
+  each puts its note text in the PR body under "Memory note", and ONE docs PR
+  files them all the next day.
+  *(measured 2026-11-14 — the director's report; filed 2026-11-15 — this PR)*

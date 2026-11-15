@@ -361,8 +361,53 @@ He picked each option on its sheet. *(ruled 2026-11-14 — Kent, relayed by the 
    - At most 4 of the director's workers at once, Opus. Stop at 90% usage or
      under 10 GB of disk.
 
-Flips 1 to 5 land in their own PR. Until that merges, every flag on this page
-is still OFF on main.
+Flips 1 to 5 merged in #1515, except `group_consistent_thread` and
+`_outline_body`, which waited for a guard each (#1516, #1517) and went ON in
+#1554 ("Flip ON with guard"). The edge-walk and the corner fold went ON in
+#1533. *(merged 2026-11-14/15 — `git log origin/main`)*
+
+## Kent's rulings, 2026-11-15
+
+From his review, about 00:45 to 01:10. He picked each option on its sheet.
+*(ruled 2026-11-15 — Kent, relayed by the director,
+`eye_pairs_out/director-1113/REPORT.md`)*
+
+1. Letter joints like the pro (`lettering_columns_apex_pro`,
+   `_apex_pro_joints`, `_corner_fold_cap_flared`): "Flip all three ON".
+2. MFab's A counter (`border_significant_ring_room`, `counter_fan_satin`):
+   "Both ON, keep 5.0". The 5.0 mm satin ceiling stays (gate 1).
+3. Gaulke gaps (`satin_push_keeps_gaps` at 0.5, `compact_satin_keeps_gaps`):
+   "Flip both, value 0.5".
+4. Fremont small text (`small_text_reset_ground_ring`,
+   `small_text_reset_bean_follows`): "Flip both ON".
+5. `fine_bar_survive` + `small_text_handover`: "Flip both ON".
+6. Ticked ON: `speck_prune`, `stroke_bridge_keep`, `lone_glyph_keep`, and
+   "K-Line box + gear flags" (`outline_frame_guard`, `outline_inlets_kept`,
+   `outline_inlets_teeth`). The director had advised holding that last group
+   for a combined check and a quiet-machine timing run; both are STOP
+   conditions in its flip PR. `tiny_detail_keep` stays OFF.
+7. Ticked ON: `lettering_columns_lean_flat_ends`,
+   `lettering_columns_ring_floor`. `lettering_columns_rail_pair_bars` stays
+   OFF.
+8. Ticked ON: `point_touch_split`. NOT ticked: building tiny marks as run
+   stitch (not to be built).
+
+Every flag above was ruled ON 11-15; its flip is pending (five flip PRs, other
+workers). Until each merges, the flag is still OFF on main.
+
+**Stay OFF, no ruling asked** (the workers' and the director's pick):
+- `photo_work_grid` moves the fault. It cures MFab at 60 to 100.8 mm and breaks
+  it at 113.5. A guard is the fix.
+- `curve_chord_stage4` reaches lettering. Build it for non-lettering shapes
+  only.
+- `outline_redraw_grow_mm` fattens MFab's keyline.
+- `bevel_ring_fold` stays the Studio tick, not a default.
+- `proofread_guard_clipped`.
+
+**Still his, and each needs a sew-out:**
+- 5.0 vs 5.7 mm satin for the fan;
+- small satin counters (Fremont's date in satin);
+- dots under 0.9 mm (Bukit).
 
 ## Decisions that were waiting for Kent (before his 11-14 rulings)
 

@@ -84,3 +84,5 @@ greys inset in the black badge each sit in a hole of their own, and folding them
 the scene.
 
 Related: [[regular-structure-2026-11-13]], [[eye-first-diagnosis-2026-11-13]].
+
+**11-14 (#1553):** #1535's "ramp sews its deeper end" now also needs the tones to meet inside 2+ separate shapes (`RAMP_MIN_OBJECTS`): the isometric icon's two touching sausages are not a ramp. The pro's Drone left scene is a redraw (light sky sewn dark slate), not a fold. `bevel_ring_fold` stays the Studio tick, not a default (11-15).

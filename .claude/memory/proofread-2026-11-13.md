@@ -71,3 +71,5 @@ the alpha-hole error above. See the PR for the sheets and plan-time cost.
 
 Pictures: primary checkout `digitizer/eye_pairs_out/proofread-1113/`. Next:
 tag the untagged departures (outline loop, Column lane, sliver prune).
+
+**11-15:** `proofread_guard_clipped` stays OFF (no ruling asked).

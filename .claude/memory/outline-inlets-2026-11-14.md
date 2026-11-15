@@ -45,3 +45,5 @@ short fill rows reads rougher than the OFF satin: a flip is Kent's, from the
 `art | OFF | ON` sheets. Satin rails that follow teeth were NOT built: the
 envelope drops short reaches on purpose (`_drop_short_reaches`). Related:
 [[fat-ink-ledger-2026-11-14]], [[jag-source-2026-11-13]].
+
+**Kent 2026-11-15:** ticked ON, the "K-Line box + gear flags" group (`outline_frame_guard`, `outline_inlets_kept`, `outline_inlets_teeth`; [[outline-frame-guard-2026-11-14]]). The Director advised holding it for a combined check and a quiet-machine timing run; both are STOP conditions in the flip PR. Ruled ON 11-15, flip pending.

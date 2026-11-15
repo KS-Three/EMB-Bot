@@ -34,3 +34,5 @@ outline. On: 8 of 11 other pro jobs byte-identical (see the PR for the list).
 
 The flip is Kent's. Next lever if wanted: the lost beanie bar keeps its
 narrow trace and sews a thin tail at one end.
+
+**Kent 2026-11-15:** "Flip both ON" (`fine_bar_survive` and `small_text_handover`, [[small-text-handover-2026-11-14]]). Ruled ON 11-15, flip pending.
