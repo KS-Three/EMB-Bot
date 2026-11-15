@@ -265,3 +265,4 @@ live index; new archive lines go at the bottom.
 - [Pro-sized lettering sitting](pro-size-lettering-sitting-2026-11-02.md) — pro-lettering-1102, 56 live pairs, 8 one-flag arms; Kent sat 11-03: trims control did NOT replicate, repeats unstable (3 of 4), no flip
 - [Nightly tripwire](nightly-tripwire-2026-11-02.md) — 18 committed pairs (Becker x5 + the zip's 13) nightly on main vs testdata/tripwire_ledger.json; tolerance = spread of 3 runner passes; wrong-way past it = red; never a PR check
 - [Studio no silent fallback](studio-no-silent-fallback-2026-11-02.md) — image + service down: keep art, Retry / Use browser engine; results name engine
+- [Holes override](holes-override-2026-11-03.md) — contract v1.9 `holes_override` (service half): replaces interior rings, [] = solid, absent = carry-over; Studio half next
