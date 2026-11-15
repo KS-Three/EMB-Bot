@@ -26,6 +26,8 @@ mitre on the leaned stations against the house cross.
 - The N's foot gap to the baseline: 0.534 -> 0.428 mm.
 - #10 and #11 read flat by eye.
 - ProSeal #2's fan and Gaulke #2's stagger are not built.
+- Corpus, flag alone: 21 of 28 designs move, trims 592 -> 594 (N Sync +1),
+  travel on thread 263.8 -> 261.4 mm but mixed; k_line #4 not cured.
 
 **Why:** Kent: "The letters should be flat".
 **How to apply:** a re-stationing pass must keep the end constructions the
