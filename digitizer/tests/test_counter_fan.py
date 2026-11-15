@@ -72,6 +72,33 @@ def test_runs_are_underlay_then_one_satin():
     assert abs(float(np.linalg.norm(b - a)) - (4.5 + 0.6)) < 1e-6
 
 
+def test_one_penetration_per_cross_end_no_pile_up():
+    """Rails strictly alternate (`stage6_satin`'s A1, B1, A2, B2), stations at
+    the satin spacing: every satin stitch is a cross, none a step along a
+    rail, and the needle never comes down more than three times within
+    0.3 mm -- his crowd on MFab at 90 mm. Before 2026-11-15: half-spacing
+    stations writing both ends (A, B, B, A), a 0.12 mm step stitch on the
+    inner rail between every two crosses, and 7 penetrations within 0.3 mm."""
+    runs, rep = counter_fan_runs(WEDGE, "S1", pull_mm=0.3)
+    sat = np.asarray(runs[1].points, float)
+    steps = np.linalg.norm(np.diff(sat, axis=0), axis=1)
+    assert steps.min() > 1.0                                # no step stitch: every one crosses
+    d = np.linalg.norm(sat[:, None] - sat[None], axis=2)
+    assert int((d < 0.3).sum(axis=1).max()) <= 3
+    # the outer rail at the satin spacing: one cross per 0.4 mm of it
+    outer_len = math.hypot(4.5, 6.5)
+    assert abs(rep["counter_fan_crosses"] - outer_len / machine.SATIN_SPACING_MM) <= 2
+
+
+def test_underlay_legs_at_the_pros_pitch():
+    """His underlay legs on MFab at 90 mm advance 0.6-0.9 mm of the outer rail
+    each; ours one every 2 mm before 2026-11-15."""
+    runs, _rep = counter_fan_runs(WEDGE, "S1")
+    legs = len(runs[0].points) - 1
+    outer_len = math.hypot(4.5, 6.5)
+    assert outer_len / legs < 1.0
+
+
 def test_the_ceiling_is_the_machine_constant(monkeypatch):
     """The ceiling is a parameter that READS `machine.SATIN_MAX_WIDTH_MM`;
     the constant itself is gate 1 and is not touched here."""
