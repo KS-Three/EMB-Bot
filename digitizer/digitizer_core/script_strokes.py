@@ -110,7 +110,7 @@ from functools import lru_cache
 import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 
-from . import stitches
+from . import deadline, stitches
 
 # ------------------------------------------------------------------ the door
 #: bbox width over height: the letter door's own aspect ceiling, read the
@@ -837,6 +837,11 @@ def _stations(poly: Polygon, stroke: PenStroke, half: float, pitch_mm: float,
     m = max(1, int(round(half / step)))
     crosses = []
     for i, p in enumerate(pts):
+        # A Cancel lands between crosses: on Tires at 114 mm this loop's
+        # boundary reads were 3.3 s of one script word, with no check from
+        # stage 7's per-shape one to the satin rail push (2026-11-14,
+        # `tools/flip_timing.py`). A check reads a clock, moves no number.
+        deadline.check("script stations")
         if not poly.covers(Point(p)):
             continue
         if stroke.closed:
@@ -1048,13 +1053,16 @@ def script_columns(poly: Polygon, pitch_mm: float, ink=None, crowd_pull_mm: floa
     grid = polygon_grid(poly)
     if grid is None:
         return [], [], None
+    deadline.check("script ink grid")
     inked = ink_grid(ink, poly)
     if inked is not None:
+        deadline.check("script skeleton")
         # the ink's path stands only if it is a pen line, not the artwork's
         # texture: no more than `INK_EDGES_RATIO_MAX` the polygon's edges
         if len(_skeleton(inked)[0]) <= (INK_EDGES_RATIO_MAX * len(_skeleton(grid)[0])
                                         + _INK_EDGES_SLACK):
             grid = inked
+    deadline.check("script pen strokes")
     strokes, half = pen_strokes(grid)
     raw = []
     for st in strokes:
