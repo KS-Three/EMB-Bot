@@ -3943,6 +3943,20 @@ class PipelineConfig:
     # `pipeline.plan_stitches` (`outline_cut.apex_cut_scope`).
     # Tests: `tests/test_column_apex_cut.py`.
     lettering_columns_apex_cut: bool = False
+    # The M's V sewn as the pro sews it (`outline_cut._APEX_PRO`, 2026-11-14,
+    # #1526; built OFF as `cfg.extra["lettering_columns_apex_pro"]`). At a
+    # down-pointing V the right-hand leg owns the point -- level crosses from
+    # the point up the V and on up that leg -- and the other leg stops on a
+    # split continuing that leg's inner edge, its fan covering its stem's top
+    # (`docs/apex-pro-construction-2026-11-14.md`). **ON since 2026-11-15,
+    # Kent's flip** ("Flip all three ON", with `lettering_columns_apex_pro_joints`
+    # and `lettering_columns_corner_fold_cap_flared`; told: the E's bottom-left
+    # a little further from the pro at the two large Becker sizes, LC large's A
+    # left leg re-slants, his I's flared top is not capped), promoted from
+    # `cfg.extra` to a field so the default can be ON. False is the cut as it
+    # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin
+    # it False. Tests: `tests/test_column_apex_pro.py`.
+    lettering_columns_apex_pro: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
