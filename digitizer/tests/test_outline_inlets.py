@@ -40,10 +40,8 @@ def _gear(teeth=12, r_root=3.0, r_tip=3.8, r_hole=2.0):
     for k in range(teeth):
         a0 = 2 * math.pi * k / teeth
         a1 = a0 + math.pi / teeth
-        a2 = a0 + 2 * math.pi / teeth
         for a, r in ((a0, r_root), (a0, r_tip), (a1, r_tip), (a1, r_root)):
             pts.append((r * math.cos(a), r * math.sin(a)))
-        del a2
     shell = Polygon(pts)
     return Polygon(shell.exterior, [Point(0, 0).buffer(r_hole, quad_segs=32).exterior.coords])
 
