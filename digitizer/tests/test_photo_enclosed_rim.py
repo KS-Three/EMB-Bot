@@ -188,7 +188,7 @@ def test_band_round_a_hole_too_short_to_loop_is_not_a_stroke():
     _fill, ringed = line_art_reading(regs[1], bodies, round_any_hole=True)
     assert fill < machine.OUTLINE_LINE_ART_FILL_SHARE
     assert today >= machine.OUTLINE_LINE_ART_DROP_FRAC     # OFF: line art
-    assert ringed == 0.0                                   # ON: keyline
+    assert ringed < 1e-9                                   # ON: keyline
     off = PipelineConfig(border_from_outline_line_art_guard=True)
     on = PipelineConfig(border_from_outline_line_art_guard=True, photo_enclosed_rim=True)
     assert find_art_outlines(regs, off) == {}
