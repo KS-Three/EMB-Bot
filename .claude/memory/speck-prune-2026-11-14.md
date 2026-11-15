@@ -33,6 +33,6 @@ area / rim reads a short 0.6 mm stroke on a coarse source as under a thread.
 
 **How to apply:** `sliver_prune`'s x1.25 enlargement gate does NOT apply to
 specks (low_poly is native). Sheets:
-`digitizer/eye_pairs_out/missing-1114/sheets/`. Flip is Kent's. Related:
+`digitizer/eye_pairs_out/missing-1114/sheets/`. **Flipped ON 2026-11-15** (Kent, review pack: ticked ON; OFF arm `SPECK_2026_11_15_OFF`). Related:
 [[sliver-prune-2026-11-10]], [[transparent-white-infill-2026-11-11]],
 [[fine-bar-survive-2026-11-14]], [[proofread-2026-11-13]].

@@ -1343,7 +1343,10 @@ class PipelineConfig:
     # the weight `RUN_MIN_AREA_MM2` squares), no new stitch value: gate 1 does
     # not apply. False is the engine before the flag, byte for byte. Tests:
     # `tests/test_speck_prune.py`; doc `docs/missing-invented-traced-2026-11-14.md`.
-    speck_prune: bool = False
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (SPECK_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    speck_prune: bool = True
     # An art outline holds more than it is (built OFF 2026-11-14, Kent's
     # lt_k_line, 3 pins: "the red bean stitch should not have infill outside
     # of it", "The red box is missing here"). The red box with a white K

@@ -1011,7 +1011,8 @@ def build_generation(
     # tendrils everywhere. Off: `masks` untouched, byte for byte.
     if cfg.sliver_prune and classification.class_ not in PHOTO_CLASSES:
         masks, _pruned = sliver_prune.prune(masks, q.thread_indices, p, chart_for(cfg))
-    # `cfg.speck_prune` (built OFF 2026-11-14, Kent's low_poly "Random Black
+    # `cfg.speck_prune` (ON since 2026-11-15, Kent 2026-11-15, review pack (review-1115): ticked ON; built OFF
+    # 2026-11-14, Kent's low_poly "Random Black
     # Spot" pins): a contrasting sub-floor mask stage 3 kept that is narrower
     # than two source pixels and than the thread, wedged in the figure, goes
     # to the mask it lies in (`sliver_prune.prune_specks`). Logos only, as

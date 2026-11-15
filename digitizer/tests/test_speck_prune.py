@@ -75,8 +75,9 @@ def _run(scene, input_ppm=PPM):
     return masks, out, stats
 
 
-def test_default_is_off():
-    assert PipelineConfig().speck_prune is False
+def test_default_is_on():
+    # Kent 2026-11-15, review pack (review-1115): ticked ON
+    assert PipelineConfig().speck_prune is True
 
 
 def test_a_black_speck_on_the_facets_goes_to_the_one_it_lies_in():
