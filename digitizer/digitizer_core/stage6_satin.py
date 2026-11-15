@@ -3754,6 +3754,20 @@ def _ray_hits(starts: np.ndarray, dirs: np.ndarray, segs: np.ndarray, reach: flo
     return np.where(ok, np.clip(t, 0.0, reach), np.nan)
 
 
+def _clip_rect(geom, x0: float, y0: float, x1: float, y1: float):
+    """`shapely.clip_by_rect`, or a plain intersection with the box where GEOS
+    refuses the fast clip's three-point ring (`stage6_fill.SewnCover.clipped`
+    met the same refusal). Found when `satin_push_keeps_gaps` 0.5 was flipped
+    (2026-11-15): `test_preflight`'s full-bleed design raised in `_push_rails`
+    on CI. A clip GEOS accepts is returned untouched."""
+    import shapely
+    from shapely.geometry import box
+    try:
+        return shapely.clip_by_rect(geom, x0, y0, x1, y1)
+    except shapely.errors.GEOSException:
+        return geom.intersection(box(x0, y0, x1, y1))
+
+
 def _kept_limits(rail_a: list, rail_b: list, poly: Polygon, other, reach: float,
                  pull_mm: float, floor_mm: float) -> tuple[np.ndarray, np.ndarray]:
     """`satin_push_keeps_gaps`: per cross, the most each rail may be pushed
@@ -3869,12 +3883,11 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         other = None
         if not keep.is_empty and rail_a:
             # only the ink within the column's reach: clip before the overlay
-            import shapely
             xy = np.asarray(list(rail_a) + list(rail_b), float)
             (x0, y0), (x1, y1) = xy.min(axis=0) - reach - 1.0, xy.max(axis=0) + reach + 1.0
-            near_ink = shapely.clip_by_rect(keep, x0, y0, x1, y1)
+            near_ink = _clip_rect(keep, x0, y0, x1, y1)
             if not near_ink.is_empty:
-                own = shapely.clip_by_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
+                own = _clip_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
                 o = near_ink.difference(own.buffer(PUSH_KEEP_MARGIN_MM))
                 other = None if o.is_empty else o
         kept_a, kept_b = _kept_limits(rail_a, rail_b, poly, other, reach, pull_mm, keep_floor)

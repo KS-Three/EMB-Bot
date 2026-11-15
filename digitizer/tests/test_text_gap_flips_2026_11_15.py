@@ -39,6 +39,25 @@ def test_a_shape_cut_in_two_sews_as_stage_5_left_it():
     assert _one_polygon(None, fallback) is fallback
 
 
+def test_a_clip_geos_refuses_falls_back_to_the_intersection(monkeypatch):
+    """`satin_push_keeps_gaps` 0.5 on CI (2026-11-15): `_push_rails`' fast
+    `clip_by_rect` built a three-point ring on `test_preflight`'s full-bleed
+    design and GEOS raised, failing the digitize. The clip now falls back."""
+    import shapely
+    from shapely.geometry import box
+
+    from digitizer_core import stage6_satin
+
+    poly = box(0, 0, 10, 10)
+    assert stage6_satin._clip_rect(poly, 2, 2, 5, 5).equals(box(2, 2, 5, 5))
+
+    def refuse(*_a, **_k):
+        raise shapely.errors.GEOSException(
+            "IllegalArgumentException: Invalid number of points in LinearRing found 3")
+    monkeypatch.setattr(shapely, "clip_by_rect", refuse)
+    assert stage6_satin._clip_rect(poly, 2, 2, 5, 5).equals(box(2, 2, 5, 5))
+
+
 def test_a_plain_polygon_passes_through_untouched():
     from shapely.geometry import box
 
