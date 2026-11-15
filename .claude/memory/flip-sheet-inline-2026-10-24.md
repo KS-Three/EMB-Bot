@@ -24,8 +24,10 @@ same-hole inner ends, read by `tools.inside_stagger` over the whole DST),
   engine like `off`. Diffing against bare OFF would have shown the whole
   white-faces change as the keyline's.
 - A flag whose PR is open runs with `--engine <scratch merge of branch + main>`.
-  Worktrees have no rembg venv: junction `digitizer/rembg_isolated/venv` to
-  main's if you want the product's path -- but MFab OFF stayed 13,721 st (the
+  Worktrees have no rembg venv: point `stage1_photo_prep.REMBG_VENV_PYTHON`
+  at main's (`lettering_board.rembg_from_primary()`; NOT a junction, which
+  leaks kernel memory on Windows -- DOCTRINE gotchas 2026-11-14) if you want
+  the product's path -- but MFab OFF stayed 13,721 st (the
   10-23 sheet's number), not #1060's 11,605, so the sheet's MFab baseline is
   not #1060's measurement.
 - Rendering is slow: a Fremont digitize cell took 12-23 min at `--jobs 3`, and
