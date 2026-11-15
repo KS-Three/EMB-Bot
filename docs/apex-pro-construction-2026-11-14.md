@@ -188,7 +188,45 @@ small M:
   edge-walk, #1512), or after the walk learns his order. That is the
   jag-source lane's walk.
 
+**With edge-walk** (`lettering_columns_connectors_edge_walk`, which implies
+buried). These runs are on the rebased tree, 88721988, with #1515's flips. Cells are
+angle deg / seam mm.
+
+| M's V | OFF | NEW | OFF + edge-walk | NEW + edge-walk |
+|---|---|---|---|---|
+| chest small 76.5 | 12.2 / 1.11 | 14.0 / 0.81 | 12.2 / 1.12 | **11.9 / 0.46** |
+| beanie 79.8 | 14.2 / 0.98 | **11.3 / 0.75** | 14.1 / 0.99 | 11.6 / 0.70 |
+
+**Why two of five got worse: the walk, not the cut.** By eye, on the two
+sheets against the pro:
+- **chest small.** NEW's construction is his: a fan over the shoulder, and
+  level crosses from the point up the right leg. But the lane's walk enters the M from the right.
+  - It sews the level column from the right leg's top DOWN to the point.
+  - It then travels 4.7 mm back UP across those finished crosses to reach
+    the fan. That bar is the angle error the instrument charged.
+  - He sews the fan first and lays that travel under the level column, which
+    he then sews from the point up.
+- **beanie.** On 863adf49 it hopped the same way. On the rebased tree NEW
+  alone no longer hops, and it is closer than OFF.
+
+**Edge-walk on these two:**
+- **Edge-walk alone** leaves the V as OFF: 12.2 / 1.12 and 14.1 / 0.99.
+- **chest small, NEW + edge-walk.** It cannot find his order from that entry,
+  so it cuts the hop as a trim: no bar, and closer than OFF on both numbers.
+  That matches what buried gave.
+- **beanie, NEW + edge-walk.** It sews exactly his order: fan, a travel under
+  the column to come, then the level column from the point up.
+
+So NEW is closer than OFF on both numbers at all five sizes:
+- with edge-walk on the two sizes that hopped;
+- alone on the other three.
+
+Edge-walk was not run on hat large, LC large or hat small. With buried, hat
+large stayed at 10.0 / 0.56.
+
 **Sheets** (primary checkout, gitignored):
+- `sheets_edge_walk/`: art | OFF | NEW | NEW+edge-walk | pro, for chest
+  small and beanie.
 - `digitizer/eye_pairs_out/apex-like-pro-1114/sheets/<design>_<joint>.png`:
   art | OFF | NEW | pro, every stitch outlined.
 - `sheets_with_buried/`: art | OFF | NEW+buried | pro, for hat large,
