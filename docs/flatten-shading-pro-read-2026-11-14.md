@@ -135,3 +135,53 @@ GT outline stops above GOLF there. Controls with the tick on, md5 equal to tick 
 large and Gaulke Roofing hat. Drone and crest: the fold's output is identical to main's (no region
 changes).
 
+
+## 7. Third pass (night): Precision Drone read whole, and the isometric icon
+
+**The pro's Drone, element by element** (his PES drawn onto our art in our own mm frame, centres
+0.3 mm apart; his Wilcom worksheet names 9 Madeira Classic threads).
+
+| element (art) | what the art draws | how he sews it |
+|---|---|---|
+| left half of the scene (grey sky, mountains, haze, land) | a greyscale photo-like ramp, light at the top | ONE dark-slate fill (Madeira 1041, PMS 431; blocks 4 and 6), whatever the art's tone |
+| left trees | dark spiky conifers against a light sky | black silhouettes (block 7), drawn tree by tree |
+| left sky highlights | light haze | a few light-grey (PMS 429) streaks over the slate |
+| right half (blue sky, water) | blue ramp | one blue fill (Madeira 1242; block 8) |
+| right trees | orange-gold fire trees | orange fill (Madeira 1172), dark-orange satin at their foot, gold satin tips (blocks 9-11) |
+| frame ring | dark metallic ring with silver bevel arcs | one slate satin band (block 13) between two black satin rails (block 14) |
+| arms and propellers | grey metal with light highlight edges | slate fill (block 15), grey satin along the highlight edges (block 16), black run keylines round arms and blades (block 17) |
+| body and camera | grey metal, orange lens | light-grey and slate fills, orange lens, black keylines (blocks 18-22) |
+
+**What that means for the tick.**
+- **The left scene is a redraw, not a flattening.** He sews a light greyscale sky as DARK slate, and
+  adds silhouettes and streaks that are not tones of the art. No rule stated on the art's own
+  colours predicts sewing a light area dark. It is the tonal-redraw work #1549 names (Phase 4), not
+  something the fold should do. Our lost tree tops are a stage-3 detail loss, the same with the tick
+  on and off.
+- **His arms keep their highlight band, sewn as its own grey satin** (block 16), and he adds black
+  keylines that the art does not draw. Folding the highlight away would move us further from his file.
+- **His ring keeps a slate body between black rails.** Ours with the tick is one black band (the
+  silver arcs fold into the black badge). The slate body and the black rails come from the art's
+  ring gradient, which our trace sees as one dark region. A split by tone across the ring is a
+  segmentation change, not a fold.
+- **Result: nothing in this PR changes Drone.** Tick ON md5 b02efc1b, as on main; tick OFF 38ffefeb.
+
+**The isometric icon (no pro file): a regression in #1535, fixed here.**
+- With the tick on, main sewed the big apricot sausage salmon. The tone merge joined it (Apricot
+  1220, about 911 mm2) to the salmon sausage it touches (Spanish Tile 1600, 396 mm2, 14.97 dE00).
+  At a 29% share, #1535's ramp rule then chose the darker tone.
+- Golden Tee's ramp is different: yellow over orange inside each of GOLF's four letters. The two
+  tones meet inside several separate shapes. The isometric pair meets in one place.
+- **Rule added (`RAMP_MIN_OBJECTS` 2):** a ramp must also recur, with the two tones meeting inside
+  at least two separate shapes (connected groups of touching regions in the two tones). Otherwise
+  the merge keeps the larger tone, as #1522 did.
+  - Golden Tee: still Pumpkin, md5 1e447b53, the same as #1535.
+  - Isometric: the big sausage is apricot again.
+  - Crest: its navy is a 4% patch, so the larger tone wins as before.
+- **Still open on the isometric icon:**
+  - The small salmon sausage is merged into apricot, as #1522 already did. Two objects of
+    neighbouring colours that touch once are merged at all. Not merging them would also stop a
+    single shaded shape from flattening (a split letter meets in one place too).
+  - The shaded underside sews as crossing satin pieces with the tick on (pins 6-8, sheet
+    `isometric_pins_6_8.png`). The fold's unions all succeed, so this is stage 6's construction of
+    the grown pink region. Not traced further.
