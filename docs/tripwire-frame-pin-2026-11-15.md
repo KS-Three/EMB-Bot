@@ -1,6 +1,6 @@
-# Tripwire frame pin (built OFF)
+# Tripwire frame pin (ON since 2026-11-15)
 
-*(built 2026-11-15 on Kent's ruling "Pin tripwire frame (Recommended)", the same day; measured on Kent's laptop for design and tests only. The pins themselves are a CI capture, not made here.)*
+*(built 2026-11-15 on Kent's ruling "Pin tripwire frame (Recommended)" (#1572, OFF); flipped ON the same day on his ruling "Flip ON now (Recommended)": the scheduled nightly passes `--pin-frame`, and the ledger's `frames` come from a five-pass CI capture with `pin_frame` ticked (see "Flipped" at the end). Laptop measurements here are for design and tests only.)*
 
 ## Why
 
@@ -86,4 +86,22 @@ A design that really moves less than ~0.5 mm is read at its old pin until the ne
 2. Commit that ledger.
 3. Make the schedule pass the flag (`pin_frame` default true, or the expression replaced by `--pin-frame`).
 
-Nothing of this is done here.
+## Flipped, 2026-11-15
+
+Kent's ruling: **"Flip ON now (Recommended)"**.
+
+- **Capture.** CI run 43772829964, `capture` mode with `pin_frame` ticked, five passes on `main` at `f095e1ab`.
+  - The ledger artifact's sha256 is `ccac1b90…dc4007b070`, the same as printed in the capture log.
+  - The committed ledger is those bytes plus `hand_edits`.
+  - Frames for all 18 jobs, every one `passes_agree`.
+- **Schedule.** The expression is `(github.event_name == 'schedule' || inputs.pin_frame) && '--pin-frame'`, and `pin_frame` defaults to true on a dispatch. Unticking it reads fresh again.
+- **No baseline moved because of the pin.** The capture records each job's freshly registered frame, so each baseline is what the old reading gives on that tree.
+  - The rows that did move are #1565's (Flip PR 2, Kent 2026-11-15), the only engine change since the last ledger besides #1571 (built OFF). They are listed in the flip PR.
+- **The #1505 trap, again.** Five passes agreed on 12 rows that earlier five-pass captures measured moving between runners. Their tolerances are restored and recorded in the ledger's `hand_edits`, each with the run it was measured on (43754823644, or 43147117899 for three rows last seen moving there).
+  - Evidence that 0 is false: check 43764055621, on an unchanged engine tree, read these rows 2-4 stitches and 0.004 stitch-type kappa off.
+  - Left at 0: rows that moved only in the oldest 3-pass capture (42250031793) and never since.
+- **Accepted catches, stated plainly.**
+  - Baselines are now pinned readings, and each later engine PR is read in this frozen frame.
+  - Single-phase grid aliasing (SD 0.02-0.04) remains in what a real change reads.
+  - precision_drone showed a pinned read larger than the fresh one.
+  - The corpus scorecard and flip-PR kappas still re-register per arm.
