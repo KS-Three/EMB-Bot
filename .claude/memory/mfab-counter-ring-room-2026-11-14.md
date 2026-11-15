@@ -42,3 +42,5 @@ sews a chunky block bulging past the triangle, worse than the fill. We
 have no fanned-satin construction like the pro's.
 
 Related: [[mfab-photo-route-2026-11-04]].
+
+**Kent 2026-11-15:** "Both ON, keep 5.0" (`border_significant_ring_room` and `counter_fan_satin`, [[counter-fan-2026-11-14]]). The 5.0 mm satin ceiling stays (gate 1). Ruled ON 11-15, flip pending. Open, needs a sew-out: 5.0 vs 5.7 mm satin for the fan.

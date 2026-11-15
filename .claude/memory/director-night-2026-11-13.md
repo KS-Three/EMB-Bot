@@ -55,3 +55,5 @@ as findings before they were measured against the art. **How to apply:**
   - a worker's report reaches the director only through an explicit
     SendMessage;
   - `archive_session` leaves the lane folder behind.
+
+**Kent's review, 2026-11-15 (options he picked, on sheets):** "Flip all three ON" (apex pro, apex pro joints, corner-fold cap flared); "Both ON, keep 5.0" (ring room, counter fan); "Flip both, value 0.5" (satin push keeps gaps, compact satin keeps gaps); "Flip both ON" (Fremont ground ring + bean follows); "Flip both ON" (fine bar survive + small-text hand-over); ticked ON: speck prune, stroke bridge keep, lone glyph keep, the K-Line box + gear flags, lean flat ends, ring floor, point-touch split. Stay OFF: tiny detail keep, rail-pair bars, tiny marks as run stitch (not to be built). All ruled ON 11-15, flips pending. Need a sew-out: 5.0 vs 5.7 mm fan satin, small satin counters, dots under 0.9 mm. Full list: `docs/director-night-2026-11-13.md`.

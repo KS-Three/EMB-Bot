@@ -30,3 +30,5 @@ letters as columns with counters filled ("1895" read "1896", gross fault);
 1.9x; ours 1.575x on main). His letters are bold satin; ours stay bean lines.
 Respine stays rejected (EAT read "BAJ", #1510). Sheets:
 `eye_pairs_out/fremont-room-1114/sheets/`. The flip is Kent's.
+
+**Kent 2026-11-15:** "Flip both ON" (`small_text_reset_ground_ring`, `small_text_reset_bean_follows`). Ruled ON 11-15, flip pending. Open, needs a sew-out: small satin counters (Fremont's date in satin).

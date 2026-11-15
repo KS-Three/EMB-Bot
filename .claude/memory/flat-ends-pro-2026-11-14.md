@@ -35,3 +35,5 @@ cut made.
 
 Write-up: `docs/flat-ends-pro-2026-11-14.md`. See
 [[jag-source-2026-11-13]].
+
+**Kent 2026-11-15:** `lettering_columns_lean_flat_ends` ticked ON (with `lettering_columns_ring_floor`, [[small-bowls-2026-11-14]]). Ruled ON 11-15, flip pending.

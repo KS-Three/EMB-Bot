@@ -36,3 +36,5 @@ specks (low_poly is native). Sheets:
 `digitizer/eye_pairs_out/missing-1114/sheets/`. Flip is Kent's. Related:
 [[sliver-prune-2026-11-10]], [[transparent-white-infill-2026-11-11]],
 [[fine-bar-survive-2026-11-14]], [[proofread-2026-11-13]].
+
+**Kent 2026-11-15:** `speck_prune` ticked ON (with `stroke_bridge_keep` and `lone_glyph_keep`). Ruled ON 11-15, flip pending.

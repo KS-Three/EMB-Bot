@@ -30,3 +30,5 @@ Fixing the cause by routing this art flat (move the grain gate or the two-tone v
 
 **Why:** the defect is the lane's merge, so moving a gate would only hide it on this one logo.
 **How to apply:** do not tune the grain gate or two-tone veto for MFab; do not blame the keyline recipe for the 60/101 mm blobs.
+
+**Measured 2026-11-14 (#1556, `docs/photo-work-grid-evidence-2026-11-14.md`):** `photo_work_grid` at 60/85.1/96/100.8/105.3/113.5 mm. ON cures the WE(L) slab at 60-100.8 but makes one at 113.5 (E covered, A 100 -> D 58): it moves the fault. Of the 19 other photo-lane designs in the kits and scorecard, only chrome specular (better), owl pale (same) and region blobs (worse) move; the rest are at or above 8 px/mm. **Stays OFF** (worker's and Director's pick, 11-15, no ruling asked). Fix the untagged-region swallow in the under-fill instead of choosing a grid.

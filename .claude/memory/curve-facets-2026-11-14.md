@@ -39,3 +39,5 @@ junction cross had tripped the split comb). The stage-4 flag cures Tires #0
 satin's end jitter (6 deg std an end, both arms) is the lever, in the
 stations. A stage-4 densify safe to flip must skip text-tagged regions: a
 post-pass after text tagging.
+
+**Stays OFF (11-15, worker's and Director's pick, no ruling asked):** `curve_chord_stage4` reaches lettering (moves the Column lane's cuts). Build the same split as a post-pass after text tagging, on non-lettering shapes only, to keep the Tires #0 cure.
