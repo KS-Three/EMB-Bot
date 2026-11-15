@@ -337,3 +337,75 @@ off by size.
 - `sheets_joints/`: art | OFF | NEW | pro, every stitch outlined.
 - `sheets_joints_walk_fold/`: OFF | NEW | NEW+walk+fold for hat large and
   chest small.
+
+## 6. L corners: when he caps and when he fans (read; not built)
+
+**The question.** `lettering_columns_corner_fold_apex_side` (#1518, ruled ON
+by Kent today) fans MARINE's E round its top-left corner. Does his file?
+
+**Read stitch by stitch** (`tools/apex_pro.py`), every L corner a column
+lane can reach:
+- **Becker's BECKER line** is sewn as tatami fill under a satin border in his
+  files, so it has no column corners to read.
+- **MFab's letters** are fill (MFAB) or 1.2 mm strokes that register at IoU
+  0.09-0.20, too low to read.
+
+| corner | his construction | outline at the corner |
+|---|---|---|
+| Becker MARINE E, top-left (5 sizes, one design) | **cap**: the top arm's upright crosses run on over the stem's top; the stem's level crosses start under the arm's edge | **flared**: a wedge bulges past the stem's edge line |
+| Becker MARINE R, top-left | **cap**: the top bar's crosses over the stem's top | **flared** |
+| Becker MARINE E, bottom-left | **fan**: the stem's level crosses turn round the corner into the foot (Kent's "nice corner", Becker #14) | plain, square |
+| ProSeal PROSEAL P, top-left (hat 85.9 mm) | **fan** | plain (italic, no flare) |
+| ProSeal R, top-left | **fan** | plain |
+| ProSeal E, top-left | **fan** | plain |
+| ProSeal E, bottom-left | **fan** | plain |
+| ProSeal L, bottom-left | **fan** (his L registers poorly, IoU 0.52) | plain |
+
+**The rule, from geometry only.** A corner whose outline bulges past the
+stem's own straight edge near it (a flare or wedge serif) is CAPPED. A plain
+corner is FANNED. It gets **8 of 8 distinct corners** right: 3 on Becker,
+5 on ProSeal hat. As instances that is 15 Becker (one design scaled) and 5
+ProSeal hat; ProSeal beanie was not read.
+
+What the rule does not use:
+- **The corner's angle.** ProSeal's italic top-lefts turn 78 deg and MARINE's
+  flared ones 76.
+- **Which stroke ends there, or top versus bottom.** Every plain corner fans,
+  top or bottom.
+
+**What the fold does now** (instrument: angle error deg / split offset mm,
+OFF | `corner_fold_apex_side`):
+
+| Becker | E top-left (he caps) | E bottom-left (he fans) | R top-left (he caps) |
+|---|---|---|---|
+| hat large | 52.3/2.03 -> 34.6/1.18 | 24.8/1.80 -> 8.9/0.31 | 31.5/1.42, fold does not act |
+| LC large | 52.8/1.95 -> 35.0/1.17 | 25.6/1.49 -> 9.3/0.36 | 35.1/1.88, no change |
+| hat small | 50.4/1.80 -> 36.8/0.67 | 24.1/0.70 -> 18.9/0.69 | 33.9/1.14, no change |
+| chest small | 46.6/1.18 -> 36.7/1.06 | 27.4/1.04 -> 13.8/0.69 | 35.2/1.26, no change |
+| beanie (IoU 0.41) | 37.9/0.48 -> 39.0/0.49 | 29.6/0.69 -> 32.3/0.47 | 35.9/0.39, no change |
+
+**What follows:**
+- **At the fanned corner,** the fold is his construction and the numbers say
+  so. At beanie, where the letter registers worst, they do not.
+- **At the E's top-left, which he caps,** the fold is still closer than OFF at
+  four sizes. OFF runs the stem to the top and butts the arm against it, and
+  the fold's fan at least crosses the stem's top upright-ish, as his cap does.
+  So a gate that only refuses the fold there makes it worse. The gate has to
+  BUILD the cap: the arm's lower edge continued level across the stem, and the
+  arm's piece takes the stem's top (as section 5 does for the N and the flat A).
+- **The R's top-left** is a counter corner, and the fold does not act there,
+  but he caps it too.
+
+**Status: not built.** The cap construction was started on branch
+`claude/corner-cap-wip` (`cfg.extra["lettering_columns_corner_fold_cap_flared"]`,
+OFF, no PR) and is wrong as it stands:
+- On MARINE's pointed-slot E (cut by the slot rule) the cap lands across the
+  stem at the middle arm and splits the top-left into scraps.
+- On the R it caps the leg's junction, not the top-left.
+
+**The flare test** (`_flared` on that branch) is the reusable part. The
+outline within 1.5 W of the corner is checked against the straight edge
+fitted from 2 W to 4 W along it: a bulge of 0.12 W or more counts as a flare.
+
+**Sheets:** `eye_pairs_out/apex-like-pro-1114/sheets_corners/`, art | OFF |
+fold | pro, at the E's two corners and the R's top-left, every Becker size.
