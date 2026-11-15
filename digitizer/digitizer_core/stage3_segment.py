@@ -801,7 +801,8 @@ def resolve_small_regions(
             regions, areas, boxes, small, keep, layer_lab,
             machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2, machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm,
             cfg.merge_delta_e)
-    # `cfg.stroke_bridge_keep` (built OFF 2026-11-14): a thin stroke of the
+    # `cfg.stroke_bridge_keep` (ON since 2026-11-15, Kent 2026-11-15, review pack (review-1115): ticked ON;
+    # built OFF 2026-11-14): a thin stroke of the
     # hosts' own ink, broken into crumbs, that bridges two of them on the
     # page is kept whole (`_stroke_bridges`). Off: as before.
     if getattr(cfg, "stroke_bridge_keep", False) and layer_lab is not None and cfg.small_shape_rescue:

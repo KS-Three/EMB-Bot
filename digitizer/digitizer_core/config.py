@@ -1390,7 +1390,10 @@ class PipelineConfig:
     # stroke. Shape and colour reads, no stitch value: gate 1 does not apply.
     # False is the engine before the flag, byte for byte. Tests:
     # `tests/test_stroke_bridge_keep.py`.
-    stroke_bridge_keep: bool = False
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (BRIDGE_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    stroke_bridge_keep: bool = True
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
