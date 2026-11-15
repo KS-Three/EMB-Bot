@@ -415,6 +415,85 @@ def _chained_small_regions(regions, areas, boxes, small, min_area_px,
     return chained
 
 
+def _compound_details(regions, areas, boxes, small, keep, layer_lab, area_px: float,
+                      loop_px: float, tol: float) -> tuple[list[int], list[int]]:
+    """`cfg.tiny_detail_keep` (built OFF 2026-11-14): touching sub-floor
+    regions of DIFFERENT layers, ringed (nine tenths) by one full-size host,
+    that together clear the run tier's area floor (`area_px`) and the dot
+    rung's loop (`loop_px`, the perimeter bound `clears_dot_rung` reads) are
+    one detail: the crest's eagle eye, white specks round a pupil in a navy
+    head, each piece under the floor alone (the eye splits in two halves of
+    16-20 px at 8 px/mm, each short of the run loop). Kept as ONE region on
+    the member layer farthest (Lab) from the host's, when that is more than
+    `tol` from it, and marked `dot_rung` so stage 4 sews it as that rung's
+    tack. -> (small left, kept)."""
+    if len(small) < 2:
+        return small, []
+    h, w = regions[0].frame_shape
+    owner = np.full((h, w), -1, np.int32)
+    for i, r in enumerate(regions):
+        if boxes[i] is not None:
+            owner[r.frame_slice()][r.crop] = i
+    sset = set(small)
+    keepset = set(keep)
+    parent = {i: i for i in small}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+    for i in small:
+        if boxes[i] is None:
+            continue
+        y0, x0, y1, x1 = boxes[i]
+        wy0, wx0, wy1, wx1 = max(0, y0 - 1), max(0, x0 - 1), min(h, y1 + 1), min(w, x1 + 1)
+        sub = regions[i].window(wy0, wx0, wy1, wx1)
+        ring = _dilate(sub) & ~sub
+        for j in set(owner[wy0:wy1, wx0:wx1][ring].tolist()):
+            if j in sset and j != i and regions[j].layer != regions[i].layer:
+                parent[find(i)] = find(j)
+    groups: dict[int, list[int]] = {}
+    for i in small:
+        groups.setdefault(find(i), []).append(i)
+    taken: set[int] = set()
+    kept: list[int] = []
+    for members in groups.values():
+        if len(members) < 2 or any(boxes[m] is None for m in members):
+            continue
+        total = sum(areas[m] for m in members)
+        y0 = min(boxes[m][0] for m in members); x0 = min(boxes[m][1] for m in members)
+        y1 = max(boxes[m][2] for m in members); x1 = max(boxes[m][3] for m in members)
+        if total < area_px or max(2 * max(y1 - y0, x1 - x0), 2.0 * math.sqrt(math.pi * total)) < loop_px:
+            continue
+        wy0, wx0, wy1, wx1 = max(0, y0 - 1), max(0, x0 - 1), min(h, y1 + 1), min(w, x1 + 1)
+        union = np.zeros((wy1 - wy0, wx1 - wx0), bool)
+        for m in members:
+            union |= regions[m].window(wy0, wx0, wy1, wx1)
+        ring = _dilate(union) & ~union
+        around = owner[wy0:wy1, wx0:wx1][ring]
+        if not around.size:
+            continue
+        vals, counts = np.unique(around, return_counts=True)
+        host = int(vals[np.argmax(counts)])
+        if host not in keepset or counts.max() * 10 < around.size * 9:
+            continue
+        host_lab = layer_lab[regions[host].layer]
+        dist = {m: float(np.linalg.norm(layer_lab[regions[m].layer] - host_lab)) for m in members}
+        best = max(members, key=lambda m: (dist[m], areas[m]))
+        if dist[best] <= tol:
+            continue
+        for m in members:
+            if m != best:
+                regions[best].union_from(regions[m])
+        # sewn as the dot rung's tack (stage 4 admits it down to that rung's
+        # loop floor, as it does an i's dot), not a run loop it is too short for
+        regions[best].dot_rung = True
+        kept.append(best)
+        taken.update(members)
+    return [i for i in small if i not in taken], kept
+
+
 def resolve_small_regions(
     regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float,
     enclosed_mask: np.ndarray | None = None, *, chain_rescue: bool = True,
@@ -569,9 +648,20 @@ def resolve_small_regions(
     ) if (cfg.small_shape_rescue and chain_rescue) else set()
     if chained:
         small = [i for i in small if i not in chained]
+    # `cfg.tiny_detail_keep` (built OFF 2026-11-14): a detail made of
+    # several sub-floor pieces of other colours in one host (an eye) is kept
+    # whole when the pieces together clear the run floors
+    # (`_compound_details`). Off, or with no layer colours: as before.
+    compound: list[int] = []
+    if (getattr(cfg, "tiny_detail_keep", False) and layer_lab is not None and cfg.small_shape_rescue
+            and cfg.small_dot_rung):
+        small, compound = _compound_details(
+            regions, areas, boxes, small, keep, layer_lab,
+            machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2, machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm,
+            cfg.merge_delta_e)
     absorbed = dropped = 0
     absorbed_reportable = dropped_reportable = 0
-    rescued: list[int] = []
+    rescued: list[int] = list(compound)
     protected: list[int] = []
     # `cfg.open_cored_counters`: the bands and core of a counter round a
     # page-coloured middle, found once before the loop (the walk reads the

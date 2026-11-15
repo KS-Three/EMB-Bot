@@ -64,4 +64,23 @@ catch for default ON); Drone's arms lose some grey highlight edges.
 Flattening is a design change (pro-digitizer-rules 10-21 s4): Kent chooses
 default ON / OFF / a Studio "flatten shading" option (PR body).
 
+**2026-11-14, read off the pro's own file** (`docs/flatten-shading-pro-read-2026-11-14.md`):
+he sews GT's whole bevel ring (gold extrusion, cream highlight, red keyline) as ONE gold satin
+inside the black outline; ours had folded it INTO the outline. GOLF is the letter faces only:
+its teal extrusion (cap-merged into black), counter shading and highlights are garment. The
+tee keeps its black shadow. Built inside the tick: bevel ring -> one band in the ring's body ink;
+substituted (cap-merged) shading facing the page -> page; counter shade -> page; darkest-ink
+own-ink bands never fold; "page showing through" = the page's OWN ink (<= 3 dE00), not 20.
+Golden Tee tick ON: 5 -> 3 threads (white, black, gold), 10,482 -> 8,753 st (pro 5,973);
+19 of 20 pins read fixed by eye, pin 10 partial. **Still open:** our gold is Candlelight
+yellow, his orange (#fe9e32): "keep the darker tone" fits GT but turns the crest's eagles navy.
+**Gold, settled same evening:** his worksheet PDF names the spool, Madeira Classic 1172
+("PMS 123 Yellow Gold" is the label; 1172 is orange, (231,152,45)); the PES's #fe9e32 is only
+Brother's palette. Art under our Pumpkin regions is 1.5 dE00 from it, under Candlelight 18.0:
+"a ramp (each tone >= 1/4) sews its deeper end" built; the crest's navy is a 4% patch, body wins.
+**Read a pro's worksheet PDF (`pdftotext -layout`) for his real threads before trusting PES colours.**
+**Trap:** a hole-wall fold must check the hole is a COUNTER (holds only page colours) -- Drone's
+greys inset in the black badge each sit in a hole of their own, and folding them blacked out
+the scene.
+
 Related: [[regular-structure-2026-11-13]], [[eye-first-diagnosis-2026-11-13]].

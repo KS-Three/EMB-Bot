@@ -101,6 +101,50 @@ function backgroundRgb({ data, width, height }) {
   return rs.length * 2 > seen ? [median(rs), median(gs), median(bs)] : null;
 }
 
+// One pixel's ink test, the proposal's: opaque, and off the frame's
+// background colour by more than INK_TOLERANCE on a channel (any opaque pixel
+// when the background is "nothing").
+function isInk(data, i, bgRgb) {
+  if (data[i + 3] < 128) return false; // transparent is not ink
+  return !bgRgb ||
+    Math.abs(data[i] - bgRgb[0]) > INK_TOLERANCE ||
+    Math.abs(data[i + 1] - bgRgb[1]) > INK_TOLERANCE ||
+    Math.abs(data[i + 2] - bgRgb[2]) > INK_TOLERANCE;
+}
+
+// The INK box inside `crop` (fractions of the frame; null = the whole frame),
+// as fractions of the frame, read pixel by pixel with the proposal's own ink
+// rule; null when there is no ink in it.
+//
+// Why (review 2026-11-14): the auto-fit (lib/placement.js) fitted the CROP's
+// aspect, and the proposal pads its crop by MARGIN_MM on every side, but the
+// engine sizes the ink box inside the crop to the Design width
+// (`stage1_prep`: px_per_mm = art width / target_width_mm). Fitting the padded
+// aspect sewed tall art over the placement's height (Precision Drone's badge
+// 64.0 x 66.0 mm in the hat's 64 mm box, ProSeal 89.2 x 65.7, summit 62.2 x
+// 66.2) and multi-part art under its width (region_blobs 69.6 where 75.5 fits):
+// 14 of 126 garment fits over 42 designs off by more than 5% or over the box.
+export function inkBox(imageData, crop = null) {
+  const { data, width, height } = imageData;
+  if (!width || !height) return null;
+  const c = crop || FULL_FRAME;
+  const px0 = Math.max(0, Math.floor(c.x0 * width)), px1 = Math.min(width, Math.ceil(c.x1 * width));
+  const py0 = Math.max(0, Math.floor(c.y0 * height)), py1 = Math.min(height, Math.ceil(c.y1 * height));
+  const bgRgb = backgroundRgb(imageData);
+  let x0 = width, y0 = height, x1 = -1, y1 = -1;
+  for (let y = py0; y < py1; y++) {
+    for (let x = px0; x < px1; x++) {
+      if (!isInk(data, (y * width + x) * 4, bgRgb)) continue;
+      if (x < x0) x0 = x;
+      if (x > x1) x1 = x;
+      if (y < y0) y0 = y;
+      if (y > y1) y1 = y;
+    }
+  }
+  if (x1 < 0) return null;
+  return { x0: x0 / width, y0: y0 / height, x1: (x1 + 1) / width, y1: (y1 + 1) / height };
+}
+
 export function proposeCrop(imageData, widthMm) {
   const { data, width, height } = imageData;
   if (!width || !height) return { ...FULL_FRAME };
@@ -117,12 +161,7 @@ export function proposeCrop(imageData, widthMm) {
   for (let y = 0; y < height; y++) {
     const cy = (y / cellPx) | 0;
     for (let x = 0; x < width; x++) {
-      const i = (y * width + x) * 4;
-      if (data[i + 3] < 128) continue; // transparent is not ink
-      if (!bgRgb ||
-          Math.abs(data[i] - bgRgb[0]) > INK_TOLERANCE ||
-          Math.abs(data[i + 1] - bgRgb[1]) > INK_TOLERANCE ||
-          Math.abs(data[i + 2] - bgRgb[2]) > INK_TOLERANCE) {
+      if (isInk(data, (y * width + x) * 4, bgRgb)) {
         ink[cy * cols + ((x / cellPx) | 0)]++;
         total++;
       }

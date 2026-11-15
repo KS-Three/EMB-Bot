@@ -1328,6 +1328,54 @@ class PipelineConfig:
     # tendril moved (the 7.1 mm red spike). False is the engine before the
     # flag, byte for byte. Tests: `tests/test_sliver_prune.py`.
     sliver_prune: bool = False
+    # Specks no thread can draw (built OFF 2026-11-14, Kent's low_poly at
+    # 80 mm, 7 pins "Random Black Spot"): the art's polygon edges are
+    # one-pixel black lines, quantisation labels only their crossings black,
+    # and stage 3's rescue (`keep_thin_strokes`) kept each crossing as a
+    # 0.13-0.30 mm2 black run loop. ON (`sliver_prune.prune_specks`, flat and
+    # gradient classes, after `sliver_prune` and before stage 4): a
+    # sub-floor mask stage 4 would sew as a run, whose mean width is under 2
+    # SOURCE pixels and whose inscribed width is under the sewing thread's
+    # own, wedged in the figure and another colour than it, goes to the mask
+    # it lies in. At any enlargement (low_poly is x1.01,
+    # where `sliver_prune` never runs). Both widths are reads of the raster
+    # against existing measures (the source pixel; `thread_profile().width_mm`,
+    # the weight `RUN_MIN_AREA_MM2` squares), no new stitch value: gate 1 does
+    # not apply. False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_speck_prune.py`; doc `docs/missing-invented-traced-2026-11-14.md`.
+    speck_prune: bool = False
+    # An art outline holds more than it is (built OFF 2026-11-14, Kent's
+    # lt_k_line, 3 pins: "the red bean stitch should not have infill outside
+    # of it", "The red box is missing here"). The red box with a white K
+    # knocked out passes `border_from_outline`'s band test (0.999 of it near
+    # the K), so it sewed as the K's art outline: a satin loop hugging the K,
+    # the box's corners left to scraps of fill under it. ON
+    # (`art_outline.find_art_outlines`): a holder whose area is at least that
+    # of its looped holes (`art_outline.FRAME_AREA_RATIO`, 1.0: more frame
+    # than content) is a field round a knockout, tagged `framed_field`: stage
+    # 7 gives it no loop and sews it on the fill tier
+    # (`stage7_sequence._framed_field_fill`), and its bodies stay plain fills
+    # as before. Real outlines read 0.05-0.72 (To a T, MFab, Becker); the
+    # k_line box 1.90, Ahora's pink ground 2.10 and its gear ring 1.37. A
+    # shape read, not a stitch value: gate 1 does not apply. False is the
+    # engine before the flag, byte for byte.
+    # Tests: `tests/test_outline_frame_guard.py`.
+    outline_frame_guard: bool = False
+    # Tiny details kept whole (built OFF 2026-11-14, Kent's heraldic crest,
+    # 2 pins "Missing the eye"). Each eagle eye is about 12 x 6 source pixels:
+    # two white specks either side of a black pupil in a navy head. Stage 2's
+    # anti-alias majority filter repaints every edge pixel to the dominant
+    # interior label round it, and a feature 2-3 px across has no interior,
+    # so two passes wipe it; stage 3 would then drop each colour piece under
+    # the run floors anyway. ON: (1) the filter leaves a pixel that IS its
+    # colour (within `stage2_quantize.PURE_PIXEL_DE` of its centre, at least
+    # `FAR_PIXEL_DE` from the one it would take; a blend sits between both);
+    # (2) touching sub-floor pieces of other colours ringed by one host that
+    # together clear the run floors are kept as one region, on the piece's
+    # colour farthest from the host (`stage3_segment._compound_details`).
+    # Colour reads, no stitch value: gate 1 does not apply. False is the
+    # engine before the flag, byte for byte. Tests: `tests/test_tiny_detail_keep.py`.
+    tiny_detail_keep: bool = False
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
@@ -1363,7 +1411,12 @@ class PipelineConfig:
     # gate 1 does not apply. A DESIGN CHANGE (pro-digitizer-rules 10-21 s4):
     # the default is Kent's. Golden Tee hat: 6 -> 4 threads; Drone's ring one
     # colour. False is the engine before the flag, byte for byte. Tests:
-    # `tests/test_bevel_fold.py`.
+    # `tests/test_bevel_fold.py`. 2026-11-14, read off the pro's own Golden
+    # Tee file (`docs/flatten-shading-pro-read-2026-11-14.md`): the bevel ring
+    # between a white face and its outline sews as ONE band in the design's
+    # body gold, shading in an ink the cap gave no spool (GOLF's teal) and
+    # light shading in counters go to the page, darkest-ink bands (the tee's
+    # shadow) are drawn and stay: Golden Tee 3 threads, as he sews it.
     bevel_ring_fold: bool = False
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
@@ -1833,6 +1886,40 @@ class PipelineConfig:
     # low-resolution regime the flag declines. Quality case unaffected; the
     # clock is now on the record. *(docs/flag-runtime-bills-2026-09-12.md)*
     curve_turn_deg: float | None = 15.0
+    # Curve facets (2026-11-14, `curve_densify.py`, built None = OFF): the
+    # longest chord a clean CURVE keeps, in mm, where the Column lane builds
+    # a letter's rails. 18 of Kent's 49 smooth pins sit on a clean bowl sewn
+    # as chords (`docs/jag-source-2026-11-13.md`, (b)); traced stage by stage
+    # (`docs/curve-facets-2026-11-14.md`) 15 of them are lettering, and the
+    # chords their satin follows are made by the lane itself:
+    # `outline_cut._letter_columns` re-simplifies each letter at max(0.12 mm,
+    # W/16) before cutting it, so a 4 mm bowl reaches the rails as 2-2.6 mm
+    # chords turning 20-30 degrees whatever stage 4 handed it. The pro sews a
+    # curve one end per stitch (0.36-0.41 mm apart on Bridge and Gaulke),
+    # every end on the arc. A number splits each edge of a piece's clean
+    # curve (both ends turning the same way, neither a corner) into pieces no
+    # longer than it, on a tangent-continuous cubic through the piece's OWN
+    # vertices, each new vertex within half the simplify tolerance (at most
+    # 0.08 mm) of the letter's OUTER outline as it came in, else the edge
+    # keeps its chord. The cuts are made first, on the simplified letter as
+    # today, so the construction's pieces do not change: only where the outer
+    # rails run. Straight runs, corners, cut lines and COUNTERS keep their
+    # vertices: a finer counter edge re-cut and_pizza's "p" into a wedge
+    # through stage 7's counter clearance. Not a physical constant: a polygon
+    # resolution, not a fabric quantity.
+    # `tests/test_curve_facets.py`.
+    curve_chord_mm: float | None = None
+    # With `curve_chord_mm`, ALSO stage 4's polygons, every shape (built
+    # OFF): the same split after `curve_turn_deg`'s refinement, every new
+    # vertex within one grid pixel of the trace. The non-lettering pins:
+    # under 20 px/mm the refinement's resolution gate leaves 1-3 mm chords
+    # (Tires #0 at 9.3 px/mm: the satin edge's turn max 23 -> 8 degrees,
+    # one even arc where OFF stepped; Gaulke #3 a little). Not on an upscaled source
+    # (`outline_redraw_k` owns those). Separate because it also moves the
+    # Column lane's own simplify and so its cuts: measured on and_pizza the
+    # "&" sewed cleaner and the "p" opened a seam, the same unpredictable
+    # answer `outline_redraw_native` got.
+    curve_chord_stage4: bool = False
     # The run tier's outline with its curve vertices cut before it is
     # sampled (`stage6_border._soften_ring`; MASTER_SCOPE defect 46, Law 37's
     # direction-change score). Built OFF 2026-10-08: it moves only

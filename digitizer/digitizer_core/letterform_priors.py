@@ -769,12 +769,43 @@ def _offenders(S: np.ndarray, prims: list[Prim], R: np.ndarray, own: np.ndarray,
         if p.kind == "pass":
             continue
         idx = list(range(p.i0, p.i1 + 1)) if p.i1 >= p.i0 else list(range(p.i0, n)) + list(range(0, p.i1 + 1))
-        if any(ring.distance(Point(S[i])) > tol for i in idx):
+        if _any_far(ring, (S[i] for i in idx), tol):
             bad.add(k)
-    for q, k in zip(R[:-1], own):
+    for j, (q, k) in enumerate(zip(R[:-1], own)):
+        if not j % _SEAM_EVERY:
+            deadline.check(RING_FIT_SEAM)
         if k not in bad and prims[k].kind != "pass" and src.distance(Point(q)) > tol:
             bad.add(int(k))
     return bad
+
+
+#: The service's cancel/deadline inside one ring's fit and cap (review
+#: 2026-11-14): with `outline_redraw_k` ON by default, To a T's beanie ran one
+#: `fit_ring_plain` 7.1 s and one `_cap_check` 6.1 s between two checks on the
+#: shared laptop (one shapely `Point` and `distance` per sample, no seam in
+#: either). A check every this many samples reads a clock and moves no number.
+_SEAM_EVERY = 256
+RING_FIT_SEAM = "ring fit"
+
+
+def _any_far(line, pts, tol: float) -> bool:
+    """`any(line.distance(Point(q)) > tol for q in pts)`, with a seam."""
+    for j, q in enumerate(pts):
+        if not j % _SEAM_EVERY:
+            deadline.check(RING_FIT_SEAM)
+        if line.distance(Point(q)) > tol:
+            return True
+    return False
+
+
+def _distances(line, pts) -> np.ndarray:
+    """`np.array([line.distance(Point(q)) for q in pts])`, with a seam."""
+    out = []
+    for j, q in enumerate(pts):
+        if not j % _SEAM_EVERY:
+            deadline.check(RING_FIT_SEAM)
+        out.append(line.distance(Point(q)))
+    return np.array(out)
 
 
 def sample_step(tol: float) -> float:
@@ -896,8 +927,8 @@ def _cap_check(src_rings: list[np.ndarray], out_rings: list[np.ndarray], tol: fl
         la, lb = LineString(A), LineString(B)
         Sa = densify_ring(A, step)
         Sb = densify_ring(B, step)
-        ds.append(np.array([lb.distance(Point(p)) for p in Sa]))
-        ds.append(np.array([la.distance(Point(p)) for p in Sb]))
+        ds.append(_distances(lb, Sa))
+        ds.append(_distances(la, Sb))
     d = np.concatenate(ds) if ds else np.zeros(1)
     return float(d.max()), float(np.percentile(d, 95))
 

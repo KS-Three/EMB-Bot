@@ -58,14 +58,176 @@ def test_a_ramp_split_in_two_becomes_one_thread_and_one_shape():
 
 
 def test_a_bevel_band_along_one_side_folds_into_the_letter():
+    """The red keyline folds. A black band in its own ink, the design's
+    darkest, is DRAWN (2026-11-14, the pro's Golden Tee: he sews the tee's
+    black shadow): it stays."""
     lo, hi = _letter()
     bevel = box(0, -0.5, 10, 0)                      # 0.5 mm dark band under the letter
     keyline = box(10, 0, 10.3, 4)                    # 0.3 mm red band up its right side
     regions = [_r(lo.union(hi), GOLD, "L"), _r(bevel, BLACK, "BEV"), _r(keyline, RED, "KEY")]
     rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
-    assert {b["shape_id"] for b in rep["bands"]} == {"BEV", "KEY"}
-    assert len(regions) == 1 and regions[0].thread_index == GOLD
-    assert abs(regions[0].polygon.area - (40.0 + 5.0 + 1.2)) < 0.3
+    assert {b["shape_id"] for b in rep["bands"]} == {"KEY"}
+    assert sorted(r.shape_id for r in regions) == ["BEV", "L"]
+    letter = next(r for r in regions if r.shape_id == "L")
+    assert letter.thread_index == GOLD and abs(letter.polygon.area - (40.0 + 1.2)) < 0.3
+
+
+def test_shading_in_an_ink_without_a_spool_goes_to_the_page():
+    """GOLF's dark teal extrusion: the colour cap sewed it in black
+    (`color_cap_merged_from`); the pro leaves it out, the garment shows."""
+    lo, hi = _letter()
+    bevel = box(0, -0.5, 10, 0)
+    regions = [_r(lo.union(hi), GOLD, "L"), _r(bevel, BLACK, "BEV", color_cap_merged_from="3344")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert [c["shape_id"] for c in rep["cap_shading"]] == ["BEV"]
+    assert [r.shape_id for r in regions] == ["L"] and abs(regions[0].polygon.area - 40.0) < 0.01
+
+
+def test_substituted_shading_inset_in_art_is_kept():
+    """Precision Drone: cap-merged grey slivers inset in the black badge face
+    no page; dropped they would open a garment-coloured hole, so they stay."""
+    badge = box(0, 0, 20, 10)
+    inset = box(5, 5, 15, 5.4)
+    regions = [_r(badge.difference(inset), GOLD, "B"), _r(inset, GREY, "IN", color_cap_merged_from="0108")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["cap_shading"] == []
+
+
+def test_a_bevel_ring_between_a_white_face_and_its_outline_is_one_band():
+    """GT: white face, then a gold bevel, a cream highlight and a red keyline,
+    then the black outline. The pro sews the ring as ONE band in the gold
+    that sews the design's letters; the face stays white, the outline black."""
+    face = box(0, 0, 10, 6)
+    gold_b = box(-0.6, 0, 0, 6)                      # left side: gold extrusion
+    cream = box(0, 6, 10, 6.5)                       # top: cream highlight
+    red = box(10, 0, 10.4, 6)                        # right: red keyline
+    outline = box(-1.1, -0.5, 10.9, 7.0).difference(box(-0.6, 0, 10.4, 6.5))
+    letter = box(20, 0, 30, 4)                       # a gold letter elsewhere (GOLF)
+    regions = [_r(face, WHITE, "F", enclosed_background=True), _r(gold_b, GOLD, "GB"),
+               _r(cream, GREY, "CR"), _r(red, RED, "RED"), _r(outline, BLACK, "OUT"),
+               _r(letter, GOLD, "GOLF")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["rings"] and rep["rings"][0]["ink"] == CHART[GOLD].number
+    threads = {r.shape_id: r.thread_index for r in regions}
+    assert threads["F"] == WHITE and threads["OUT"] == BLACK and threads["GOLF"] == GOLD
+    ring = [r for r in regions if r.meta.get(bf.RING_KEY)]
+    assert ring and all(r.thread_index == GOLD for r in ring)
+    assert abs(sum(r.polygon.area for r in ring) - (3.6 + 5.0 + 2.4)) < 0.2
+
+
+def test_a_ramp_sews_its_deeper_end_and_a_patch_its_body():
+    """The pro's Golden Tee gold (Madeira 1172, his worksheet) is the art's
+    ORANGE end (1.5 dE00), not the larger yellow half. Two tones each a
+    substantial share of the merged shape are a ramp: the deeper one sews.
+    A small patch on a large body (the crest's navy, 4%) is shading: the
+    body's tone stays."""
+    top, bottom = box(0, 0, 10, 2.2), box(0, 2.2, 10, 4)       # yellow 55%, orange 45%
+    regions = [_r(top, GOLD_LIGHT, "Y"), _r(bottom, GOLD, "O")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD}
+    body, patch = box(0, 0, 10, 9.6), box(0, 9.6, 10, 10)       # orange body, 4% yellow edge patch
+    regions = [_r(body, GOLD, "B"), _r(patch, GOLD_LIGHT, "P")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert not rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD}
+    regions = [_r(body, GOLD_LIGHT, "B"), _r(patch, GOLD, "P")]  # the deeper tone as the patch
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert not rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD_LIGHT}
+
+
+def _gt_with_golf():
+    """A white face, a gold bevel band on its left, the black outline round
+    both, and a gold letter (GOLF) below with a red keyline along it that
+    touches the bevel."""
+    face = box(0, 0, 10, 6)
+    bevel = box(-0.6, 0, 0, 6)
+    outline = box(-1.1, -0.5, 10.5, 6.5).difference(box(-0.6, 0, 10, 6))
+    golf = box(-3, 7.0, 4, 11)
+    key = box(-3, 6.6, 4, 7.0)                                   # 0.4 mm red along GOLF's top
+    return face, bevel, outline, golf, key
+
+
+def test_the_ring_stops_at_a_coloured_letter():
+    """His GT ring stops at the GT's outline; GOLF's own keyline is GOLF's
+    (the band fold gives it to the gold letter), not a piece of the ring."""
+    face, bevel, outline, golf, key = _gt_with_golf()
+    regions = [_r(face, WHITE, "F", enclosed_background=True), _r(bevel, GOLD, "BEV"),
+               _r(outline, BLACK, "OUT"), _r(golf, GOLD, "GOLF"), _r(key, RED, "KEY")]
+    bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert not any(r.meta.get(bf.RING_KEY) == "F" and r.shape_id == "KEY" for r in regions)
+    assert "KEY" not in {r.shape_id for r in regions}            # folded into GOLF
+
+
+def test_a_ring_band_out_on_the_page_joins_the_outline_where_it_runs_along_it():
+    """GT's G keyline runs down past the outline onto the page between
+    GOLF's O and L: he sews the outline's black where it runs along the
+    outline, garment beyond it."""
+    face = box(0, 0, 10, 6)
+    bevel = box(10, 0, 10.5, 6)                                  # gold bevel up the right side
+    # the outline round it all, open where the keyline runs out past its bottom
+    outline = (box(-0.5, -0.5, 11.4, 6.5).difference(box(0, 0, 10.9, 6))
+               .difference(box(10.5, 6, 10.9, 6.5)))
+    # a 0.4 mm keyline between the bevel and the outline, running 5.5 mm on past it
+    key = box(10.5, 1.0, 10.9, 12.0)
+    letter = box(20, 0, 30, 4)                                   # a gold body elsewhere
+    regions = [_r(face, WHITE, "F", enclosed_background=True), _r(bevel, GOLD, "BEV"),
+               _r(outline, BLACK, "OUT"), _r(key, RED, "KEY"), _r(letter, GOLD, "L")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    edges = [x for x in rep["rings"] if "outline_edge" in x]
+    assert [e["outline_edge"] for e in edges] == ["KEY"] and edges[0]["ink"] == CHART[BLACK].number
+    assert RED not in {r.thread_index for r in regions}
+    black = [r for r in regions if r.thread_index == BLACK]
+    assert black and max(r.polygon.bounds[3] for r in black) < 12.0 - 2.0   # clipped short of the far end
+
+
+def test_a_ring_with_no_body_ink_is_left_alone():
+    """Only a red keyline between the face and the outline, and no red body
+    anywhere: nothing says which thread the ring would be, so the ring rule
+    stays out (the band fold then treats the keyline as it always did: a
+    keyline stacked on the outline it is dwarfed by)."""
+    face = box(0, 0, 10, 6)
+    red = box(10, 0, 10.4, 6)
+    outline = box(-0.5, -0.5, 10.9, 6.5).difference(box(0, 0, 10.4, 6))
+    regions = [_r(face, WHITE, "F", enclosed_background=True), _r(red, RED, "RED"),
+               _r(outline, BLACK, "OUT")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["rings"] == []
+    assert not any(r.meta.get(bf.RING_KEY) for r in regions)
+
+
+def test_a_shade_in_a_counter_goes_to_the_page():
+    """GOLF's O: the drop shadow seen through the counter is a light grey
+    lying against the counter's dark wall and its white; the pro's counter
+    is open (garment)."""
+    o = Point(0, 0).buffer(5, 64)
+    hole = Point(0, 0).buffer(2.5, 64)
+    wall = hole.difference(Point(0, 0).buffer(2.0, 64))
+    shade = Point(0, 0).buffer(2.0, 64).intersection(box(-3, -3, 3, 0))
+    white = Point(0, 0).buffer(2.0, 64).difference(shade)
+    regions = [_r(o.difference(hole), GOLD, "O"), _r(wall, BLACK, "WALL"),
+               _r(shade, GREY, "SH"), _r(white, WHITE, "C", enclosed_background=True)]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert [c["shape_id"] for c in rep["counter_shades"]] == ["SH"]
+    assert "SH" not in {r.shape_id for r in regions}
+
+
+def test_a_light_window_in_a_body_is_not_a_counter_shade():
+    """A grey window drawn in a gold shape touches the body itself: art."""
+    body = box(0, 0, 10, 6)
+    win = box(4, 2, 6, 4)
+    regions = [_r(body.difference(win), GOLD, "B"), _r(win, GREY, "W")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["counter_shades"] == [] and len(regions) == 2
+
+
+def test_a_cream_highlight_on_a_coloured_letter_folds():
+    """GOLF's cream bevel slivers (14.3 dE00 from the white page) are a
+    highlight ON the gold, not the page showing through: they fold."""
+    letter = box(0, 0, 10, 4.3)
+    hl = box(1, 3.6, 9, 3.9)                          # 0.3 mm cream sliver just inside the top edge
+    regions = [_r(letter.difference(hl), GOLD, "L"), _r(hl, GREY, "HL")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert [b["shape_id"] for b in rep["bands"]] == ["HL"]
+    assert [r.shape_id for r in regions] == ["L"]
 
 
 def test_a_drop_shadow_on_the_page_goes_to_the_page():
@@ -138,9 +300,9 @@ def test_a_line_splitting_a_shape_in_two_stays():
 
 
 def test_the_dark_wall_of_a_counter_stays():
-    """GOLF's O: a dark inner bevel lines the counter. Inside a letter, only
-    what runs along its OUTER edge folds; this stays (a known gap: the pro
-    sews the O plain gold)."""
+    """A dark inner wall in the design's darkest ink, its own art ink, is
+    drawn and stays (2026-11-14). GOLF's O wall was teal the cap sewed black:
+    that one goes to the page (`test_shading_in_an_ink_without_a_spool...`)."""
     o = Point(0, 0).buffer(5, 64)
     counter = Point(0, 0).buffer(2.0, 64)
     wall = Point(0, 0).buffer(2.5, 64).difference(counter)          # 0.5 mm dark ring
