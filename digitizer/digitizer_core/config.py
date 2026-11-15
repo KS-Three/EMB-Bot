@@ -3985,6 +3985,16 @@ class PipelineConfig:
     # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False.
     # Tests: `tests/test_column_fold_cap_flared.py`.
     lettering_columns_corner_fold_cap_flared: bool = True
+    # Under `lettering_columns_small_bold`'s thin floor, a RING column (a closed
+    # bowl) has its crosses under the floor widened to it instead of dropped
+    # (`columns._RING_FLOOR`, 2026-11-14, #1558; built OFF as
+    # `cfg.extra["lettering_columns_ring_floor"]`), so Bukit Asam's "beyond
+    # coal" sews its o's closed at 85.1 and 80.4 mm. **ON since 2026-11-15,
+    # Kent's flip** (ticked ON at the 2026-11-15 review, relayed by the
+    # director), promoted from `cfg.extra` to a field so the default can be ON.
+    # False is the lane as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_ring_floor.py`.
+    lettering_columns_ring_floor: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

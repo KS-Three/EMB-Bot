@@ -364,5 +364,6 @@
  "bevel_ring_fold": false,
  "lettering_columns_apex_pro": false,
  "lettering_columns_apex_pro_joints": false,
- "lettering_columns_corner_fold_cap_flared": false
+ "lettering_columns_corner_fold_cap_flared": false,
+ "lettering_columns_ring_floor": false
 }

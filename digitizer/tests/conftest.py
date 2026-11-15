@@ -1063,6 +1063,9 @@ PRE_FLIP.update(APEX_JOINTS_2026_11_15_OFF)
 # `lettering_columns_corner_fold_cap_flared` ("Flip all three ON", Kent 2026-11-15, the apex_pro family): `tests/test_column_fold_cap_flared.py`.
 CAP_FLARED_2026_11_15_OFF = {"lettering_columns_corner_fold_cap_flared": False}
 PRE_FLIP.update(CAP_FLARED_2026_11_15_OFF)
+# `lettering_columns_ring_floor` (ticked ON, Kent 2026-11-15): `tests/test_ring_floor.py`.
+RING_FLOOR_2026_11_15_OFF = {"lettering_columns_ring_floor": False}
+PRE_FLIP.update(RING_FLOOR_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
