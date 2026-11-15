@@ -68,3 +68,20 @@ def test_script_stations_have_a_seam_and_move_nothing(monkeypatch):
     assert [c.stations for c in after[0]] == [c.stations for c in before[0]]
     assert rec.labels.count("script stations") >= 10
     assert "script pen strokes" in rec.labels
+
+
+def test_stage1_intrusion_loop_has_a_seam(monkeypatch):
+    """`prep`'s background-intrusion warning walks every foreground shape;
+    it now paints and erodes each hull in its own box (identical result,
+    measured against the frame-sized version on seven images 2026-11-14:
+    drone 3.57 -> 0.90 s) with a check per shape."""
+    from digitizer_core import PipelineConfig
+    from digitizer_core.stage1_prep import prep
+    art = HERE.parent / "testdata" / "logo_whitebg.png"
+    cfg = PipelineConfig(target_width_mm=60.0, garment_id="left_chest")
+    before = prep(str(art), cfg)
+    rec = _recorded(monkeypatch)
+    after = prep(str(art), cfg)
+    assert np.array_equal(after.bg_mask, before.bg_mask)
+    assert after.warnings == before.warnings
+    assert "stage 1 intrusion" in rec.labels
