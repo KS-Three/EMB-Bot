@@ -313,6 +313,7 @@
  "tiny_detail_keep": false,
  "stroke_bridge_keep": false,
  "lone_glyph_keep": false,
+ "point_touch_split": false,
  "split_satin": true,
  "split_satin_above_mm": null,
  "split_shapes": {},

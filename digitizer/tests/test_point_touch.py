@@ -1,4 +1,5 @@
-"""`cfg.extra["point_touch_split"]` (built OFF 2026-11-14): two shapes of one ink
+"""`cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review pack (review-1115): ticked ON; built OFF
+2026-11-14 as `cfg.extra["point_touch_split"]`): two shapes of one ink
 touching at a point are two shapes.
 
 NSYNC at 70.9 mm (eye sweep 2026-11-14, fault 11): the star's arm tip touches
@@ -61,5 +62,6 @@ def test_lettering_and_rescued_details_are_left_alone():
         assert apply_point_touch_split(regions) == [] and len(regions) == 1
 
 
-def test_flag_is_off_by_default():
-    assert not PipelineConfig().extra.get("point_touch_split")
+def test_flag_is_on_by_default():
+    # Kent 2026-11-15, review pack (review-1115): ticked ON
+    assert PipelineConfig().point_touch_split is True

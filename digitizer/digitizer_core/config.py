@@ -1416,6 +1416,19 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_lone_glyph_keep.py`.
     lone_glyph_keep: bool = True
+    # Two shapes of one ink touching at a point are two shapes
+    # (`point_touch.apply_point_touch_split`; built OFF 2026-11-14 as
+    # `cfg.extra["point_touch_split"]`, #1544, eye sweep fault 11: NSYNC's
+    # star touches its N at one point, the two traced as one region and the
+    # column build fanned the N's top-left into spikes). ON, a body pinched
+    # under `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
+    # tagger, so each is sewn (and tagged) on its own. Promoted to a field so
+    # the default can be ON (the small_text_bay_mouth pattern).
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (POINT_TOUCH_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_point_touch.py`.
+    point_touch_split: bool = True
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")

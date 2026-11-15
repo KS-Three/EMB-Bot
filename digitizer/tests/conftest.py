@@ -1033,6 +1033,9 @@ PRE_FLIP.update(FRAME_GUARD_2026_11_15_OFF)
 # `lone_glyph_keep` (Kent 2026-11-15, ticked ON; promoted from cfg.extra): `tests/test_lone_glyph_keep.py`.
 LONE_GLYPH_2026_11_15_OFF = {"lone_glyph_keep": False}
 PRE_FLIP.update(LONE_GLYPH_2026_11_15_OFF)
+# `point_touch_split` (Kent 2026-11-15, ticked ON; promoted from cfg.extra): `tests/test_point_touch.py`.
+POINT_TOUCH_2026_11_15_OFF = {"point_touch_split": False}
+PRE_FLIP.update(POINT_TOUCH_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

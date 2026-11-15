@@ -1124,12 +1124,13 @@ def build_generation(
         from .bevel_fold import apply_bevel_fold
         apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices))
 
-    # `cfg.extra["point_touch_split"]` (built OFF 2026-11-14, eye sweep fault
+    # `cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review pack (review-1115): ticked ON;
+    # built OFF 2026-11-14 as `cfg.extra["point_touch_split"]`, eye sweep fault
     # 11: NSYNC's star touches its N at one point and the two traced as one
     # region, which the column build fanned into spikes): a body pinched
     # under `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
-    # tagger, so each is sewn (and tagged) on its own. Absent: never loads.
-    if cfg.extra.get("point_touch_split"):
+    # tagger, so each is sewn (and tagged) on its own. False: never loads.
+    if cfg.point_touch_split:
         from .point_touch import apply_point_touch_split
         apply_point_touch_split(regions)
 
