@@ -90,6 +90,13 @@ CLEAR_MM = 0.8
 GROUND_RING_MM = 0.3
 GROUND_RING_SHARE = 0.5
 GROUND_MIN_IN = 0.25
+# `cfg.extra["small_text_reset_near_cap"]` (built OFF 2026-11-14): a line from
+# 0.9 of the cap up to this many caps is re-set at `MIN_SCALE` rather than
+# skipped as tall enough. ProSeal's tagline at the hat auto-fit (109.6 mm)
+# measures 4.01 mm: skipped, it sewed its raw trace -- a teal 0.13 mm
+# anti-aliased sliver kept in the P, FOAM's A without its crossbar, a broken T
+# -- where at 85.7 mm (3.1 mm, re-set) it was retraced, widened and read.
+NEAR_CAP_RATIO = 1.25
 # Drawn stroke the enlarged letter is widened to. Stage 5 adds the fabric's
 # pull on top; with the default 0.3 mm that sews near 0.9, inside the
 # professional's 0.8-1.0 mm on the same date.
@@ -1039,7 +1046,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        grow_away: bool = False,
                        one_baseline: bool = False,
                        ground_ring: bool = False,
-                       bean_follows: bool = False) -> list[dict]:
+                       bean_follows: bool = False,
+                       near_cap: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
@@ -1115,7 +1123,13 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 continue
             cap = float(np.median([_height(r) for r in members]))
             row["cap_mm"] = round(cap, 3)
-            if cap <= 0 or cap >= 0.9 * cap_mm:
+            if near_cap and 0.9 * cap_mm <= cap < NEAR_CAP_RATIO * cap_mm:
+                # `cfg.extra["small_text_reset_near_cap"]` (built OFF
+                # 2026-11-14): a line just over the cap is re-set too, at the
+                # least growth (`MIN_SCALE`) -- retraced, widened, kept clear
+                # -- instead of sewing its raw trace (comment at NEAR_CAP_RATIO)
+                row["near_cap"] = True
+            elif cap <= 0 or cap >= 0.9 * cap_mm:
                 row["skipped"] = "tall_enough"
                 if one_baseline and cap > 0:
                     ms = [r.polygon for r in members]
@@ -1251,19 +1265,22 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 for it in line:
                     it["row"]["grow_away"] = {k: v for k, v in side_read.items() if k != "edge"}
                 held = side_read if side_read["near"] else None
+            s_top = min(MAX_SCALE, cap_mm / cap)
+            if near_cap and any(it["row"].get("near_cap") for it in line):
+                s_top = min(MAX_SCALE, max(s_top, MIN_SCALE))
             if reset:
-                found = _place_line_reset(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm,
+                found = _place_line_reset(line, design, s_top, cap_mm,
                                           float(letter_gap_mm), min_stroke_mm, bold_scale,
                                           [r.polygon for r in bars], edge_room=reach_edges, near=held)
                 if held is not None:
                     for it in line:
                         it["row"]["grow_away"]["held"] = found is not None
                     if found is None:   # no scale holds the near edge: placed as before
-                        found = _place_line_reset(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm,
+                        found = _place_line_reset(line, design, s_top, cap_mm,
                                                   float(letter_gap_mm), min_stroke_mm, bold_scale,
                                                   [r.polygon for r in bars], edge_room=reach_edges)
             else:
-                found = _place_line(line, design, min(MAX_SCALE, cap_mm / cap), cap_mm, max_width_scale,
+                found = _place_line(line, design, s_top, cap_mm, max_width_scale,
                                     min_stroke_mm)
             if found is None:
                 for it in line:

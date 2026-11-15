@@ -1198,6 +1198,10 @@ def build_generation(
                            # its drawn size; 2026-11-14, built OFF): absent, as it was
                            **({"bean_follows": True}
                               if cfg.extra.get("small_text_reset_bean_follows") else {}),
+                           # a line just over the cap re-set at the least growth
+                           # (2026-11-14, built OFF): absent, the call as it was
+                           **({"near_cap": True}
+                              if cfg.extra.get("small_text_reset_near_cap") else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
