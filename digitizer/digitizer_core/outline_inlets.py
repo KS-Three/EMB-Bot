@@ -108,9 +108,17 @@ def kept_inlets(poly, grown, all_art, reach: float = 0.0):
     for a fill): the growth stays out of them, `poly` itself is kept whole.
     `reach` (the pull) carries the opening out through the growth band
     round the outline, or the band welds the inlet's MOUTH shut (music's
-    notch, first cut: the slot stayed open inside and closed at the edge)."""
+    notch, first cut: the slot stayed open inside and closed at the edge).
+
+    Only a NOTCH (at most `NOTCH_MAX` inlets) or a regular row of teeth
+    (`regular_teeth`) is kept: a feathered or lobed edge grows as before. On
+    the heraldic crest at 53 mm, keeping all 22-56 inlets of its feathered
+    fills cost 3.5x the plan's time (2026-11-15: each fill splits into many
+    more sections, and the fill lane's travel ordering pays for every one)."""
     bays = inlets(poly)
     if not bays:
+        return grown
+    if len(bays) > NOTCH_MAX and not regular_teeth(poly):
         return grown
     bare = unary_union(bays).difference(all_art)
     if bare.area < INLET_MIN_AREA_MM2:
@@ -208,6 +216,11 @@ TEETH_DEPTH_SPREAD = 2.0
 TIP_ENVELOPE_MM = 3.0
 #: meta key a tooth piece carries: the shape it was cut from
 TOOTH_OF_KEY = "inlet_tooth_of"
+#: a fill keeps the inlets of a NOTCH, at most this many of them (dot_music's
+#: slot reads one, or two at the tighter closing); more, and the edge must be
+#: a regular row of teeth (`regular_teeth`), or it is feathered and grows as
+#: before (2026-11-15, the crest's 3.5x)
+NOTCH_MAX = 2
 #: a row of TEETH is regular: the spread of the pieces' areas (standard
 #: deviation over mean) at most this. Ahora's gear reads 0.07; a feathered
 #: or lobed edge that splits reads far wider, and is left a satin
@@ -222,7 +235,6 @@ def toothed_satins(regions, cfg, design_class: str = "flat") -> set[str]:
     `SATIN_OVER_INLET_SHARE` of its area, and whose outline `tooth_split`
     reads as a REGULAR row of teeth (`TEETH_AREA_CV_MAX`). Geometry only: no
     plan is read, so the design is planned once."""
-    import statistics
     from .config import satin_fill_hysteresis, satin_fill_vote, satin_floor_applies
     from .machine import satin_ceiling_mm
     from .stage6_satin import is_satin_candidate
@@ -240,15 +252,10 @@ def toothed_satins(regions, cfg, design_class: str = "flat") -> set[str]:
                                       floor_applies=satin_floor_applies(cfg, design_class),
                                       vote=satin_fill_vote(cfg), hysteresis=satin_fill_hysteresis(cfg)):
                 continue
-            split = tooth_split(r)
         except Exception:  # noqa: BLE001 -- GEOS on a traced ring: left as it was
             continue
-        if split is None:
-            continue
-        areas = [t.polygon.area for t in split[1]]
-        if statistics.pstdev(areas) > TEETH_AREA_CV_MAX * statistics.mean(areas):
-            continue
-        out.add(str(r.shape_id))
+        if regular_teeth(r.polygon):
+            out.add(str(r.shape_id))
     return out
 
 
@@ -258,15 +265,9 @@ def _inlet_depth(bay: Polygon, envelope: Polygon) -> float:
     return max(ring.distance(Point(c)) for c in bay.exterior.coords)
 
 
-def tooth_split(region):
-    """-> (body, [teeth]) as copies of `region`, or None when its outer edge
-    is not a row of teeth. The body keeps the region's id and tier; tooth k
-    is `<id>-t<k>`, tier fill, rows square to its axis (`fill_angle_deg`),
-    in turn round the body."""
-    import math
-    from dataclasses import replace
-    from shapely import affinity
-    poly = region.polygon
+def _teeth_geometry(poly):
+    """-> (body polygon, [tooth pieces]) when `poly`'s outer edge is a row of
+    teeth (comment at TEETH_MIN), else None. Geometry only."""
     bays = inlets(poly)
     if len(bays) < TEETH_MIN:
         return None
@@ -302,7 +303,35 @@ def tooth_split(region):
             best = (body, pieces)
     if best is None or len(best[1]) < max(TEETH_MIN, len(bays)):
         return None
-    body, pieces = best
+    return best
+
+
+def regular_teeth(poly) -> bool:
+    """`poly`'s outer edge is a REGULAR row of teeth: `_teeth_geometry`
+    splits it and its pieces' areas are alike (`TEETH_AREA_CV_MAX`)."""
+    import statistics
+    try:
+        g = _teeth_geometry(poly)
+    except Exception:  # noqa: BLE001 -- GEOS on a traced ring: not teeth
+        return False
+    if g is None:
+        return False
+    areas = [t.area for t in g[1]]
+    return statistics.pstdev(areas) <= TEETH_AREA_CV_MAX * statistics.mean(areas)
+
+
+def tooth_split(region):
+    """-> (body, [teeth]) as copies of `region`, or None when its outer edge
+    is not a row of teeth. The body keeps the region's id and tier; tooth k
+    is `<id>-t<k>`, tier fill, rows square to its axis (`fill_angle_deg`),
+    in turn round the body."""
+    import math
+    from dataclasses import replace
+    from shapely import affinity
+    g = _teeth_geometry(region.polygon)
+    if g is None:
+        return None
+    body, pieces = g
     c0 = body.centroid
     pieces.sort(key=lambda t: math.atan2(t.centroid.y - c0.y, t.centroid.x - c0.x))
     teeth = []

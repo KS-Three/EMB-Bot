@@ -12,6 +12,7 @@ import hashlib
 import math
 
 from shapely.geometry import Point, Polygon, box
+from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, get_fabric
 from digitizer_core import outline_inlets as oi
@@ -258,3 +259,20 @@ def test_toothed_satins_picks_a_regular_row_of_teeth_and_nothing_else():
     assert oi.toothed_satins([_r(_notched_disc(), "D")], cfg) == set()     # one notch: not teeth
     assert oi.toothed_satins([_r(gear, "G", text_candidate=True)], cfg) == set()
     assert oi.toothed_satins([_r(gear, "G", tier="satin")], cfg) == set()
+
+
+def test_a_feathered_fill_grows_as_before_and_a_toothed_fill_keeps_its_gaps():
+    """2026-11-15: keeping every inlet of the crest's feathered fills cost 3.5x
+    the plan; only a notch (<= NOTCH_MAX inlets) or a regular row of teeth is
+    kept now."""
+    lobes = _lobed()
+    assert len(oi.inlets(lobes)) > oi.NOTCH_MAX and not oi.regular_teeth(lobes)
+    off = _plan([_r(lobes, "L", tier="fill", fill_angle_deg=0.0)])
+    on = _plan([_r(lobes, "L", tier="fill", fill_angle_deg=0.0)], outline_inlets_kept=True)
+    assert _md5(on) == _md5(off)
+    gear = _gear()
+    assert oi.regular_teeth(gear)
+    off = _plan([_r(gear, "G", tier="fill", fill_angle_deg=0.0)])["G"]
+    on = _plan([_r(gear, "G", tier="fill", fill_angle_deg=0.0)], outline_inlets_kept=True)["G"]
+    gaps = unary_union(oi.inlets(gear))
+    assert on.intersection(gaps).area < 0.5 * off.intersection(gaps).area
