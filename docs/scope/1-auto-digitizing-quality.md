@@ -5473,7 +5473,9 @@ negatives. *(measured 2026-11-13 — PR #1472, `tests/test_stage6_speed_exact.py
 and at 60 to 113.5 mm on both lanes, but sews the badge as one black patch at
 35 to 37 and at 40 mm (38 is fine) and sews the M-FAB faces white at 45 and
 50 mm; in the 77-image set it changes 4 images besides MFab, three for the
-worse. A fix behind the flag is in progress.
+worse. **The 35 to 40 mm collapse is fixed behind the flag** (the line-art
+guard, `art_outline.line_art_reading(round_any_hole=)`); the white faces
+from 38 to 50 mm are the 0.6 mm keyline rule and wait on Kent.
 *(measured 2026-11-13 — [`docs/photo-enclosed-rim-2026-11-06.md`](../photo-enclosed-rim-2026-11-06.md), addendum 2026-11-14)*
 
 ## Twenty-fifth pass: overflow moved from MASTER_SCOPE (2026-11-14)
