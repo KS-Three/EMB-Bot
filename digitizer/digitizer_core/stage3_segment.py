@@ -252,6 +252,22 @@ _STEM_MAX_WIDTH_DOTS = 2.0
 _STEM_MAX_ROW_DOTS = 1.5
 _STEM_MIN_ROW_FILL = 0.75
 
+# `cfg.extra["lone_glyph_keep"]` (built OFF 2026-11-14, the eye sweep's
+# "Seriously" -> "Senaudy" at 70.9 and 80.2 mm): a TITTLE over a joined
+# (cursive) word. Its i has no stem of its own -- the stroke under the dot is
+# one connected region with the whole word -- so `has_stem_below` finds
+# nothing to stand it on, and the dot (0.74 x 0.96 mm at 70.9: a loop proxy
+# of 1.92 mm under the run tier's 2.2) is dropped, where the printed i-dots of
+# the same size on Jakarta's line keep theirs. ON, a dot whose own colour's
+# word spans it -- the dot inside that region's box, the region at least
+# `_STEM_MIN_DOTS` dot heights deeper than the dot and `_TITTLE_MIN_AREA_DOTS`
+# times its area, its ink in the dot's own columns within `_TITTLE_GAP_DOTS`
+# dot heights under it -- is admitted by the dot rung as a printed i's dot is.
+# Read off the letter's shape like the stem constants above, not a stitch
+# value. "Seriously": ink 4.85 dot heights under the dot, the word 17 tall.
+_TITTLE_GAP_DOTS = 6.0
+_TITTLE_MIN_AREA_DOTS = 10.0
+
 
 def _hole_holding(region: "RegionMask", core_px: tuple[int, int]) -> np.ndarray | None:
     """The hole of `region` (a 4-connected component of its crop's complement
@@ -858,7 +874,35 @@ def resolve_small_regions(
             on_small += int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum())
         if on_small * 10 >= ring_px * 9:
             return False
-        return not dot_scope or has_stem_below(i, box)
+        return (not dot_scope or has_stem_below(i, box)
+                or (tittle_on and tittle_of_word(i, box)))
+
+    # `cfg.extra["lone_glyph_keep"]` (built OFF): a tittle over a joined word
+    # (comment at `_TITTLE_GAP_DOTS`). The flat lane only (`chain_rescue`):
+    # a photo's specks sit inside big same-colour regions everywhere.
+    tittle_on = bool(dot_scope and chain_rescue and (getattr(cfg, "extra", None) or {}).get("lone_glyph_keep"))
+
+    def tittle_of_word(i: int, box) -> bool:
+        y0, x0, y1, x1 = box
+        dot_h, dot_w = y1 - y0, x1 - x0
+        mine = colour(i)
+        if mine is None or dot_h <= 0 or dot_w <= 0:
+            return False
+        for j, rj in enumerate(regions):
+            if j == i:
+                continue
+            jy0, jx0, jy1, jx1 = rj.bbox
+            if (jx0 > x0 or jx1 < x1 or jy0 > y1 or jy1 - y1 < _STEM_MIN_DOTS * dot_h):
+                continue
+            if areas[j] < _TITTLE_MIN_AREA_DOTS * max(1, areas[i]):
+                continue
+            below = rj.window(y1, x0, min(jy1, y1 + int(math.ceil(_TITTLE_GAP_DOTS * dot_h))), x1)
+            if not below.any():
+                continue
+            theirs = colour(j)
+            if theirs is not None and float(np.linalg.norm(mine - theirs)) <= cfg.merge_delta_e:
+                return True
+        return False
 
     def colour(j: int) -> np.ndarray | None:
         """CIELAB of region `j`: its layer's own colour, else the raster's
