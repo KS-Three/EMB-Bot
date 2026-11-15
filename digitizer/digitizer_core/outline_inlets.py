@@ -28,6 +28,11 @@ ON, both stop:
 A letter is never moved: its tier is the lettering lane's, and its
 openings are what the per-stroke satin is built to keep.
 
+`cfg.extra["outline_inlets_teeth"]` (built OFF, read only with the flag
+above) sews a TOOTHED shape the pro's way instead of as one fill: its teeth
+first, each a short fill square to its own axis, then its body over their
+roots (`tooth_split`, `rebuild`, `bury_tooth_moves`; comment at "teeth").
+
 Only WHERE thread goes changes. The pull itself (`Fabric.pull_comp_mm`) is
 gate 1 and untouched; whether a kept inlet stays open on the cloth is the
 sew-out's to settle.
