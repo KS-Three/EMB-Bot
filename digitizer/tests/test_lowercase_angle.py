@@ -32,7 +32,7 @@ from digitizer_core import PipelineConfig, digitize, outline_cut
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.columns import lettering_columns_shape
 from tools import lowercase_angle as la
-from tests.conftest import LETTERING_2026_10_24_OFF, own_thread_only
+from tests.conftest import EDGE_WALK_2026_11_14_OFF, LETTERING_2026_10_24_OFF, own_thread_only
 
 SHOULDERS = "ubgma"         # glyphs that fold OFF and come apart ON (120 mm)
 
@@ -459,7 +459,8 @@ def word():
     # arms were measured without them (conftest.PRE_FLIP).
     kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False,
               small_dot_rung=False, small_dot_rung_lettering=False,
-              **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF)     # nor with the 2026-10-23/24 flips
+              **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,     # nor with the 2026-10-23/24 flips
+              **EDGE_WALK_2026_11_14_OFF)     # nor edge-walk (ON 2026-11-14): one more trim on the word
 
     def boom(*_a, **_k):
         raise AssertionError("fold_cuts code reached with fold_cuts off")

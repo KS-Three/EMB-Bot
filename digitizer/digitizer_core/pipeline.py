@@ -1123,6 +1123,15 @@ def build_generation(
         from .bevel_fold import apply_bevel_fold
         apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices))
 
+    # `cfg.extra["point_touch_split"]` (built OFF 2026-11-14, eye sweep fault
+    # 11: NSYNC's star touches its N at one point and the two traced as one
+    # region, which the column build fanned into spikes): a body pinched
+    # under `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
+    # tagger, so each is sewn (and tagged) on its own. Absent: never loads.
+    if cfg.extra.get("point_touch_split"):
+        from .point_touch import apply_point_touch_split
+        apply_point_touch_split(regions)
+
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
     # identity edits/overrides run, not after. The chart is for the one-ink
