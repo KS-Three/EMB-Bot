@@ -25,8 +25,10 @@ primary's `digitizer/eye_pairs_out/detail-1114/`).
 Built OFF: `cfg.extra["outline_inlets_kept"]` (`digitizer_core/outline_inlets.py`):
 inlet = closing the outer ring with a 1.0 mm disc, pieces >= 0.5 mm across
 and >= 0.1 mm2. Fill growth stays out of them and their mouths; a satin whose
-thread covers >= half of one is re-planned as fill (copy, `tier="fill"`);
-letters and hand-set tiers never move.
+thread covers >= half of one AND inlet area >= 3% of the shape is re-planned
+as fill (copy, `tier="fill"`); letters and hand-set tiers never move. The 3%
+gate exists because the first build turned Becker's black border (share
+0.002, a satin band in the pro's file) into a fill; the gear is 0.104.
 
 **Why:** Kent 11-14 "exactly like the pros"; these are geometry, not gate 1.
 **How to apply:** sheets show the shape right but Ahora's 1.1 mm ring as

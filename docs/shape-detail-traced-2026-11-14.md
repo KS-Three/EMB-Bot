@@ -78,12 +78,23 @@ inlets). Holes are counters and stay `growth_keeps_gaps`'s.
 1. **Stage 5, a fill:** its growth stays out of its own inlets that no other
    artwork fills, and out of the pull band at their mouths (without that, the
    first build opened the slot and welded its mouth). An inlet another colour
-   fills is a seam and is left alone.
+   fills is a seam and is left alone. Free fill angles are pinned to the OFF
+   pass, as the fat-ink flags do, so a kept notch cannot tip a near-tie row
+   angle.
 2. **After stage 7, a satin:** a shape whose satin thread (needle path plus
-   0.2 mm) covers half or more of one of its own inlets cannot draw that
-   shape; it is planned again as a fill, on a copy of the regions, through
-   the `tier = "fill"` field every stage-5/7 reader honours. Not a letter
-   (text-tagged), and not a shape whose tier was set by hand.
+   0.2 mm) covers half or more of one of its own inlets, and inlet area of at
+   least 3% of the shape in all, cannot draw that shape; it is planned again
+   as a fill, on a copy of the regions, through the `tier = "fill"` field
+   every stage-5/7 reader honours.
+
+Neither part touches a letter (text-tagged: its openings are the lettering
+lane's) or a shape whose tier was set by hand.
+
+**The 3% gate is measured, not guessed.** The first build re-planned
+Becker's black border as a fill: its outer edge dips between the letters,
+and its satin sews over the dips. The pro sews that border as a satin band
+too, so moving it was a step away from his file. Inlet area as a share of
+the shape: Ahora's gear 0.104, Becker's border 0.002.
 
 Only where thread goes changes. Whether a kept inlet stays open on the cloth
 is the sew-out's to settle.
