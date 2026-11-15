@@ -339,7 +339,9 @@ def find_cuts(poly: Polygon, W: float):
                or LineString([k[0], k[1]]).buffer(0.05).contains(seg) for k in kept):
             continue
         kept.append(cu)
-    if _APEX_CUT.get():
+    if _APEX_PRO.get():     # `apex_pro` (built OFF): its own cut, in place of apex_cut's
+        kept = _apex_pro_cuts(poly, W, kept, reflex, convex)
+    elif _APEX_CUT.get():
         kept = _apex_cuts(poly, W, kept, reflex, convex)
     return [k[:4] for k in kept], reflex, convex
 
@@ -731,6 +733,210 @@ def _apex_column(pc: Polygon, cross, cut_lines, pitch_mm: float, W: float) -> Co
     return Column(stations=st, piece=pc, kind="straight", axis=(float(u[0]), float(u[1])),
                   width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],
                   dropped_mm=dropped)
+
+
+# `apex_pro` (`cfg.extra["lettering_columns_apex_pro"]`, 2026-11-14, built
+# OFF). Kent on apex_cut's level-crossed V: "Off was closer to the pros
+# here, but still not perfect" / "I want it exactly like the pros." Read
+# stitch by stitch (`tools/apex_pro.py`, `docs/apex-pro-construction-2026-11-14.md`):
+# at Becker MARINE's M (all five files) the pro neither mitres the V (OFF:
+# two half columns, a herringbone seam down its middle) nor floors it (ON:
+# a level tip piece under a level cut through the crotch). ONE leg -- the
+# right one, the later in the line of text -- runs on through the joint to
+# the point: its crosses are LEVEL, start AT the point and step up the
+# merged V and on up that leg. The other leg stops on a SPLIT LINE that
+# continues the through leg's inner edge from the crotch across the merged
+# region; its own crosses fan into that line. The N's two tips read the same
+# way (the right-hand stroke owns each). ON, a down-pointing V tip (its point
+# within `APEX_PRO_DOWN_DEG` of straight below the crotch) that apex_cut's own
+# walk accepts as closing is cut by that split line alone, and the piece
+# holding the point is stationed with level crosses from the point up
+# (`_apex_pro_column`). Up-pointing tips (an A's apex) and every other
+# corner cut as OFF. A candidate, not a fabric constant (gate 1): layout.
+_APEX_PRO: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_pro", default=False)
+APEX_PRO_DOWN_DEG = 30.0       # the point lies within this of straight below its crotch
+APEX_PRO_SPLIT_W = 2.6         # the split line runs at most this many stroke widths
+APEX_PRO_SNAP_DEG = 25.0       # a concave corner this near the line's direction ends it
+
+
+@contextlib.contextmanager
+def apex_pro_scope(on: bool):
+    """`cfg.extra["lettering_columns_apex_pro"]` for one plan, beside
+    `apex_cut_scope`. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _APEX_PRO.set(True)
+    try:
+        yield
+    finally:
+        _APEX_PRO.reset(token)
+
+
+def _apex_pro_split(poly: Polygon, p, q, r: dict, others: list, W: float, reflex_all=()):
+    """`apex_pro`: the split line from the crotch `p` (its corner record `r`)
+    across the joint whose point is `q` -> a cut record, the point on its
+    left, or None. The through leg is the one whose inner edge leaves the
+    crotch toward the later side of the line of text; the line continues
+    that edge until it leaves the letter or meets another cut."""
+    a1 = (-r["cd_in"][0], -r["cd_in"][1])
+    a2 = (-r["cd_out"][0], -r["cd_out"][1])
+    own = a1 if a1[0] > a2[0] else a2
+    s = (-own[0], -own[1])
+    far = 2.0 * APEX_PRO_SPLIT_W * W
+    h = _ray_hit(poly, p, s, far, r["bis"])
+    if h is None:
+        return _apex_refused("pro_no_split")
+    seg = LineString([p, h])
+    for c in others:
+        x = seg.intersection(LineString([c[0], c[1]]))
+        for g in getattr(x, "geoms", [x]):
+            if g.geom_type == "Point" and math.dist(p, (g.x, g.y)) > 1e-6:
+                if math.dist(p, (g.x, g.y)) < math.dist(p, h):
+                    h = (g.x, g.y)
+    # a concave corner of the other leg near the line (where it meets its own
+    # stem: MARINE's M) takes the line's end -- his split runs to it, and a
+    # line stopping just short of it leaves a sliver the scrap rule eats
+    best = None
+    for c in reflex_all:
+        cp = c["p"]
+        if math.dist(cp, p) < 1e-6:
+            continue
+        v = (cp[0] - p[0], cp[1] - p[1])
+        d = math.hypot(*v)
+        if d < 0.5 * W or d > APEX_PRO_SPLIT_W * W:
+            continue
+        off = math.degrees(math.acos(max(-1.0, min(1.0, (v[0] * s[0] + v[1] * s[1]) / d))))
+        if off <= APEX_PRO_SNAP_DEG and _inside(poly, p, cp) and (best is None or off < best[0]):
+            best = (off, cp)
+    if best is not None:
+        h = best[1]
+    L = math.dist(p, h)
+    if L < 0.5 * W or L > APEX_PRO_SPLIT_W * W:
+        return _apex_refused("pro_split_len")
+    a, b = p, h
+    if (b[0] - a[0]) * (q[1] - a[1]) - (b[1] - a[1]) * (q[0] - a[0]) < 0:
+        a, b = b, a
+    return (a, b, "apex_pro", L, 1)
+
+
+def _apex_pro_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> list:
+    """`apex_pro`: each lone crotch with a down-pointing V tip across it --
+    one `_apex_walk` (apex_cut's own reading) accepts as two strokes closing
+    -- is cut by `_apex_pro_split` alone, in place of the junction rules'
+    cuts from that crotch. Records as `find_cuts`'."""
+    through = [c[k] for c in cuts if c[2] == "through" for k in (0, 1)]
+    drop, add = [], []
+    for r in reflex:
+        p = r["p"]
+        if any(math.hypot(p[0] - t[0], p[1] - t[1]) < 1e-6 for t in through):
+            continue
+        mine = [c for c in cuts if math.hypot(c[0][0] - p[0], c[0][1] - p[1]) < 1e-6]
+        others = [c for c in cuts if c not in mine]
+        rec = None
+        for q in _apex_tips(poly, p, r["bis"], convex, W):
+            v = (q[0] - p[0], q[1] - p[1])
+            if v[1] / max(math.hypot(*v), 1e-9) < math.cos(math.radians(APEX_PRO_DOWN_DEG)):
+                continue        # not below its crotch (y down): an A's apex, an N's tip
+            if (_apex_walk(poly, p, q, others, W) is None
+                    and _apex_walk(poly, p, q, others, W, _apex_stems(poly, W, p, reflex), True) is None):
+                continue
+            rec = _apex_pro_split(poly, p, q, r, others, W, reflex)
+            break
+        if rec is not None:
+            drop += mine
+            add.append(rec)
+            sh = _apex_pro_shoulder(poly, p, rec, others, W)
+            if sh is not None:
+                drop.append(sh[0])
+                add += sh[1:]
+            # its own corners: `find_cuts` clusters a chamfered notch into one
+            st = _apex_pro_stem_cut(poly, q, p, corners(poly, W)[0], cuts + add, W)
+            if st is not None:
+                add.append(st)
+    return [c for c in cuts if c not in drop] + add
+
+
+def _apex_pro_stem_cut(poly: Polygon, q, p, reflex, cuts: list, W: float):
+    """`apex_pro`: the through leg's piece must not run on into the stem
+    beside it -- its level crosses take the longest stretch of each line,
+    and a stem beside the V is longer (MARINE's M at 95.7 mm, where no
+    junction rule cut the right stem off). Where the concave corner on the
+    through leg's side of the point (its outer edge meeting a stem) has no
+    cut, its stem edge is continued up into the letter (an "ext").
+    -> a cut record or None."""
+    side = [r for r in reflex if r["p"][0] > q[0] and math.dist(r["p"], q) < 2.0 * W
+            and math.dist(r["p"], p) > 1e-6]
+    # nearest first; a chamfered notch is two corners, and the one whose
+    # edge runs down the stem is the one that continues (MARINE at 95.7 mm)
+    for r in sorted(side, key=lambda r: math.dist(r["p"], q)):
+        away = [(-r["cd_in"][0], -r["cd_in"][1]), (-r["cd_out"][0], -r["cd_out"][1])]
+        down = max(away, key=lambda a: a[1])
+        if down[1] >= math.cos(math.radians(20)):
+            break
+    else:
+        return None             # no upright stem edge leaves a corner there downward
+    c = r["p"]
+    if any(math.dist(k[0], c) < 1e-6 or math.dist(k[1], c) < 1e-6 for k in cuts):
+        return None
+    d = (-down[0], -down[1])
+    h = _ray_hit(poly, c, d, 3.2 * W, r["bis"])
+    if h is None:
+        return None
+    seg = LineString([c, h])
+    for k in cuts:
+        x = seg.intersection(LineString([k[0], k[1]]))
+        for g in getattr(x, "geoms", [x]):
+            if g.geom_type == "Point" and 1e-6 < math.dist(c, (g.x, g.y)) < math.dist(c, h):
+                h = (g.x, g.y)
+    if math.dist(c, h) < 0.5 * W:
+        return None
+    return (c, h, "ext", math.dist(c, h), 1)
+
+
+def _apex_pro_shoulder(poly: Polygon, p, rec, others: list, W: float):
+    """`apex_pro`: where the split line ends on a stem's inner edge cut (an
+    "ext" running up past the crotch -- MARINE's M), the pro sews that stem
+    level only up to the crotch's height and the stopped leg's fan covers
+    the stem's top: the ext is kept below that height and a level cut runs
+    across the stem there. -> (the ext dropped, its lower part, the level
+    cut) or None."""
+    e = rec[1] if math.dist(rec[0], p) < 1e-6 else rec[0]
+    for c in others:
+        if c[2] != "ext":
+            continue
+        if math.dist(c[0], e) < 1e-6:
+            lo, hi = c[0], c[1]
+        elif math.dist(c[1], e) < 1e-6:
+            lo, hi = c[1], c[0]
+        else:
+            continue
+        if not hi[1] < p[1] - 0.25 * W < lo[1] or abs(hi[0] - lo[0]) > 0.3 * abs(hi[1] - lo[1]):
+            continue            # it does not run up past the crotch, or it is no upright stem edge
+        f = (lo[1] - p[1]) / (lo[1] - hi[1])
+        m = (lo[0] + f * (hi[0] - lo[0]), p[1])
+        sgn = -1.0 if p[0] > m[0] else 1.0
+        h = _ray_hit(poly, m, (sgn, 0.0), 3.0 * W, (sgn, 0.0))
+        if h is None or math.dist(m, h) < 0.5 * W:
+            return None
+        return (c, (lo, m, "ext", math.dist(lo, m), 1), (m, h, "apex_pro_shoulder", math.dist(m, h), 1))
+    return None
+
+
+def _apex_pro_column(pc: Polygon, splits, cut_lines, pitch_mm: float, W: float) -> Column | None:
+    """`apex_pro`: the piece on the point's side of a split line (the record's
+    left) -- the through leg and the point -- stationed with level crosses,
+    from the point up and on up the leg (`_apex_column` with a level cross).
+    None for any other piece."""
+    for a, b in splits:
+        L = math.dist(a, b)
+        if L < 1e-9:
+            continue
+        n = (-(b[1] - a[1]) / L, (b[0] - a[0]) / L)
+        m = ((a[0] + b[0]) / 2 + 0.05 * n[0], (a[1] + b[1]) / 2 + 0.05 * n[1])
+        if pc.contains(Point(m)):
+            return _apex_column(pc, ((0.0, 0.0), (1.0, 0.0)), cut_lines, pitch_mm, W)
+    return None
 
 
 def _depth_peaks(depth, W: float) -> list[int]:
@@ -2684,7 +2890,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     # junction-rule cut that ends on that line (those slice the stem
     # crosswise) or crosses it.
     scuts, stems = slot_cuts(poly, W)
-    if scuts and _APEX_CUT.get() and any(c[2] == "apex" for c in cuts):
+    if scuts and ((_APEX_CUT.get() and any(c[2] == "apex" for c in cuts))
+                  or any(c[2] == "apex_pro" for c in cuts)):      # `apex_pro`: the same reading
         # `apex_cut`: a letter with an acute tip is no E or F. MARINE's M at
         # 95.7 mm read as one on its side past both guards in `slot_cuts`,
         # and its slab notch and V crotch then fanned (12 cross ends in one
@@ -2709,6 +2916,11 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     apex = _APEX_CUT.get()
     while cuts:
         small = [g for g in pieces if g.area < 0.4 * W * W]
+        # `apex_pro`: the leg its split line stops is often a sliver beside
+        # its stem (MARINE's M), and it is his fan, not a scrap
+        small = [g for g in small if not any(
+            k[2] == "apex_pro" and LineString([k[0], k[1]]).intersection(g.buffer(0.02)).length > 0.5 * k[3]
+            for k in cuts)]
         if apex:
             # `apex_cut`: a tip piece is small by nature, and its cross is the point
             small = [g for g in small if not any(
@@ -2718,7 +2930,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
             break
         pc = min(small, key=lambda g: g.area)
         near = [k for k in cuts if LineString([k[0], k[1]]).intersection(pc.buffer(0.02)).length > 0.5 * k[3]
-                and not (apex and k[2] in ("apex", "apex_stub", "apex_stem"))]
+                and not (apex and k[2] in ("apex", "apex_stub", "apex_stem"))
+                and k[2] not in ("apex_pro", "apex_pro_shoulder")]
         if not near:
             break
         cuts.remove(max(near, key=lambda k: k[3]))
@@ -2751,7 +2964,13 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
             return judge(out, poly)
     columns, unsewn = [], []
     apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"] if apex else []
+    apro = [(c[0], c[1]) for c in cuts if c[2] == "apex_pro"]   # `apex_pro` (built OFF): none without it
     for pc in pieces:
+        if apro:
+            col = _apex_pro_column(pc, apro, cut_lines, pitch_mm, W)
+            if col is not None:
+                columns.append(col)
+                continue
         if apex_x:
             # `apex_cut`: a tip is one column as it stands -- no second look
             tip = _apex_tip_piece(pc, apex_x)
