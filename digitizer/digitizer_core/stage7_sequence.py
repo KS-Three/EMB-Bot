@@ -323,6 +323,26 @@ def _min_dim_mm(poly) -> float:
                        else poly.boundary.distance(centre))
 
 
+def _one_polygon(geom, fallback: Polygon) -> Polygon:
+    """`geom` as the one Polygon a satin column sews, else `fallback`.
+
+    `cfg.compact_satin_keeps_gaps`' kept polygon is a difference and a union
+    (`stage5_overlap._kept_gaps`), which can come back as a collection: hed
+    p.e. at 80 mm (2026-11-15) gave one 12.4 mm2 polygon and six zero-area
+    LineStrings, and `small_solid_satin` raised on it (no `exterior`), so the
+    whole digitize failed. The polygon is the shape; lines and points carry
+    no thread. Two or more polygons (a kept gap cutting the shape through)
+    cannot be one column, so the shape sews as stage 5 left it, as it did
+    before the flag. A Polygon passes through untouched."""
+    if geom is None or geom.is_empty:
+        return fallback
+    if geom.geom_type == "Polygon":
+        return geom
+    polys = [g for g in shapely.get_parts(shapely.get_parts(geom))
+             if g.geom_type == "Polygon" and not g.is_empty]
+    return polys[0] if len(polys) == 1 else fallback
+
+
 def _text_lean_house(region, cfg: PipelineConfig) -> float | None:
     """`cfg.lettering_columns_text_lean` (2026-10-23): the house cross a
     Column letter's straight columns lean to -- the word's
@@ -3381,7 +3401,7 @@ def sequence(
             seam_by_layer[p.layer] = (prep(ground.buffer(0.1)), ground) if down else None
         return seam_by_layer[p.layer]
 
-    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14): the rail
+    # `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14): the rail
     # push of a satin or a lettering column is held out of the bays of its
     # own shape and its gaps to same-thread ink, as from a counter
     # (`stage6_satin.PUSH_KEEP_MARGIN_MM`). The ink near one shape, its own
@@ -3389,7 +3409,9 @@ def sequence(
     # True holds a gap as a counter is held (`cfg.min_detail_mm`); a number
     # is the floor in mm a gap keeps instead (the pro's E and S at Gaulke
     # keep about what a 0.5 floor leaves).
-    _kg = (cfg.extra or {}).get("satin_push_keeps_gaps")
+    # Kent ruled 0.5 (2026-11-15); the flip is held until the push never
+    # costs a stroke (comment at the field in config.py)
+    _kg = cfg.satin_push_keeps_gaps
     keep_gaps = bool(_kg)
     keep_floor = (float(_kg) if isinstance(_kg, (int, float)) and not isinstance(_kg, bool)
                   else cfg.min_detail_mm)
@@ -3403,7 +3425,7 @@ def sequence(
         reach = 2.0 * fabric.pull_comp_mm + cfg.min_detail_mm + 1.0
         return keep_by_thread[ti].intersection(p.region.polygon.buffer(reach)), keep_floor
 
-    # `cfg.extra["compact_satin_keeps_gaps"]` (built OFF 2026-11-14, Gaulke's
+    # `cfg.compact_satin_keeps_gaps` (built OFF 2026-11-14, Gaulke's
     # window). `compact_solids_satin` sews a compact solid as one satin on
     # `p.polygon`, the polygon stage 5 grew for the FILL it predicted: the
     # pull all round, into the gap the art keeps to the next shape. Gaulke's
@@ -3413,7 +3435,8 @@ def sequence(
     # growth stays out of those gaps by stage 5's own `growth_keeps_gaps`
     # rule (`stage5_overlap._kept_gaps`: same thread always, other colours
     # from `GAP_SEWABLE_MM`), on these shapes only. Off, unread.
-    compact_keep = bool((cfg.extra or {}).get("compact_satin_keeps_gaps"))
+    # ON since 2026-11-15, Kent: "Flip both, value 0.5"
+    compact_keep = bool(cfg.compact_satin_keeps_gaps)
     compact_tree = (shapely.STRtree([o.region.polygon for o in planned])
                     if compact_keep else None)
 
@@ -3425,7 +3448,7 @@ def sequence(
         local = unary_union([art] + [o.polygon for o in near])
         kept = _kept_gaps(p.region, art, p.polygon, near, local, None,
                           fabric.pull_comp_mm + cfg.overlap_mm)
-        return kept if (kept is not None and not kept.is_empty) else p.polygon
+        return _one_polygon(kept, p.polygon)
 
     # `cfg.stripe_underfill`: a band sewn on a stripe field's fill holds its
     # rails where the fill lies beneath -- the ground already down here is
@@ -4128,7 +4151,7 @@ def sequence(
                     # the walk whose hops lie under satin still to come; off, today's call
                     **({"edge_walk": True}
                        if cfg.lettering_columns_connectors_edge_walk else {}),
-                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14):
+                    # `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14):
                     # the push held out of bays and gaps; off, today's call
                     **({"pull_keep": push_keep(p)} if keep_gaps else {}))
                 # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
@@ -4317,7 +4340,7 @@ def sequence(
                     rail_comp_floor_mm=cfg.min_detail_mm,
                     rail_held=(stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
                                else seam_ground(p) if cfg.satin_seam_hold else None),
-                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF): off, today's call
+                    # `cfg.satin_push_keeps_gaps` (built OFF): off, today's call
                     **({"rail_keep": push_keep(p)} if keep_gaps else {}),
                     cap_skew_inset=cfg.satin_cap_skew_inset,
                     use_shapefield=use_shapefield,

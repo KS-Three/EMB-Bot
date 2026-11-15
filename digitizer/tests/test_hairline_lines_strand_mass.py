@@ -22,7 +22,7 @@ from digitizer_core.stage6_hairline_lines import extract_strands, strand_blocks
 from tests.test_hairline_lines import _md5
 from tests.test_hairline_lines_strand_test import (OWL, _bars, _ground, _sewable, _sp,
                                                    _strands, _zones)
-from tests.conftest import LETTERING_2026_10_24_OFF
+from tests.conftest import LETTERING_2026_10_24_OFF, TEXT_GAPS_2026_11_15_OFF
 from tests.test_thread_profile import GOLDEN_MD5, TESTDATA, _coords_md5
 from tools.hairline_strand_mass import (dark_runs, drawn_kept, mane_image, s882_image,
                                         syn_cfg)
@@ -59,7 +59,8 @@ HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
                  dissolve_phantom_blends=False, clip_keep_pieces=False,
                  bean_letter_straight_mm=None, edge_cap_skip_bean_letters=False,
                  # the 2026-10-23 flips and the 2026-10-24 lettering flips: the md5s predate both
-                 **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF)
+                 **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,
+                 **TEXT_GAPS_2026_11_15_OFF)   # the six 2026-11-15 text/gap flips: these pins predate them
 
 
 def _syn_cfg(arm: str, width_mm: float) -> PipelineConfig:

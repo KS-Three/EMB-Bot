@@ -65,7 +65,10 @@ def test_column_widths_reads_the_crosses_of_each_column():
     assert none["columns"] == 0 and math.isnan(none["col_min_mm"])
 
 
-def test_the_synthetic_60wt_off_row_at_three_millimetres():
+def test_the_synthetic_60wt_off_row_at_three_millimetres(monkeypatch):
+    # the row predates the six 2026-11-15 text/gap flips: read it on that engine
+    from tests.conftest import TEXT_GAPS_2026_11_15_OFF
+    monkeypatch.setattr(census, "OFF_FLIPS", {**census.OFF_FLIPS, **TEXT_GAPS_2026_11_15_OFF})
     ref = json.loads((TESTDATA / "small_print_synthetic_ref.json").read_text())
     m, _ = census.cell(small_print.synthetic_text(), ref, 3.0, 60, False)
     assert (m["thread_wt"], m["floor"]) == (60, False)

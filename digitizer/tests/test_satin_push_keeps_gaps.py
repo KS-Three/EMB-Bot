@@ -1,4 +1,4 @@
-"""`cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14): the satin rail
+"""`cfg.satin_push_keeps_gaps` (built OFF 2026-11-14): the satin rail
 push is held out of a shape's bays and its gaps to same-thread ink exactly as
 it is held out of a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`).
 

@@ -1220,7 +1220,8 @@ def resolve_overlaps(
     piece_floor = clip_piece_floor_mm2(cfg) if keep_pieces else 0.0
     slivers: list[tuple[str, float]] = []
     small_keep = bool(getattr(cfg, "small_glyph_keep", False))
-    # `cfg.fine_bar_survive` (built OFF, `fine_bar`): a thin ink bar the pass
+    # `cfg.fine_bar_survive` (ON since 2026-11-15, Kent: "Flip both ON";
+    # `fine_bar`): a thin ink bar the pass
     # redrew keeps its art when the colours already down would take it.
     fine_keep = bool(getattr(cfg, "fine_bar_survive", False))
     if fine_keep:
