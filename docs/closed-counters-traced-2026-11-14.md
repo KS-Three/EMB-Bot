@@ -226,3 +226,43 @@ on its border, and the pro's own file has the T on the border too.
   fabric) is construction, not push; it is untouched.
 - Bridge's five trace pins wait on the arc re-set; k_line and bukit wait on
   raising small text (a 0.5 mm stroke sewn by a 0.4 mm thread).
+
+## Fremont's EAT reads "EAI" (the eye sweep's fault 9)
+
+The black divider after EAT covers the right half of the T at 85.1, 93.3 and
+96.0 mm (`eye_pairs_out/eye-sweep-1114/REPORT.md`, row 9). Measured at 93.3 mm
+on the T's crossbar row, in mm from the design's left edge
+(`scripts/row_runs.py`, `scripts/divider_move.py`):
+
+| Footprint | T's right end | divider | gap |
+|---|---|---|---|
+| stage 4 (traced) | 39.35 | 40.88-41.22 (0.33 wide) | 1.5 |
+| after the small-text re-set | — | **39.56-39.90** | — |
+| stage 5 | — | 39.56-39.90 | — |
+| needle | 38.40 | from 39.25 (1.15 wide) | 0.8 |
+| thread | 39.00 | from 39.05 (1.55 wide) | **0.0** |
+
+- **The re-set moves the divider.** It raises "EAT | STAY | PLAY" 1.575x
+  about the line, and the divider (`S1644ba78`, not in the text cluster)
+  moves 1.32 mm left with it.
+- **The T does not move.** Its letters sew as dark-ink bean spines, written
+  at art size and place before the re-set. So the T stays where it was drawn
+  while the divider lands on it.
+- **The divider also sews wider than drawn.** It is 1.55 mm at the thread,
+  against 0.33 mm in the art. The pro's bar is wide too.
+
+| Arm | T end (thread) | divider from | gap | By eye |
+|---|---|---|---|---|
+| OFF | 39.00 | 39.05 | 0.0 | "EAI" |
+| `satin_push_keeps_gaps` | 39.00 | 39.05 | 0.0 | same: tan T and black bar are different threads, and nothing is pushed here |
+| `growth_keeps_gaps` | 39.00 | 39.05 | 0.0 | same: stage 5 does not move either |
+| **`small_text_reset_bean_follows` (#1532)** | **37.05** | 39.05 | **1.95** | **the T stands whole and clear; EAT is raised with its line** |
+
+**`small_text_reset_bean_follows` cures it**: the spines take the letter's
+re-set move. 1.35% of the design moves, 15,898 → 16,010 stitches. Neither gap
+flag touches this fault. Still open, and not this fault: the A of EAT sews as
+a bean "Λ" with no crossbar in both arms (Kent's 11-10 pin "the A is hard to
+read").
+
+*(measured 2026-11-14 — `runs/hotel_fremont_hat_{off,on,growth,follows}/`,
+sheet `sheets/fremont_EAT_T__art_off_push_growth_beanfollows_pro.png`)*
