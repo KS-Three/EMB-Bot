@@ -26,12 +26,12 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
 from digitizer_core.textcluster import MIN_CLUSTER_MEMBERS
-from tests.conftest import GROUP_2026_11_14_OFF, THREAD_2026_11_14_OFF
+from tests.conftest import BODY_2026_11_14_OFF, GROUP_2026_11_14_OFF, THREAD_2026_11_14_OFF
 
 
 def _cfg(**kw) -> PipelineConfig:
     """The engine with the group flags as they were before the flip, `kw` over it."""
-    return PipelineConfig(**{**GROUP_2026_11_14_OFF, **THREAD_2026_11_14_OFF, **kw})
+    return PipelineConfig(**{**GROUP_2026_11_14_OFF, **THREAD_2026_11_14_OFF, **BODY_2026_11_14_OFF, **kw})
 
 
 def _region(sid, poly, thread, **meta):
@@ -239,7 +239,7 @@ def test_off_is_the_engine_as_it_was_and_on_ships():
     b = _kinds(RING_WORD, group_consistent_tier=False)
     assert a == b
     assert PipelineConfig().group_consistent_tier is True     # Kent's flip 2026-11-14
-    assert PipelineConfig().group_consistent_outline_body is False    # held OFF by Kent 2026-11-14
+    assert PipelineConfig().group_consistent_outline_body is True     # Kent 2026-11-14, "Flip ON with guard"
     assert machine.OUTLINE_BODY_RATIO == 1.0     # the census numbers above are read against it
 
 

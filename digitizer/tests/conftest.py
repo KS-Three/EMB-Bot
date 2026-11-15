@@ -1003,6 +1003,10 @@ PRE_FLIP.update(GROUP_2026_11_14_OFF)
 # `tests/test_word_thread_guard.py`, `tests/test_group_consistency.py`.
 THREAD_2026_11_14_OFF = {"group_consistent_thread": False}
 PRE_FLIP.update(THREAD_2026_11_14_OFF)
+# `group_consistent_outline_body` with its guard ("Flip ON with guard", Kent
+# 2026-11-14): `tests/test_outline_body_guard.py`, `tests/test_group_consistency.py`.
+BODY_2026_11_14_OFF = {"group_consistent_outline_body": False}
+PRE_FLIP.update(BODY_2026_11_14_OFF)
 # `outline_redraw_k` ("Set 0.75"; None before): `tests/test_outline_redraw.py`.
 REDRAW_2026_11_14_OFF = {"outline_redraw_k": None}
 PRE_FLIP.update(REDRAW_2026_11_14_OFF)
