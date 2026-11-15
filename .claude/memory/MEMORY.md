@@ -55,6 +55,7 @@ the OLDEST lines whole to the archive.
 - [Foreman wake-up](foreman-wakeup-while-wave-out-2026-11-12.md) — Kent 11-12 "stale for 10 hours": 7 cloud sessions merged while the foreman idled; a wave out = set a wake-up (CronCreate sweep / gh run watch) before ending the turn, delete when empty
 - [Free-digitizer follow-ups](free-digitizer-followups-2026-11-05.md) — Kent 11-05 on the 7 untaken ideas: score metrics-only, recount only, zip only, re-read BLOCKS, TSP skip, heatstitch floor row ADD, literature parked
 - [Free digitizer survey](free-digitizer-survey-2026-11-04.md) — Kent 11-04: 40+ tools, no free desktop auto-digitizer; bench tier 1 heatstitch (MIT) + openstitch (AGPL, output only) + Nuizu (CLI); Hatch 30-export list approved, Wilcom skipped (hardware)
+- [Fremont room](fremont-room-2026-11-14.md) — EST 1895 `no_room`: its own white field (0.48 of hull) read as obstacle; `small_text_reset_ground_ring` + `_bean_follows` (spines read at drawn size) OFF: date reads clean at 2x; pro 2.4x
 - [Group consistency](group-consistency-2026-11-13.md) — "like things differ" pins: 2 tier straddles, 2 thread, 2 fill angle, 2 fixed; 4 OFF flags; decide by ink not region count; render tone was row order
 - [Hairline keyline bean](hairline-keyline-bean-2026-11-13.md) — `border_from_outline_hairline_run` OFF: 0.4 mm keyline sewed 1.5 mm satin; ON = corner-exact bean
 - [heatstitch floor row](heatstitch-floor-row-2026-11-05.md) — `tripwire floor`: ours' sttype kappa beside heatstitch's untuned rule per job, margin, flag < 0.05 (never fails); laptop-only, n/a without scratch_bench files
@@ -75,7 +76,6 @@ the OLDEST lines whole to the archive.
 - [Monarch size cliff](monarch-size-cliff-2026-11-13.md) — wing cell lost at 90.50/91.75 mm; hand-back OFF by Kent 11-14: don't flip, don't re-narrow; lane branch-drop is the real fix ("the & was better on": his eye favoured ON)
 - [Move shape](move-shape-2026-11-05.md) — Kent 11-05: translate one digitized shape (shell, holes, nodes); outline live, stitches follow on commit; one discrete elupdate; ignores the similar tick; e2e (m1)-(m7)
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
-- [Nightly tripwire](nightly-tripwire-2026-11-02.md) — 18 committed pairs (Becker x5 + the zip's 13) nightly on main vs testdata/tripwire_ledger.json; tolerance = spread of 3 runner passes; wrong-way past it = red; never a PR check
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
 - [Node reshape spec](node-reshape-spec-2026-11-03.md) — "entire spline follows" = pullRing's 2x-drag radius (not a bug); 7 rulings 11-03: 3 mm fixed, Reshape mode both lanes, holes_override, marquee crosses shapes for seams
 - [Outline fonts on demand](outline-fonts-on-demand-2026-11-06.md) — Kent 11-06: TTF/OTF fonts sewn by the service via the Column lane (POST /lettering), 21 OFL families, `outline:<key>`; 07-24 ruling = browser trace

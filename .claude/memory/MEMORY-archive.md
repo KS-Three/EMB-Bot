@@ -262,3 +262,4 @@ live index; new archive lines go at the bottom.
 - [Lettering thread](lettering-thread-2026-11-01.md) — Drone's gap was thread: stray ON 11-02 (Kent), contrast floor OFF (Becker black), AND DRONE 0 -> +1.00, PRECISION +0.58; sewn ground exempt
 - [Sew-out card v8](sewout-card-v8-2026-11-01.md) — cut_every_jump walks Fremont's 148 floats on the white field, cuts ENTHUSIAST's; JS cuts 15; Drone's lever is the halo (0.3: x1.74); 0.01 mm oracle: 1 walk 0.029 mm off
 - [Pro-pair yardstick](yardstick-pro-pair-2026-11-01.md) — 100 pairs at the pro's size: only trims clear chance (hops +0.24, cuts +0.23), "never worse" fails all 6; Kent 11-02 on the 17 trim-disagreement pairs: "My eye stands", exit unmet
+- [Nightly tripwire](nightly-tripwire-2026-11-02.md) — 18 committed pairs (Becker x5 + the zip's 13) nightly on main vs testdata/tripwire_ledger.json; tolerance = spread of 3 runner passes; wrong-way past it = red; never a PR check
