@@ -194,3 +194,22 @@ is above chance, but this data cannot tell it apart from the photo/flat
 split, and it misses the motivating case. What would settle it is a sitting
 where Kent grades **photos** Good as well as bad (today no photo is graded
 Good), with the reading's cut-off written down before he sits.
+
+## The photo sitting, 2026-11-15: no verdict
+
+Pre-registered in `docs/defect-marks-2026-11-14/subject-recall-preregistration.md`
+(commit `34bc7177`) and scored in `docs/defect-marks-2026-11-14/SITTING.md`.
+Kent graded 14 photos: every Commons photo he had not graded yet, except
+`stained_glass`, which timed out, plus the toadstool. **He marked all 14
+LOST** (detail lost on every one; 11 Terrible, 2 Bad, 1 Okay) **and none
+GOOD**. The pre-registered minimum is 4 of each, so the outcome is **"no
+verdict: class not filled"**, and `subject_edge_recall` stays a metric only.
+He marked the toadstool LOST, and it reads 0.940, above the 0.90 cut-off: a
+pre-registered miss. Across the two sittings Kent has graded 18 photos (17
+of the corpus's 18, plus the toadstool) and none Good.
+
+**Kent's ruling, 2026-11-15:** "Park it, metric only (Recommended)".
+`subject_edge_recall` stays a metric only. It is re-sat only once the photo
+lane produces photos he would call Good. There will be no cap study, no new
+sitting now, and no drop. This lane has to produce photos he calls Good
+before any lost-subject reading can be tested on it.

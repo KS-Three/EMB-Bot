@@ -1,0 +1,285 @@
+{
+ "kit_sha256": "ffd15392ef44be4480fefba21406af03aa9f98231c83ef86a8d27c67c53df749",
+ "updated": "2026-11-15T18:46:50+00:00",
+ "items": {
+  "P_food_plate": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "",
+   "pins": [],
+   "ts": "2026-11-14T21:12:30+00:00"
+  },
+  "P_vintage_sepia": {
+   "grade": "Bad",
+   "nothing_wrong": false,
+   "whole": [
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "Thi image is already deteriorated and isn't something that would be embroidered. Too difficult to do, nor is it practical / needed.",
+   "pins": [],
+   "ts": "2026-11-15T18:22:56+00:00"
+  },
+  "P_fireworks": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "Fireworks need more fine details, Right now it depicts the fireworks as a blob",
+   "pins": [],
+   "ts": "2026-11-15T18:23:47+00:00"
+  },
+  "P_snow_highkey": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "All of the details are lost, the tree branches are gone, and the trees are a blob, no definition between the gravestones and trees.",
+   "pins": [],
+   "ts": "2026-11-15T18:24:43+00:00"
+  },
+  "P_flower_macro": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "Can't tell that this is even a flower",
+   "pins": [
+    {
+     "x": 0.5433,
+     "y": 0.57241,
+     "x_mm": 43.95,
+     "y_mm": 46.42,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The ring around the flower was lost and only "
+    }
+   ],
+   "ts": "2026-11-15T18:37:17+00:00"
+  },
+  "P_dark_dog": {
+   "grade": "Okay",
+   "nothing_wrong": false,
+   "whole": [
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "It looks good if a squint, but the details are lacking to help identify the features of the dog (ear, nose, mouth, wiskers etc.)",
+   "pins": [
+    {
+     "x": 0.57706,
+     "y": 0.72389,
+     "x_mm": 46.81,
+     "y_mm": 78.47,
+     "what": "missing",
+     "severity": "noticeable",
+     "note": "The green collar is missing here."
+    },
+    {
+     "x": 0.77165,
+     "y": 0.18583,
+     "x_mm": 63.27,
+     "y_mm": 18.66,
+     "what": "missing",
+     "severity": "noticeable",
+     "note": "The tip of the nose is missing"
+    },
+    {
+     "x": 0.28616,
+     "y": 0.49727,
+     "x_mm": 22.2,
+     "y_mm": 53.28,
+     "what": "missing",
+     "severity": "noticeable",
+     "note": "No definition or detail that defines the ears."
+    },
+    {
+     "x": 0.60486,
+     "y": 0.28149,
+     "x_mm": 49.16,
+     "y_mm": 29.29,
+     "what": "stitch_type",
+     "severity": "nitpick",
+     "note": "This bean stitch doesn't help define the image"
+    }
+   ],
+   "ts": "2026-11-15T18:46:50+00:00"
+  },
+  "P_underwater_reef": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "This is so bad, all of the details got merged together and you can't even tell what's being digitized.",
+   "pins": [],
+   "ts": "2026-11-15T18:40:58+00:00"
+  },
+  "P_watercolor": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "Remove this one from the graded list, it's not anything that would ever be embroidered. ",
+   "pins": [],
+   "ts": "2026-11-15T18:41:29+00:00"
+  },
+  "P_pencil_sketch": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "This is not something that would be d igitized, but if it were to get digitized, the border should atleast be consistant/clean around the edges.",
+   "pins": [],
+   "ts": "2026-11-15T18:42:24+00:00"
+  },
+  "P_group_people": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "All of the details and definition that seperate the people and the features are lost.",
+   "pins": [],
+   "ts": "2026-11-15T18:42:59+00:00"
+  },
+  "P_sports_action": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "colours_off",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "All of the details around the person are lost, it doesn't look good.",
+   "pins": [],
+   "ts": "2026-11-15T18:43:31+00:00"
+  },
+  "P_night_skyline": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "All of the details are lost, just looks like a bunch of blobs.",
+   "pins": [],
+   "ts": "2026-11-15T18:43:55+00:00"
+  },
+  "P_oil_painting": {
+   "grade": "Bad",
+   "nothing_wrong": false,
+   "whole": [
+    "too_busy",
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "reason": "He doesn't have a face",
+   "pins": [
+    {
+     "x": 0.42218,
+     "y": 0.25728,
+     "x_mm": 33.71,
+     "y_mm": 24.63,
+     "what": "missing",
+     "severity": "ruins",
+     "note": "#1 - #4 details and features of the face are missing."
+    },
+    {
+     "x": 0.50557,
+     "y": 0.31894,
+     "x_mm": 40.76,
+     "y_mm": 31.01,
+     "what": null,
+     "severity": null,
+     "note": ""
+    },
+    {
+     "x": 0.52543,
+     "y": 0.46019,
+     "x_mm": 42.44,
+     "y_mm": 45.63,
+     "what": null,
+     "severity": null,
+     "note": ""
+    },
+    {
+     "x": 0.48175,
+     "y": 0.28553,
+     "x_mm": 38.75,
+     "y_mm": 27.55,
+     "what": null,
+     "severity": null,
+     "note": ""
+    }
+   ],
+   "ts": "2026-11-15T18:45:14+00:00"
+  },
+  "P_toadstool_dof_meadow": {
+   "grade": "Terrible",
+   "nothing_wrong": false,
+   "whole": [
+    "unrecognizable",
+    "too_busy",
+    "detail_lost"
+   ],
+   "reason": "The mushrooms don't even look like mushrooms.",
+   "pins": [
+    {
+     "x": 0.61379,
+     "y": 0.71172,
+     "x_mm": 49.87,
+     "y_mm": 39.16,
+     "what": "missing",
+     "severity": "noticeable",
+     "note": "The mushroom is missing"
+    },
+    {
+     "x": 0.37055,
+     "y": 0.70381,
+     "x_mm": 29.31,
+     "y_mm": 38.7,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The mushroom doesn't have a stem/base."
+    }
+   ],
+   "ts": "2026-11-15T18:46:23+00:00"
+  }
+ }
+}

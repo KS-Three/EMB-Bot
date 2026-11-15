@@ -102,7 +102,7 @@ the OLDEST lines whole to the archive.
 - [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball flat + monarch borders_last off SHIPPED 11-12; "drift" was a width slip: re-digitize at the original target, not manifest width_mm
 
 - [Stroke bridge keep](stroke-bridge-keep-2026-11-14.md) — arabic stems = stage-3 absorb of same-ink crumbs; keep a chain bridging two hosts; pin 2 cured, pin 3 not; ticked ON 11-15, pending
-- [Subject loss](subject-loss-2026-11-14.md) — toadstool B 76: "lettering" note now keyed on text tags; `subject_edge_recall` metric-only, D +0.88 vs Kent but "not flat" alone +0.77, toadstool barely below Good; no threshold
+- [Subject loss](subject-loss-2026-11-14.md) — toadstool B 76: "lettering" note now keyed on text tags; `subject_edge_recall` metric-only; photo sitting 11-15: 14/14 LOST, 0 Good = no verdict; Kent "Park it, metric only"
 - [Thread guard](thread-guard-2026-11-14.md) — group_consistent_thread (ON 11-14): a lone letter takes its word's thread only if it matches its own art no worse; Drone refused 7.27 -> 13.17 (grade kept D), Bridge U moves 15.29 -> 14.11
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha
