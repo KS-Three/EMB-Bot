@@ -124,7 +124,7 @@ def stages(name: str, art: str, width: float, garment: str, extra: dict) -> dict
         simp = r.polygon.simplify(tol, preserve_topology=True)
         if simp.is_empty or simp.geom_type != "Polygon":
             continue
-        den = densify_polygon(simp, r.polygon.boundary, chord,
+        den = densify_polygon(simp, r.polygon.exterior, chord,
                               min(oc.CURVE_GUARD_SHARE * tol, oc.CURVE_GUARD_MAX_MM), oc.CURVE_CORNER_DEG)
         for tag, g in (("lane_in", r.polygon), ("lane_simplified", simp), ("lane_densified", den)):
             for ring in [g.exterior] + list(g.interiors):

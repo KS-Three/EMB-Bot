@@ -1874,9 +1874,10 @@ class PipelineConfig:
     curve_chord_mm: float | None = None
     # With `curve_chord_mm`, ALSO stage 4's polygons, every shape (built
     # OFF): the same split after `curve_turn_deg`'s refinement, every new
-    # vertex within one grid pixel of the trace. The 3 non-lettering pins
-    # (Gaulke's fill edge at 9.8 px/mm, where the refinement's resolution
-    # gate leaves 1-3 mm chords). Not on an upscaled source
+    # vertex within one grid pixel of the trace. The non-lettering pins:
+    # under 20 px/mm the refinement's resolution gate leaves 1-3 mm chords
+    # (Tires #0 at 9.3 px/mm: the satin edge's turn max 23 -> 8 degrees,
+    # one even arc where OFF stepped; Gaulke #3 a little). Not on an upscaled source
     # (`outline_redraw_k` owns those). Separate because it also moves the
     # Column lane's own simplify and so its cuts: measured on and_pizza the
     # "&" sewed cleaner and the "p" opened a seam, the same unpredictable
