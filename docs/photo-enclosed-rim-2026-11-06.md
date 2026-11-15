@@ -427,8 +427,43 @@ it is on MFab; not changed.
 Flag OFF: MFab at 30, 36.7, 45, 60, 80 and 113.5 mm, both lanes, is
 md5-identical to the start point on the final tree, and the five images'
 OFF rows were on the rule-1 tree (the change is inside `enclosed_rim`,
-which runs only with the flag ON). The 77-image set was
-not re-run (the machine was short of memory).
+which runs only with the flag ON).
+
+### The 77-image set, flag ON, on the fix (tree `6f0a2312`, 80 mm, 6 colours)
+
+91 designs: every image without the cutout, and the 14 images where the
+cutout runs with it. Each run recorded how many pixels the rim moved and
+whether `round_any_hole` changed a line-art reading.
+
+- **82 of 91 designs: the rim moves no pixel and no reading changes.** The
+  flag is read in those two places only, so these are the flag-OFF designs.
+- **The guard changes no reading on any of the 91.**
+- **9 designs move pixels; 8 differ from OFF** (flag OFF run for each):
+
+| design | rim px | OFF | ON |
+|---|---|---|---|
+| logo_mfab_hat, cutout | 2,418 | 13,611 st, 12 riders, B 76 | 13,750 st, 16 riders, B 76 |
+| logo_mfab_hat, no cutout | 2,514 | 13,664 st, 10 riders, B 76, `LETTERING_TOO_SMALL` | 13,779 st, 14 riders, B 88 |
+| kanji_brush, no cutout | 84 | 12,803 st, 93 trims, B | 12,765 st, 92 trims, B |
+| pencil_sketch, no cutout | 61 | 19,277 st, A | md5-identical |
+| summit_badge, no cutout | 55 | 28,449 st, F 4, `THREAD_MATCH_POOR` | 27,025 st, F 34 |
+| vintage_engraved_badge, cutout | 12,101 | 22,508 st, 200 trims, C 64 | 24,199 st, 197 trims, C 64 |
+| vintage_engraved_badge, no cutout | 13,521 | 32,465 st, 237 trims, C 64 | 32,714 st, 235 trims, C 64 |
+| watercolor, cutout | 746 | 17,786 st, 50 trims, B 76 | 17,580 st, 54 trims, B 76 |
+| watercolor, no cutout | 751 | 19,244 st, 77 trims, B 76 | 19,020 st, 79 trims, **D 52** (`DENSITY_STACKED`, `TRIM_HEAVY`) |
+
+Block lists are the same ON and OFF on all nine. vintage_engraved_badge with
+the cutout still sews 7.5 % more stitches than OFF (more silver in the
+branches), down from 24 % before this fix. pencil_sketch is the only image
+the earlier addenda did not list; its 61 px change nothing sewn.
+
+The first pass of this set ran on a desktop short of kernel memory (DOCTRINE,
+gotchas 2026-11-14): 2 jobs crashed, 1 timed out and 4 cutout jobs ran with
+the cutout unavailable. Those 7 were re-run two at a time and are the rows
+counted here; no row in this table is from a refused cutout.
+
+*(measured 2026-11-15 — per-design md5, flag ON against OFF, Windows desktop,
+both lanes)*
 
 *(measured 2026-11-14 — `tests/test_photo_enclosed_rim.py`; corpus and width
 runs on a Windows desktop, both lanes)*
