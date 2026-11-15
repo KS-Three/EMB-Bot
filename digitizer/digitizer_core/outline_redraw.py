@@ -96,6 +96,7 @@ def _merge_runs(S: np.ndarray, prims: list[Prim], tol: float, rmin: float,
     out: list[Prim] = []
     pos = 0
     while pos < n:
+        deadline.check("outline redraw")      # one run's line and arc trials per check
         p = prims[order[pos]]
         best, used = p, 1
         misses = 0
