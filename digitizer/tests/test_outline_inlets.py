@@ -224,3 +224,9 @@ def test_as_fill_moves_only_the_named_shapes_on_copies():
     out = oi.as_fill([a, b], {"A"})
     assert out[0].meta["tier"] == "fill" and out[0] is not a
     assert out[1] is b and "tier" not in a.meta
+
+
+def test_teeth_on_by_default_with_the_inlet_rule():
+    """`outline_inlets_teeth` ON since 2026-11-15 (Kent's tick, with `outline_inlets_kept`)."""
+    c = PipelineConfig()
+    assert c.outline_inlets_teeth is True and c.outline_inlets_kept is True

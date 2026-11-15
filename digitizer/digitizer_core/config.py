@@ -6828,6 +6828,23 @@ class PipelineConfig:
     # and `tests/engine_2026_10_27.json` pin it False.
     # Tests: `tests/test_outline_inlets.py`.
     outline_inlets_kept: bool = True
+    # A toothed edge sewn the pro's way (`outline_inlets.tooth_split`,
+    # 2026-11-14, #1536; built OFF as `cfg.extra["outline_inlets_teeth"]`).
+    # Read only when `outline_inlets_kept` re-plans a satin: re-planned whole
+    # as one fill, Ahora's gear kept its teeth but sewed ragged. ON, a shape
+    # with at least three inlets of about one depth sews its teeth FIRST, each
+    # a fill with rows square to its own axis, then its body on its own tier
+    # (the gear's ring stays a smooth radial satin) over their roots; the
+    # moves between teeth are buried along the root. Read off the pro's
+    # Bridge steering wheel (one satin ring, a column per handle). Ahora at
+    # 80 mm: 16 square tooth blocks, white thread 2 jumps / 1 trim (OFF 1/0).
+    # Shape reads, no stitch value (gate 1 does not apply).
+    # **ON since 2026-11-15, Kent's tick "K-Line box + gear flags"** (relayed
+    # by the director), promoted from `cfg.extra` to a field. False is the
+    # engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_outline_inlets.py`.
+    outline_inlets_teeth: bool = True
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a

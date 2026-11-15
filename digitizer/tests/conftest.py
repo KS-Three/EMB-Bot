@@ -1025,6 +1025,9 @@ PRE_FLIP.update(CORNER_APEX_2026_11_14_OFF)
 # `tests/test_outline_inlets.py`.
 INLETS_2026_11_15_OFF = {"outline_inlets_kept": False}
 PRE_FLIP.update(INLETS_2026_11_15_OFF)
+# `outline_inlets_teeth` (the same tick): `tests/test_outline_inlets.py`.
+TEETH_2026_11_15_OFF = {"outline_inlets_teeth": False}
+PRE_FLIP.update(TEETH_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

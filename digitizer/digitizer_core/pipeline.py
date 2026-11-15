@@ -2179,12 +2179,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             from . import outline_inlets
             over = outline_inlets.satin_over_inlets(result.regions, plan)
             if over:
-                # `cfg.extra["outline_inlets_teeth"]` (built OFF): a toothed
-                # edge splits into its teeth (sewn first) and its body (sewn
-                # over their roots), the pro's ring-and-handles construction,
-                # instead of one fill; the moves between teeth are buried
-                # along the root, under the body
-                teeth = bool(cfg.extra.get("outline_inlets_teeth"))
+                # `cfg.outline_inlets_teeth` (ON since 2026-11-15, Kent's tick
+                # "K-Line box + gear flags"): a toothed edge splits into its
+                # teeth (sewn first) and its body (sewn over their roots), the
+                # pro's ring-and-handles construction, instead of one fill; the
+                # moves between teeth are buried along the root, under the body
+                teeth = bool(getattr(cfg, "outline_inlets_teeth", False))
                 regions, bodies = outline_inlets.rebuild(result.regions, over, teeth)
                 planned = replace(result, regions=regions)
                 plan = _plan_stitches(planned, cfg)
