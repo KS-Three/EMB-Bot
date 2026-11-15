@@ -20,7 +20,15 @@ THE CONSTRUCTION, a pivoting sweep (`counter_fan_runs`):
 - **The rails.** The OUTER rail is the longer boundary path from a base
   corner to the tip, the inner rail the other.
 - **The stations.** The outer end steps along the outer rail from its base
-  corner to the tip, every half satin spacing.
+  corner to the tip, every satin spacing: the outer-rail density
+  `stage6_satin` holds. Each station is one cross, its ends one penetration
+  on each rail, the rails strictly alternating (outer, inner, outer, ...),
+  so every consecutive pair is a stitch. Before 2026-11-15 the stations sat
+  at HALF the spacing and each wrote both ends (outer, inner, inner, outer):
+  twice his penetrations (94 to his 50 on MFab at 90 mm), a short step
+  stitch along a rail between every two crosses, and up to 7 penetrations
+  within 0.3 mm where the inner rail moves slowly -- the pile-up on Kent's
+  review card. His crowd is 3 (`docs/counter-fan-2026-11-15-pileup.md`).
 - **The pivot.** The inner end climbs the inner rail in step, but stops
   `FAN_TIP_LAG_SHARE` of that rail short of the tip. Near the tip it all but
   stands still while the outer end keeps climbing, so the crosses turn about
@@ -29,11 +37,11 @@ THE CONSTRUCTION, a pivoting sweep (`counter_fan_runs`):
 - **Why not paired rails.** Pairing the rails by arc length all the way to
   the tip (the 11-14 prototype) keeps the crosses near-parallel, and the
   narrow arm never turns. The lagging pivot turns it.
-- **Order.** Satin from the base to the tip, alternating ends, each end
-  pushed out by the fabric's pull along its cross (the magnitude is not
-  touched: gate 1). It is preceded by a zigzag underlay from the tip to the
-  base on the rails inset `FAN_UNDER_INSET_MM`, whose first legs in the
-  narrow arm are the pro's run into the tip.
+- **Order.** Satin from the base to the tip, each end pushed out by the
+  fabric's pull along its cross (the magnitude is not touched: gate 1). It
+  is preceded by a zigzag underlay from the tip to the base on the rails
+  inset `FAN_UNDER_INSET_MM`, a leg every `FAN_UNDER_PITCH_MM`, whose first
+  legs in the narrow arm are the pro's run into the tip.
 
 REFUSALS (`None`: the shape sews as it did):
 - no three dominant convex corners;
@@ -64,7 +72,9 @@ FAN_TRIANGLE_FIT = (0.8, 1.25)  # shape area over its corner triangle's
 # badge's engraving specks that also pass the corner test read 0.34-0.56.
 FAN_SOLID_MIN = 0.65
 FAN_UNDER_INSET_MM = 0.4    # the underlay zigzag stays this far in from each rail
-FAN_UNDER_PITCH_MM = 2.0    # zigzag legs along the outer rail
+# Zigzag legs along the outer rail: the pro's at MFab 90 mm advance 0.6-0.9 mm
+# a leg (a pair every 1.2-1.8 mm). 2.0 before 2026-11-15 laid a third of his.
+FAN_UNDER_PITCH_MM = 0.75
 FAN_MIN_CROSS_MM = 0.3      # a cross shorter than this ends the sweep (the tip)
 FAN_COVER_MIN = 0.9         # the sweep must reach this share of the shape
 # Where the inner end stops, as a share of the inner rail short of the tip:
@@ -170,7 +180,7 @@ def fan_crosses(poly: Polygon, spacing_mm: float, max_cross_mm: float):
         return None
     lag = FAN_TIP_LAG_SHARE * Li
     zone = poly.buffer(FAN_INSIDE_TOL_MM)
-    n = max(2, int(math.ceil(Lo / (spacing_mm / 2.0))))
+    n = max(2, int(math.ceil(Lo / spacing_mm)))        # the outer rail at the satin spacing
     crosses = []
     for k in range(n + 1):
         so = Lo * (1.0 - k / n)                         # base -> tip
@@ -219,7 +229,7 @@ def counter_fan_runs(poly: Polygon, shape_id: str, *, pull_mm: float = 0.0,
         return None
     # underlay: zigzag tip -> base on the crosses inset, one leg every FAN_UNDER_PITCH_MM
     under = []
-    step = max(1, int(round(FAN_UNDER_PITCH_MM / (spacing_mm / 2.0))))
+    step = max(1, int(round(FAN_UNDER_PITCH_MM / spacing_mm)))
     for k, (p, q) in enumerate(reversed(crosses[::step] + [crosses[-1]])):
         d = q - p
         Lc = float(np.linalg.norm(d))
@@ -229,12 +239,14 @@ def counter_fan_runs(poly: Polygon, shape_id: str, *, pull_mm: float = 0.0,
             continue
         u = d / Lc
         under.append(tuple(p + u * FAN_UNDER_INSET_MM) if k % 2 == 0 else tuple(q - u * FAN_UNDER_INSET_MM))
+    # satin: rails strictly alternate, outer, inner, outer, ... (`stage6_satin`'s
+    # A1, B1, A2, B2): every consecutive pair is a stitch, one penetration per
+    # cross end, as his are
     satin = []
-    for k, (p, q) in enumerate(crosses):
+    for p, q in crosses:
         d = q - p
         u = d / float(np.linalg.norm(d))
-        a, b = tuple(p - u * pull_mm), tuple(q + u * pull_mm)
-        satin += [a, b] if k % 2 == 0 else [b, a]
+        satin += [tuple(p - u * pull_mm), tuple(q + u * pull_mm)]
     runs = []
     if len(under) >= 2:
         runs.append(StitchRun(points=under, kind=stitches.UNDERLAY, shape_id=shape_id))
