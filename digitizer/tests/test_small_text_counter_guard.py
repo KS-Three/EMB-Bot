@@ -22,7 +22,7 @@ from digitizer_core.config import (SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM, counter_
 from digitizer_core.ink_path import MemberInk
 from shapely.geometry import box
 
-from .conftest import LETTERING_2026_10_24_OFF, own_thread_only
+from .conftest import EDGE_WALK_2026_11_14_OFF, LETTERING_2026_10_24_OFF, own_thread_only
 from .test_small_text import _glyphs, _scene, _tag, _two_lines
 
 TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
@@ -259,7 +259,8 @@ def _md5(cap, **kw):
     ref = json.loads((TESTDATA / "small_print_synthetic_ref.json").read_text())
     # the md5s were pinned before the 2026-10-23 flips; the guard is priced without them
     # ...and before the scale-relative flat/gradient read (ON 2026-11-06)
-    kw = {**FLIP_2026_10_23, "stage0_scale_relative_grad": False, **kw}
+    # ...and before edge-walk (ON 2026-11-14), which re-orders the letters' walk
+    kw = {**FLIP_2026_10_23, "stage0_scale_relative_grad": False, **EDGE_WALK_2026_11_14_OFF, **kw}
     _r, plan = digitize(small_print.load("synthetic"),
                         # MD5 was pinned before the 2026-10-24 lettering flips
                         PipelineConfig(target_width_mm=round(cap / ref["cap"], 2),

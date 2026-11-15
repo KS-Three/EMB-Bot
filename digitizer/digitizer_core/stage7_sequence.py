@@ -3381,6 +3381,28 @@ def sequence(
             seam_by_layer[p.layer] = (prep(ground.buffer(0.1)), ground) if down else None
         return seam_by_layer[p.layer]
 
+    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14): the rail
+    # push of a satin or a lettering column is held out of the bays of its
+    # own shape and its gaps to same-thread ink, as from a counter
+    # (`stage6_satin.PUSH_KEEP_MARGIN_MM`). The ink near one shape, its own
+    # artwork included: one union per thread, clipped to the push's reach.
+    # True holds a gap as a counter is held (`cfg.min_detail_mm`); a number
+    # is the floor in mm a gap keeps instead (the pro's E and S at Gaulke
+    # keep about what a 0.5 floor leaves).
+    _kg = (cfg.extra or {}).get("satin_push_keeps_gaps")
+    keep_gaps = bool(_kg)
+    keep_floor = (float(_kg) if isinstance(_kg, (int, float)) and not isinstance(_kg, bool)
+                  else cfg.min_detail_mm)
+    keep_by_thread: dict[int, object] = {}
+
+    def push_keep(p: PlannedRegion):
+        ti = p.region.thread_index
+        if ti not in keep_by_thread:
+            keep_by_thread[ti] = unary_union([o.region.polygon for o in planned
+                                              if o.region.thread_index == ti])
+        reach = 2.0 * fabric.pull_comp_mm + cfg.min_detail_mm + 1.0
+        return keep_by_thread[ti].intersection(p.region.polygon.buffer(reach)), keep_floor
+
     # `cfg.stripe_underfill`: a band sewn on a stripe field's fill holds its
     # rails where the fill lies beneath -- the ground already down here is
     # the artwork AND every under-fill outline sewn before it. Untagged: None.
@@ -4081,7 +4103,10 @@ def sequence(
                     # `cfg.lettering_columns_connectors_edge_walk` (built OFF 2026-11-14):
                     # the walk whose hops lie under satin still to come; off, today's call
                     **({"edge_walk": True}
-                       if cfg.lettering_columns_connectors_edge_walk else {}))
+                       if cfg.lettering_columns_connectors_edge_walk else {}),
+                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14):
+                    # the push held out of bays and gaps; off, today's call
+                    **({"pull_keep": push_keep(p)} if keep_gaps else {}))
                 # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
                 # lane covers under `HANDBACK_COVER_MIN` is sewn down the ladder
                 # as well, as it would be untagged, ONCE (`handback_trying`), and
@@ -4268,6 +4293,8 @@ def sequence(
                     rail_comp_floor_mm=cfg.min_detail_mm,
                     rail_held=(stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
                                else seam_ground(p) if cfg.satin_seam_hold else None),
+                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF): off, today's call
+                    **({"rail_keep": push_keep(p)} if keep_gaps else {}),
                     cap_skew_inset=cfg.satin_cap_skew_inset,
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_for(p),

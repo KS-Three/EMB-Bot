@@ -401,7 +401,8 @@ def panel(runs, c, r, poly=None, title="", ppm=None, side=520, mode="order"):
 #: others by plan width (one art, so one frame up to scale).
 BECKER_REF_W = 101.9
 BECKER = [("M_V", -40.0, 22.0, 6.0), ("N_top", 20.5, 19.5, 5.5), ("N_foot", 29.0, 26.5, 5.5),
-          ("A_top", -21.5, 17.5, 5.0)]
+          ("A_top", -21.5, 17.5, 5.0), ("E_TL", 38.0, 18.0, 4.5), ("E_BL", 38.0, 28.5, 4.5),
+          ("R_TL", -6.5, 18.0, 4.5)]
 PROSEAL_REF_W = 85.9
 PROSEAL = [("A_top", 24.0, 17.5, 4.0), ("small_M", -2.4, 30.4, 2.4)]
 MFAB_REF_W = 104.9
