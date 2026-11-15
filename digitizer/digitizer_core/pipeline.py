@@ -1329,7 +1329,8 @@ def build_generation(
         from .regular_structure import apply_regular_structure
         apply_regular_structure(regions, p, cfg)
 
-    # Thin bars kept whole (`cfg.fine_bar_survive`, built OFF 2026-11-14, To
+    # Thin bars kept whole (`cfg.fine_bar_survive`, ON since 2026-11-15,
+    # Kent: "Flip both ON"; built OFF 2026-11-14, To
     # a T's speed lines): a straight thin ink bar stages 2-4 split or
     # notched is read off the art and redrawn as one straight bar, and tagged
     # so stage 5 cannot clip it away. Here, with the art raster in hand and

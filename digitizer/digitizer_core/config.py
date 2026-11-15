@@ -1444,9 +1444,11 @@ class PipelineConfig:
     # over the colours already down rather than be clipped away. A whole bar
     # keeps its outline; curved strokes are left as traced. No fabric
     # constant: gate 1 does not apply.
-    # False is the engine before the flag, byte for byte. Tests:
-    # `tests/test_fine_bar.py`.
-    fine_bar_survive: bool = False
+    # **ON since 2026-11-15, Kent's flip** ("Flip both ON", with
+    # `small_text_handover`, from the review sheets). False is the engine
+    # before the flag, byte for byte; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_fine_bar.py`.
+    fine_bar_survive: bool = True
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
