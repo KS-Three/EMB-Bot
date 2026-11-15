@@ -1190,6 +1190,14 @@ def build_generation(
                            # False, the call as it was
                            **({"one_baseline": True}
                               if cfg.small_text_reset_one_baseline else {}),
+                           # the ground a line sits IN counts as ground (2026-11-14,
+                           # built OFF): absent, the call as it was
+                           **({"ground_ring": True}
+                              if cfg.extra.get("small_text_reset_ground_ring") else {}),
+                           # a grown dark-ink letter's bean spines move with it (read at
+                           # its drawn size; 2026-11-14, built OFF): absent, as it was
+                           **({"bean_follows": True}
+                              if cfg.extra.get("small_text_reset_bean_follows") else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))

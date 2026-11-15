@@ -84,6 +84,12 @@ MIN_SCALE = 1.15
 # Stage 5 grows both by the fabric's pull (0.3 mm by default), so 0.4 here
 # rendered the date's T and 1 touching the emblem between them.
 CLEAR_MM = 0.8
+# `_is_ground` under `cfg.extra["small_text_reset_ground_ring"]` (built OFF
+# 2026-11-14): a region round the line covering this share of a ring this
+# wide round its hull, and this much of the hull itself, is the line's ground.
+GROUND_RING_MM = 0.3
+GROUND_RING_SHARE = 0.5
+GROUND_MIN_IN = 0.25
 # Drawn stroke the enlarged letter is widened to. Stage 5 adds the fabric's
 # pull on top; with the default 0.3 mm that sews near 0.9, inside the
 # professional's 0.8-1.0 mm on the same date.
@@ -639,6 +645,28 @@ def _traced_stroke(shapes) -> float:
     return float(np.median(vals)) if vals else 0.0
 
 
+def _is_ground(poly, hull, ring: bool = False) -> bool:
+    """Is `poly` the ground a line of lettering sits on (not in its way)?
+    As always: it covers half the line's hull. `ring`
+    (`cfg.extra["small_text_reset_ground_ring"]`, built OFF 2026-11-14): also
+    when it SURROUNDS the line -- `GROUND_RING_SHARE` of a `GROUND_RING_MM`
+    ring round the hull -- and still covers `GROUND_MIN_IN` of the hull.
+    Fremont's "1895" sits in a hole of the design-wide white field, which
+    covers only 0.48 of its hull (the digits' ink and their counters, traced
+    as shapes of their own, take the rest): read as an obstacle at distance
+    0, it held the date at its drawn size and "EST" with it (`no_room`,
+    `blocked_by` a thread-2 shape spanning the design). The inner share
+    keeps a thin frame hugging the text a neighbour: it surrounds the line
+    but covers none of it."""
+    inside = poly.intersection(hull).area
+    if inside >= 0.5 * hull.area:
+        return True
+    if not ring or inside < GROUND_MIN_IN * hull.area:
+        return False
+    band = hull.buffer(GROUND_RING_MM).difference(hull)
+    return band.area > 0 and poly.intersection(band).area >= GROUND_RING_SHARE * band.area
+
+
 def _near_side(line: list[dict]) -> dict:
     """Which side of a re-set line its nearer neighbour stands on: per column
     of each cluster's letters, the fabric up to the next obstacle above and
@@ -1009,7 +1037,9 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        reach_edges: bool = False,
                        bay_mouth: bool = False,
                        grow_away: bool = False,
-                       one_baseline: bool = False) -> list[dict]:
+                       one_baseline: bool = False,
+                       ground_ring: bool = False,
+                       bean_follows: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
@@ -1194,7 +1224,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                     if id(r) in ids or id(r) in fids or not r.polygon.intersects(near):
                         continue
                     # The ground the line sits on is not in its way.
-                    if r.polygon.intersection(hull).area >= 0.5 * hull.area:
+                    if _is_ground(r.polygon, hull, ground_ring):
                         continue
                     blockers.append(r.polygon)
                 it["obstacles"] = unary_union(blockers) if blockers else None
@@ -1215,7 +1245,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                     near = hull.buffer(MAX_SCALE * max(cap_mm, hull.bounds[2] - hull.bounds[0]))
                     drawn = [art[id(r)] for r in regions
                              if id(r) not in ids and id(r) not in fids and id(r) in art
-                             and art[id(r)].intersects(near) and art[id(r)].intersection(hull).area < 0.5 * hull.area]
+                             and art[id(r)].intersects(near) and not _is_ground(art[id(r)], hull, ground_ring)]
                     it["art_obstacles"] = unary_union(drawn) if drawn else None
                 side_read = _near_side(line)
                 for it in line:
@@ -1248,13 +1278,13 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                     if it["obstacles"] is not None and g.intersects(it["obstacles"]):
                         for r in regions:
                             if id(r) not in ids and id(r) not in fids and r.polygon.intersects(g) \
-                                    and r.polygon.intersection(it["hull"]).area < 0.5 * it["hull"].area:
+                                    and not _is_ground(r.polygon, it["hull"], ground_ring):
                                 hits.append([r.thread_index, [round(v, 1) for v in r.polygon.bounds]])
                     it["row"]["blocked_by"] = hits[:6]
                 continue
             if reset:
                 _reset_apply(regions, line, bars, inner, found, bay_mouth=bay_mouth,
-                             traced_in=traced_in)
+                             traced_in=traced_in, bean_follows=bean_follows)
                 continue
             s, dy, dxs = found
             sx = _sx(s, max_width_scale)
@@ -1801,7 +1831,8 @@ def _join_line_ends(line: list[dict], regions: list[Region], taken: set[int], ca
 
 def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
                  inner: dict[int, list[Region]], found, bay_mouth: bool = False,
-                 traced_in: dict[int, Polygon] | None = None) -> None:
+                 traced_in: dict[int, Polygon] | None = None,
+                 bean_follows: bool = False) -> None:
     """Write a re-set line (`_place_line_reset`'s answer) into its regions:
     each shape scaled about its letter's centre and moved to its place, then
     widened as the growth widens; a word's inner pieces go with the letter
@@ -1845,6 +1876,20 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
             r.meta["small_text_enlarged"] = round(s, 3)
             r.meta["small_text_reset"] = True       # the regularizer leaves it as set
             r.meta[WIDENED_LETTERING_KEY] = round(max(widen, 1e-4), 4)
+            spines = r.meta.get("bean_letter_spines") if bean_follows else None
+            if spines:
+                # `cfg.extra["small_text_reset_bean_follows"]` (built OFF
+                # 2026-11-14): a dark-ink stroke got its bean spines from its
+                # DRAWN polygon (`thin_ink.bean_dark_ink`, earlier in stage
+                # 4), and stage 7 sews the spines, so the grown letter sewed
+                # at its old size and place (Fremont's EST 1895, re-set to
+                # 2x, sewed 1.7 mm tall). The spines take the letter's own
+                # move: scaled about its centre, shifted with it. Dropping
+                # them instead sewed the grown letters as columns with every
+                # counter filled ("1895" read "1896", by eye 2026-11-14).
+                r.meta["bean_letter_spines"] = [
+                    [(cx + f * (x - cx) + dxu + dx, cy + s * (y - cy) + dy) for x, y in chain]
+                    for chain in spines]
             if r.meta.get("text_cluster_stroke_mm"):
                 # grow away: the half-stroke drawn, from the traced stroke
                 half = 0.5 * it["stroke"] if "stroke_tag" in it else float(r.meta["text_cluster_stroke_mm"])
