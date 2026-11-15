@@ -750,6 +750,11 @@ class PipelineConfig:
     # population before the floor, when it is under the floor (the pieces the
     # floor would hand to the ink), and is quantised with the ground
     # (`stage2_photo_segment.enclosed_rim`). No enclosed ground: never read.
+    # With it, the border pass's line-art guard reads band round a hole too
+    # short to loop as keyline, not as a stroke the loops leave
+    # (`art_outline.line_art_reading(round_any_hole=)`): the keyline the rim
+    # restores round MFab's hyphen and small line read 0.020-0.026 dropped at
+    # 35-40 mm, past the 0.02 cut, and the white-keyline recipe was lost.
     photo_enclosed_rim: bool = False
     denoise: bool = True
     # Stage 1 stops reading the RGB under an alpha cutout's transparency.
@@ -1374,7 +1379,12 @@ class PipelineConfig:
     # gate 1 does not apply. A DESIGN CHANGE (pro-digitizer-rules 10-21 s4):
     # the default is Kent's. Golden Tee hat: 6 -> 4 threads; Drone's ring one
     # colour. False is the engine before the flag, byte for byte. Tests:
-    # `tests/test_bevel_fold.py`.
+    # `tests/test_bevel_fold.py`. 2026-11-14, read off the pro's own Golden
+    # Tee file (`docs/flatten-shading-pro-read-2026-11-14.md`): the bevel ring
+    # between a white face and its outline sews as ONE band in the design's
+    # body gold, shading in an ink the cap gave no spool (GOLF's teal) and
+    # light shading in counters go to the page, darkest-ink bands (the tee's
+    # shadow) are drawn and stay: Golden Tee 3 threads, as he sews it.
     bevel_ring_fold: bool = False
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the

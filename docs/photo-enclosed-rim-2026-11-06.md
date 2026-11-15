@@ -295,3 +295,67 @@ rows are byte-identical to OFF, stained_glass included.
 OFF; the collapse at 35 to 37 and 40 mm and the white faces at 45 to 50 mm are to be
 fixed behind the flag and the same widths and images re-measured before the
 question comes back.
+
+## Addendum 2026-11-14 (2): the 35 to 40 mm collapse is fixed; the white faces are a rule, not a bug
+
+**The collapse was the border pass's line-art guard, not the rim.** The rim
+gives the keyline back the band round the hyphen and round AND WELDING LLC.
+Those holes are shorter than `machine.BORDER_MIN_LOOP_MM` at 30 to 50 mm, so
+`art_outline.line_art_reading` counted their band as dropped: 0.0219, 0.0256
+and 0.0224 of the keyline at 35, 36.7 and 40 mm against the 0.02 cut (38 mm
+read 0.0197 and escaped). The outline was then dropped as line art, the
+white-keyline recipe and the under-fill never ran, and black sewed over the
+keyline. With the flag ON the guard now leaves out band within the loop width
+of ANY hole of the outline (`round_any_hole`). No constant moved: every MFab
+width then reads 0.000, and Bridge Bar's bowl still reads line art.
+
+### MFab hat after the fix, flag ON (fields / riders, blocks; cutout lane ; no cutout)
+
+| width mm | ON before | ON after |
+|---|---|---|
+| 35 | none, White Black ; none, White Black | 1 / 13, Black White ; 1 / 13, Black White |
+| 36 | none, White Black (both) | 1 / 13, Black White (both) |
+| 36.7 | none, White Black (both) | 1 / 13, Black White (both) |
+| 37 | none, White Black (both) | 1 / 13, Black White (both) |
+| 40 | none, White Black (both) | 1 / 13, Black White Black (both) |
+
+The other nine widths (30, 33, 38, 45, 50, 60, 80, 100.8, 113.5) are
+md5-identical to before with the flag ON. `ARTWORK_UNCOVERED` is gone from
+every ON row. Renders looked at: 35 to 37 mm sew a thin white keyline, black
+faces with the hyphen, and a readable small line.
+
+### Flag OFF is untouched, and the 77-image set does not move
+
+- Flag OFF, fix against main: all 28 MFab rows and all 154 corpus rows (77
+  images, both lanes, 80 mm) are md5-identical.
+- Flag ON, fix against main, 77 images: all 154 rows md5-identical. The flag
+  still changes the same five images as in the first addendum.
+- 31 of the cutout-lane baseline rows ran with the cutout unavailable; on the
+  fix tree each of those is a refused cutout, which sews the no-cutout design,
+  and their md5s agree.
+
+### White faces at 38 to 50 mm: the keyline rule, reached at a smaller size
+
+`keyline_bean.keyline_regions` sews the keyline as a thin bean only while the
+field is at most 0.6 mm wide (2 × area / perimeter). Above that it gets the
+looped border, widened to the `machine.OUTLINE_WIDTH_MM` floor of 1.5 mm. With
+the flag OFF the floor erodes the keyline, so it reads under 0.6 mm up to
+about 50 mm; with the flag ON it reads its true width and crosses 0.6 mm at
+about 38 mm (0.604 at 38, 0.719 at 45, 0.815 at 50). The M-FAB strokes are
+about 2 to 2.4 mm wide there, so 1.5 mm white loops swamp them, and at 45 mm
+the hyphen is lost. In a close render the faces are still black. This is the
+rule OFF already applies from 60 mm up. **Not changed: what a keyline should
+be at these sizes is Kent's decision.**
+
+### Why the flag touches three unrelated images (diagnosed, not fixed)
+
+The rim accepts a whole piece by its median colour, so the piece brings its
+non-ground pixels into the enclosed population, and that population's own
+quantiser gives them new threads: kanji_brush 2,118 rim px (one spool becomes
+three), vintage_engraved_badge 72,621 rim px of which 6,486 are over 25 dE
+from the ground (a new spool takes 5,628 px), watercolor 871 rim px. Moving
+only the rim pixels close to the ground, not whole pieces, is the candidate
+fix.
+
+*(measured 2026-11-14 — `tests/test_photo_enclosed_rim.py`; corpus and width
+runs on a Windows desktop, both lanes)*
