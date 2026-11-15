@@ -99,3 +99,28 @@ test("(p2) Column mode: two drags are two columns, and click-drawing still works
   await page.keyboard.press("Enter");
   await expect(page.locator(".mp-shaperow")).toHaveCount(3);
 });
+
+// "Join touching strokes" (spec section 3; built OFF). A T of two Columns, the
+// stem's start snapped onto the bar: ticked, the pair sews as one path and the
+// stitch count moves; unticked, it is back to what it was.
+test("(p3) Join touching strokes: the tick changes what two touching Columns sew, and unticking restores it", async ({ page }) => {
+  test.setTimeout(180_000);
+  await toContent(page);
+  await openDrawing(page);
+  await setMode(page, "Column");
+  const join = page.locator(".mp-join input[type=checkbox]");
+  await expect(join).toBeVisible();
+  await expect(join).not.toBeChecked();
+  await dragStroke(page, [[0.2, 0.3], [0.8, 0.3]]);
+  await dragStroke(page, [[0.5, 0.31], [0.5, 0.8]]);
+  await expect(page.locator(".mp-shaperow")).toHaveCount(2);
+  const apart = await stitchCount(page);
+
+  await join.check();
+  await expect.poll(() => stitchCount(page), { timeout: 30_000 }).not.toBe(apart);
+  const joined = await stitchCount(page);
+  expect(joined).toBeGreaterThan(0);
+
+  await join.uncheck();
+  await expect.poll(() => stitchCount(page), { timeout: 30_000 }).toBe(apart);
+});

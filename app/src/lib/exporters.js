@@ -257,7 +257,11 @@ export async function exportWorksheetPDF(design, garment, hoop, chartLabel, hoop
     // the other about the same design.
     hoopNote: hoopNote || "",
     fileName: "embbot-worksheet.pdf",
-    garmentBox: { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
+    // the box the field draws and clamps to: the hat front's PLACEMENTS box where
+    // the garment carries `clampBox` (Kent 2026-11-14), else the inch pair
+    garmentBox: garment.clampBox
+      ? { widthMM: garment.clampBox.w, heightMM: garment.clampBox.h }
+      : { widthMM: garment.widthIn * 25.4, heightMM: garment.heightIn * 25.4 },
   });
   return asBytes ? new Uint8Array(doc.output("arraybuffer")) : undefined;
 }

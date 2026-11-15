@@ -45,7 +45,20 @@ request (80 mm, left_chest, 6 colours), both lanes, commit 2489ac48:
   it on.
 - `photo_enclosed_rim` (still OFF): PR #1451 reads a rim piece by its median
   Lab; cutout-lane MFab 60 mm 2 fields / 10 riders → 1 / 15. 113.5 mm still
-  loses one rider to text clustering (strict xfail).
+  loses one rider to text clustering (strict xfail). On the LIVE engine
+  (11-13, both lanes) ON reads the small line at 30 and 60 to 113.5 mm but
+  sews one black patch at 35 to 37 and 40 mm (38 is fine; order flips to White, Black) and white
+  M-FAB faces at 45 and 50 mm; 3 of 77 other images get worse. Kent 11-14:
+  "Keep off, fix the collapse". Tables: the rim doc's 11-14 addendum.
+
+**Second round (merged 11-14).** Reviews of the browser engine and the Studio
+gave PRs #1463 to #1475: browser satin, undo, lettering, canvas rotate and
+resize, Reshape. Two rulings worth knowing before touching those areas: an
+auto-routed browser satin with a stitch over 12.1 mm goes to fill ("Narrow it
+to the stitch limit", #1471), and border-connected background removal is
+built OFF (`knockoutBackground` option `connected`, #1470; DOCTRINE has why).
+Stage 6 has no byte-identical 2x for `stained_glass` (DOCTRINE; #1472 took
+the 4% that was exact).
 
 **A crash that was the tool.** 6 sweep row-runs died 0xC0000005 at exactly
 120 s with a shapely frame on top of a truncated dump. It was the corpus
@@ -62,9 +75,12 @@ about 3 s more to import CUDA torch, so per-job wall is 6.4-6.7 s CPU against
 
 **Practical notes for the next session on that machine.**
 
-- Worktrees have no isolated venvs. Point them at the main checkout's with a
-  directory junction, and remove the junction with a NON-recursive directory
-  delete, or the delete follows it into the real venv.
+- Worktrees have no isolated venvs. Do NOT junction them to the main
+  checkout's: on Windows every file open through a junction leaks kernel
+  memory until a restart (DOCTRINE gotchas, 2026-11-14; this session's
+  junctions cost 25.8 GB of 32 GB and a day of stalled runs). Run the main
+  checkout's interpreter and set `stage1_photo_prep.REMBG_VENV_PYTHON` as
+  `tools/lettering_board.py rembg_from_primary()` does.
 - Bring a pushed branch up to date by merging `main`, never by rebasing: the
   force-push hook blocks the push a rebase needs.
 

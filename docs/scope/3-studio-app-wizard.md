@@ -1165,3 +1165,26 @@ than hiding them. No content search ("dogs"): that needs tagging. Detail:
 Moved verbatim from `MASTER_SCOPE.md` by the 2026-10-28 refresh after PRs #1158–#1161 to keep the file under its word budget. Each paragraph stood as written after the eighteenth pass; the live text in MASTER_SCOPE carries the verdict and a link here. Each claim keeps its own `(verb date — source)` pointer; none was re-verified in the move.
 
 **Re-digitize no longer strands on a poll blip (2026-10-16, PR #981, Studio-only).** `pollJob` used to throw on the first poll that missed the service, abandoning a job still computing (an 80 mm photo is ~4 min, polled every 500 ms) and leaving the element on the previous result and delta. It now retries a fetch reject, truncated body or 5xx up to `maxTransientFailures` 20 (about 10 s), resets on a clean read, and still surfaces a job error, a 4xx or the overall timeout at once; a finished re-digitize with unchanged settings lands the new stitches and recomputed delta. `app` vitest 1874 passed. **`run-emb-bot` smoke (2026-10-17, PR #982):** the driver refuses the pre-click caption as the new result and clears `localStorage` before lane 2; the two lanes read different captions (1,245 st · 102×12 mm text; 2,414 st · 80×17 mm artwork). *(measured 2026-10-16/17 — PRs #981, #982)*
+
+## Canvas and run-state fixes from the 2026-11-13 review
+
+**One canvas drag is one undo step, whatever its timing.** `history.js` groups
+by a gesture token that `App.elUpdate` / `elUpdateMany` / `persist` pass, in
+place of a time window. *(fixed 2026-11-13 — PR #1464)*
+
+**A digitize run lands on the art that started it.** The content step is keyed
+by design and element, a result carries its `projectId`, replacing the art
+cancels the run in flight, and the per-art state (`forced_class`,
+`textConversions`, `preflight`, `stats`) resets. *(fixed 2026-11-13 — PR #1450)*
+
+**Art that has never been digitized lights the Digitize button** and counts as
+stale (`staleness.js isUndigitizedArt`). *(fixed 2026-11-13 — PR #1457)*
+
+**Recolouring remaps every block, and a pending drag is not refitted**
+(`remapBlockColors`, `refitDigitized`). *(fixed 2026-11-13 — PR #1449)*
+
+**Follow-ups to the rotate and resize work (PR #1468) are in:** a turned
+lettering member is not nudged alone after a group resize, a touch on the
+group corner resizes nothing, the design panel's resize warning uses the scale
+the engine applies, and the Rotation sliders stop at 359.
+*(fixed 2026-11-14 — PR #1475, `core-flows.spec.js`)*

@@ -1,0 +1,237 @@
+{
+ "labels": {
+  "bw_street": {
+   "grade": "Terrible",
+   "ticks": [
+    "not_for_thread",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "night_neon": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "architecture": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "landscape_lake": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "pixel_art_sprite": {
+   "grade": "Good",
+   "ticks": [],
+   "label": "GOOD"
+  },
+  "low_poly": {
+   "grade": "Bad",
+   "ticks": [
+    "not_for_thread"
+   ],
+   "label": "MIDDLE"
+  },
+  "arabic_calligraphy": {
+   "grade": "Good",
+   "ticks": [],
+   "label": "GOOD"
+  },
+  "qr_code": {
+   "grade": "Terrible",
+   "ticks": [
+    "not_for_thread"
+   ],
+   "label": "MIDDLE"
+  },
+  "barcode": {
+   "grade": "Terrible",
+   "ticks": [
+    "colours_off",
+    "detail_lost",
+    "not_for_thread",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "heraldic_crest": {
+   "grade": "Bad",
+   "ticks": [
+    "too_busy"
+   ],
+   "label": "MIDDLE"
+  },
+  "flat_emoji_icon": {
+   "grade": "Good",
+   "ticks": [],
+   "label": "GOOD"
+  },
+  "silhouette_logo": {
+   "grade": "Bad",
+   "ticks": [],
+   "label": "MIDDLE"
+  },
+  "distressed_grunge": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread"
+   ],
+   "label": "LOST"
+  },
+  "halftone_dots": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "neon_outline_sign": {
+   "grade": "Good",
+   "ticks": [],
+   "label": "GOOD"
+  },
+  "duotone_poster": {
+   "grade": "Terrible",
+   "ticks": [
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "isometric_icon": {
+   "grade": "Bad",
+   "ticks": [
+    "detail_lost",
+    "too_busy"
+   ],
+   "label": "LOST"
+  },
+  "comic_halftone": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "not_for_thread",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "devanagari_logo": {
+   "grade": "Okay",
+   "ticks": [],
+   "label": "MIDDLE"
+  },
+  "kanji_seal": {
+   "grade": "Bad",
+   "ticks": [
+    "not_for_thread",
+    "too_busy"
+   ],
+   "label": "MIDDLE"
+  },
+  "vintage_engraved_badge": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "gradient_mascot": {
+   "grade": "Great",
+   "ticks": [],
+   "label": "GOOD"
+  },
+  "outline_lineart_logo": {
+   "grade": "Great",
+   "ticks": [],
+   "label": "GOOD"
+  },
+  "kanji_brush": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  },
+  "chalkboard_lettering": {
+   "grade": "Terrible",
+   "ticks": [
+    "detail_lost",
+    "too_busy",
+    "unrecognizable"
+   ],
+   "label": "LOST"
+  }
+ },
+ "scores": {
+  "edge_recall": {
+   "somers_d": 0.877,
+   "ci95": [
+    0.631,
+    1.0
+   ],
+   "n_lost": 13,
+   "n_good": 5
+  },
+  "blob_lost_frac": {
+   "somers_d": 0.538,
+   "ci95": [
+    -0.103,
+    1.0
+   ],
+   "n_lost": 13,
+   "n_good": 6
+  },
+  "salient_lost_frac": {
+   "somers_d": 0.564,
+   "ci95": [
+    -0.077,
+    1.0
+   ],
+   "n_lost": 13,
+   "n_good": 6
+  },
+  "element_dropped_frac": {
+   "somers_d": 0.077,
+   "ci95": [
+    0.0,
+    0.231
+   ],
+   "n_lost": 13,
+   "n_good": 6
+  },
+  "edge_density": {
+   "somers_d": 0.282,
+   "ci95": [
+    -0.385,
+    0.897
+   ],
+   "n_lost": 13,
+   "n_good": 6
+  }
+ }
+}

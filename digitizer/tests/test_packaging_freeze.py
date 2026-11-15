@@ -372,3 +372,45 @@ def test_the_origin_smoke_names_every_check_in_its_summary():
     assert "**PASS**" in text and "marker found" in text and "launcher exit 3" in text
     assert "EMB-Bot could not start" in text
     assert "**FAIL**" in smoke.summary_markdown(["x"], rec, 30)
+
+
+def test_the_shipped_exe_is_built_for_the_gui_subsystem():
+    """A `--console` build opens a console window on every double-click, and it
+    stays open behind the browser. `--windowed` is the GUI subsystem; the
+    launcher's `--console` re-attaches the terminal it was started from."""
+    args = build_freeze.pyinstaller_args("app", Path("entry.py"), Path("."), Path("studio"), Path("."))
+    assert "--windowed" in args and "--console" not in args
+
+
+def test_the_origin_smoke_reads_the_subsystem_from_the_exe_header(tmp_path):
+    smoke = _load_after_siblings("one_origin_smoke")
+
+    def pe(subsystem: int, magic: int) -> bytes:
+        optional = magic.to_bytes(2, "little") + bytes(66) + subsystem.to_bytes(2, "little") + bytes(30)
+        return (b"MZ" + bytes(58) + (64).to_bytes(4, "little") + b"PE\0\0" + bytes(20) + optional)
+
+    for magic in (0x10B, 0x20B):  # PE32, PE32+
+        gui, console = tmp_path / "gui.exe", tmp_path / "console.exe"
+        gui.write_bytes(pe(smoke.SUBSYSTEM_GUI, magic))
+        console.write_bytes(pe(smoke.SUBSYSTEM_CONSOLE, magic))
+        assert smoke.pe_subsystem(gui) == 2 and smoke.pe_subsystem(console) == 3
+    (tmp_path / "not.exe").write_bytes(b"hello")
+    assert smoke.pe_subsystem(tmp_path / "not.exe") is None
+    assert smoke.pe_subsystem(tmp_path / "missing.exe") is None
+
+
+@pytest.mark.skipif(sys.platform != "win32", reason="needs a real Windows exe")
+def test_the_header_reader_tells_python_from_pythonw():
+    smoke = _load_after_siblings("one_origin_smoke")
+    exe = Path(sys.executable)
+    assert smoke.pe_subsystem(exe) == smoke.SUBSYSTEM_CONSOLE
+    pythonw = exe.with_name("pythonw.exe")
+    if pythonw.is_file():
+        assert smoke.pe_subsystem(pythonw) == smoke.SUBSYSTEM_GUI
+
+
+def test_the_origin_smoke_checks_the_exe_subsystem_and_the_log_lines():
+    text = (DIGITIZER / "packaging" / "one_origin_smoke.py").read_text(encoding="utf-8")
+    for needle in ("pe_subsystem(exe)", "launcher: started:", "new instance",
+                   "reused the running instance", "launcher: stopped:", "already running"):
+        assert needle in text, needle

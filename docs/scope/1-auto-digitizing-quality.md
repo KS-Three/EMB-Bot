@@ -5448,3 +5448,38 @@ Census, 19 real photographs at 80 mm on the config the Studio sends: all 19 reac
 essentially nothing or segmenting the BACKGROUND as the object, at
 `predicted_iou` 0.88–0.99 throughout. *(measured 2026-09-22 —
 [`docs/sam2-on-logo-art-2026-09-22.md`](../sam2-on-logo-art-2026-09-22.md))*
+
+## Browser satin, stage 6 seam pruning and the rim flag on the live engine (2026-11-14)
+
+**Browser medial satin (`src/satin.js`).** No stroke is dropped past the 24th,
+and a spur is judged by its straight-line reach against 1.6 × the inscribed
+radius at its node, so a bar sews the same at any rotation.
+*(fixed 2026-11-13 — PR #1463)*
+
+**An auto-routed browser satin with a sewn stitch over the single-record limit
+goes to fill** (12.1 mm, `DST_MAX_DELTA / DST_UNITS_PER_MM`; Kent 2026-11-13:
+"Narrow it to the stitch limit"). No new constant, and the mean-width test is
+unchanged. A satin the user picked is kept; the `satinSmallShapes` shapes
+(MASTER_SCOPE item 57) stay satin with the md5 they had.
+*(measured 2026-11-13 — PR #1471, `test/satin-widest-cross.test.js`)*
+
+**Stage 6 seam order skips pairs that cannot touch.** `_seam_apart` clears a
+section pair when `_seam_side` would certainly answer 0; output is
+byte-identical. The stained_glass row is still slow: DOCTRINE, measured
+negatives. *(measured 2026-11-13 — PR #1472, `tests/test_stage6_speed_exact.py`)*
+
+**`photo_enclosed_rim` stays OFF after a live-engine measurement (Kent
+2026-11-14: "Keep off, fix the collapse").** ON reads MFab's small line at 30
+and at 60 to 113.5 mm on both lanes, but sews the badge as one black patch at
+35 to 37 and at 40 mm (38 is fine) and sews the M-FAB faces white at 45 and
+50 mm; in the 77-image set it changes 4 images besides MFab, three for the
+worse. A fix behind the flag is in progress.
+*(measured 2026-11-13 — [`docs/photo-enclosed-rim-2026-11-06.md`](../photo-enclosed-rim-2026-11-06.md), addendum 2026-11-14)*
+
+## Twenty-fifth pass: overflow moved from MASTER_SCOPE (2026-11-14)
+
+Moved verbatim from `MASTER_SCOPE.md` to make room for the 2026-11-13 director night's pointer (Waiting on Kent 79).
+
+### Waiting on Kent 52 (the small stem and dot rung) as it stood before the 2026-11-14 refresh
+
+52. **RESOLVED 2026-10-20 — `lettering_columns_small_stem`, `small_dot_rung` and `small_dot_rung_lettering` ON by default (Kent's ruling, PR #1002; the rung ships SCOPED, Kent confirmed the same day; False is the pre-flip engine; `RUN_MIN_LOOP_MM` stays 2.2, a cloth value, gate 1).** The stem flag sends a lettering stem under 2.25 mm² (long side ≥ 1.5 mm, short ≥ 0.5, aspect ≥ 6.0) to the Column lane; the rung admits an i DOT at stages 3, 4 and 7 as a 0.45 mm × 3-pass tack ring, and the lettering scope admits only a dot with a same-colour stem below it. **Why scoped:** unscoped, the rung buries defect 62's Wisconsin star on Fremont 80 mm Hat and lets rope slivers and photo specks through; unscoped is one line (`small_dot_rung_lettering = False`) and loses the star. Candidates, gate 1: `STEM_MIN_ASPECT`, the 0.5/1.5 limits, `DOT_RUNG_STITCH_MM` 0.45, `DOT_RUNG_PASSES` 3, `DOT_RUNG_MIN_LOOP_MM` 1.35 and the scope's ratios (tuned in-sample on two photos). Fremont's 8 counter is item 54's. The measured cells: scope-history 2026-11-12; prior text: [area 1](docs/scope/1-auto-digitizing-quality.md#seventeenth-pass-overflow-moved-from-master_scope-2026-10-20-third-refresh). *(measured 2026-10-13/15 — PRs #896, #939, #975; flipped 2026-10-20 — PR #1002, [`docs/renders/small-stem-dot/README.md`](docs/renders/small-stem-dot/README.md), `tests/test_small_stem.py`, `tests/test_small_dot_rung.py`, `tests/test_dot_rung_lettering.py`)*

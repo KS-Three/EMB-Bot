@@ -2480,3 +2480,44 @@ describe("Sew white areas", () => {
     expect(patches[patches.length - 1].patch.params.sew_enclosed_counters).toBe(true);
   });
 });
+
+// "Flatten shading" (PipelineConfig.bevel_ring_fold; Kent 2026-11-14:
+// "Studio tickbox, OFF"): a customer option, unticked to start. Ticking it is
+// a settings change like any other: the design goes stale and the run button
+// re-digitizes; a design digitized ticked stays ticked and current.
+describe("Flatten shading", () => {
+  test("renders unticked by default and patches only its own param on toggle", async () => {
+    const { getByTestId, patches } = renderPanel([shapeRow("s1")]);
+    expect(DEFAULT_DIGITIZE_PARAMS.bevel_ring_fold).toBe(false);
+    const box = getByTestId("flatten-shading");
+    expect(box.checked).toBe(false);
+    await fireEvent.change(box, { target: { checked: true } });
+    const params = patches[patches.length - 1].patch.params;
+    expect(params).toEqual({ ...DEFAULT_DIGITIZE_PARAMS, bevel_ring_fold: true });
+  });
+
+  const TICKED = { ...DEFAULT_DIGITIZE_PARAMS, bevel_ring_fold: true };
+  async function tickedPanel(appliedParams) {
+    const mod = await import("../lib/digitizer.js");
+    const applied = mod.configKey(mod.buildDigitizeConfig(baseElement([], { params: appliedParams }), {}));
+    const utils = render(Harness, {
+      props: {
+        element: baseElement([], { params: TICKED, appliedConfig: applied }),
+        project: {},
+        health: { ok: true },
+      },
+    });
+    return { ...utils, run: utils.container.querySelector(".dgp-run") };
+  }
+
+  test("ticked after an unticked run makes the design stale", async () => {
+    const { run } = await tickedPanel(DEFAULT_DIGITIZE_PARAMS);
+    expect(run).toHaveClass("dgp-run-stale");
+  });
+
+  test("digitized ticked, it stays ticked and current", async () => {
+    const { run, getByTestId } = await tickedPanel(TICKED);
+    expect(run).not.toHaveClass("dgp-run-stale");
+    expect(getByTestId("flatten-shading").checked).toBe(true);
+  });
+});

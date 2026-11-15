@@ -41,8 +41,21 @@ the service, so there is one exe to build. The window needs `tkinter`; with
 none (or `--console`) it prints to the terminal instead.
 
 Windows-only pieces, none of which the logic above depends on: the log
-directory (`user_log_dir`), `CREATE_NO_WINDOW` on the child, and the message
-box used when there is neither a window toolkit nor a console.
+directory (`user_log_dir`), `CREATE_NO_WINDOW` on the child, the message
+box used when there is neither a window toolkit nor a console, and
+`attach_console`.
+
+NO CONSOLE WINDOW. The frozen exe is built for the Windows GUI subsystem
+(`--windowed` in `packaging/build_freeze.py`). Built `--console` it got a
+console window of its own on every double-click, which stayed open behind the
+browser for as long as the app ran; the service child already had none
+(`CREATE_NO_WINDOW`). A GUI exe has no stdout when started from a terminal,
+so `--console` asks `attach_console` for the terminal that started it.
+
+THE LOG, one file, appended across launches: a "started" line when the app is
+up (version, port, time to ready, new or reused instance) and a "stopped" line
+on the way out. It is moved aside at `LOG_MAX_BYTES` and kept once, so the
+two files together never pass about twice that.
 """
 from __future__ import annotations
 
@@ -386,6 +399,21 @@ def default_studio() -> Path:
     return bundled("studio") or Path(__file__).resolve().parents[1] / "app" / "dist"
 
 
+def app_version(root=None) -> str:
+    """What the log calls this build: the release the build stamped (a tag, or
+    `dev-<commit>`; `build_stamp.json` beside the code), else "checkout"."""
+    root = root if root is not None else getattr(sys, "_MEIPASS", None)
+    if root:
+        try:
+            stamp = json.loads((Path(root) / "build_stamp.json").read_text(encoding="utf-8"))
+            for key in ("release", "commit"):
+                if isinstance(stamp.get(key), str) and stamp[key]:
+                    return stamp[key][:40]
+        except (OSError, ValueError, AttributeError):
+            pass
+    return "checkout"
+
+
 def service_command(studio, port: int = PORT) -> list[str]:
     """This same program with `--serve`: the frozen exe when frozen, this file
     under the running interpreter otherwise."""
@@ -581,10 +609,41 @@ def _windows_message_box(text: str, error: bool) -> None:
     ctypes.windll.user32.MessageBoxW(None, text, APP_NAME, 0x10 if error else 0x40)
 
 
+def attach_console() -> bool:
+    """Windows, GUI-subsystem exe asked for `--console`: give `sys.stdout` and
+    `sys.stderr` a terminal to write to. A GUI exe started from a terminal
+    has no standard handles (they are None), unless the shell redirected them
+    to a file or a pipe, which is left alone. First the terminal that started
+    this process; with none (started from an icon or a shortcut), a console
+    of its own, because `--console` is the request for one. Best effort:
+    False when there was nothing to do or it could not be done."""
+    if sys.platform != "win32":
+        return False
+    wanted = [n for n in ("stdout", "stderr") if getattr(sys, n) is None]
+    if not wanted:
+        return False
+    try:
+        import ctypes
+
+        k32 = ctypes.WinDLL("kernel32", use_last_error=True)
+        if not k32.AttachConsole(-1) and not k32.AllocConsole():  # ATTACH_PARENT_PROCESS
+            return False
+        for name in wanted:
+            setattr(sys, name, open("CONOUT$", "w", encoding="utf-8", errors="replace", buffering=1))
+        return True
+    except Exception:  # noqa: BLE001 -- the terminal is a convenience, never a reason to fail
+        return False
+
+
 class ConsoleUI:
     """Lines in a terminal. Ctrl+C, or closing the terminal, quits."""
 
     def status(self, text: str) -> None:
+        print(text, flush=True)
+
+    def note(self, text: str) -> None:
+        """A line that is only for someone watching a terminal: the window
+        has nothing to add to the app opening in the browser."""
         print(text, flush=True)
 
     def pump(self) -> bool:
@@ -644,6 +703,9 @@ class WindowUI:
         self.root.deiconify()
         self.pump()
 
+    def note(self, text: str) -> None:
+        pass  # a second launch just brings the app up; the window stays hidden
+
     def pump(self) -> bool:
         """Let the window draw and take clicks; False once Quit was pressed."""
         self.root.update()
@@ -690,11 +752,39 @@ def make_ui(console: bool = False):
 def launch(studio, ui, *, port: int = PORT, tessdata=None, log_dir=None,
            browser=webbrowser.open, spawn=start_service,
            start_timeout: float = START_TIMEOUT_S,
-           probe_timeout: float = PROBE_TIMEOUT_S) -> int:
+           probe_timeout: float = PROBE_TIMEOUT_S, version: str | None = None) -> int:
     """Start (or find) the app, hold it until the user quits, return the exit
-    code. `port` is a parameter for the tests alone; `main` never passes it."""
+    code. `port` is a parameter for the tests alone; `main` never passes it.
+    Every launch ends in one "stopped" line, whatever the way out was."""
     log = Log(Path(log_dir) if log_dir else user_log_dir())
+    version = app_version() if version is None else version
+    began = time.monotonic()
+    code = EXIT_START_FAILED
+    try:
+        code = _launch(studio, ui, log, port=port, tessdata=tessdata, browser=browser,
+                       spawn=spawn, start_timeout=start_timeout, probe_timeout=probe_timeout,
+                       version=version, began=began)
+        return code
+    finally:
+        log.write(f"stopped: {APP_NAME} {version}, exit code {code}, "
+                  f"up {time.monotonic() - began:.1f} s")
+        log.close()
+
+
+def _launch(studio, ui, log, *, port, tessdata, browser, spawn, start_timeout,
+            probe_timeout, version, began) -> int:
     url = studio_url(port)
+
+    def started(how: str) -> None:
+        log.write(f"started: {APP_NAME} {version}, port {port}, ready in "
+                  f"{time.monotonic() - began:.1f} s, {how}")
+
+    def reuse(why: str) -> None:
+        """A second launch: the running app comes up in the browser. A window
+        stays hidden; a terminal is told, in one line, that nothing new started."""
+        started("reused the running instance")
+        ui.note(f"{APP_NAME} is already running; opened it in your browser at {url}")
+        show(why)
 
     def fail(code: int, text: str) -> int:
         log.write(" ".join(text.split()))
@@ -735,7 +825,7 @@ def launch(studio, ui, *, port: int = PORT, tessdata=None, log_dir=None,
         state = FREE if refused is None else identify(port, probe_timeout)
         log.write(f"port {port} is {state}" + (f" (bind: {refused!r})" if refused else ""))
         if state == OURS:
-            show("already running")
+            reuse("already running")
             return EXIT_OK
         if state != FREE:
             return fail(EXIT_PORT_BUSY, port_busy_message(port, state, log.path))
@@ -756,7 +846,7 @@ def launch(studio, ui, *, port: int = PORT, tessdata=None, log_dir=None,
                 # THE PORT IS THE LOCK: another launcher's service may have
                 # taken the bind this one lost.
                 if probe(port, probe_timeout) == OURS:
-                    show(f"service exited ({code}) but another instance is serving")
+                    reuse(f"service exited ({code}) but another instance is serving")
                     return EXIT_OK
                 settle()  # its last words are in the log before the user is sent there
                 return fail(EXIT_START_FAILED, start_failed_message(code, log.path))
@@ -770,6 +860,7 @@ def launch(studio, ui, *, port: int = PORT, tessdata=None, log_dir=None,
                 return EXIT_OK
             time.sleep(0.25)
 
+        started(f"new instance, service pid {child.pid}")
         show("ready")
         ui.run(url, lambda: child.poll() is None, lambda: show("reopened"))
         code = child.poll()
@@ -790,7 +881,6 @@ def launch(studio, ui, *, port: int = PORT, tessdata=None, log_dir=None,
         return EXIT_START_FAILED
     finally:
         settle()
-        log.close()
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -798,6 +888,8 @@ def main(argv: list[str] | None = None) -> int:
     if argv[:1] == ["--serve"]:
         serve(argv[1:])
         return EXIT_OK
+    if {"--console", "-h", "--help"} & set(argv):
+        attach_console()  # before argparse prints anything: a GUI exe has no stdout of its own
     ap = argparse.ArgumentParser(
         prog="embbot_launcher",
         description=f"Start {APP_NAME} on {studio_url()} and open it in the browser.")

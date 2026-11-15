@@ -864,6 +864,57 @@ export function manualShapeName(shape, cut) {
   return `Shape ${n} · ${shape.stitchType === "satin" && !holed ? "Satin" : "Fill"}`;
 }
 
+// Which Columns sew joined. -> Map(shape -> { last, region }) for every Column
+// in a group, or null when the tick is off (or no engine function was handed
+// in). A group is a connected set of two or more valid Columns of exactly the
+// same colour; what "connected" means is the engine's one rule
+// (satinfont.js, joinGraph), asked here rather than restated. Lines and closed
+// shapes are never in a group, and neither is a Column that touches nothing:
+// each sews as it always has.
+//
+// A group's region holds its members as ordinary column shapes, each with its
+// own id, rail ring and rails, so the outline, the bbox and a click on the
+// hoop are every member's own; `join: true` on `sewAs` is all that is new.
+function joinedColumns(shapes, opts) {
+  const components = opts && opts.joinStrokes && typeof opts.joinComponents === "function" ? opts.joinComponents : null;
+  if (!components) return null;
+  const copy = (ring) => ring.map((p) => ({ x: p.x, y: p.y }));
+  const byColour = new Map();
+  for (const shape of shapes || []) {
+    if (!shape || !isColumn(shape) || columnIssues(shape).length) continue;
+    const rails = railsFromSpine(flattenShape(shape.points, shape.curves, false), shape.widthPx);
+    if (!rails) continue;
+    const rgb = Array.isArray(shape.colorRgb) ? shape.colorRgb : [20, 20, 20];
+    const key = rgb.join(",");
+    if (!byColour.has(key)) byColour.set(key, []);
+    byColour.get(key).push({ shape, rails, rgb });
+  }
+  const out = new Map();
+  for (const list of byColour.values()) {
+    if (list.length < 2) continue;
+    for (const set of components(list.map((m) => ({ railA: m.rails.railA, railB: m.rails.railB }))) || []) {
+      const members = set.map((i) => list[i]).filter(Boolean);
+      if (members.length < 2) continue;
+      const group = {
+        last: members[members.length - 1].shape,
+        region: {
+          rgb: members[0].rgb,
+          shapes: members.map((m) => ({
+            id: m.shape.id == null ? "" : String(m.shape.id),
+            outer: copy(m.rails.ring),
+            holes: [],
+            tierOverride: "satin",
+            angleOverride: null,
+            sewAs: { kind: "column", railA: copy(m.rails.railA), railB: copy(m.rails.railB), join: true },
+          })),
+        },
+      };
+      for (const m of members) out.set(m.shape, group);
+    }
+  }
+  return out;
+}
+
 // Convert an element's COMPLETED shapes into buildQualityDesign's
 // colorRegions input. Each shape becomes its OWN region (a manual choice,
 // not an auto-merge-by-color step: two shapes the user happens to color the
@@ -876,11 +927,28 @@ export function manualShapeName(shape, cut) {
 // engine, the Python pipeline) only ever sees straight-line rings.
 // A shape marked `cutOut` emits no region of its own; if it resolves to a
 // parent (see resolveCutOuts) its flattened ring arrives as that parent's hole.
-export function shapesToRegions(shapes) {
+//
+// `opts` (pen + auto-branch spec 2026-11-13 §3; absent, nothing below is read
+// and the regions are what they have always been):
+//   joinStrokes     the drawing's "Join touching strokes" tick
+//   joinComponents  the engine's EMB.joinComponents, handed in by the caller
+//                   so this module stays free of the engine global
+// With both, Columns of exactly the same colour that touch become ONE region
+// whose shapes each carry `sewAs.join`; the engine sews such a region's
+// columns as one path. See joinedColumns.
+export function shapesToRegions(shapes, opts) {
   const regions = [];
   const cut = resolveCutOuts(shapes);
+  const groups = joinedColumns(shapes, opts);
   for (const shape of shapes || []) {
     if (!shape) continue;
+    // A joined Column: its group is one region, emitted where the LAST of its
+    // members was drawn, so strokes drawn over a fill still sew over it.
+    const group = groups && groups.get(shape);
+    if (group) {
+      if (group.last === shape) regions.push(group.region);
+      continue;
+    }
     // A column: its rail ring is a truthful `outer` for everything in the
     // engine that reads an outline, and `sewAs` carries the rails the satin is
     // sewn between. Forced satin, no angle (the rails ARE the direction), no

@@ -59,6 +59,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
   "stitch_width_auto", "detect_photographic", "faces_route_flat", "fabric_profile",
   "sew_enclosed_white", "sew_enclosed_counters", "sew_enclosed_rgb",
+  "bevel_ring_fold",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -2835,6 +2836,22 @@ test("stitch_width_auto rides buildDigitizeConfig only when on, and is off for p
   expect("stitch_width_auto" in buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
   const on = digitizedElement({ params: { ...digitizedElement().params, stitch_width_auto: true } });
   expect(buildDigitizeConfig(on, PROJECT).stitch_width_auto).toBe(true);
+});
+
+test("bevel_ring_fold (Flatten shading) rides buildDigitizeConfig only when ticked, and is off for projects saved before the field existed", async () => {
+  const { buildDigitizeConfig } = await import("./digitizer.js");
+  const { DEFAULT_DIGITIZE_PARAMS } = await import("./project.js");
+  expect(DEFAULT_DIGITIZE_PARAMS.bevel_ring_fold).toBe(false);
+  expect("bevel_ring_fold" in buildDigitizeConfig(digitizedElement(), PROJECT)).toBe(false);
+  const old = digitizedElement();
+  delete old.params.bevel_ring_fold;
+  expect("bevel_ring_fold" in buildDigitizeConfig(old, PROJECT)).toBe(false);
+  const on = digitizedElement({ params: { ...digitizedElement().params, bevel_ring_fold: true } });
+  expect(buildDigitizeConfig(on, PROJECT).bevel_ring_fold).toBe(true);
+  // a resize keeps it: every run path builds from the same params with the
+  // width replaced
+  const resized = { ...on, params: { ...on.params, target_width_mm: 113.5 } };
+  expect(buildDigitizeConfig(resized, PROJECT)).toMatchObject({ bevel_ring_fold: true, target_width_mm: 113.5 });
 });
 
 test("stitchWidthGroupRows: the word's members with the row first; a lone shape is its own list", async () => {

@@ -92,7 +92,14 @@ MIN_STROKE_MM = 0.6
 MAX_SHIFT_CAPS = 1.0
 SHIFT_STEP_MM = 0.25
 # A cluster whose box is much taller than its letters is not one horizontal
-# line (an arc, a stack); this pass does not know how to grow one.
+# line (an arc, a stack); this pass does not know how to grow one. An arc
+# re-set (unroll about the fitted circle, re-set, roll back) was built and
+# measured 2026-11-14 and NOT shipped: every arc-text design in Kent's kits
+# reads tall enough (Bridge's letters 3.875 mm across the arc against the
+# 4.0 cap; the pro's x1.2 there came from redrawing the band and anchor).
+# Re-reading a grown letter's dark-ink bean spines from its grown polygon
+# was measured the same day and read worse (Fremont's EAT -> "BAJ"). Memory
+# `arc-reset-2026-11-14`; both are in the first commit of its PR.
 MAX_LINE_HEIGHT_RATIO = 1.6
 # Ink and ground must differ by at least this (RGB distance) to retrace.
 MIN_INK_CONTRAST = 30.0
@@ -707,8 +714,8 @@ def _grow_away(near: dict, resets: list[dict], room: Polygon, shifts: list[float
     return box(rx0, ry0, rx1, ry1), [(abs(m), hold + sign * m) for m in ms]
 
 
-# ONE BASELINE (`cfg.extra["small_text_reset_one_baseline"]`, 2026-11-13,
-# built OFF). Kent graded +Jakarta and Bukit Asam Bad on 2026-11-12: "the
+# ONE BASELINE (`cfg.small_text_reset_one_baseline`, 2026-11-13, built OFF
+# as an extra; ON since 2026-11-14, Kent's flip). Kent graded +Jakarta and Bukit Asam Bad on 2026-11-12: "the
 # letters jumped in elevation and are not inline with the rest of the text".
 # The tagger keeps one line at one size (`textcluster.LETTER_HEIGHT_RATIO`
 # 0.8), so a LOWERCASE line comes out as two clusters: its x-height letters
@@ -775,7 +782,7 @@ def _line_key(it: dict) -> dict:
 
 def _merge_baseline_classes(items: list[dict], tall: list[dict],
                             claimed: set[int] | None = None) -> list[dict]:
-    """`cfg.extra["small_text_reset_one_baseline"]`: the height classes of one
+    """`cfg.small_text_reset_one_baseline`: the height classes of one
     line (`_one_line`) re-set as ONE cluster, so every letter is scaled about
     one origin and laid left to right in one pass (`_reset_word`): the
     baseline they share stays one baseline, and the letters keep the art's
@@ -1006,8 +1013,8 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
 
-    `one_baseline` (`cfg.extra["small_text_reset_one_baseline"]`, built OFF
-    2026-11-13; comment at `BASELINE_CLASS_RATIO`): the height classes of a
+    `one_baseline` (`cfg.small_text_reset_one_baseline`, built OFF
+    2026-11-13, ON since 2026-11-14; comment at `BASELINE_CLASS_RATIO`): the height classes of a
     lowercase line -- the tagger's x-height cluster and its ascender cluster
     -- are re-set as ONE cluster on one baseline (`_merge_baseline_classes`),
     a class beside a cluster already tall enough is left as drawn, and the

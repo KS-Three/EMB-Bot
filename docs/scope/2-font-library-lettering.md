@@ -697,3 +697,21 @@ Verbatim as it stood in MASTER_SCOPE before the 2026-10-13 refresh; the verdict 
 Moved verbatim from `MASTER_SCOPE.md` by the 2026-10-28 refresh after PRs #1158–#1161 to keep the file under its word budget. Each paragraph stood as written after the eighteenth pass; the live text in MASTER_SCOPE carries the verdict and a link here. Each claim keeps its own `(verb date — source)` pointer; none was re-verified in the move.
 
 **Size guards (2026-09-03):** the 0.5 mm cross floor on the fabric (was 0.3 design pixels), hairline stretches as bean runs, and a per-element note of cap height and the share under 1.0 / 0.5 mm — warn only, no clamp; at 50 mm four hairline-authored fonts move > 5%. **Bold no longer closes counters:** its 0.3 mm is held per rail where a rail faces another across a gap the cross floor cannot spare (0.72 mm eye: 0.50 guarded vs 0.42; 0.36 mm: untouched vs 0.06); pull comp and normal/thin untouched; 60 of 83 fonts hold somewhere at 25 mm. **Short stitches (Law 53)** on the inside of bends, the Python guard mirrored and width-gated by the cross floor: geneva "S" 43% → 0% of same-rail advances under 0.3 mm, stitch counts identical, faces at the floor left alone. *(measured 2026-09-03 — commit `0a67171`, area doc §"Bold counter guard", §"Short stitches")* **Long stitches at the large end — split at the machine record.** Satin crossings past one DST record (121 units per axis) went with two units fixes and `splitSatin` (Kent 2026-09-11: ON; `wideColumnFill` off), leaving only cross-stitch fonts, whose X arm grows with the letter. **Kent ruled 2026-10-13 "Split at machine limit":** `crossFill`'s `maxSegPx` cuts an arm whose per-axis delta passes 12.1 mm into collinear pieces; arms within the record are byte-identical (9 fonts at 25 and 60 mm), and the census's worst per-axis delta falls 21.9 → 11.0 mm. A 14.4 mm arm (10.2 mm per axis) still sews as one stitch: how long a cross may float before it snags is a fabric constant, gate 1. The census (PR #864) also shows the 31.0 mm rows need a ~254–285 mm cap on a Full Back; whether the Studio should place text that tall is a product question for Kent. *(measured 2026-09-11 — `tools/long-stitch-census.mjs`; 2026-10-13 — PRs #864, #870, [`docs/crossstitch-arm-census-2026-10-13.md`](docs/crossstitch-arm-census-2026-10-13.md), `test/crossfill-split.test.js`; the 09-07/09-11 paragraph, moved verbatim: [area 2](docs/scope/2-font-library-lettering.md#long-stitches-at-the-large-end--moved-from-master_scope-2026-10-13))*
+
+## Three lettering fixes from the 2026-11-13 review
+
+**Cross-stitch fonts measure their real ink.** `satinfont.js glyphPoints(g, font)`
+counts the rings of a `fill:"cross"` glyph, so arc and circle text lays out and
+`capMm` is the cap height. *(fixed 2026-11-13 — PR #1465)*
+
+**Per-letter colours land on the right letters when the text starts with a
+space or a blank line** (`generate.js rangesForTrimmed`).
+*(fixed 2026-11-13 — PR #1466)*
+
+**Centre and right alignment ignore trailing spaces on a line**
+(`satinfont.js justAdv` / `justOff`). *(fixed 2026-11-13 — PR #1467)*
+
+**Suspected, not confirmed, from the same review:** per-letter colour indices
+count UTF-16 units, so an emoji before a coloured letter may shift the range;
+the small-text note may never show for cross-stitch fonts.
+*(suspected 2026-11-13 — code read, no repro)*

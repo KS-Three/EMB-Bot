@@ -75,6 +75,37 @@ const units =
     beanie: { w: 94.5, h: 56.0 },
   };
 
+  // The box a design is CLAMPED to by the engine's own builders
+  // (buildImportedDesign, digitize.js's typed-width clamp) and the readers that
+  // draw it (preview, worksheet, node-edit prediction). It was the round-inch
+  // pair for every default placement, while auto-fit and the Studio's typed and
+  // drag clamps read the PLACEMENTS box, so on a pro-measured garment the same
+  // placement had two boxes (docs/placement-box-paths-2026-11-14.md).
+  //
+  // KENT'S RULING 2026-11-14: "Hat front only". The hat front clamps to its
+  // PLACEMENTS box (113.5 x 64.0) like everything else; before, a square logo
+  // auto-fitted at 64.0 mm was drawn at 57.2. The left chest (101.6 x 101.6
+  // here, 96 x 76.5 in PLACEMENTS) and the beanie (114.3 x 63.5, 94.5 x 56)
+  // are DELIBERATELY still split, pinned by test/placement-box-paths.test.js:
+  // do not "fix" them without a new ruling from Kent. The beanie's width is the
+  // least firm pro number, and unifying the left chest shrinks 5 of the 12
+  // starters on the placement the starter pack lands on. A garment listed here
+  // carries `clampBox` (the same object as its pro box, by reference); the
+  // readers fall back to the inch pair when it is absent, so every garment
+  // object that is not this one (a spec's `{ widthIn, heightIn }`) is unchanged.
+  const CLAMP_ON_PLACEMENT_BOX = ["hat_front"];
+  for (const id of CLAMP_ON_PLACEMENT_BOX) getGarment(id).clampBox = PRO_PLACEMENT_MM[id];
+
+  // The clamp box in mm, { w, h }: the garment's `clampBox` when it has one,
+  // else its inch pair. `resolvePlacement` clears `clampBox` on every
+  // non-default placement: its inch pair is already rewritten from that
+  // placement's box, so only the hat front's default differs.
+  function clampBoxMm(garment) {
+    return garment.clampBox
+      ? { w: garment.clampBox.w, h: garment.clampBox.h }
+      : { w: inToMm(garment.widthIn), h: inToMm(garment.heightIn) };
+  }
+
   // ---- Placements (2026-10-27) ---------------------------------------------
   // Review table of every garment x placement box, measured vs seeded: docs/placement-boxes-2026-10-28.md (node tools/placement-table.mjs).
   // WHERE on the garment the design sits, and the biggest box that location
@@ -164,6 +195,7 @@ const units =
       placementId: pid,
       label: row.label,
       placementBox: row.box,
+      clampBox: undefined, // a non-default placement clamps on its own rewritten inch pair, as before (the spread above would carry the hat front's)
       widthIn: row.box.w / 25.4,
       heightIn: row.box.h / 25.4,
     };
@@ -280,6 +312,8 @@ const units =
     autoFitBoxMm,
     autoFitAreaMm2,
     placementBoxMm,
+    clampBoxMm,
+    CLAMP_ON_PLACEMENT_BOX,
     PRO_PLACEMENT_MM,
     PLACEMENTS,
     GARMENT_PLACEMENTS,

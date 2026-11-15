@@ -1549,6 +1549,21 @@
     <p class="mp-modehint">Drag along the line to draw it. Or click along it, then double-click to finish.</p>
   {/if}
 
+  <!-- Auto-branch (pen + auto-branch spec 2026-11-13 §3; Kent: "Checkbox,
+       built OFF"). Per drawing, saved with it; shown once there is a Column
+       to join, or one is about to be drawn. -->
+  {#if drawMode === "column" || shapes.some(isColumn)}
+    <label class="mp-join">
+      <input
+        type="checkbox"
+        checked={!!element.joinStrokes}
+        on:change={(e) => patch({ joinStrokes: e.currentTarget.checked })}
+      />
+      Join touching strokes
+    </label>
+    <p class="mp-joinhint">Columns of one colour that touch sew as one path, with no trim between them.</p>
+  {/if}
+
   <div class="mp-tools">
     <button type="button" on:click={undoPoint} disabled={!draft.length}>Undo point</button>
     <button type="button" on:click={clearDraft} disabled={!draft.length}>Clear shape</button>
@@ -1805,7 +1820,10 @@
   .mp-mode-btn:hover { background: var(--bg); }
   .mp-mode-btn.mp-mode-on,
   .mp-mode-btn.mp-mode-on:hover { background: var(--ink); color: var(--surface, #fff); }
-  .mp-modehint { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: -4px 0 0; }
+  /* .mp-joinhint is the same look under its own name: the e2e specs read the
+     one .mp-modehint as the mode's hint. */
+  .mp-modehint, .mp-joinhint { font-size: var(--fs-xs, 12px); color: var(--muted, #6b7280); margin: -4px 0 0; }
+  .mp-join { display: flex; align-items: center; gap: 6px; font-size: var(--fs-sm, 13px); cursor: pointer; }
 
   .mp-tools { display: flex; gap: 6px; flex-wrap: wrap; }
   .mp-tools button {

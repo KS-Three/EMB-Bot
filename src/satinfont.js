@@ -498,6 +498,244 @@
     return out;
   }
 
+  // ---- JOINED HAND-DRAWN COLUMNS (pen + auto-branch spec 2026-11-13 §3) ----
+  //
+  // A glyph's columns are diced by a radius read off the glyph (1.3 x its
+  // median column width) and by fractions of a column's length. Both are right
+  // for a letter, whose strokes were authored to meet, and wrong for strokes a
+  // person drew: a 4 mm stroke would be joined to anything within 5.2 mm of
+  // it, across bare cloth, and a stem landing in the last 6% of a long bar
+  // would not be joined at all. So hand-drawn columns get a graph of their
+  // own, with ONE rule for what touches, and no constant in it:
+  //
+  //   - an END touches another column when it lies inside that column's body:
+  //     no further from its spine than half its width;
+  //   - two columns touch where their spines CROSS (an X: neither has an end
+  //     there, so the glyph rule never sees it);
+  //   - a column whose two ends lie that close to each other is a closed loop.
+  //
+  // A junction within half a width of a column's end IS that end; junctions
+  // closer than that to each other along one spine are one cut. Everything a
+  // needle-down connector then crosses lies inside a column's body.
+  //
+  // G: [{ geom, w }] as routeGlyph builds them. -> { nodes: [{x, y}],
+  // edges: [{ gi, f0, f1, na, nb }], links: [[gi, hi]] }, edges in each
+  // column's own order, f0 < f1.
+  function joinGraph(G) {
+    const R = G.map((g) => g.w / 2);
+    const boxes = G.map((g) => {
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of g.geom.C) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+      return { x0, y0, x1, y1 };
+    });
+    const apart = (a, b, pad) => a.x1 + pad < b.x0 || b.x1 + pad < a.x0 || a.y1 + pad < b.y0 || b.y1 + pad < a.y0;
+    // J[gi]: junction points along column gi, as arc lengths. [0] is its
+    // start and [1] its end; the rest are where something else meets it.
+    const J = G.map((g) => [0, g.geom.total]);
+    const mark = (gi, s) => { J[gi].push(s); return J[gi].length - 1; };
+    const links = [];   // [gi, junction of gi, hi, junction of hi]
+    for (let gi = 0; gi < G.length; gi++) {
+      const { C, cum, total } = G[gi].geom;
+      for (let hi = 0; hi < G.length; hi++) {
+        if (hi === gi || apart(boxes[gi], boxes[hi], R[gi])) continue;
+        const D = G[hi].geom.C;
+        for (let e = 0; e < 2; e++) {
+          const nr = nearestOnCenter(C, cum, total, e ? D[D.length - 1] : D[0]);
+          if (nr.d <= R[gi]) links.push([gi, mark(gi, nr.f * total), hi, e]);
+        }
+      }
+      if (total > 4 * R[gi] && dist(C[0], C[C.length - 1]) <= R[gi]) links.push([gi, 0, gi, 1]);
+    }
+    for (let gi = 0; gi < G.length; gi++) {
+      for (let hi = gi + 1; hi < G.length; hi++) {
+        if (apart(boxes[gi], boxes[hi], 0)) continue;
+        const a = G[gi].geom, b = G[hi].geom, bb = boxes[hi];
+        for (let i = 0; i + 1 < a.C.length; i++) {
+          const p = a.C[i], q = a.C[i + 1];
+          if (Math.max(p.x, q.x) < bb.x0 || Math.min(p.x, q.x) > bb.x1 || Math.max(p.y, q.y) < bb.y0 || Math.min(p.y, q.y) > bb.y1) continue;
+          const rx = q.x - p.x, ry = q.y - p.y;
+          for (let j = 0; j + 1 < b.C.length; j++) {
+            const u = b.C[j], v = b.C[j + 1];
+            const sx = v.x - u.x, sy = v.y - u.y;
+            const den = rx * sy - ry * sx;
+            if (Math.abs(den) < 1e-12) continue;   // parallel: an end rule's business, if anyone's
+            const t = ((u.x - p.x) * sy - (u.y - p.y) * sx) / den;
+            if (t < 0 || t > 1) continue;
+            const w = ((u.x - p.x) * ry - (u.y - p.y) * rx) / den;
+            if (w < 0 || w > 1) continue;
+            links.push([gi, mark(gi, a.cum[i] + t * (a.cum[i + 1] - a.cum[i])), hi, mark(hi, b.cum[j] + w * (b.cum[j + 1] - b.cum[j]))]);
+          }
+        }
+      }
+    }
+    // Junctions -> cuts, per column. cutOf[gi][junction] is the cut it became.
+    const cutOf = [], cutsAt = [], base = [];
+    let n = 0;
+    G.forEach((g, gi) => {
+      const total = g.geom.total, r = R[gi];
+      const cuts = [0];            // arc lengths; [0] the start, the last the end
+      const of = new Array(J[gi].length);
+      const inner = [];
+      J[gi].forEach((s, ji) => {
+        const fromEnd = total - s;
+        if (s <= r && s <= fromEnd) of[ji] = "start";
+        else if (fromEnd <= r) of[ji] = "end";
+        else inner.push(ji);
+      });
+      inner.sort((p, q) => J[gi][p] - J[gi][q]);
+      for (const ji of inner) {
+        const s = J[gi][ji];
+        if (cuts.length === 1 || s - cuts[cuts.length - 1] > r) cuts.push(s);
+        of[ji] = cuts.length - 1;
+      }
+      cuts.push(total);
+      for (let ji = 0; ji < of.length; ji++) of[ji] = of[ji] === "start" ? 0 : of[ji] === "end" ? cuts.length - 1 : of[ji];
+      cutOf.push(of); cutsAt.push(cuts); base.push(n); n += cuts.length;
+    });
+    // Cuts that a link names are one node.
+    const parent = []; for (let i = 0; i < n; i++) parent.push(i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for (const [gi, ja, hi, jb] of links) {
+      const a = find(base[gi] + cutOf[gi][ja]), b = find(base[hi] + cutOf[hi][jb]);
+      if (a !== b) parent[Math.max(a, b)] = Math.min(a, b);
+    }
+    const at = (geom, s) => {
+      const { C, cum } = geom; let i = 0;
+      while (i < C.length - 2 && cum[i + 1] < s) i++;
+      const seg = cum[i + 1] - cum[i] || 1, t = (s - cum[i]) / seg;
+      return { x: C[i].x + (C[i + 1].x - C[i].x) * t, y: C[i].y + (C[i + 1].y - C[i].y) * t };
+    };
+    const nodes = [], nodeOfRoot = new Map(), edges = [];
+    const nodeAt = (gi, k) => {
+      const root = find(base[gi] + k);
+      if (!nodeOfRoot.has(root)) { nodeOfRoot.set(root, nodes.length); nodes.push(at(G[gi].geom, cutsAt[gi][k])); }
+      return nodeOfRoot.get(root);
+    };
+    G.forEach((g, gi) => {
+      const cuts = cutsAt[gi], total = g.geom.total;
+      for (let k = 0; k + 1 < cuts.length; k++) edges.push({ gi, f0: cuts[k] / total, f1: cuts[k + 1] / total, na: nodeAt(gi, k), nb: nodeAt(gi, k + 1) });
+    });
+    return { nodes, edges, links: links.map((l) => [l[0], l[2]]) };
+  }
+
+  // The rungs of a hand-drawn column: every interior pair of its rails, the
+  // rule digitize.js's `columnRungs` sews a lone column by (the reasons are
+  // there). Restated here so a joined column is corresponded the same way.
+  function pairRungs(railA, railB) {
+    const n = railA ? railA.length : 0;
+    if (!railB || railB.length !== n || n < 3) return [];
+    const rungs = [];
+    for (let i = 1; i < n - 1; i++) rungs.push([railA[i], railB[i]]);
+    return rungs;
+  }
+  const withRungs = (c) => ({ railA: c.railA, railB: c.railB, rungs: c.rungs || pairRungs(c.railA, c.railB) });
+
+  // Which hand-drawn columns touch. cols: [{ railA, railB }] ->
+  // [[index, ...], ...]: each connected set of TWO OR MORE, indices ascending,
+  // sets in the order of their first member. A column that touches nothing is
+  // in no set. Same rule, same code, as routeColumnGroup dices by: what this
+  // calls one set, that sews as one path.
+  function joinComponents(cols) {
+    const G = [], idx = [];
+    (cols || []).forEach((c, i) => {
+      if (!c || !c.railA || !c.railB || c.railA.length < 2 || c.railB.length < 2) return;
+      const k = withRungs(c);
+      const geom = columnGeom(k.railA, k.railB, k.rungs, 12);
+      if (!geom || geom.total <= 1e-6 || geom.C.length < 2) return;
+      const w = Math.max(dist(c.railA[0], c.railB[0]), dist(c.railA[c.railA.length - 1], c.railB[c.railB.length - 1]));
+      G.push({ geom, w }); idx.push(i);
+    });
+    const parent = G.map((_, i) => i);
+    const find = (i) => { while (parent[i] !== i) { parent[i] = parent[parent[i]]; i = parent[i]; } return i; };
+    for (const [a, b] of joinGraph(G).links) { const ra = find(a), rb = find(b); if (ra !== rb) parent[Math.max(ra, rb)] = Math.min(ra, rb); }
+    const sets = new Map();
+    G.forEach((_, i) => { const r = find(i); if (!sets.has(r)) sets.set(r, []); sets.get(r).push(idx[i]); });
+    return [...sets.values()].filter((s) => s.length >= 2);
+  }
+
+  // Route hand-drawn columns that touch as ONE needle-down path: routeGlyph's
+  // walk (travel laid first as a running underpath, satin over it) on
+  // joinGraph's junctions. cols: [{ railA, railB }]; opts as routeGlyph's.
+  // -> routeGlyph's runs, each with `col`, the index of the column it lies on.
+  // `opts.tuck: false` leaves every satin span ending where the zigzag ended
+  // (tuckSatinEnds below); it is there so the instrument can show both.
+  function routeColumnGroup(cols, opts) {
+    const runs = routeGlyph((cols || []).map(withRungs), Object.assign({}, opts, { join: true }));
+    return opts.tuck === false ? runs : tuckSatinEnds(runs, opts.pxPerMm || 1);
+  }
+
+  // WHERE A SATIN SPAN LEAVES FROM. A span ends on a rail, and the walk then
+  // steps needle-down to where the next span begins, on a spine. Half the
+  // time that step lies under satin still to come; the other half it lies on
+  // top of satin already sewn (measured, tools/join-strokes.mjs with
+  // `joinTuck: false`: an L corner of two 4 mm strokes, 2.1 mm of thread
+  // across the finished corner, or none, by which way round the walk went;
+  // pinned in test/join-strokes.test.js). The other end of the span's last
+  // cross is the other rail: when the step from THERE is covered and the step
+  // from here is not, the span sews its last cross back, one more stitch on a
+  // cross that is already down, and leaves from there. Where neither is
+  // covered the span is left as it was.
+  //
+  // "Covered": every point of the step, walked at 0.1 mm, is inside the body
+  // of a satin run that comes later, or within 0.05 mm of it. A run's body is
+  // the strip its own stitches sweep: for each four stitches in a row (two
+  // crosses), the quad they bound. Not "even points are one rail, odd the
+  // other": emitZigzag leads with the other rail on every second cross
+  // (A0 B0 B1 A1 A2 B2 ...), and a polygon built on that parity crosses itself
+  // and holds about half the column (caught in review, 2026-11-14). And not
+  // each THREE in a row: those triangles leave a gap at alternate rails that
+  // pinches to the spine, which is where a step ends. The quad asks nothing of
+  // the order.
+  function tuckSatinEnds(runs, pxPerMm) {
+    const tol = 0.05 * pxPerMm, step = 0.1 * pxPerMm;
+    const bodies = runs.map((r) => {
+      if (r.kind !== "satin" || r.pts.length < 3) return null;
+      let x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+      for (const p of r.pts) { if (p.x < x0) x0 = p.x; if (p.x > x1) x1 = p.x; if (p.y < y0) y0 = p.y; if (p.y > y1) y1 = p.y; }
+      return { pts: r.pts.slice(), x0, y0, x1, y1 };
+    });
+    const nearSeg = (p, a, b) => {
+      const dx = b.x - a.x, dy = b.y - a.y, L2 = dx * dx + dy * dy;
+      const t = L2 ? Math.max(0, Math.min(1, ((p.x - a.x) * dx + (p.y - a.y) * dy) / L2)) : 0;
+      return Math.hypot(p.x - (a.x + t * dx), p.y - (a.y + t * dy)) <= tol;
+    };
+    const side = (p, a, b) => (b.x - a.x) * (p.y - a.y) - (b.y - a.y) * (p.x - a.x);
+    const inside = (p, body) => {
+      if (p.x < body.x0 - tol || p.x > body.x1 + tol || p.y < body.y0 - tol || p.y > body.y1 + tol) return false;
+      const q = body.pts;
+      const inTri = (a, b, c) => {
+        const s1 = side(p, a, b), s2 = side(p, b, c), s3 = side(p, c, a);
+        return (s1 >= 0 && s2 >= 0 && s3 >= 0) || (s1 <= 0 && s2 <= 0 && s3 <= 0);
+      };
+      for (let i = 0; i + 1 < q.length; i++) {
+        const a = q[i], b = q[i + 1], c = q[i + 2], d = q[i + 3];
+        if (nearSeg(p, a, b)) return true;
+        if (c && inTri(a, b, c)) return true;
+        if (d && (inTri(a, b, d) || inTri(a, c, d) || inTri(b, c, d))) return true;
+      }
+      return false;
+    };
+    const covered = (from, to, after) => {
+      const n = Math.max(1, Math.ceil(dist(from, to) / step));
+      for (let k = 0; k < n; k++) {
+        const t = (k + 0.5) / n, p = { x: from.x + (to.x - from.x) * t, y: from.y + (to.y - from.y) * t };
+        let ok = false;
+        for (let j = after + 1; j < bodies.length && !ok; j++) if (bodies[j] && inside(p, bodies[j])) ok = true;
+        if (!ok) return false;
+      }
+      return true;
+    };
+    for (let k = 0; k + 1 < runs.length; k++) {
+      const r = runs[k], next = runs[k + 1];
+      if (r.kind !== "satin" || next.jump || r.pts.length < 2) continue;
+      const end = r.pts[r.pts.length - 1], to = next.pts[0];
+      if (dist(end, to) < 1e-9 || covered(end, to, k)) continue;
+      const other = r.pts[r.pts.length - 2];
+      if (covered(other, to, k)) r.pts = r.pts.concat([{ x: other.x, y: other.y }]);
+    }
+    return runs;
+  }
+
   function routeGlyph(cols, opts) {
     const pxPerMm = opts.pxPerMm, spacingMm = opts.spacingMm, pullCompMm = opts.pullCompMm || 0, slantDeg = opts.slantDeg || 0;
     // Cross floor + hairline fallback (see the width-guard constants above).
@@ -552,7 +790,9 @@
     // emitZigzag adds — so at the split point a zigzag column carries no split.
     const zzCapPx = opts.zigzag === true && opts.zigzagMaxWidthMm > 0 ? opts.zigzagMaxWidthMm * pxPerMm : 0;
     const G = [];
+    let ci = -1;   // index into `cols`, which G skips entries of
     for (const c of cols) {
+      ci += 1;
       const geom = columnGeom(c.railA, c.railB, c.rungs, 12);
       if (!geom || geom.total <= 1e-6 || geom.C.length < 2) continue;
       const w = Math.max(dist(c.railA[0], c.railB[0]), dist(c.railA[c.railA.length - 1], c.railB[c.railB.length - 1]));
@@ -562,7 +802,7 @@
         for (let i = 0; i < Math.min(geom.A.length, geom.B.length); i++) wMax = Math.max(wMax, dist(geom.A[i], geom.B[i]));
         zzOff = wMax + (pullCompMm + weightMm) * pxPerMm >= zzCapPx;
       }
-      G.push({ geom, w, zzOff });
+      G.push({ geom, w, zzOff, ci });
       if (report) accumulateWidths(geom, report);
       if (report && opts.zigzag === true) { if (zzOff) report.zigzagCapped += 1; else report.zigzagColumns += 1; }
     }
@@ -582,27 +822,39 @@
     const underpathStepMm = opts.underpathStepMm > 0 ? opts.underpathStepMm : UNDERPATH_STEP_MM;
     const satinOpts = { spacingMm, pxPerMm, pullCompMm, weightMm, slantDeg, minCrossMm, counterGuard, shortStitch, splitAboveMm, splitSegmentMm, splitStats: splitAboveMm > 0 ? report : null, zigzag: opts.zigzag === true };
     const satinOptsWide = Object.assign({}, satinOpts, { zigzag: false });
-    const ws = G.map((g) => g.w).sort((a, b) => a - b);
-    const medW = ws[ws.length >> 1] || 4;
-    const mergeR = Math.max(2, 1.3 * medW);
+    // HAND-DRAWN COLUMNS (`opts.join`, pen + auto-branch spec 2026-11-13 §3):
+    // the graph comes from joinGraph, which finds junctions by each column's
+    // own half width and cuts at a spine crossing too. Only routeColumnGroup
+    // passes it; absent, the block below is the one every font has always
+    // been diced by, untouched.
+    const join = !!opts.join;
+    let nodes, edges; // edges: {gi, f0, f1, na, nb}
+    if (join) {
+      const jg = joinGraph(G);
+      nodes = jg.nodes; edges = jg.edges;
+    } else {
+      const ws = G.map((g) => g.w).sort((a, b) => a - b);
+      const medW = ws[ws.length >> 1] || 4;
+      const mergeR = Math.max(2, 1.3 * medW);
 
-    // Endpoints of every column (to find mid-stroke junctions on others).
-    const endpts = [];
-    for (const g of G) { const C = g.geom.C; endpts.push(C[0], C[C.length - 1]); }
-    // Cut fractions per column.
-    for (const g of G) {
-      const { C, cum, total } = g.geom; const cuts = [0, 1];
-      for (const p of endpts) { const nr = nearestOnCenter(C, cum, total, p); if (nr.d <= mergeR && nr.f > 0.06 && nr.f < 0.94) cuts.push(nr.f); }
-      cuts.sort((a, b) => a - b);
-      const uniq = [cuts[0]]; for (let i = 1; i < cuts.length; i++) if (cuts[i] - uniq[uniq.length - 1] > 0.04) uniq.push(cuts[i]);
-      g.cuts = uniq;
+      // Endpoints of every column (to find mid-stroke junctions on others).
+      const endpts = [];
+      for (const g of G) { const C = g.geom.C; endpts.push(C[0], C[C.length - 1]); }
+      // Cut fractions per column.
+      for (const g of G) {
+        const { C, cum, total } = g.geom; const cuts = [0, 1];
+        for (const p of endpts) { const nr = nearestOnCenter(C, cum, total, p); if (nr.d <= mergeR && nr.f > 0.06 && nr.f < 0.94) cuts.push(nr.f); }
+        cuts.sort((a, b) => a - b);
+        const uniq = [cuts[0]]; for (let i = 1; i < cuts.length; i++) if (cuts[i] - uniq[uniq.length - 1] > 0.04) uniq.push(cuts[i]);
+        g.cuts = uniq;
+      }
+      // Nodes + satin edges (one per diced span).
+      nodes = [];
+      const nodeOf = (p) => { for (let i = 0; i < nodes.length; i++) if (dist(nodes[i], p) <= mergeR) return i; nodes.push({ x: p.x, y: p.y }); return nodes.length - 1; };
+      const ptAtFrac = (geom, f) => { const { C, cum, total } = geom; const s = f * total; let i = 0; while (i < C.length - 2 && cum[i + 1] < s) i++; const seg = cum[i + 1] - cum[i] || 1; const t = (s - cum[i]) / seg; return { x: C[i].x + (C[i + 1].x - C[i].x) * t, y: C[i].y + (C[i + 1].y - C[i].y) * t }; };
+      edges = [];
+      G.forEach((g, gi) => { for (let k = 0; k + 1 < g.cuts.length; k++) { const f0 = g.cuts[k], f1 = g.cuts[k + 1]; edges.push({ gi, f0, f1, na: nodeOf(ptAtFrac(g.geom, f0)), nb: nodeOf(ptAtFrac(g.geom, f1)) }); } });
     }
-    // Nodes + satin edges (one per diced span).
-    const nodes = [];
-    const nodeOf = (p) => { for (let i = 0; i < nodes.length; i++) if (dist(nodes[i], p) <= mergeR) return i; nodes.push({ x: p.x, y: p.y }); return nodes.length - 1; };
-    const ptAtFrac = (geom, f) => { const { C, cum, total } = geom; const s = f * total; let i = 0; while (i < C.length - 2 && cum[i + 1] < s) i++; const seg = cum[i + 1] - cum[i] || 1; const t = (s - cum[i]) / seg; return { x: C[i].x + (C[i + 1].x - C[i].x) * t, y: C[i].y + (C[i + 1].y - C[i].y) * t }; };
-    const edges = []; // {gi, f0, f1, na, nb}
-    G.forEach((g, gi) => { for (let k = 0; k + 1 < g.cuts.length; k++) { const f0 = g.cuts[k], f1 = g.cuts[k + 1]; edges.push({ gi, f0, f1, na: nodeOf(ptAtFrac(g.geom, f0)), nb: nodeOf(ptAtFrac(g.geom, f1)) }); } });
     if (!edges.length) return [];
 
     // Directed-edge adjacency (each undirected span usable both ways).
@@ -630,6 +882,10 @@
     compNodes.sort((a, b) => Math.min.apply(null, a.map((i) => nodes[i].x)) - Math.min.apply(null, b.map((i) => nodes[i].x)));
 
     const runs = [];
+    // With `join`, a run says which of the caller's columns it came from
+    // (`col`, an index into `cols`), so a satin span can be traced back to the
+    // stroke it is. No font's run carries the key.
+    const tagged = (run, gi) => { if (join) run.col = G[gi].ci; return run; };
     for (const cnodes of compNodes) {
       if (!cnodes.length) continue;
       const deg = {}; for (const i of cnodes) deg[i] = adj[i].length;
@@ -760,10 +1016,10 @@
             const upts = underlayMode === "edge"
               ? edgeUnderlayFromGeom(geom, p.fa, p.fb, underlayOpts)
               : centerUnderlayFromGeom(geom, p.fa, p.fb, underlayOpts);
-            if (upts && upts.length >= 2) { runs.push({ pts: upts, kind: "underlay", jump: first }); first = false; }
+            if (upts && upts.length >= 2) { runs.push(tagged({ pts: upts, kind: "underlay", jump: first }, sp.gi)); first = false; }
           }
           if (p.grp != null) lastGrp = p.grp;
-          runs.push({ pts: p.pts, kind: p.kind, jump: first || !!p.jump });
+          runs.push(tagged({ pts: p.pts, kind: p.kind, jump: first || !!p.jump }, sp.gi));
           first = false;
         }
       }
@@ -1386,6 +1642,7 @@
 
   return {
     layoutText, capHeightMm, underlayModeForCapMm, TYPOGRAPHIC_FOLD, SATIN_ZIGZAG_MAX_WIDTH_MM,
+    joinComponents, routeColumnGroup,
     LETTERING_GUARDS: { SATIN_MIN_CROSS_MM, BEAN_STITCH_MM, BEAN_PASSES, COLUMN_FLOOR_MM, CAP_FLOOR_MM, SHORT_STITCH_AT_MM, SHORT_STITCH_PULL, SHORT_STITCH_MAX_MM },
   };
 });

@@ -389,6 +389,65 @@ APEX_SHOULDER_FAR = 0.36
 APEX_STEM_DEPTH = 0.4          # a cut this far toward the tip retries at the crotch (`_apex_stems`)
 
 
+# `apex_guard` (`cfg.extra["lettering_columns_apex_guard"]`, 2026-11-14,
+# built OFF; read only while `apex_cut` is on). The corpus table
+# (`docs/apex-cut-corpus-2026-11-14.md`, 43 designs) found apex_cut better on
+# 10, worse on 4 and mixed on 1. Read tip by tip, the merged tips behind the
+# losses are of two kinds, and the gains are neither:
+# - a STROKE UNDER ONE SATIN CROSS (`machine.SATIN_MIN_CROSS_MM`): the
+#   0.18-0.19 mm white rings outline_lineart_logo's tagger took for letters.
+#   Merged, the ring's notches walked long bars across the black letter
+#   inside it. The gains' strokes are 0.69 mm and up.
+# - a cross the walk found only by SLIDING TO ITS LIMIT. The cut sits below
+#   the crotch (an "apex_stub") and the cross takes `APEX_GUARD_SHARE` or
+#   more of the limit (`APEX_CROSS_W` x W, or `APEX_CROSS_MM`). The walk
+#   stepped off the crotch until a cross first fitted, so the limit chose
+#   that cross, not the strokes closing: a stroke END, not a V. The losses
+#   read 0.96-1.00 of the limit: k_line's K foot and N, Drone's N top (two
+#   long stitches across the stem), mfab_lc's W middle apex and N tops,
+#   duotone's "2" foot, and_pizza's Z joints. The gains that slid read
+#   0.39-0.76 (Bridge's crossed blocks, duotone's N, Becker LC's M). The
+#   rest cut through the crotch itself (Becker's M, ProSeal's A and M), and
+#   most crosses there sit at 0.9-1.0 of the limit too, so the share alone
+#   separates nothing.
+# The guard refuses the crotch outright. It does not try the next tip, so a
+# refused letter cuts as it does OFF. Kept back with it: and_pizza's Z-joint
+# cure. Each Z's two joints are one shape turned 180 deg, and only the
+# top-right one fans, so what fans is the sewing order there, not the tip.
+# A candidate, not a fabric constant (gate 1): layout, judged by eye.
+_APEX_GUARD: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_guard", default=False)
+APEX_GUARD_SHARE = 0.9
+
+
+@contextlib.contextmanager
+def apex_guard_scope(on: bool):
+    """`cfg.extra["lettering_columns_apex_guard"]` for one plan, beside
+    `apex_cut_scope`. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _APEX_GUARD.set(True)
+    try:
+        yield
+    finally:
+        _APEX_GUARD.reset(token)
+
+
+def _apex_guard_refuses(recs: list, W: float) -> str | None:
+    """`apex_guard`: why this merged tip (`_apex_walk`'s records,
+    `_apex_pieces`) is refused, or None. A cut below the crotch carries an
+    "apex_stub"; one through it is two "apex" records and is not judged on
+    its share."""
+    from .machine import SATIN_MIN_CROSS_MM
+    if W < SATIN_MIN_CROSS_MM:
+        return "guard_hairline"
+    if any(r[2] == "apex_stub" for r in recs):
+        cross = sum(r[3] for r in recs if r[2] == "apex")
+        if cross >= APEX_GUARD_SHARE * min(APEX_CROSS_W * W, APEX_CROSS_MM):
+            return "guard_slid_to_limit"
+    return None
+
+
 @contextlib.contextmanager
 def apex_cut_scope(on: bool):
     """`cfg.lettering_columns_apex_cut` for the length of one plan
@@ -610,6 +669,11 @@ def _apex_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> list:
                     alt = _apex_walk(poly, p, q, others, W, _apex_stems(poly, W, p, reflex), True)
                     found = alt if alt is not None else found
                 break
+        if found is not None and _APEX_GUARD.get():
+            why = _apex_guard_refuses(found, W)
+            if why is not None:     # this crotch cuts as it does OFF (comment at `_APEX_GUARD`)
+                _apex_refused(why)
+                found = None
         if found is not None:
             drop += mine
             add += found
@@ -1607,8 +1671,55 @@ def _absorb_serifs(columns: list, cuts: list, W: float, pitch_mm: float,
 # 1.41 W; at 110 of turn, 1.74); the D's 45-degree bends folded too.
 # Candidates, not fabric constants: layout, judged in the preview.
 _CORNER_FOLD: contextvars.ContextVar[bool] = contextvars.ContextVar("corner_fold", default=False)
+# `fold_apex_side` (`cfg.lettering_columns_corner_fold_apex_side`, 2026-11-14,
+# built OFF): the fold counts, at each corner, only the pieces on the APEX
+# side of it. A traced E whose slots narrow to a point (Becker's MARINE E,
+# 1.42 px/mm art) has no lone L corner: each slot's tip is shared by the
+# stem, the arm the fold would turn into, and the arm across the slot, and
+# the third piece (0.40-0.44 mm2 within 0.3 W, against the arm's 0.38-0.48)
+# refused both of its corners. The arm across the slot lies on the far
+# side of the tip from the apex the fold sweeps, where no fold cross goes.
+# The pro sews both forms on an E: MFab's top arm, stem and bottom arm as
+# ONE column fanned round both corners; Becker's bottom arm and stem as one
+# fanned column (Kent's "nice corner with the thread"), its top arm capped
+# over the stem's top.
+_FOLD_APEX_SIDE: contextvars.ContextVar[bool] = contextvars.ContextVar("fold_apex_side", default=False)
+
+
+@contextlib.contextmanager
+def fold_apex_side_scope(on: bool):
+    """`cfg.lettering_columns_corner_fold_apex_side` for one letter's cut
+    (`columns.lettering_columns_shape`), read by `_fold_corners`. False
+    sets nothing."""
+    if not on:
+        yield
+        return
+    token = _FOLD_APEX_SIDE.set(True)
+    try:
+        yield
+    finally:
+        _FOLD_APEX_SIDE.reset(token)
+
+
+def _apex_side(p, q, reach: float) -> Polygon:
+    """The half-plane on `q`'s side of the line through `p` square to
+    p -> q, as a square of side 2 * `reach` on that line."""
+    ux, uy = _unit((q[0] - p[0], q[1] - p[1]))
+    nx, ny = -uy, ux
+    return Polygon([(p[0] + nx * reach, p[1] + ny * reach),
+                    (p[0] + (nx + ux) * reach, p[1] + (ny + uy) * reach),
+                    (p[0] + (ux - nx) * reach, p[1] + (uy - ny) * reach),
+                    (p[0] - nx * reach, p[1] - ny * reach)])
 FOLD_TURN_MIN_DEG = 35.0       # `CONVEX_DEG`: under it the outline is bending, not cornering
 FOLD_TURN_MAX_DEG = 110.0
+# `_FOLD_APEX_SIDE`: a pointed slot's tip turns 120-121 deg on Becker hat
+# large's E (its two slots, 1.42 px/mm art at 101.9 mm), its root another
+# 55-57: the L corner is split across the two. A tip on the letter's OUTER
+# outline (a slot, never a counter's corner) folds up to this ...
+FOLD_APEX_SIDE_TURN_MAX_DEG = 130.0
+# ... against an apex this far off its bisector (cosine): the L's outer
+# corner read 0.21 from the bottom slot's tip there
+FOLD_APEX_SIDE_ALIGN = 0.15
 FOLD_WIDTH_RATIO = 1.6         # the mitre rule's own ratio, read on the legs' sewn crosses
 _FOLD_EPS_MM = 0.05            # a cross this far short of the corner is the leg's, not the corner's
 
@@ -1747,48 +1858,91 @@ def _fold_corners(columns: list, cuts: list, poly: Polygon, W: float, pitch_mm: 
     apex across it (`find_cuts`' own elbow reading) at which exactly two
     columns meet is folded (`_fold_pair`); the cut between those two is
     taken out. A corner of a through pair (a T junction) is not an L and
-    is left cut. -> (columns, cuts)."""
+    is left cut. -> (columns, cuts).
+    `_FOLD_APEX_SIDE` (`cfg.lettering_columns_corner_fold_apex_side`): a
+    corner counts only the pieces on its apex side, and a pointed slot's
+    tip (`FOLD_APEX_SIDE_TURN_MAX_DEG`) is a corner too, tried against each
+    apex in reach, nearest first, until a pair folds (`_apex_candidates`)."""
     raw, reflex, convex = find_cuts(poly, W)
     through = [Point(c[k]) for c in raw if c[2] == "through" for k in (0, 1)]
     cols, cuts = list(columns), list(cuts)
+    side = _FOLD_APEX_SIDE.get()
     for r in reflex:
         p = r["p"]
-        if not FOLD_TURN_MIN_DEG <= r["turn"] <= FOLD_TURN_MAX_DEG:
+        # a slot opens onto the letter's outline; a counter's acute tip (an
+        # A's, ProSeal's at 125 deg) is capped by the pro and keeps the cap
+        slot = side and poly.exterior.distance(Point(p)) < 1e-6
+        if not FOLD_TURN_MIN_DEG <= r["turn"] <= (FOLD_APEX_SIDE_TURN_MAX_DEG if slot else FOLD_TURN_MAX_DEG):
             continue
         if any(t.distance(Point(p)) < 0.25 * W for t in through):
             continue
-        apex = None
-        for o in convex:
-            if o["turn"] < 45:
+        for q in (_apex_candidates(r, convex, poly, W) if side else _apex_nearest(r, convex, poly, W)):
+            # the two columns whose pieces fill the corner: an E's slot cuts
+            # all end on the stem line, so a third piece can touch the corner
+            near = Point(p).buffer(0.3 * W)
+            if side:
+                # ... on the side the fold sweeps: the arm across a pointed
+                # slot touches the tip from the far side, and is not the L's
+                near = near.intersection(_apex_side(p, q, 4 * W))
+            touching = sorted(((c.piece.intersection(near).area, i) for i, c in enumerate(cols)
+                               if c.kind != "ring" and not c.piece.interiors
+                               and c.piece.distance(Point(p)) < 0.05), reverse=True)
+            if len(touching) < 2 or (len(touching) > 2 and touching[2][0] > 0.1 * touching[1][0]):
                 continue
-            q = o["p"]
-            L = math.hypot(q[0] - p[0], q[1] - p[1])
-            if L < 0.6 * W or L > 2.6 * W:
+            i, j = sorted((touching[0][1], touching[1][1]))
+            joined = _fold_pair(cols[i], cols[j], p, q, poly, W, pitch_mm)
+            if joined is None:
                 continue
-            d = _unit((q[0] - p[0], q[1] - p[1]))
-            if d[0] * r["bis"][0] + d[1] * r["bis"][1] > 0.6 and _inside(poly, p, q):
-                if apex is None or L < apex[0]:
-                    apex = (L, q)
-        if apex is None:
-            continue
-        # the two columns whose pieces fill the corner: an E's slot cuts all
-        # end on the stem line, so a third piece can touch the corner point
-        near = Point(p).buffer(0.3 * W)
-        touching = sorted(((c.piece.intersection(near).area, i) for i, c in enumerate(cols)
-                           if c.kind != "ring" and not c.piece.interiors
-                           and c.piece.distance(Point(p)) < 0.05), reverse=True)
-        if len(touching) < 2 or (len(touching) > 2 and touching[2][0] > 0.1 * touching[1][0]):
-            continue
-        i, j = sorted((touching[0][1], touching[1][1]))
-        joined = _fold_pair(cols[i], cols[j], p, apex[1], poly, W, pitch_mm)
-        if joined is None:
-            continue
-        between = [k for k in cuts
-                   if all(Point(k[m]).distance(cols[n].piece) < 0.05 for m in (0, 1) for n in (i, j))]
-        cols = [c for n, c in enumerate(cols) if n not in (i, j)]
-        cols.insert(min(i, j), joined)
-        cuts = [k for k in cuts if k not in between]
+            between = [k for k in cuts
+                       if all(Point(k[m]).distance(cols[n].piece) < 0.05 for m in (0, 1) for n in (i, j))]
+            cols = [c for n, c in enumerate(cols) if n not in (i, j)]
+            cols.insert(min(i, j), joined)
+            cuts = [k for k in cuts if k not in between]
+            break
     return cols, cuts
+
+
+def _apex_nearest(r, convex, poly: Polygon, W: float) -> list:
+    """The corner's apex as `_fold_corners` has always read it: the nearest
+    convex corner of turn 45+ within 0.6-2.6 W, across the corner (its
+    direction within 0.6 of the bisector) and inside the letter; [] or
+    [it]."""
+    p, apex = r["p"], None
+    for o in convex:
+        if o["turn"] < 45:
+            continue
+        q = o["p"]
+        L = math.hypot(q[0] - p[0], q[1] - p[1])
+        if L < 0.6 * W or L > 2.6 * W:
+            continue
+        d = _unit((q[0] - p[0], q[1] - p[1]))
+        if d[0] * r["bis"][0] + d[1] * r["bis"][1] > 0.6 and _inside(poly, p, q):
+            if apex is None or L < apex[0]:
+                apex = (L, q)
+    return [] if apex is None else [apex[1]]
+
+
+def _apex_candidates(r, convex, poly: Polygon, W: float) -> list:
+    """`_FOLD_APEX_SIDE`: every convex corner of turn 45+ within 0.6-2.6 W
+    of the corner, on its side of it (direction within
+    `FOLD_APEX_SIDE_ALIGN` of the bisector) and inside the letter, nearest
+    first. A pointed slot's tip is symmetric between the two arms it
+    divides, so its bisector points into the stem and the L's apex (the
+    letter's outer corner at the end of the arm's outer edge) sits well off
+    it (Becker hat large's E: 0.21); `_fold_pair`'s arc test refuses the
+    apexes that belong to no L (the arm across the slot: 'long_way')."""
+    p, out = r["p"], []
+    for o in convex:
+        if o["turn"] < 45:
+            continue
+        q = o["p"]
+        L = math.hypot(q[0] - p[0], q[1] - p[1])
+        if L < 0.6 * W or L > 2.6 * W:
+            continue
+        d = _unit((q[0] - p[0], q[1] - p[1]))
+        if d[0] * r["bis"][0] + d[1] * r["bis"][1] > FOLD_APEX_SIDE_ALIGN and _inside(poly, p, q):
+            out.append((L, q))
+    return [q for _L, q in sorted(out, key=lambda t: t[0])]
 
 
 def pivot_sweep(st, eps: float = 0.03) -> float:

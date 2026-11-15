@@ -1,6 +1,6 @@
 ---
 name: digitized-image-study-2026-11-13
-description: Kent 11-13 "find 100 digitized images ... study and learn how the shapes were digitized and why": 108 distinct pictures of professional work read by eye (100 not AI mock-ups), 18 rules in docs/digitized-image-study-2026-11-13.md; rule 7 measured from DSTs: pro stacks under ~5.2 mm and knocks out above, we already stack on logo/flat art (silhouette_underfill), knock-out survives on photo classes; real gap is no contrast halo
+description: Kent 11-13 "find 100 digitized images ... study and learn how the shapes were digitized and why": 108 distinct pictures of professional work read by eye (100 not AI mock-ups), 18 rules in docs/digitized-image-study-2026-11-13.md; rule 7 measured from DSTs: pro stacks under ~5.2 mm and knocks out above, we already stack on logo/flat art (silhouette_underfill), knock-out survives on photo classes; rule 12 measured 11-14: pro adds no contrast outline the art lacks, nor do we, so neither rule is a gap on his jobs
 metadata:
   type: project
 ---
@@ -28,8 +28,13 @@ approximate count, and what EMB-Bot does today).
   where the under-fill is off: photo classes (the owl), grounds not read as a
   ring, MFab's panel. The wrong claim came from reading
   `stage5_overlap.py:1202-1231` alone; read a DST before describing what we sew.
-- **Rule 12.** Professionals add a contrast outline to light-on-dark and
-  dark-on-mid-tone shapes. EMB-Bot adds no outline the art lacks.
+- **Rule 12, MEASURED 2026-11-14: not a gap.** The pictures showed outlines
+  round light-on-dark shapes but could not say who drew them. Kent's pro keeps
+  the art's outlines and adds none (28 files, 0 added found); we add none
+  either. None of our 115 unringed pairs on six paired jobs has less thread
+  contrast than his lowest (dE00 10.7); four owl greys do. Open: his kept
+  outlines on Golden Tee's "1" and Fremont's rope were not found as rings in
+  our output, not traced.
 - **Fill angle is a genre habit, not one rule.** Cartoon digitizers turn the
   angle between touching fills of similar colour; logo digitizers (Kent's pro,
   DOCTRINE 2026-09-09) hold one angle per design. EMB-Bot does neither on

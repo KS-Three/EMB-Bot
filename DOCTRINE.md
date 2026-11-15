@@ -1455,6 +1455,90 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   bodies; the lettering tag is the guard. *(ruled 2026-11-11 —
   `docs/transparent-white-infill-2026-11-11.md`)*
 
+- **No byte-identical change makes a slow photo row twice as fast in stage 6;
+  do not hunt for a memo.** `stained_glass` (80 mm, 6 colours) spends about
+  325 of its 354 s in `plan_stitches`, 215 s of that in `travel_path`, and the
+  expensive GEOS work there is unique per query: of 7,675 covered
+  `travel_path` calls that miss the bridge memo only 9 repeat their full
+  input, and plain repeats are worth 2.5 s. A memo, a hoist or a prepared
+  geometry therefore reaches nothing without changing a GEOS call sequence,
+  which can move a coordinate in the last bit. The one exact gain shipped
+  (`_seam_apart`, about 4% on the row). A step change needs a decision that
+  changes stitches: fewer covered pricing walks, pricing the emitted order
+  once, or a cheaper stand-in for the unsewn-ground inset. Kent 2026-11-13:
+  "Leave it there". *(measured 2026-11-13 — PR #1472)*
+
+- **Border-connected background removal is not a default for the browser
+  engine as built.** `knockoutBackground`'s `connected: true` keys out only
+  background that reaches the image border, which keeps a white square inside
+  a badge. Switched on across 305 Studio-built designs it moves 79: any closed
+  outline sews its whole interior (toat_beanie 8,946 → 19,460 stitches, white
+  takes a colour slot), and Hotel Fremont keeps its O counters while the band
+  round them is keyed out. A default needs a garment-aware rule for enclosed
+  ground like the Python lane's. Kent 2026-11-13: "Ship it switched off".
+  *(measured 2026-11-13 — PR #1470)*
+
+- **"The pro makes repeats identical" is disproved: on Bridge the art's
+  repeats are already alike, and the irregularity is ours.** The art's eight
+  wheel handles lie 0.21 mm apart (p95 boundary distance after rotation
+  alignment, mean over 28 pairs), the pro's 0.21, ours 0.58. His real change
+  is the handle's SHAPE (spindle to paddle with a collar). On the arc text it
+  is SIZE (1.65x), not a more regular baseline (0.56 vs the art's 0.52 mm).
+  Do not build "make repeats regular" as a pro habit. Find where our pipeline
+  spreads them (trace, simplify or satin construction) with a `debug_dir`
+  stage trace. `regular_structure` (OFF, PR #1480) reads modest by eye.
+  *(measured 2026-11-13 — `docs/director-night-2026-11-13.md`, "Where the pro
+  departs from the art")*
+- **"We sew fatter than the pro" is disproved as stated; we are heavier on
+  MFab and Gaulke only.** The earlier "ours 18-30% heavier, the pro within
+  1% of the art" was a dark-pixel count on shaded renders. The width ledger,
+  which draws both files the same way, reads thread area over art area:
+  Becker 1.18 ours vs 1.19 the pro, Bridge 1.09 vs 1.09, MFab 1.12 vs 0.95,
+  Gaulke 1.37 vs 0.74. Do not cut width across the board to match the pro.
+  What closes small counters is pull compensation on satin rails plus thread
+  width, and the pull amount is a fabric constant (ROADMAP gate 1).
+  *(measured 2026-11-13 — width ledger on PR #1485, open;
+  `docs/director-night-2026-11-13.md`, "What I got wrong")*
+- **The proof-read (`cfg.proofread`) is a tracing tool, not a guard.** Its
+  findings land on Kent's fault groups barely above chance: satin 38 groups
+  against 29.7 by chance, fill 23 against 19.7. It also raises findings on
+  designs he graded Good. Its first Jakarta counter findings were
+  transparent holes read as ink (fixed). Do not gate, block or steer the
+  engine on its findings. Use it to name the stage behind a pin.
+  *(measured 2026-11-14 — PR #1487, open, Table A; memory
+  `proofread-2026-11-13`)*
+- **An agent eye with the original beside the render is PARTIAL against
+  Kent's pins. It is no stand-in for him at his spot, though it is the
+  closest instrument yet.** The protocol was pre-registered (45 designs, his
+  270 pins as 139 groups):
+  - The Opus reader finds his gross faults at his spot 0.35 above chance
+    [0.25, 0.49], against a bar of 0.40.
+  - It names the same fault somewhere in the design 0.52 above chance.
+  - Its grade agrees with his at linear kappa 0.66 [0.52, 0.78], and 0.44
+    without his Terrible designs.
+  - It is weakest on jagged edges (2 of 18 at his spot) and pen flow (4 of
+    21).
+
+  **Ruled 2026-11-14 (Kent: "Yes, gross faults only"):** it is the working
+  judge for GROSS faults in the dev loop (missing, merged, invented,
+  unreadable). It does not judge jagged edges, pen flow or close A/B picks,
+  there is no nightly run, and flips stay his. *(measured 2026-11-13, ruled
+  2026-11-14 — `docs/director-night-2026-11-13.md`, "The agent eye against
+  Kent's pins" and "Kent's rulings")*
+- **`lettering_columns_apex_cut` needs a guard before any flip; do not flip
+  it as built.** It cures and_pizza's Z-joint pins, but on 43 lettering
+  designs 25 moved:
+  - 10 better;
+  - 10 the same;
+  - 1 mixed;
+  - 4 worse. outline_lineart_logo is badly worse (Kent graded it Great):
+    line art tagged as text turns into long bars. k_line, Precision Drone
+    and MFab LC are the other three.
+
+  A guard on the length of a tip's stitches comes first, then the table is
+  re-run. *(measured 2026-11-14 — PR #1489,
+  `docs/apex-cut-corpus-2026-11-14.md`)*
+
 ---
 
 ## SAM2 does not see a logo as a scene of objects — refuted on all nine real logos (2026-09-22)
@@ -1839,6 +1923,26 @@ flattery. Anything unlisted raises `NotInManifest`.
 
 
 ## Gotchas — cost someone a session once
+
+- **On Windows, never run Python or a test suite through a directory
+  junction: every file open through one leaks kernel memory until the next
+  restart.** Measured 2026-11-14 on Windows 11 Pro 10.0.26200: 20,000 opens of
+  one file through a junction left 60,000 live `NtFC` allocations (ntfs.sys,
+  the file-open code), 8.6 MB of nonpaged pool, never freed; `Exists` and a
+  directory listing through it leak too; the same calls on the plain path leak
+  nothing. Two days of sweeps and suites in worktrees that reached
+  `digitizer/rembg_isolated/venv` through a junction left 25.8 GB of a 32 GB
+  desktop in that one tag (129 million allocations). Jobs that take 2 to 8
+  minutes then timed out at 30, two crashed (0xC0000005, 0xC0000409), and a
+  measurement ran for hours producing nothing. **A worktree reaches the
+  primary checkout's venv by PATH, not by link:** run the primary's
+  interpreter, and for the cutout set
+  `stage1_photo_prep.REMBG_VENV_PYTHON` the way
+  `tools/lettering_board.py rembg_from_primary()` does. **When jobs on a
+  Windows box slow down for no reason, read `\Memory\Pool Nonpaged Bytes`
+  before anything else.** The memory junction the root `CLAUDE.md` describes
+  is the same mechanism at low volume. *(measured 2026-11-14 — session probe;
+  pool tags read with `NtQuerySystemInformation` class 22)*
 
 - **A pull radius tuned on ONE outline was shipped as a rule for EVERY ring —
   and "the entire spline follows" was the rule working.** `pullRing`

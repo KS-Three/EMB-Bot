@@ -858,7 +858,7 @@ def quantize(p: Prep, cfg: PipelineConfig) -> Quant:
         ramp_px = int(np.ceil(float(cfg.flat_page_fringe_ramp_src_px)
                               * float(p.px_per_mm) / source_px / 2.0))
     elif getattr(cfg, "flat_blend_band_any_scale", False) and not enlarged:
-        # `cfg.flat_blend_band_any_scale` (built OFF 2026-11-14): the same
+        # `cfg.flat_blend_band_any_scale` (built OFF 2026-11-14, ON since): the same
         # round on a raster the grid shrank or kept (`BLEND_BAND_PX`,
         # band pixels to their nearest non-band pixel). An enlarged raster
         # keeps the line above, ON or OFF.

@@ -1,4 +1,5 @@
-"""`cfg.extra["text_cluster_solid_guard"]` (2026-11-13, built OFF): a solid
+"""`cfg.text_cluster_solid_guard` (built OFF 2026-11-13 as an extra, ON since
+2026-11-14 by Kent's flip, "Flip both ON"): a solid
 blob is no glyph.
 
 +Jakarta's mark is a grid of equal solid squares. At 80 mm three of them in a
@@ -99,9 +100,15 @@ def test_a_line_of_letters_beside_the_squares_tags_the_same_on_and_off():
     assert not any(_tags(on)[f"Ssq{i}"] for i in range(3))
 
 
-def test_off_is_the_default_and_the_pipeline_passes_only_the_extra():
+def test_on_is_the_shipped_default_and_the_pipeline_passes_the_field():
+    # Kent's flip 2026-11-14 ("Flip both ON"): the callee keeps False as its
+    # own default (the call as it was), the pipeline passes the field
+    from digitizer_core import PipelineConfig, pipeline
     assert inspect.signature(tc.detect_text_clusters).parameters["solid_guard"].default is False
-    from digitizer_core import pipeline
+    assert PipelineConfig().text_cluster_solid_guard is True
+    assert PipelineConfig().small_text_reset_one_baseline is True
     src = inspect.getsource(pipeline)
-    assert 'cfg.extra.get("text_cluster_solid_guard")' in src
-    assert 'cfg.extra.get("small_text_reset_one_baseline")' in src
+    assert "if cfg.text_cluster_solid_guard else" in src
+    assert "if cfg.small_text_reset_one_baseline else" in src
+    assert 'cfg.extra.get("text_cluster_solid_guard")' not in src
+    assert 'cfg.extra.get("small_text_reset_one_baseline")' not in src
