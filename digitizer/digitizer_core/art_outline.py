@@ -53,7 +53,7 @@ import math
 from shapely.geometry import LineString, Polygon
 from shapely.ops import unary_union
 
-from . import machine
+from . import deadline, machine
 from .columns import is_lettering
 
 #: share of a body's exterior that must lie in the hole (the shapes are
@@ -159,6 +159,12 @@ def find_art_outlines(regions, cfg=None, *,
     out: dict[str, list[tuple[str, Polygon]]] = {}
     taken: set[str] = set()
     for o in regions:
+        # A Cancel lands between holders, holes and bodies: nothing in this
+        # search read the clock, and on To a T machine at its hat size the
+        # stretch from plan_stitches' check to stage 5's was 3.9 s, 15.2 s
+        # with `group_consistent_outline_body` (2026-11-14,
+        # `tools/flip_timing.py`). A check reads a clock, moves no number.
+        deadline.check("art outlines")
         poly = o.polygon
         if poly is None or poly.is_empty or poly.geom_type != "Polygon" or not poly.interiors:
             continue
@@ -194,6 +200,7 @@ def find_art_outlines(regions, cfg=None, *,
             pad = hole.buffer(HOLD_PAD_MM)
             held = []
             for b in inside:
+                deadline.check("art outlines")
                 ext = Polygon(b.polygon.exterior)
                 if ext.area <= 0 or pad.intersection(ext).area < HOLD_FRAC * ext.area:
                     continue
@@ -205,6 +212,7 @@ def find_art_outlines(regions, cfg=None, *,
             for b, _ext in held:
                 if b.shape_id in taken or b.shape_id in cand_ids or _counter(b, o, cfg):
                     continue
+                deadline.check("art outlines")
                 band, stroke = outline_measures(o, b, hole)
                 cands.append((b, hole, band, stroke))
                 cand_ids.add(b.shape_id)

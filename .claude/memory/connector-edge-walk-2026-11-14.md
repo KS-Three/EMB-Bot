@@ -50,3 +50,5 @@ across the narrow slot) touches each one, over the tenth-of-second rule in
 
 Write-up: `docs/connector-edge-walk-2026-11-14.md`. See
 [[connectors-on-top-2026-11-14]].
+
+**Flipped ON 2026-11-14, Kent: "Flip ON".** Shipped in the Column-lane flips PR beside `lettering_columns_corner_fold_apex_side`, after a combined check of every lettering design in the apex table (main | edge-walk | edge-walk + corner, `eye_pairs_out/column-flips-1114/`). `tests/conftest.py` PRE_FLIP (`EDGE_WALK_2026_11_14_OFF`) keeps the OFF arm.

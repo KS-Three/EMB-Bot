@@ -50,8 +50,9 @@ def sewn():
     return rows
 
 
-def test_default_off():
-    assert PipelineConfig().lettering_columns_corner_fold_apex_side is False
+def test_on_by_default():
+    # Kent's flip 2026-11-14 ("Flip ON"); PRE_FLIP keeps the OFF arm
+    assert PipelineConfig().lettering_columns_corner_fold_apex_side is True
 
 
 def test_off_is_the_cut_as_it_was(sewn):

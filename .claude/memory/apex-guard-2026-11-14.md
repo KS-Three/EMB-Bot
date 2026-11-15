@@ -38,3 +38,5 @@ fans. That is the sewing order there (the Column lane's walk, owned by the
 jag-source lane), not the tip.
 
 Related: [[jag-source-2026-11-13]], [[fat-ink-ledger-2026-11-14]].
+
+**Kent, 2026-11-14 (after `apex-guard-1114/sheets/gain_becker_hat_large.png`), withdrawing his "Flip both ON":** "Off was closer to the pros here, but still not perfect, let's get an agent working on this." and "I want it exactly like the pros." `lettering_columns_apex_cut` and `lettering_columns_apex_guard` stay OFF. In the pro's panel the left leg fans and the right leg steps down in level crosses: neither OFF's herringbone nor ON's flat floor is that. A new worker ("apex-like-pro") takes the construction from the pro's stitch files.

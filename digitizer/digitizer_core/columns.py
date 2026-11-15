@@ -776,16 +776,21 @@ def end_face_hold(columns: list[Column], poly: Polygon):
     return _ring_edges(poly), frozenset(end_faces(columns, poly))
 
 
-def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None):
+def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None,
+               keep=None):
     """One column's crosses as the fabric gets them, before the cross floor:
     rails inset, pushed by the pull, a fanned straight end's face given the
     rails' reach -- and, with `hold` (`end_face_hold`, under
     `cfg.lettering_columns_square_ends`), every end-face penetration held on
-    its face. -> (a_pts, b_pts). `tools/column_ends.py` reads it too."""
+    its face. `keep` (`cfg.extra["satin_push_keeps_gaps"]`, None: off): the
+    push held out of the letter's bays and its gaps to same-thread ink, as
+    from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`).
+    -> (a_pts, b_pts). `tools/column_ends.py` reads it too."""
     from .stage6_satin import _push_rails
     a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
     if pull_mm > 0:
-        a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm)
+        a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm,
+                                   **({"keep": keep} if keep is not None else {}))
     if col.kind in ("straight", "folded"):      # a folded column's ends are its legs' straight ends
         a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
                                         pull_mm - RAIL_REACH_INSET_MM,
@@ -2012,6 +2017,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 apex_crosses: list | None = None,
                 connectors_buried: bool = False,
                 edge_walk: bool = False,
+                pull_keep=None,
                 _walk: list | None = None,
                 _feet: dict | None = None,
                 ) -> tuple[list[StitchRun], dict]:
@@ -2086,7 +2092,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     hold = end_face_hold(columns, poly) if square_ends else None
     for col in columns:
         col_pull = pull_mm if pull_of is None else pull_of(column_width(col))
-        a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold)
+        a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold, pull_keep)
         if counter_clear_mm > 0:
             a_pts, b_pts = _clear_counters(a_pts, b_pts, cpoly, counter_clear_mm, min_cross_mm)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
@@ -3052,6 +3058,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             connectors_buried: bool = False,
                             edge_walk: bool = False,
                             corner_fold_apex_side: bool = False,
+                            pull_keep=None,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3142,6 +3149,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"connectors_buried": True} if connectors_buried else {}),
                   # `cfg.lettering_columns_connectors_edge_walk`: the walk that buries its hops
                   **({"edge_walk": True} if edge_walk else {}),
+                  # `cfg.extra["satin_push_keeps_gaps"]`: the push kept out of bays and gaps
+                  **({"pull_keep": pull_keep} if pull_keep is not None else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):

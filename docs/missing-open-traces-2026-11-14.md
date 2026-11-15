@@ -54,23 +54,61 @@ reads only on a closed outline ring.
 
 ## arabic_calligraphy: the stems between leaves (2 pins, nitpick)
 
-**Stage by stage:**
-- At stage 3 each stem is its own small region of the leaves' thread,
-  between two leaves.
-- At stage 4 one stem survives as a thin line; the other is gone. The run
-  reports `DROPPED_SMALL_SHAPES` 12, all small, largest 3.53 mm2.
-- Stage 5 and the stitches carry only the survivor.
+**Corrected later the same evening.** The first reading above blamed
+stage 4; a mask trace at stage 3 shows the stem never reaches it.
 
-So the stem is dropped as a small same-thread piece at stage 4, not by the
-contrast rescue (it is the leaves' own colour) and not by stage 5's clip.
-The exact rule was not reached. The next step is a region trace of which
-`DROPPED_SMALL_SHAPES` piece sits under pin 2 (70.4, 9.8) and pin 3
-(6.7, 15.9), and whether merging it into the leaf it touches
-(`SAME_THREAD_SHAPES_MERGED` fires 3 times on this design) would keep it.
+**What the masks show** (stage 3's input at the pin-2 stem; work grid
+11.5 px/mm, detail floor 297 px):
+- The stem is not one mask. Its pixels split between the leaves' gold
+  (layer 0) and the leaves' darker edge gold (layer 1, the art's outline
+  round each leaf).
+- They arrive as crumbs: on layer 1, one 49 px and one 18 px piece plus
+  1-6 px bits; on layer 0, pieces of 6-11 px.
+- Together they come to about 120 px, under the chain rescue's 297 px floor
+  (`_chained_small_regions`).
+- Each piece is the leaves' own ink family, so the contrast rescue
+  (`keep_thin_strokes`, more than `merge_delta_e` 6 off its neighbour) does
+  not keep it.
+- `resolve_small_regions` absorbs every crumb into the leaf with the most
+  halo. Of stage 3's output in the window, only the three leaves and one
+  23 px layer-1 piece remain.
+
+So the stem becomes a thin spur on one leaf or another, and the leaf's satin
+decomposition does not sew a spur that thin. One stem survives elsewhere
+because its pieces happened to stay together.
+
+**Where a fix would go:** a same-ink thin line. Crumbs of one ink family
+that chain from leaf to leaf (a bridge between two full-size regions of
+that family) are a stroke. Sew it as one run or bean line on its skeleton,
+the way `bean_dark_ink` sews dark ink, instead of absorbing it piece by
+piece. That is a new line tier, not a threshold; the crest's crown keylines
+want the same tier.
+
+## Does the Studio's "Flatten shading" tick reach the tonal pins?
+
+`cfg.bevel_ring_fold`, as improved by #1522 and #1535, run ON against OFF on
+main `d9699832` (sheets `flatten_*` in
+`digitizer/eye_pairs_out/missing-1114/sheets/`).
+
+**Precision Drone, trees and propellers (2 pins): no.**
+- Both pins come out the same ON as OFF: the trees are the grey sky's
+  lumpy lower edge, and the propellers are grey blades merged into the dark
+  body.
+- The tick changes the design elsewhere: 14,760 -> 13,604 stitches,
+  93 -> 86 trims.
+- The pro redraws both: black tree silhouettes against sparse sky lines,
+  and blades in black keylines. That is a redraw of tonal art (Phase 4,
+  gate 2), not a flattening.
+
+**Isometric icon, shading band (2 pins): partly.**
+- ON, the invented dark-red band under the sausage is folded away at both
+  pins, and the yellow top band merges into the body.
+- But the shaded side then sews as pink satin pieces at several angles,
+  which reads messy.
+- 10,859 -> 9,733 stitches, 29 -> 27 trims.
+- Worth showing Kent beside the tick's own sheets. It is not a cure as it
+  stands.
 
 ## Not traced
 
-- Isometric icon's shading band (2 pins): stage 2 tonal.
-- Precision Drone's trees and propellers (2 pins): tonal art; Phase 4 and
-  gate 2.
 - The gradient mascot's nostril tail (1 pin).
