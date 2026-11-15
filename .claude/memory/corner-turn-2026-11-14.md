@@ -50,3 +50,5 @@ refused Becker's E.
 
 Write-up: `docs/corner-turn-2026-11-14.md`. See
 [[connector-edge-walk-2026-11-14]].
+
+**Flipped ON 2026-11-14, Kent: "Flip ON"**, told: only the five Becker jobs move, one trim fewer each, about 150 more stitches per E, and the E's top-left also fans where the pro's Becker file caps. Shipped in the Column-lane flips PR beside edge-walk after the combined check (`eye_pairs_out/column-flips-1114/`). `tests/conftest.py` PRE_FLIP (`CORNER_APEX_2026_11_14_OFF`) keeps the OFF arm.
