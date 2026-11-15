@@ -2124,6 +2124,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             seam_aware_scope(cfg.fill_seam_aware_sections), \
             chord_aim_scope(cfg.satin_free_end_chord_aim):
         plan = _plan_stitches(result, cfg)
+        # the result the plan in hand was sewn from: the guard below replans
+        # THIS one, so a re-tier above survives its replan (review 2026-11-14:
+        # it replanned `result`, and a gear the inlet rule had moved to fill
+        # went back to satin whenever the guard kept its replan)
+        planned = result
+        bodies: dict = {}        # `outline_inlets_teeth`: the split shapes' bodies
         # `cfg.extra["outline_inlets_kept"]` (built OFF): a satin that sewed
         # over its own outline's inlet (a gear's tooth gaps, an open beak)
         # cannot draw that shape; it is planned again as a fill on a copy of
@@ -2139,10 +2145,11 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                 # along the root, under the body
                 teeth = bool(cfg.extra.get("outline_inlets_teeth"))
                 regions, bodies = outline_inlets.rebuild(result.regions, over, teeth)
-                plan = _plan_stitches(replace(result, regions=regions), cfg)
+                planned = replace(result, regions=regions)
+                plan = _plan_stitches(planned, cfg)
                 if bodies:
-                    from . import machine
-                    outline_inlets.bury_tooth_moves(plan, bodies, machine.TRAVEL_STITCH_MM)
+                    from .machine import TRAVEL_STITCH_MM
+                    outline_inlets.bury_tooth_moves(plan, bodies, TRAVEL_STITCH_MM)
         # `cfg.proofread_guard_clipped` (built OFF): the proof-read reads
         # this plan against the traced raster and, where stage 5's clip cut
         # a shape's own ink away, re-plans inside these same scopes with that
@@ -2154,8 +2161,13 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
 
             def replan(ids):
                 with keep_art_scope(ids):
-                    return _plan_stitches(result, cfg)
-            plan = guard_clipped(result, cfg, plan, replan)
+                    p = _plan_stitches(planned, cfg)
+                if bodies:      # the teeth's moves, buried again on the replan
+                    from . import outline_inlets
+                    from .machine import TRAVEL_STITCH_MM
+                    outline_inlets.bury_tooth_moves(p, bodies, TRAVEL_STITCH_MM)
+                return p
+            plan = guard_clipped(planned, cfg, plan, replan)
         return plan
 
 
