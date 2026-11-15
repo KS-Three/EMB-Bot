@@ -51,8 +51,23 @@ from __future__ import annotations
 import statistics
 from typing import Callable, Iterable
 
+from . import deadline
 from .lettering_thread import STRAY_HEIGHT_RATIO, STRAY_MAX_GAP_H, STRAY_MIN_OVERLAP
 from .textcluster import MIN_CLUSTER_MEMBERS
+
+# CANCEL SEAMS AND PRUNED PAIRS (review 2026-11-14). `like_lines`,
+# `_adopt_stacked` and `like_shapes` tested every pair of shapes through
+# shapely, with no `deadline.check`: 1,600 same-thread squares took 31.6 s in
+# `like_lines` and 27.8 s in `like_shapes` on the shared laptop, both ON by
+# default since that day (`group_consistent_tier`, `_fill_angle`), both run
+# once per stage-7 pass (twice when the Column lane sews). Now each reads a
+# shape's bounds and area once, visits only the pairs that can pass (sorted
+# by top edge within a thread for a line, by area for likeness), and checks
+# the deadline once per shape. The groups are the same: a skipped pair is one
+# the test would have refused, and a union-find root is its component's
+# lowest index whatever order the pairs come in.
+#: the slack on a pruning bound, so a pair at the test's own edge is tested
+_PRUNE_SLACK = 1e-9
 
 #: A member within this factor of the threshold, either side, is not evidence
 #: for its group (`DECIDED` above). The outline census's own empty band is
@@ -91,19 +106,23 @@ def _adopt_stacked(regs: list, groups: list[list[int]]) -> None:
     import statistics as st
     grouped = {i for g in groups for i in g}
     free = [i for i in range(len(regs)) if i not in grouped]
-    for x in free:
-        for y in free:
-            if y <= x or regs[x].thread_index != regs[y].thread_index:
+    bounds = [r.polygon.bounds for r in regs]
+    band: dict[int, tuple[float, float]] = {}     # a line's median top, bottom until it grows
+    for n, x in enumerate(free):
+        deadline.check("like lines")
+        for y in free[n + 1:]:                     # `free` ascends: every later y > x
+            if regs[x].thread_index != regs[y].thread_index:
                 continue
-            a, b = regs[x].polygon.bounds, regs[y].polygon.bounds
+            a, b = bounds[x], bounds[y]
             if not _stacked(a, b):
                 continue
             u = (min(a[0], b[0]), min(a[1], b[1]), max(a[2], b[2]), max(a[3], b[3]))
-            for g in groups:
+            for gi, g in enumerate(groups):
                 if regs[g[0]].thread_index != regs[x].thread_index:
                     continue
-                top = st.median(regs[i].polygon.bounds[1] for i in g)
-                bot = st.median(regs[i].polygon.bounds[3] for i in g)
+                if gi not in band:
+                    band[gi] = (st.median(bounds[i][1] for i in g), st.median(bounds[i][3] for i in g))
+                top, bot = band[gi]
                 H = bot - top
                 if H <= 0 or abs(u[1] - top) > STACK_BAND_TOL * H or abs(u[3] - bot) > STACK_BAND_TOL * H:
                     continue
@@ -114,20 +133,25 @@ def _adopt_stacked(regs: list, groups: list[list[int]]) -> None:
                 if near > STRAY_MAX_GAP_H * H:
                     continue
                 g.extend([x, y])
+                band.pop(gi, None)
                 break
 
 
-def _line_mates(a, b) -> bool:
+def _line_mates(a, b, ba=None, bb=None) -> bool:
     """`lettering_thread._on_its_line`, both ways round: like heights, one
-    band, near each other."""
-    x0, y0, x1, y1 = a.polygon.bounds
-    u0, v0, u1, v1 = b.polygon.bounds
+    band, near each other. `ba`, `bb`: the two polygons' bounds, if read."""
+    x0, y0, x1, y1 = a.polygon.bounds if ba is None else ba
+    u0, v0, u1, v1 = b.polygon.bounds if bb is None else bb
     h, k = y1 - y0, v1 - v0
     if h <= 0 or k <= 0 or min(h, k) / max(h, k) < STRAY_HEIGHT_RATIO:
         return False
     if min(y1, v1) - max(y0, v0) < STRAY_MIN_OVERLAP * min(h, k):
         return False
-    return a.polygon.distance(b.polygon) <= STRAY_MAX_GAP_H * max(h, k)
+    reach = STRAY_MAX_GAP_H * max(h, k)
+    # two shapes are at least as far apart as their boxes are side to side
+    if max(u0 - x1, x0 - u1) > reach * (1.0 + _PRUNE_SLACK) + _PRUNE_SLACK:
+        return False
+    return a.polygon.distance(b.polygon) <= reach
 
 
 def like_lines(regions: Iterable, *, min_members: int = MIN_CLUSTER_MEMBERS) -> list[list]:
@@ -144,12 +168,23 @@ def like_lines(regions: Iterable, *, min_members: int = MIN_CLUSTER_MEMBERS) -> 
             i = parent[i]
         return i
 
-    for i in range(len(regs)):
-        for j in range(i + 1, len(regs)):
-            if regs[i].thread_index == regs[j].thread_index and _line_mates(regs[i], regs[j]):
-                ri, rj = find(i), find(j)
-                if ri != rj:
-                    parent[max(ri, rj)] = min(ri, rj)
+    bounds = [r.polygon.bounds for r in regs]
+    per_thread: dict = {}
+    for i, r in enumerate(regs):
+        per_thread.setdefault(r.thread_index, []).append(i)
+    for idx in per_thread.values():
+        idx.sort(key=lambda i: bounds[i][1])
+        for p, i in enumerate(idx):
+            deadline.check("like lines")
+            bottom = bounds[i][3]
+            for j in idx[p + 1:]:
+                if bounds[j][1] > bottom:          # starts below i: no shared band, nor any later
+                    break
+                lo, hi = (i, j) if i < j else (j, i)     # the pair as it was asked
+                if _line_mates(regs[lo], regs[hi], bounds[lo], bounds[hi]):
+                    ri, rj = find(i), find(j)
+                    if ri != rj:
+                        parent[max(ri, rj)] = min(ri, rj)
     by: dict[int, list] = {}
     for i in range(len(regs)):
         by.setdefault(find(i), []).append(i)
@@ -359,14 +394,24 @@ def like_shapes(regions: Iterable, *, min_members: int = 2) -> list[list]:
         lo, hi = min(a, b), max(a, b)
         return hi / lo if lo > 0 else float("inf")
 
-    for i in range(len(regs)):
-        for j in range(i + 1, len(regs)):
-            if (regs[i].thread_index == regs[j].thread_index
-                    and ratio(regs[i].polygon.area, regs[j].polygon.area) <= LIKE_AREA_RATIO
-                    and ratio(elong[i], elong[j]) <= LIKE_ELONG_RATIO):
-                ri, rj = find(i), find(j)
-                if ri != rj:
-                    parent[max(ri, rj)] = min(ri, rj)
+    area = [r.polygon.area for r in regs]
+    per_thread: dict = {}
+    for i, r in enumerate(regs):
+        per_thread.setdefault(r.thread_index, []).append(i)
+    for idx in per_thread.values():
+        idx.sort(key=lambda i: area[i])
+        for p, i in enumerate(idx):
+            deadline.check("like shapes")
+            reach = area[i] * LIKE_AREA_RATIO * (1.0 + _PRUNE_SLACK)
+            for j in idx[p + 1:]:
+                if area[j] > reach:                # larger still from here on: none is like i
+                    break
+                lo, hi = (i, j) if i < j else (j, i)
+                if (ratio(area[lo], area[hi]) <= LIKE_AREA_RATIO
+                        and ratio(elong[lo], elong[hi]) <= LIKE_ELONG_RATIO):
+                    ri, rj = find(i), find(j)
+                    if ri != rj:
+                        parent[max(ri, rj)] = min(ri, rj)
     by: dict[int, list] = {}
     for i, r in enumerate(regs):
         by.setdefault(find(i), []).append(r)
@@ -400,6 +445,7 @@ def shared_angles(regions: Iterable, own_angle: Callable[[object], float | None]
         groups += [(g, False) for g in like_shapes(loose)]
     out: dict[str, float] = {}
     for g, relative in groups:
+        deadline.check("like shapes")
         ref = max(g, key=lambda r: (r.polygon.area, r.shape_id))
         base = own_angle(ref)
         if base is None:
@@ -411,6 +457,7 @@ def shared_angles(regions: Iterable, own_angle: Callable[[object], float | None]
         # read 90 on the art polygon), and moving both helps nothing.
         owns = []
         for r in g:
+            deadline.check("like shapes")              # `own_angle` scans a fill per member
             a = base if r is ref else own_angle(r)
             if a is None:
                 owns = []
