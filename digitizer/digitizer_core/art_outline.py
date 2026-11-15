@@ -226,7 +226,8 @@ def find_art_outlines(regions, cfg=None, *,
                 getattr(cfg, "photo_enclosed_rim", False))):
             taken.difference_update(b.shape_id for b, _hole in found)
             continue
-        # `cfg.outline_frame_guard` (built OFF 2026-11-14): an outline is a
+        # `cfg.outline_frame_guard` (ON since 2026-11-15, Kent 2026-11-15, review pack (review-1115): ticked ON;
+        # built OFF 2026-11-14): an outline is a
         # thin band round what it holds. A box with a letter knocked out of
         # it is near its hole everywhere (k_line's red box, 0.999) but is
         # bigger than what it holds: a FIELD round a knockout. It stays in
