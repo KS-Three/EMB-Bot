@@ -3399,6 +3399,30 @@ def sequence(
         reach = 2.0 * fabric.pull_comp_mm + cfg.min_detail_mm + 1.0
         return keep_by_thread[ti].intersection(p.region.polygon.buffer(reach)), keep_floor
 
+    # `cfg.extra["compact_satin_keeps_gaps"]` (built OFF 2026-11-14, Gaulke's
+    # window). `compact_solids_satin` sews a compact solid as one satin on
+    # `p.polygon`, the polygon stage 5 grew for the FILL it predicted: the
+    # pull all round, into the gap the art keeps to the next shape. Gaulke's
+    # four panes keep 0.7-0.85 mm dividers through stage 4; two of them are
+    # predicted fill, grown 14.8 -> 20.4 mm2, and the horizontal divider sews
+    # shut (0.4 at stage 5, 0.1 at the thread; the pro's 0.7). ON, the
+    # growth stays out of those gaps by stage 5's own `growth_keeps_gaps`
+    # rule (`stage5_overlap._kept_gaps`: same thread always, other colours
+    # from `GAP_SEWABLE_MM`), on these shapes only. Off, unread.
+    compact_keep = bool((cfg.extra or {}).get("compact_satin_keeps_gaps"))
+    compact_tree = (shapely.STRtree([o.region.polygon for o in planned])
+                    if compact_keep else None)
+
+    def compact_kept(p: PlannedRegion):
+        from .stage5_overlap import GAP_PROTECT_MM, _kept_gaps
+        art = p.region.polygon
+        near = [planned[int(i)].region for i in compact_tree.query(art.buffer(GAP_PROTECT_MM))
+                if planned[int(i)] is not p]
+        local = unary_union([art] + [o.polygon for o in near])
+        kept = _kept_gaps(p.region, art, p.polygon, near, local, None,
+                          fabric.pull_comp_mm + cfg.overlap_mm)
+        return kept if (kept is not None and not kept.is_empty) else p.polygon
+
     # `cfg.stripe_underfill`: a band sewn on a stripe field's fill holds its
     # rails where the fill lies beneath -- the ground already down here is
     # the artwork AND every under-fill outline sewn before it. Untagged: None.
@@ -4347,7 +4371,8 @@ def sequence(
                     and not (is_lettering(p.region, cfg) and not handed_back)
                     and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
                 runs, report = small_solid_satin(
-                    p.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
+                    compact_kept(p) if compact_keep else p.polygon, p.shape_id,
+                    spacing_mm=satin_spacing_for(p),
                     max_width_mm=shape_max, start_near=entry)
                 if not report["empty"]:
                     report["compact_satin"] = 1
