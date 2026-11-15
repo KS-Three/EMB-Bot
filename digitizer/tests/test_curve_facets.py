@@ -195,3 +195,34 @@ def test_column_lane_off_without_the_scope():
     with oc.curve_chord_scope(0.4):
         assert oc._CURVE_CHORD.get() == 0.4
     assert oc._CURVE_CHORD.get() is None
+
+
+def test_column_lane_leaves_counters_alone():
+    """The guard's trace is the letter's OUTER outline: a counter edge is
+    what stage 7's counter clearance re-cuts against, and a finer one there
+    re-cut and_pizza's "p" into a wedge (2026-11-14). An 'o' with a 1.2 mm
+    counter, round or square, keeps its counter's vertices; its outer bowl
+    gains them."""
+    from digitizer_core import outline_cut as oc
+    t = np.linspace(0, 2 * np.pi, 720, endpoint=False)
+    outer = np.column_stack([3.2 * np.cos(t), 3.2 * np.sin(t)])
+    for hole in (np.column_stack([1.2 * np.cos(t), 1.2 * np.sin(t)])[::-1],
+                 np.array([[-1.1, -1.1], [-1.1, 1.1], [1.1, 1.1], [1.1, -1.1]])):
+        letter = Polygon(outer, [hole])
+
+        def split_counts(cut):
+            inner = outer_n = 0
+            for c in cut.columns:
+                for ring in [c.piece.exterior] + list(c.piece.interiors):
+                    R = np.asarray(ring.coords)[:-1]
+                    r = np.hypot(R[:, 0], R[:, 1])
+                    inner += int((r < 1.8).sum())
+                    outer_n += int((r > 2.8).sum())
+            return inner, outer_n
+
+        off = oc.letter_columns(letter, 0.4)
+        with oc.curve_chord_scope(0.4):
+            on = oc.letter_columns(letter, 0.4)
+        (i0, o0), (i1, o1) = split_counts(off), split_counts(on)
+        assert i1 == i0
+        assert o1 > o0

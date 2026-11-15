@@ -50,15 +50,15 @@ def turns_deg(pts: np.ndarray, closed: bool) -> np.ndarray:
 
 
 # ------------------------------------------------------------------ stages
-def ring_stats(raw: np.ndarray, ring: np.ndarray, px_mm: float) -> dict:
+def ring_stats(raw: np.ndarray, ring: np.ndarray, px_mm: float, corner: float = CORNER_DEG) -> dict:
     import shapely
     from shapely.geometry import LinearRing
     lr = LinearRing(np.asarray(ring, dtype=np.float64))
     dev = shapely.distance(shapely.points(np.asarray(raw, dtype=np.float64)), lr)
     t = np.abs(turns_deg(ring, closed=True))
-    curve = t[(t >= 2.0) & (t <= CORNER_DEG)]
+    curve = t[(t >= 2.0) & (t <= corner)]
     return {"n": int(len(ring)), "dev_mm": float(dev.max()) / px_mm,
-            "facets": int(((t >= 5.0) & (t <= CORNER_DEG)).sum()),
+            "facets": int(((t >= 5.0) & (t <= corner)).sum()),
             "turn_p95": float(np.percentile(curve, 95)) if len(curve) else 0.0,
             "turn_max": float(curve.max()) if len(curve) else 0.0}
 
@@ -75,7 +75,7 @@ def stages(name: str, art: str, width: float, garment: str, extra: dict) -> dict
     req = pro_pair.request(width, garment, extra)
     cfg = PipelineConfig(**_parse_config(json.dumps(req)))
     rec: list = []
-    ref0, den0 = s4._refine_curves, s4._densify_curves
+    ref0, den0 = s4._refine_curves, s4.densify_curves
 
     def ref(raw, simplified, *a, **k):
         out = ref0(raw, simplified, *a, **k)
@@ -87,7 +87,7 @@ def stages(name: str, art: str, width: float, garment: str, extra: dict) -> dict
         rec.append(["densify", np.array(raw), np.array(ring), np.array(out)])
         return out
 
-    s4._refine_curves, s4._densify_curves = ref, den
+    s4._refine_curves, s4.densify_curves = ref, den
     try:
         data = open(art, "rb").read()
         t0 = time.time()
@@ -95,7 +95,7 @@ def stages(name: str, art: str, width: float, garment: str, extra: dict) -> dict
         res = finish_generation(gen.fork(), cfg)
         el = time.time() - t0
     finally:
-        s4._refine_curves, s4._densify_curves = ref0, den0
+        s4._refine_curves, s4.densify_curves = ref0, den0
     ppm = gen.p.px_per_mm
     agg: dict = {}
     for kind, raw, a, b in rec:
@@ -110,6 +110,35 @@ def stages(name: str, art: str, width: float, garment: str, extra: dict) -> dict
             g["dev_mm"] = max(g["dev_mm"], s["dev_mm"])
             g["facets"] += s["facets"]
             g["turn_p95"].append(s["turn_p95"])
+    # the Column lane, letter by letter: its own simplify at max(0.12, W/16)
+    # (`outline_cut._letter_columns`), then the densify `curve_chord_mm`
+    # gives its pieces (here on the whole simplified letter, same rule)
+    from digitizer_core import outline_cut as oc
+    from digitizer_core.curve_densify import densify_polygon
+    chord = float(extra.get("curve_chord_mm") or 0.4)
+    for r in res.regions:
+        if not r.meta.get("text_candidate") or r.polygon.geom_type != "Polygon":
+            continue
+        W = oc.stroke_width(r.polygon)
+        tol = max(oc.SIMPLIFY_MM, W / 16.0)
+        simp = r.polygon.simplify(tol, preserve_topology=True)
+        if simp.is_empty or simp.geom_type != "Polygon":
+            continue
+        den = densify_polygon(simp, r.polygon.boundary, chord,
+                              min(oc.CURVE_GUARD_SHARE * tol, oc.CURVE_GUARD_MAX_MM), oc.CURVE_CORNER_DEG)
+        for tag, g in (("lane_in", r.polygon), ("lane_simplified", simp), ("lane_densified", den)):
+            for ring in [g.exterior] + list(g.interiors):
+                # deviation: the stage-4 ring this one came from, read both ways
+                src = min([r.polygon.exterior] + list(r.polygon.interiors), key=lambda q: q.hausdorff_distance(ring))
+                s = ring_stats(np.asarray(src.coords)[:-1], np.asarray(ring.coords)[:-1], 1.0,
+                               corner=oc.CURVE_CORNER_DEG)
+                s["dev_mm"] = max(s["dev_mm"], float(src.hausdorff_distance(ring)))
+                a = agg.setdefault(tag, {"rings": 0, "n": 0, "dev_mm": 0.0, "facets": 0, "turn_p95": []})
+                a["rings"] += 1
+                a["n"] += s["n"]
+                a["dev_mm"] = max(a["dev_mm"], s["dev_mm"])
+                a["facets"] += s["facets"]
+                a["turn_p95"].append(s["turn_p95"])
     for g in agg.values():
         g["turn_p95"] = float(np.median(g["turn_p95"])) if g["turn_p95"] else 0.0
     verts = sum(len(r.polygon.exterior.coords) + sum(len(h.coords) for h in r.polygon.interiors)

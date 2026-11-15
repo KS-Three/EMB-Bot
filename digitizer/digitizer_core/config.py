@@ -1863,11 +1863,13 @@ class PipelineConfig:
     # curve (both ends turning the same way, neither a corner) into pieces no
     # longer than it, on a tangent-continuous cubic through the piece's OWN
     # vertices, each new vertex within half the simplify tolerance (at most
-    # 0.08 mm) of the letter's outline as it came in, else the edge keeps its
-    # chord. The cuts are made first, on the simplified letter as today, so
-    # the construction's pieces do not change: only where the rails run.
-    # Straight runs, corners and cut lines keep their vertices. Not a physical
-    # constant: a polygon resolution, not a fabric quantity.
+    # 0.08 mm) of the letter's OUTER outline as it came in, else the edge
+    # keeps its chord. The cuts are made first, on the simplified letter as
+    # today, so the construction's pieces do not change: only where the outer
+    # rails run. Straight runs, corners, cut lines and COUNTERS keep their
+    # vertices: a finer counter edge re-cut and_pizza's "p" into a wedge
+    # through stage 7's counter clearance. Not a physical constant: a polygon
+    # resolution, not a fabric quantity.
     # `tests/test_curve_facets.py`.
     curve_chord_mm: float | None = None
     # With `curve_chord_mm`, ALSO stage 4's polygons, every shape (built

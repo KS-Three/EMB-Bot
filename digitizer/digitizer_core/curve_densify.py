@@ -47,7 +47,8 @@ def _rot(v: np.ndarray, a: float) -> np.ndarray:
     return np.array([c * v[0] - s * v[1], s * v[0] + c * v[1]])
 
 
-def densify_curves(ring: np.ndarray, trace, chord: float, guard: float) -> np.ndarray:
+def densify_curves(ring: np.ndarray, trace, chord: float, guard: float,
+                   corner_deg: float = CORNER_DEG) -> np.ndarray:
     """`ring` (closed, no repeated last vertex, any unit) with every edge of
     a clean CURVE split into pieces no longer than `chord`.
 
@@ -60,7 +61,10 @@ def densify_curves(ring: np.ndarray, trace, chord: float, guard: float) -> np.nd
     chord at a corner (never rounded). An edge whose inserted points do not
     ALL lie within `guard` of `trace` (an (N, 2) closed contour, or any
     shapely geometry: the outline the ring was simplified from) keeps its
-    chord. Returns `ring` itself when nothing changes."""
+    chord. `corner_deg` replaces `CORNER_DEG` for a ring simplified so
+    coarsely that a small round counter is a 6- or 7-gon (the Column lane's
+    W/16): there the guard, not the angle, is what keeps a real corner
+    square. Returns `ring` itself when nothing changes."""
     import shapely
     from shapely.geometry import LinearRing, Polygon
 
@@ -76,7 +80,7 @@ def densify_curves(ring: np.ndarray, trace, chord: float, guard: float) -> np.nd
     turn = (ang - np.roll(ang, 1) + np.pi) % (2.0 * np.pi) - np.pi   # at vertex i
     at = np.abs(turn)
     nb = np.maximum(np.roll(at, 1), np.roll(at, -1))
-    corner = (at > math.radians(CORNER_DEG)) | (
+    corner = (at > math.radians(corner_deg)) | (
         (at > math.radians(SPIKE_MIN_DEG)) & (at > SPIKE_RATIO * nb))
     live = ~corner & (at >= math.radians(STRAIGHT_DEG))
     j = (np.arange(n) + 1) % n
@@ -122,7 +126,7 @@ def densify_curves(ring: np.ndarray, trace, chord: float, guard: float) -> np.nd
     return res
 
 
-def densify_polygon(poly, trace, chord: float, guard: float):
+def densify_polygon(poly, trace, chord: float, guard: float, corner_deg: float = CORNER_DEG):
     """Every ring of a shapely Polygon through `densify_curves`; the polygon
     itself when nothing changes or the result would not be valid."""
     from shapely.geometry import Polygon
@@ -132,7 +136,7 @@ def densify_polygon(poly, trace, chord: float, guard: float):
     rings = []
     for r in [poly.exterior] + list(poly.interiors):
         R = np.asarray(r.coords, dtype=np.float64)[:-1]
-        D = densify_curves(R, trace, chord, guard)
+        D = densify_curves(R, trace, chord, guard, corner_deg)
         changed |= D is not R
         rings.append(D)
     if not changed:
