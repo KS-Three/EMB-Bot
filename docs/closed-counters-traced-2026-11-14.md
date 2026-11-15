@@ -4,7 +4,7 @@ Kent's largest lettering complaint: letters that merge, counters that close,
 spacing that disappears. The blind matcher put 23 of his fault groups (52 pins,
 18 designs) in this class (`agent-eye-1113/census_table.md`, class 2). This page
 traces each one to the stage that closes it, on main `66b11432` (after the
-11-14 flips, #1515), and fixes the largest cause geometry can settle behind a
+11-14 flips, #1515; the flag rebased onto `88721988`), and fixes the largest cause geometry can settle behind a
 new flag, built OFF.
 
 Evidence lives gitignored in the primary checkout,
@@ -134,13 +134,13 @@ Share of the render's pixels that change, and stitch count.
 
 | Design | `true` | `0.5` | By eye, `true` |
 |---|---|---|---|
-| Gaulke | 3.85%, 7413 → 7373 | 0.35%, 7413 → 7419 | letter bays and the roof band's inner edge near its apex; nothing reads worse |
+| Gaulke | 3.86%, 7413 → 7371 | 0.35%, 7413 → 7419 | letter bays and the roof band's inner edge near its apex; nothing reads worse |
 | TOAT beanie | 2.48%, 18081 → 18055 | 0.07%, 18081 → 18081 | the T clears the border. **Catch: the parallel speed-line bars sew thinner**: their facing sides are a same-thread gap under the floor, so they lose the pull there |
 | bukit_asam | 2.52% | | the rings' satin edges; still merged |
 | MFab | 1.81% | | AND WELDING's edges; no visible gain or loss |
 | Becker (guard) | 0.21%, 16049 → 16023 | 0.04%, 16049 → 16041 | MARINE's letter edges; nothing reads worse |
 | Jakarta (guard) | 0.83%, 3100 → 3097 | 0.57%, 3100 → 3106 | the edges of k, a and t; nothing reads worse |
-| Ahora (guard) | 0.42%, 9208 → 9206 | AHORA05 | round the O; nothing reads worse |
+| Ahora (guard) | 0.42%, 9208 → 9206 | 0.12%, 9208 → 9208 | round the O; nothing reads worse |
 | hed_p_e (guard) | 0.01% | | nothing |
 | Bridge, ProSeal, k_line, Fremont | 0.4-0.9% | | edges only |
 
