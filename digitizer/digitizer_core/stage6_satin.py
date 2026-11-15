@@ -3718,15 +3718,24 @@ _KEEP_RAY_BLOCK = 256
 def _ring_segments(geom) -> np.ndarray:
     """Every edge of every polygon in `geom` as rows (ax, ay, bx, by)."""
     import shapely
-    segs = []
-    for part in shapely.get_parts(geom) if geom is not None else ():
-        if part.geom_type != "Polygon" or part.is_empty:
-            continue
-        for ring in (part.exterior, *part.interiors):
-            c = np.asarray(ring.coords, float)[:, :2]
-            if len(c) > 1:
-                segs.append(np.hstack([c[:-1], c[1:]]))
-    return np.vstack(segs) if segs else np.zeros((0, 4))
+    if geom is None or geom.is_empty:
+        return np.zeros((0, 4))
+    parts = shapely.get_parts(shapely.get_parts(geom))       # a collection's multis too
+    polys = parts[shapely.get_type_id(parts) == 3]
+    if not len(polys):
+        return np.zeros((0, 4))
+    xy, idx = shapely.get_coordinates(shapely.get_rings(polys), return_index=True)
+    same = idx[1:] == idx[:-1]                                # consecutive points of one ring
+    return np.hstack([xy[:-1][same], xy[1:][same]])
+
+
+def _segs_in_box(segs: np.ndarray, lo: np.ndarray, hi: np.ndarray) -> np.ndarray:
+    """The edges whose bounding box meets the box [lo, hi]."""
+    if len(segs) == 0:
+        return segs
+    x0, x1 = np.minimum(segs[:, 0], segs[:, 2]), np.maximum(segs[:, 0], segs[:, 2])
+    y0, y1 = np.minimum(segs[:, 1], segs[:, 3]), np.maximum(segs[:, 1], segs[:, 3])
+    return segs[(x1 >= lo[0]) & (x0 <= hi[0]) & (y1 >= lo[1]) & (y0 <= hi[1])]
 
 
 def _ray_hits(starts: np.ndarray, dirs: np.ndarray, segs: np.ndarray, reach: float) -> np.ndarray:
@@ -3774,39 +3783,39 @@ def _kept_limits(rail_a: list, rail_b: list, poly: Polygon, other, reach: float,
         rays = [r for r in range(b0, min(2 * n, b0 + _KEEP_RAY_BLOCK)) if valid[r]]
         if not rays:
             continue
-        tp = _ray_hits(starts[rays], dirs[rays], psegs, reach)
-        to = _ray_hits(starts[rays], dirs[rays], osegs, reach)
-        spans, mx, my = [], [], []
-        for k, r in enumerate(rays):
-            hp, ho = tp[k][~np.isnan(tp[k])], to[k][~np.isnan(to[k])]
-            # past the rail, nothing: the ray leaves into open fabric
-            if not (hp > 0.05).any() and not len(ho):
-                continue
-            cuts = np.unique(np.concatenate([[0.0, reach], hp]))
-            for d0, d1 in zip(cuts[:-1], cuts[1:]):
-                if d1 - d0 < 1e-6:
-                    continue
-                t = 0.5 * (d0 + d1)
-                spans.append((k, r, d0, d1))
-                mx.append(starts[r, 0] + dirs[r, 0] * t)
-                my.append(starts[r, 1] + dirs[r, 1] * t)
-        if not spans:
+        # only the edges inside the block's reach can be crossed
+        ends = np.vstack([starts[rays], starts[rays] + dirs[rays] * reach])
+        lo, hi = ends.min(axis=0) - 1e-6, ends.max(axis=0) + 1e-6
+        rays = np.asarray(rays)
+        tp = _ray_hits(starts[rays], dirs[rays], _segs_in_box(psegs, lo, hi), reach)
+        to = _ray_hits(starts[rays], dirs[rays], _segs_in_box(osegs, lo, hi), reach)
+        # past the rail, nothing: the ray leaves into open fabric
+        live = (tp > 0.05).any(axis=1) | ~np.isnan(to).all(axis=1)
+        if not live.any():
             continue
-        inside = shapely.contains_xy(poly, np.asarray(mx), np.asarray(my))
-        done = set()
-        for (k, r, d0, d1), ins in zip(spans, inside):
-            if r in done or ins:
-                continue
-            done.add(r)                               # the first span outside the shape
-            if d0 > pull_mm:
-                continue
-            end = d1 if d1 < reach - 1e-6 else None
-            ho = to[k][~np.isnan(to[k])]
-            ho = ho[(ho >= d0 - 1e-9) & (ho <= d1 + 1e-9)]
-            if len(ho):
-                end = float(ho.min()) if end is None else min(end, float(ho.min()))
-            if end is not None:
-                lim[r] = min(pull_mm, max(0.0, (end - d0 - floor_mm) / 2.0))
+        rays, tp, to = rays[live], tp[live], to[live]
+        # the ray's crossings of the shape's edge cut it into spans, in order
+        hits = np.sort(np.where(np.isnan(tp), np.inf, tp), axis=1)
+        k = int(np.isfinite(hits).sum(axis=1).max()) if hits.size else 0
+        cuts = np.minimum(np.hstack([np.zeros((len(rays), 1)), hits[:, :k],
+                                     np.full((len(rays), 1), reach)]), reach)
+        d0, d1 = cuts[:, :-1], cuts[:, 1:]
+        real = (d1 - d0) >= 1e-6
+        mid = 0.5 * (d0 + d1)
+        sx = starts[rays, 0][:, None] + dirs[rays, 0][:, None] * mid
+        sy = starts[rays, 1][:, None] + dirs[rays, 1][:, None] * mid
+        inside = np.ones_like(real)
+        inside[real] = shapely.contains_xy(poly, sx[real], sy[real])
+        out = real & ~inside
+        has = out.any(axis=1)
+        first = out.argmax(axis=1)                    # the first span outside the shape
+        rows = np.arange(len(rays))
+        near, far = d0[rows, first], d1[rows, first]
+        end = np.where(far < reach - 1e-6, far, np.inf)
+        within = (to >= near[:, None] - 1e-9) & (to <= far[:, None] + 1e-9)
+        end = np.minimum(end, np.where(within, to, np.inf).min(axis=1, initial=np.inf))
+        held = has & (near <= pull_mm) & np.isfinite(end)
+        lim[rays[held]] = np.minimum(pull_mm, np.maximum(0.0, (end[held] - near[held] - floor_mm) / 2.0))
     return lim[:n], lim[n:]
 
 
@@ -3858,9 +3867,16 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         keep_floor = floor_mm
     if keep is not None:
         other = None
-        if not keep.is_empty:
-            o = keep.difference(poly.buffer(PUSH_KEEP_MARGIN_MM))
-            other = None if o.is_empty else o
+        if not keep.is_empty and rail_a:
+            # only the ink within the column's reach: clip before the overlay
+            import shapely
+            xy = np.asarray(list(rail_a) + list(rail_b), float)
+            (x0, y0), (x1, y1) = xy.min(axis=0) - reach - 1.0, xy.max(axis=0) + reach + 1.0
+            near_ink = shapely.clip_by_rect(keep, x0, y0, x1, y1)
+            if not near_ink.is_empty:
+                own = shapely.clip_by_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
+                o = near_ink.difference(own.buffer(PUSH_KEEP_MARGIN_MM))
+                other = None if o.is_empty else o
         kept_a, kept_b = _kept_limits(rail_a, rail_b, poly, other, reach, pull_mm, keep_floor)
 
     def room(p: tuple, ux: float, uy: float) -> float:
