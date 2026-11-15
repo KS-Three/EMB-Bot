@@ -23,8 +23,8 @@ host and the white panel sews over it (memory `mfab-photo-route-2026-11-04`;
 - **Every other photo-lane design in the kits and the scorecard set: 19.**
   16 are byte-identical by construction (their source is already 9.5-26
   px/mm at the size used). Three move: chrome specular, owl pale and
-  region blobs (6.2-7.2 px/mm at 80 mm). Chrome reads clearly better ON; owl
-  and blobs are in the table below.
+  region blobs (6.2-7.2 px/mm at 80 mm). Chrome reads clearly better ON,
+  the owl is the same, and **region blobs reads worse ON**.
 - **Recommendation: do not flip on this evidence.** The flag trades
   MFab's 100.8 slab for a new one at 113.5, the pro's own hat size. The
   cause is upstream of the grid: a small-line letter that reaches stage 5
@@ -32,8 +32,11 @@ host and the white panel sews over it (memory `mfab-photo-route-2026-11-04`;
   region that the white panel would cover with no hole) would fix every
   size on either grid.
 - **The spike under the M** is in BOTH arms (a black wedge from the M's V
-  down into the A-N junction of "AND"). It is larger ON. It was not traced
-  to a stage tonight, so no geometry fix was attempted; see "Not done".
+  down into the A-N junction of "AND"), larger ON. It is NOT geometry:
+  traced at 85.1 ON (`sheets/mfab_85.1_ON_spike_trace.png`), the stage-4
+  and stage-5 polygons keep the white keyline between the V and the N, and
+  the black thread is laid across it in the stitches (stage 6/7: black
+  sewn over the white keyline). No fix in this PR; OFF is untouched.
 
 Instrument readings, n = 1 per arm, on a laptop shared with about ten other
 sessions. Seconds are wall clock and move 2-4x with load; CPU seconds are
@@ -90,15 +93,14 @@ The three that move, at 80 mm left chest:
 | design | stitches OFF / ON | trims OFF / ON | grade (score) OFF / ON | CPU s OFF / ON | by eye |
 |---|---|---|---|---|---|
 | photo_chrome_specular | 36052 / 32375 | 85 / 53 | B 76 / B 88 | 95.6 / 68.8 | ON better: OFF cuts a dark slit into the sphere's right and a ragged hexagon into the background; ON one clean sphere. ON loses the two small highlights. |
-| photo_owl_pale | see `runs.jsonl` | | | | |
-| region_blobs | see `runs.jsonl` | | | | |
+| photo_owl_pale | 24873 / 24471 | 9 / 8 | A 100 / A 100 | 19.0 / 13.1 | the same; only the fill direction changes (diagonal OFF, level ON). Both sew a pale rectangle, not the owl's silhouette. |
+| region_blobs | 18954 / 18956 | 28 / 17 | A 100 / A 100 (+ SATIN_GAPS_TIGHT) | 29.1 / 30.6 | **ON worse:** green's halo floods the space between the blobs and red's core darkens. OFF keeps three distinct blobs. |
 
 ## Not done
 
-- **The spike under the M** (both arms; larger ON) was not traced to its
-  stage. A `PipelineConfig(debug_dir=...)` run at 85.1 ON, then the stage-4
-  region under the M's V, is the next step. No fix was attempted, so OFF is
-  untouched.
+- **The spike under the M** (both arms; larger ON) enters at stage 6/7, not
+  in the polygons. Which emitter lays the black across the keyline, and in
+  what order against the white, is the next step.
 - **The real fix:** keep an untagged small-line region from being swallowed.
   Either tag it (the text cluster's own rule fails on the fused W-E-L), or
   give the white panel a hole wherever the under-fill merges a black region
