@@ -97,6 +97,9 @@ Kent's ruling: **"Flip ON now (Recommended)"**.
 - **Schedule.** The expression is `(github.event_name == 'schedule' || inputs.pin_frame) && '--pin-frame'`, and `pin_frame` defaults to true on a dispatch. Unticking it reads fresh again.
 - **No baseline moved because of the pin.** The capture records each job's freshly registered frame, so each baseline is what the old reading gives on that tree.
   - The rows that did move are #1565's (Flip PR 2, Kent 2026-11-15), the only engine change since the last ledger besides #1571 (built OFF). They are listed in the flip PR.
+  - Kent was asked about the ones he had not seen: Fremont patch trims 20 -> 28, Fremont hat 25 -> 28, patch +256 stitches, and patch stitch-type kappa 0.521 -> 0.505.
+  - His answer, 2026-11-15: **"Bake it in (Recommended)"**.
+  - That kappa move was read at fresh registration and is not shown to be real.
 - **The #1505 trap, again.** Five passes agreed on 12 rows that earlier five-pass captures measured moving between runners. Their tolerances are restored and recorded in the ledger's `hand_edits`, each with the run it was measured on (43754823644, or 43147117899 for three rows last seen moving there).
   - Evidence that 0 is false: check 43764055621, on an unchanged engine tree, read these rows 2-4 stitches and 0.004 stitch-type kappa off.
   - Left at 0: rows that moved only in the oldest 3-pass capture (42250031793) and never since.
