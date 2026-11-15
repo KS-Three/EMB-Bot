@@ -37,6 +37,11 @@ ONE gold, black), between passes 2 and 3 (`_pro_read_rules`):
 * **Counter shade.** Light shading in a letter's counter goes to the page.
 * **Substituted shading.** A band whose art ink the colour cap gave another
   spool (GOLF's teal extrusion, sewn black) goes to the page when it faces it.
+* Second pass, same evening: a tone merge that joins a RAMP (both tones
+  substantial) keeps its deeper end (his Madeira 1172 is the art's orange
+  end, 1.5 dE00); the ring stops at a coloured letter's own keylines; a ring
+  band out on the page beside the outline joins the outline's ink, clipped
+  to where it runs along it (pin 10's black at GOLF's top).
 
 Guards (when in doubt, do nothing):
 
@@ -105,6 +110,11 @@ TONE_DE00 = 15.0
 # The seam that makes two shapes one: at least this share of the smaller
 # one's outline.
 TONE_SEAM_FRAC = 0.2
+# Two merged tones are a RAMP (its deeper end sews) when the smaller covers at
+# least this share of the two together: a quarter is one end of a gradient,
+# not a shading patch. Golden Tee's golds split 45 / 55; the crest's navy
+# shading is 4% of its blue.
+RAMP_MIN_SHARE = 0.25
 # A shadow is no wider than a fill can hold twice (`MIN_FILL_WIDTH_MM` x 2:
 # a drop shadow is an offset of a millimetre or two), lies on the page along
 # at least SHADOW_PAGE_FRAC of its outline, hugs the art along at least
@@ -311,12 +321,24 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
         if a == b:
             continue
         small, big = (a, b) if (area.get(a, 0), a) < (area.get(b, 0), b) else (b, a)
+        # 2026-11-14: a RAMP (both tones substantial) sews its deeper end --
+        # the lit end is the highlight. The pro's Golden Tee thread (Madeira
+        # 1172, his worksheet) sits 1.5 dE00 from the art under our orange
+        # Pumpkin regions and 18.0 from the art under the yellow Candlelight
+        # ones, a 45 / 55 split; by area we sewed the yellow. A small patch
+        # on a large body is that body's shading and the body still wins
+        # (the crest's navy: 4% of the blue).
+        tot = area.get(a, 0.0) + area.get(b, 0.0)
+        ramp = tot > 0 and min(area.get(a, 0.0), area.get(b, 0.0)) >= RAMP_MIN_SHARE * tot
+        if ramp:
+            big, small = (a, b) if (float(chart.lab[a][0]), a) < (float(chart.lab[b][0]), b) else (b, a)
         to[small] = big
         for k, v in list(to.items()):
             if v == small:
                 to[k] = big
         area[big] = area.get(big, 0.0) + area.pop(small, 0.0)
-        report["tones"].append({"from": chart[small].number, "to": chart[big].number, "de00": round(de, 2)})
+        report["tones"].append({"from": chart[small].number, "to": chart[big].number, "de00": round(de, 2),
+                                "ramp": bool(ramp)})
     if to:
         # One spool sews at one position (`stage4_vectorize.
         # rehome_resnapped_regions`' rule): a re-threaded region joins the
@@ -609,12 +631,26 @@ def _pro_read_rules(regions, graph_factory, lab, near_page, page_lab, own_page, 
             page_c[j] = graph.page_contact(j) < SHADOW_PAGE_FRAC * g.length
         return page_c[j]
 
+    hugs = {}
+
+    def on_body(j):
+        """A band running along a COLOURED body (HUG_FRAC of its outline) is
+        that body's own bevel or keyline -- GOLF's red keyline beside its
+        gold F -- and the band fold gives it to the body; the ring stops
+        there, as the pro's GT ring stops at the GT's outline."""
+        if j not in hugs:
+            g = regions[j].polygon
+            hugs[j] = sum(v for n, v in graph.contacts(j).items()
+                          if body(regions[n]) and not dark(regions[n])) >= HUG_FRAC * g.length
+        return hugs[j]
+
     def member(j, taken):
         o = regions[j]
         return (j not in taken and is_band(o) and not dark(o) and not _protected(o)
-                and not o.meta.get("color_cap_merged_from") and off_page(j))
+                and not o.meta.get("color_cap_merged_from") and off_page(j) and not on_body(j))
 
     taken: set[int] = set()
+    edge: dict[int, int] = {}             # band -> the outline it joins
     plans = []
     # A face is the page's OWN ink (or a field stage 4 already called page:
     # `enclosed_background`), not a light shade of it.
@@ -632,28 +668,60 @@ def _pro_read_rules(regions, graph_factory, lab, near_page, page_lab, own_page, 
             todo.extend(n for n in graph.contacts(j) if n not in ring and member(n, taken))
         if not ring:
             continue
-        # A band of the ring that runs out onto the page (GT's G keyline
-        # running down between GOLF's O and L) still joins when EDGE_HUG_FRAC
-        # of its outline lies against the ring.
-        for j in {n for m in ring for n in graph.contacts(m)} - ring:
-            o = regions[j]
-            if (j in taken or not is_band(o) or dark(o) or _protected(o) or near_page(o)
-                    or o.meta.get("color_cap_merged_from")):
-                continue
-            if sum(v for n, v in graph.contacts(j).items() if n in ring) >= EDGE_HUG_FRAC * o.polygon.length:
-                ring.add(j)
         if not any(dark(regions[n]) for j in ring for n in graph.contacts(j)):
             continue                      # no outline: bands on a face alone are drawn on it
+        # A band of the ring's colour run that lies out on the PAGE beside the
+        # outline (GT's G keyline running down between GOLF's O and L, 66% on
+        # the page) is past the face: the pro sews the OUTLINE there (black
+        # satin between O and L, his block 2). EDGE_HUG_FRAC of it against
+        # the ring, touching the outline: it joins the outline's ink.
+        mine: dict[int, int] = {}
+        for j in {n for m in ring for n in graph.contacts(m)} - ring:
+            o = regions[j]
+            if (j in taken or j in edge or not is_band(o) or dark(o) or _protected(o) or near_page(o)
+                    or o.meta.get("color_cap_merged_from") or on_body(j)):
+                continue
+            cont = graph.contacts(j)
+            if sum(v for n, v in cont.items() if n in ring) < EDGE_HUG_FRAC * o.polygon.length:
+                continue
+            outl = [(v, n) for n, v in cont.items()
+                    if dark(regions[n]) and not regions[n].meta.get("color_cap_merged_from")]
+            if outl:
+                mine[j] = max(outl)[1]
         inks = {regions[j].thread_index for j in ring if not near_page(regions[j])}
         inks = [t for t in inks if body_area.get(t, 0.0) > 0.0]
         if not inks:
             continue
         ink = max(inks, key=lambda t: (body_area[t], -t))
         taken |= ring
+        edge.update(mine)
         plans.append((regions[k].shape_id, ink, sorted(ring)))
+    # an outline edge is only one if no ring took it after all
+    edge = {j: o for j, o in edge.items() if j not in taken}
     if plans:
         home = _home_layers(regions, layer_threads)
         members = []
+        for j, o in edge.items():
+            r = regions[j]
+            # only where it runs along the outline: past the outline's end it
+            # is the art's keyline running on behind the next letters, and his
+            # file shows garment there (between GOLF's O and L below the top)
+            g = r.polygon
+            near = g.intersection(regions[o].polygon.buffer(BAND_MAX_MM + _width(g)))
+            pieces = [q for q in ([near] if near.geom_type == "Polygon" else getattr(near, "geoms", []))
+                      if q.geom_type == "Polygon" and not q.is_empty]
+            if pieces:
+                keep = max(pieces, key=lambda q: q.area)
+                if keep.area < g.area - 1e-9:
+                    r.meta["bevel_outline_edge_clipped_mm2"] = round(g.area - keep.area, 2)
+                    r.polygon = keep
+                    r.area_mm2 = float(keep.area)
+            r.meta["bevel_outline_edge"] = regions[o].shape_id
+            if r.thread_index != regions[o].thread_index:
+                _rethread(r, regions[o].thread_index, chart, home, "bevel_ring_from")
+            report["rings"].append({"outline_edge": r.shape_id, "into": regions[o].shape_id,
+                                    "ink": r.thread_number, "area_mm2": round(r.area_mm2, 2)})
+            members.extend((j, o))
         for fid, ink, ring in plans:
             moved = 0
             for j in ring:
@@ -666,7 +734,7 @@ def _pro_read_rules(regions, graph_factory, lab, near_page, page_lab, own_page, 
             report["rings"].append({"face": fid, "ink": chart[ink].number, "bands": len(ring),
                                     "rethreaded": moved,
                                     "area_mm2": round(sum(regions[j].area_mm2 for j in ring), 2)})
-        report["unions"] += _union_group(regions, members, touch, eps)
+        report["unions"] += _union_group(regions, sorted(set(members)), touch, eps)
 
     # ---- (a) counter shades -----------------------------------------------
     if own_page is not None and page_lab is not None:

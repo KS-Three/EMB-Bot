@@ -434,6 +434,8 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return True
     if _white_field_fill(region, cfg, outlines):
         return False        # `cfg.sew_enclosed_white_fields_fill`: the pro fills a white face
+    if _framed_field_fill(region, cfg):
+        return False        # `cfg.outline_frame_guard`: a field round a knockout is a fill
     if tier == "auto" and region.meta.get(BEAN_LETTER_KEY):
         return False        # a bean letter (`beanletters.tag_bean_letters`): runs, not columns
     wt = _word_tier(region, cfg)
@@ -2603,6 +2605,15 @@ def _white_field_fill(region, cfg: PipelineConfig, outlines=None) -> bool:
                                  machine.KEYLINE_REACH_FRAC))
 
 
+def _framed_field_fill(region, cfg: PipelineConfig) -> bool:
+    """`cfg.outline_frame_guard`: a region `art_outline.find_art_outlines`
+    tagged `framed_field` (an outline holder bigger than what it holds), on
+    the auto tier, sews as a fill and gets no outline loop."""
+    meta = region.meta or {}
+    return bool(getattr(cfg, "outline_frame_guard", False) and meta.get("framed_field")
+                and str(meta.get("tier", "auto")).lower() == "auto")
+
+
 #: `cfg.group_consistent_fill_angle`: no group house angle on a satin shape
 #: narrower than this (twice its largest inscribed circle). Columns under
 #: ~0.6 mm lose crosses under a house angle (stage6_satin, the note after
@@ -3478,11 +3489,16 @@ def sequence(
     piece_lift = bool(cfg.inshape_piece_lift)
     if art_outlines and cfg.border_from_outline:
         _sewn = {_p.shape_id for _p in planned}
+        _planned_by_id = {_p.shape_id: _p for _p in planned}
         for _oid, _bodies in art_outlines.items():
             if _oid not in _sewn:
                 continue
-            outline_rings[_oid] = [(_hole, _w) for _bid, _hole, _w in _bodies]
             outline_bodies.update(_bid for _bid, _hole, _w in _bodies)
+            if _framed_field_fill(_planned_by_id[_oid].region, cfg):
+                # `cfg.outline_frame_guard`: a field round a knockout, not an
+                # outline -- no loop; its bodies stay plain fills
+                continue
+            outline_rings[_oid] = [(_hole, _w) for _bid, _hole, _w in _bodies]
     # `cfg.border_from_outline_hairline_run` (built OFF 2026-11-13): an
     # outline the hairline tier's width gate admits whole is a drawn line,
     # not a border. It sews as a bean on its own centreline
@@ -3578,6 +3594,10 @@ def sequence(
             if _white_field_fill(p.region, cfg, outline_rings):
                 # `cfg.sew_enclosed_white_fields_fill`: a forced rung, so a
                 # field too narrow to fill falls back to the ladder below
+                tier = "fill"
+            elif _framed_field_fill(p.region, cfg):
+                # `cfg.outline_frame_guard`: the same forced rung for a field
+                # round a knockout, the same fallback
                 tier = "fill"
             # UNDERLAY-STYLE PRECEDENCE (shape-layers contract v1): the
             # shape's own review-screen style beats the design-wide one — in

@@ -2115,7 +2115,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .stage6_fill import one_pass_scope       # `cfg.fill_one_pass_sections` (built OFF), the same way
     from .stage6_fill import seam_aware_scope     # `cfg.fill_seam_aware_sections` (built OFF), the same way
     from .stage6_satin import chord_aim_scope     # `cfg.satin_free_end_chord_aim` (built OFF), the same way
+    from .outline_cut import curve_chord_scope    # `cfg.curve_chord_mm` (built OFF), the same way
     with apex_cut_scope(cfg.lettering_columns_apex_cut), \
+            curve_chord_scope(cfg.curve_chord_mm), \
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
