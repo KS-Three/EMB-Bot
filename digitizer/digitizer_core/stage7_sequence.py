@@ -77,6 +77,7 @@ from .words import is_text, word_key
 from .monoline import bury_hops, clear_finished_underlay, monoline_stroke
 from .script_strokes import script_strokes_shape, script_word
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
+from .stage6_counter_fan import counter_fan_runs
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
@@ -3102,6 +3103,9 @@ def sequence(
     # inside the shape's fill (`stage6_border.ring_has_room`, MFab's A counter)
     ring_room = (border_style == "significant"
                  and bool((getattr(cfg, "extra", None) or {}).get("border_significant_ring_room")))
+    # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14): a small
+    # three-sided counter as one fanned satin (`stitch_one`, `stage6_counter_fan`)
+    counter_fan = bool((getattr(cfg, "extra", None) or {}).get("counter_fan_satin"))
     # The significance denominator: the design's own stitched area, so the
     # gate is a SHARE and moves with the design instead of being a mm floor
     # (which would be a physical constant, and gate 1 territory).
@@ -3636,6 +3640,23 @@ def sequence(
             shape_underlay = p.region.meta.get("underlay_style")
             eff_underlay_style = (shape_underlay if shape_underlay is not None
                                   else underlay_style)
+            # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14,
+            # `stage6_counter_fan`): a small three-sided counter sews as ONE
+            # fanned satin, the pro's way, where every cross fits under the
+            # satin ceiling (`machine.SATIN_MAX_WIDTH_MM`, gate 1). The
+            # shape's OWN tier must be "auto": a review-screen choice wins,
+            # but the design-wide white-field rung above does not (MFab's A
+            # counter is exactly such a field). Refused, the ladder below
+            # exactly as before. (A shape the review screen never touched
+            # carries `tier: None`, which is "auto" too.)
+            own_tier = str(p.region.meta.get("tier") or "auto").lower()
+            if (counter_fan and own_tier == "auto" and p.region.meta.get("enclosed_background")
+                    and not is_lettering(p.region, cfg)):
+                fan = counter_fan_runs(p.region.polygon, p.shape_id,
+                                       pull_mm=fabric.pull_comp_mm,
+                                       spacing_mm=satin_spacing_for(p))
+                if fan is not None:
+                    return fan[0], fan[1], False
             # The run tier comes first: a shape below the sewable-detail floor
             # has nowhere to put fill rows (MIN_FILL_WIDTH_MM) and pinches
             # every satin cross under SATIN_MIN_CROSS_MM, so both real tiers
