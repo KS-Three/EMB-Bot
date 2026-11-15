@@ -310,6 +310,7 @@
  "snap_region_edges": true,
  "speck_prune": false,
  "tiny_detail_keep": false,
+ "stroke_bridge_keep": false,
  "split_satin": true,
  "split_satin_above_mm": null,
  "split_shapes": {},

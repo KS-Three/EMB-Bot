@@ -1376,6 +1376,21 @@ class PipelineConfig:
     # Colour reads, no stitch value: gate 1 does not apply. False is the
     # engine before the flag, byte for byte. Tests: `tests/test_tiny_detail_keep.py`.
     tiny_detail_keep: bool = False
+    # A thin stroke of a shape's own ink kept whole (built OFF 2026-11-14,
+    # Kent's arabic calligraphy, 2 pins "missing line"). The stems between the
+    # leaves arrive at stage 3 as crumbs split between the leaves' gold and
+    # their darker edge gold, about 120 px together at 11.5 px/mm, under the
+    # chain rescue's `min_detail_mm` floor and too near the leaves' colour for
+    # the contrast rescue: each is absorbed into a leaf as a spur the satin
+    # never sews. ON (`stage3_segment._stroke_bridges`): a chain of touching
+    # sub-floor crumbs whose nearest palette colour is the hosts', touching
+    # two or more full-size regions of that one colour only at its ends
+    # (`BRIDGE_HOST_CONTACT_MAX` 0.35 of its rim) and lying on ground for half
+    # of it (`BRIDGE_GROUND_MIN`), that clears the run floors, is kept as one
+    # stroke. Shape and colour reads, no stitch value: gate 1 does not apply.
+    # False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_stroke_bridge_keep.py`.
+    stroke_bridge_keep: bool = False
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
