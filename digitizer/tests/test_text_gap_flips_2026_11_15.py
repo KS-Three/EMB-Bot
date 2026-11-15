@@ -12,3 +12,36 @@ def test_satin_push_keeps_gaps_is_half_a_millimetre_and_pinned_off():
 def test_compact_satin_keeps_gaps_is_on_and_pinned_off():
     assert PipelineConfig().compact_satin_keeps_gaps is True
     assert PRE_FLIP["compact_satin_keeps_gaps"] is False
+
+
+def test_a_kept_polygon_with_stray_lines_sews_its_polygon():
+    """hed p.e. at 80 mm (2026-11-15): `_kept_gaps` gave one polygon and six
+    zero-area LineStrings, and `small_solid_satin` raised on the collection,
+    failing the whole digitize. The polygon is what sews."""
+    from shapely.geometry import GeometryCollection, LineString, box
+
+    from digitizer_core.stage7_sequence import _one_polygon
+    body, fallback = box(0, 0, 3, 4), box(-1, -1, 4, 5)
+    kept = GeometryCollection([body, LineString([(3, 0), (3.1, 0)]), LineString([(0, 4), (0, 4.2)])])
+    out = _one_polygon(kept, fallback)
+    assert out.geom_type == "Polygon" and out.equals(body)
+
+
+def test_a_shape_cut_in_two_sews_as_stage_5_left_it():
+    from shapely.geometry import GeometryCollection, LineString, MultiPolygon, box
+
+    from digitizer_core.stage7_sequence import _one_polygon
+    fallback = box(0, 0, 5, 2)
+    two = MultiPolygon([box(0, 0, 2, 2), box(3, 0, 5, 2)])
+    assert _one_polygon(two, fallback) is fallback
+    assert _one_polygon(GeometryCollection([two, LineString([(0, 0), (1, 1)])]), fallback) is fallback
+    assert _one_polygon(GeometryCollection(), fallback) is fallback
+    assert _one_polygon(None, fallback) is fallback
+
+
+def test_a_plain_polygon_passes_through_untouched():
+    from shapely.geometry import box
+
+    from digitizer_core.stage7_sequence import _one_polygon
+    poly = box(0, 0, 1, 1)
+    assert _one_polygon(poly, box(0, 0, 2, 2)) is poly

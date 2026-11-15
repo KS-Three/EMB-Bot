@@ -323,6 +323,26 @@ def _min_dim_mm(poly) -> float:
                        else poly.boundary.distance(centre))
 
 
+def _one_polygon(geom, fallback: Polygon) -> Polygon:
+    """`geom` as the one Polygon a satin column sews, else `fallback`.
+
+    `cfg.compact_satin_keeps_gaps`' kept polygon is a difference and a union
+    (`stage5_overlap._kept_gaps`), which can come back as a collection: hed
+    p.e. at 80 mm (2026-11-15) gave one 12.4 mm2 polygon and six zero-area
+    LineStrings, and `small_solid_satin` raised on it (no `exterior`), so the
+    whole digitize failed. The polygon is the shape; lines and points carry
+    no thread. Two or more polygons (a kept gap cutting the shape through)
+    cannot be one column, so the shape sews as stage 5 left it, as it did
+    before the flag. A Polygon passes through untouched."""
+    if geom is None or geom.is_empty:
+        return fallback
+    if geom.geom_type == "Polygon":
+        return geom
+    polys = [g for g in shapely.get_parts(shapely.get_parts(geom))
+             if g.geom_type == "Polygon" and not g.is_empty]
+    return polys[0] if len(polys) == 1 else fallback
+
+
 def _text_lean_house(region, cfg: PipelineConfig) -> float | None:
     """`cfg.lettering_columns_text_lean` (2026-10-23): the house cross a
     Column letter's straight columns lean to -- the word's
@@ -3427,7 +3447,7 @@ def sequence(
         local = unary_union([art] + [o.polygon for o in near])
         kept = _kept_gaps(p.region, art, p.polygon, near, local, None,
                           fabric.pull_comp_mm + cfg.overlap_mm)
-        return kept if (kept is not None and not kept.is_empty) else p.polygon
+        return _one_polygon(kept, p.polygon)
 
     # `cfg.stripe_underfill`: a band sewn on a stripe field's fill holds its
     # rails where the fill lies beneath -- the ground already down here is
