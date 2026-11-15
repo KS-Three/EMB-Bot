@@ -77,7 +77,7 @@ drone and Golden Tee ran before the seams, Becker onward after some.
 | Becker (hat, large) | 35 / 36 / 30 | 20 / 21 / 21 | 1.06 | 0.97 | moved | 0.5 s |
 | Gaulke (hat) | 32 / 45 / 41 | 24 / 24 / 25 | 0.99 | 1.06 | same | 0.7 s |
 | MFab (hat) | 129 / 81 / - | 65 / 47 / - | 0.73 | - | moved | 1.5 s, stage 5 -> stage 7 |
-| Hotel Fremont (hat) | see the PR | | | | | |
+| Hotel Fremont (hat) | 155 / 99 / 103 | 64 / 63 / 63 | 0.98 | 1.01 | same | 7.8 s, stage 1.5 -> stage 2 |
 
 **Per stage, where CPU moved more than 15%:**
 - **To a T machine:** generation 5.2 -> 17.3 CPU s. The redraw is
@@ -93,7 +93,12 @@ drone and Golden Tee ran before the seams, Becker onward after some.
 - **stage 0, before and after the colour mass** (Golden Tee: 8-10 s before
   the first k-means call, 6-12 s after the last): classify's other
   features. Golden Tee only; Gaulke's whole start is 0.7 s.
+- **stage 1.5 -> stage 2** (7.4-7.8 s on Fremont, every arm): the step
+  between photo prep and the quantizer.
 - **stage 2 -> thin ink** (2-5 s): the quantizer's tail after its last check.
+- **small text placement** (Fremont, up to 3-5 s a stretch, 25-53 s in
+  all) and **art outlines -> stage 5** (3-5 s on Fremont: the rest of the
+  plan's set-up before stage 5's check).
 - **`script_strokes.ink_grid`'s `ink.field()`** (about 1.7 s, one whole-image
   colour conversion, cached per source).
 - **stage 5 -> stage 7, stage 7 bury trims, stage 7 hoist** (1.2-1.5 s on
