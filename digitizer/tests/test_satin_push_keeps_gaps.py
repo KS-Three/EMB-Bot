@@ -78,3 +78,33 @@ def test_a_floor_given_with_the_ink_is_the_gap_floor():
     poly = _u_shape(slot=1.0)
     out_a, _ = _push_rails([(2.0, 6.0)], [(0.0, 6.0)], poly, PULL, FLOOR, keep=(poly, 0.5))
     assert abs(out_a[0][0] - 2.25) < 1e-9          # (1.0 - 0.5) / 2
+
+
+def test_a_cancel_lands_inside_the_ray_pass():
+    """The ray pass checks the deadline per block of rays, so a Cancel pressed
+    during a long column stops it there (the review's Cancel-latency rule)."""
+    import threading
+
+    import pytest
+
+    from digitizer_core import deadline
+    from digitizer_core.stage6_satin import _kept_limits
+    poly = _u_shape(slot=1.0)
+    stop = threading.Event()
+    stop.set()
+    with deadline.scope(None, cancel=stop):
+        with pytest.raises(deadline.Cancelled) as hit:
+            _kept_limits([(2.0, 6.0)], [(0.0, 6.0)], poly, None, 2.6, PULL, FLOOR)
+    assert "keep" in str(hit.value)
+
+
+def test_limits_match_the_rule_on_a_column():
+    """Every cross of a U's left arm: the rail facing the slot is held, the
+    outer rail takes the full pull."""
+    from digitizer_core.stage6_satin import _kept_limits
+    poly = _u_shape(slot=1.0)
+    ys = [3.0 + 0.5 * k for k in range(12)]
+    lim_a, lim_b = _kept_limits([(2.0, y) for y in ys], [(0.0, y) for y in ys], poly, None,
+                                2.0 * PULL + FLOOR + 0.5, PULL, FLOOR)
+    assert all(v == 0.0 for v in lim_a)
+    assert all(v == float("inf") for v in lim_b)
