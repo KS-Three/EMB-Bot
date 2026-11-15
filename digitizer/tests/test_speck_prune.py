@@ -1,0 +1,150 @@
+"""`cfg.speck_prune` (built OFF 2026-11-14): a kept sub-floor speck no thread
+can draw goes to the mask it lies in (`sliver_prune.prune_specks`).
+
+Kent's `low_poly` at 80 mm left chest is the measurement (Commons art, kept in
+the gitignored corpus): the art's polygon edges are one-pixel black lines, the
+quantiser labels only their crossings black, and stage 3's contrast rescue
+kept each crossing as a 0.13-0.30 mm2 black run loop, sewn as a dot on the
+grey facets ("Random Black Spot", 7 pins). ON: all seven gone, 10,539 ->
+10,201 stitches, 97 -> 70 trims (the doc: `docs/missing-invented-traced-2026-11-14.md`).
+
+The synthetic frame is 8 px/mm. At the native grid one source pixel is one
+working pixel; the coarse case is a 1.6 px/mm source (five working pixels
+each). The thread is 40 wt, 0.4 mm = 3.2 px; stage 3's detail floor is
+1.5 mm, 144 px of area; the run tier's floors are 10.24 px of area and a
+mask at least 9 px long.
+"""
+from types import SimpleNamespace
+
+import numpy as np
+
+from digitizer_core import sliver_prune
+from digitizer_core.config import PipelineConfig
+from digitizer_core.stage3_segment import RegionMask
+from digitizer_core.threads import load_chart, rgb_to_lab
+
+H, W = 140, 160
+PAGE = (255, 255, 255)
+LIGHT = (200, 200, 200)
+DARK = (120, 120, 120)
+BLACK = (20, 20, 20)
+NEAR_LIGHT = (196, 196, 196)
+CHART = load_chart()
+PPM = 8.0
+FLOOR_PX = (1.5 * PPM) ** 2
+THREAD_PX = 0.4 * PPM
+
+
+def _thread(rgb) -> int:
+    return CHART.nearest_index(rgb_to_lab(np.asarray(rgb, np.float64).reshape(1, 3))[0])
+
+
+class Scene:
+    """Two facets side by side (LIGHT left, DARK right) on the page; marks
+    painted over them take their pixels."""
+
+    def __init__(self):
+        self.masks: list[np.ndarray] = []
+        self.threads: list[int] = []
+        self.light = self.add(LIGHT, (20, 20, 100, 80))
+        self.dark = self.add(DARK, (20, 80, 100, 140))
+
+    def add(self, rgb, *rects) -> int:
+        m = np.zeros((H, W), bool)
+        for y0, x0, y1, x1 in rects:
+            m[y0:y1, x0:x1] = True
+        for other in self.masks:
+            other &= ~m
+        self.masks.append(m)
+        self.threads.append(_thread(rgb))
+        return len(self.masks) - 1
+
+    def build(self, input_ppm=PPM):
+        covered = np.zeros((H, W), bool)
+        for m in self.masks:
+            covered |= m
+        p = SimpleNamespace(bg_mask=~covered, px_per_mm=PPM, input_px_per_mm=input_ppm)
+        return [RegionMask.from_full(m, layer) for layer, m in enumerate(self.masks)], self.threads, p
+
+
+def _run(scene, input_ppm=PPM):
+    masks, threads, p = scene.build(input_ppm)
+    before = [m.area for m in masks]
+    out, stats = sliver_prune.prune_specks(masks, threads, p, CHART, FLOOR_PX, THREAD_PX)
+    assert [m.area for m in masks] == before            # the caller's masks are untouched
+    return masks, out, stats
+
+
+def test_default_is_off():
+    assert PipelineConfig().speck_prune is False
+
+
+def test_a_black_speck_on_the_facets_goes_to_the_one_it_lies_in():
+    """low_poly's crossing: a 2 x 10 px black mark across the facet seam."""
+    s = Scene()
+    s.add(BLACK, (50, 79, 60, 81))
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 1}
+    assert len(out) == 2
+    assert sum(m.area for m in out) == sum(m.area for m in masks)
+    assert out[s.light].area + out[s.dark].area == masks[s.light].area + masks[s.dark].area + 20
+    rec = sliver_prune.specks(masks, s.threads, s.build()[2], CHART, FLOOR_PX, THREAD_PX)[0]
+    assert rec["speck"] and rec["mean_width_src_px"] < sliver_prune.SPECK_WIDTH_SRC_PX
+    assert rec["inscribed_px"] < THREAD_PX and rec["figure"] == 1.0 and rec["page"] == 0.0
+
+
+def test_a_mark_two_source_pixels_wide_stays():
+    """4 x 10 px: 2 x area / rim = 2.5 source pixels, a drawn mark."""
+    s = Scene()
+    s.add(BLACK, (50, 78, 60, 82))
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 0} and out is masks
+
+
+def test_a_speck_too_short_to_sew_is_left_to_stage_4():
+    """2 x 6 px: under the run tier's loop, so stage 4 drops it; this pass
+    leaves it (and the outlines round it) exactly as they were."""
+    s = Scene()
+    s.add(BLACK, (50, 79, 56, 81))
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 0} and out is masks
+
+
+def test_one_source_pixel_on_a_coarse_source_is_real_stroke():
+    """At 1.6 px/mm one source pixel is 5 working pixels, 0.63 mm: wider
+    than the thread, so a 5 x 12 px mark stays though it is one source pixel
+    across. A 2 x 12 px sliver on the same source still goes."""
+    s = Scene()
+    s.add(BLACK, (50, 78, 62, 83))
+    masks, out, stats = _run(s, input_ppm=1.6)
+    assert stats == {"specks": 0}
+    s = Scene()
+    s.add(BLACK, (50, 79, 62, 81))
+    masks, out, stats = _run(s, input_ppm=1.6)
+    assert stats == {"specks": 1}
+
+
+def test_a_speck_on_the_page_stays():
+    """Below the facets, page round three sides: not wedged in the figure."""
+    s = Scene()
+    s.add(BLACK, (100, 79, 110, 81))
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 0} and out is masks
+
+
+def test_a_speck_in_its_hosts_own_colour_stays():
+    s = Scene()
+    s.add(NEAR_LIGHT, (50, 40, 60, 42))
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 0} and out is masks
+
+
+def test_two_touching_specks_both_go_and_no_pixel_is_lost():
+    """A black and a red sliver side by side in the light facet."""
+    s = Scene()
+    s.add(BLACK, (50, 50, 60, 52))
+    s.add((200, 20, 30), (50, 52, 60, 54))
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 2} and len(out) == 2
+    assert out[s.light].area == masks[s.light].area + 40
+    assert sum(m.area for m in out) == sum(m.area for m in masks)

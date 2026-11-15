@@ -1323,6 +1323,22 @@ class PipelineConfig:
     # tendril moved (the 7.1 mm red spike). False is the engine before the
     # flag, byte for byte. Tests: `tests/test_sliver_prune.py`.
     sliver_prune: bool = False
+    # Specks no thread can draw (built OFF 2026-11-14, Kent's low_poly at
+    # 80 mm, 7 pins "Random Black Spot"): the art's polygon edges are
+    # one-pixel black lines, quantisation labels only their crossings black,
+    # and stage 3's rescue (`keep_thin_strokes`) kept each crossing as a
+    # 0.13-0.30 mm2 black run loop. ON (`sliver_prune.prune_specks`, flat and
+    # gradient classes, after `sliver_prune` and before stage 4): a
+    # sub-floor mask stage 4 would sew as a run, whose mean width is under 2
+    # SOURCE pixels and whose inscribed width is under the sewing thread's
+    # own, wedged in the figure and another colour than it, goes to the mask
+    # it lies in. At any enlargement (low_poly is x1.01,
+    # where `sliver_prune` never runs). Both widths are reads of the raster
+    # against existing measures (the source pixel; `thread_profile().width_mm`,
+    # the weight `RUN_MIN_AREA_MM2` squares), no new stitch value: gate 1 does
+    # not apply. False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_speck_prune.py`; doc `docs/missing-invented-traced-2026-11-14.md`.
+    speck_prune: bool = False
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")

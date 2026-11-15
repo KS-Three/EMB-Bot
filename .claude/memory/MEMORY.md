@@ -100,11 +100,11 @@ the OLDEST lines whole to the archive.
 - [Space fault reader](space-fault-reader-2026-11-12.md) — bays/gaps filled vs 44 letter pins: +0.32 over pick, CI [+0.22,+0.47] = shown, not a hold-out; 1112 replication = no verdict (2 of 9 items pinned)
 - [Sparse smooth nodes](sparse-nodes-spec-2026-11-04.md) — Kent 11-04: Ember-style few smooth/corner nodes on digitized rings, 9 rulings; PR 1 lib `sparseNodes.js`, PR 2 Studio; add-hole in, Knife out
 - [Sparse nodes in the Studio](sparse-nodes-studio-2026-11-05.md) — PR 2 shipped: nodes drawn/dragged/inserted/toggled in shapeOverrides; real seeds red-disc 44 smooth, squares 4 corners; PointerEvent.detail is 0 (old dblclick dead)
+- [Speck prune](speck-prune-2026-11-14.md) — missing/invented pins traced: kanji in-fill (29) cured on main; low_poly 7 black dots = stage-3 rescue keeping hairline crossings; `speck_prune` OFF cures 7/7
 - [Stacked PR trap](stacked-pr-auto-merge-trap-2026-11-06.md) — #1259 stacked on #1255's head with auto-merge armed merged INTO that branch after #1255 landed (deleteBranchOnMerge off, no retarget); base follow-ups on main, never arm a stacked PR
 - [Starter pack sourcing](starter-pack-sourcing-2026-11-10.md) — Kent 11-10: 12 designs, strict CC0/PD-mark art digitized by EMB-Bot itself; no open stitch files, commission or CC-BY; no logos; provenance per design
 - [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball flat + monarch borders_last off SHIPPED 11-12; "drift" was a width slip: re-digitize at the original target, not manifest width_mm
 - [Stitchist teardown](stitchist-teardown-2026-11-04.md) — server-side engine, $50 Pro; MFab at 36.7: 3,018 st, keyline as tatami, readable; trace re-runs per size
-- [Studio no silent fallback](studio-no-silent-fallback-2026-11-02.md) — image + service down: keep art, Retry / Use browser engine; results name engine
 - [Subject loss](subject-loss-2026-11-14.md) — toadstool B 76: "lettering" note now keyed on text tags; `subject_edge_recall` metric-only, D +0.88 vs Kent but "not flat" alone +0.77, toadstool barely below Good; no threshold
 
 - [Thread guard](thread-guard-2026-11-14.md) — group_consistent_thread (still OFF): a lone letter takes its word's thread only if it matches its own art no worse; Drone refused 7.27 -> 13.17 (grade kept D), Bridge U moves 15.29 -> 14.11

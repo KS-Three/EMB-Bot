@@ -49,6 +49,29 @@ source at or near the work grid is returned untouched: its one-pixel marks are
 nothing (the numbers are beside the constant).
 Never on an alpha cut-out for the page half (no page colour to compare), and
 the pipeline calls neither half on a photo class.
+
+A SPECK (`cfg.speck_prune`, its own flag, built OFF 2026-11-14; `prune_specks`,
+called on its own) is a mask that
+  * is under stage 3's detail floor yet clears the run tier's floors (stage
+    3's own proxy): one of the small regions its rescue KEPT to sew
+    (`resolve_small_regions`, a contrasting sliver), not a dot rung, cored
+    counter, floor-rescued stroke or spoked mark,
+  * averages under `SPECK_WIDTH_SRC_PX` source pixels wide (2 x area / rim)
+    AND is narrower, inscribed, than the thread that would sew it
+    (`machine.thread_profile(...).width_mm`, the weight `RUN_MIN_AREA_MM2`
+    already squares): the run tier lays a loop of thread round it, and a loop
+    round a mark narrower than one thread is a dot of thread wider and darker
+    than the mark,
+  * is wedged in the figure, as a tendril is (rim on other masks, none to
+    speak of on the page),
+  * and is another colour than the mask it lies in (CIEDE2000 of the threads).
+Its pixels go to the mask it has the most rim on. Kent's `low_poly` at 80 mm
+(sitting 2026-11-11, "Random Black Spot", 7 pins): the art's polygon edges
+are one-pixel black lines; quantisation labels only their crossings black,
+and each crossing kept as a 0.13-0.30 mm2 black run loop. This half runs at
+ANY enlargement: `low_poly` is at the work grid (x1.01), where the page and
+tendril halves never run, and the thread-width test is what keeps a coarse
+source's real detail (Becker's one source pixel is 0.7 mm) out of it.
 """
 from __future__ import annotations
 
@@ -58,6 +81,7 @@ import cv2
 import numpy as np
 from skimage.color import deltaE_ciede2000
 
+from . import machine
 from .stage3_segment import RegionMask
 from .threads import rgb_to_lab
 
@@ -92,6 +116,14 @@ TENDRIL_FIGURE_CONTACT_MIN = 0.75
 TENDRIL_PAGE_CONTACT_MAX = 0.1
 # ...and is another colour than that body (CIEDE2000, source pixels).
 TENDRIL_MIN_DE00 = 10.0
+# A speck (`cfg.speck_prune`): mean width (2 x area / rim, the page sliver's
+# measure) in SOURCE pixels, the tendril's "one to two source pixels".
+# low_poly's seven pinned specks read 0.44-1.58 on their traced polygons; the
+# design's other kept slivers of the facet threads run 0.9-4.7.
+SPECK_WIDTH_SRC_PX = TENDRIL_WIDTH_SRC_PX
+SPECK_FIGURE_CONTACT_MIN = TENDRIL_FIGURE_CONTACT_MIN
+SPECK_PAGE_CONTACT_MAX = TENDRIL_PAGE_CONTACT_MAX
+SPECK_MIN_DE00 = TENDRIL_MIN_DE00
 
 _K3 = np.ones((3, 3), np.uint8)
 
@@ -248,6 +280,96 @@ def _without(m: RegionMask, crop: np.ndarray, origin: tuple[int, int]) -> Region
         return replace(m, crop=np.zeros((1, 1), bool), origin=m.origin)
     return replace(m, crop=np.ascontiguousarray(grid[ys.min():ys.max() + 1, xs.min():xs.max() + 1]),
                    origin=(y0 + int(ys.min()), x0 + int(xs.min())))
+
+
+def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, thread_px: float,
+           owner: np.ndarray | None = None) -> list[dict]:
+    """`cfg.speck_prune`: one record per kept sub-floor mask thin enough to be
+    asked (see the module docstring), `speck` = the verdict. `floor_px` is
+    stage 3's detail floor in working pixels of AREA, `thread_px` the sewing
+    thread's width in working pixels."""
+    if owner is None:
+        owner = _owner(masks, p.bg_mask.shape)
+    limit = SPECK_WIDTH_SRC_PX * _src_px(p)
+    # Only what stage 4 would SEW: stage 3's own proxy for the run tier's
+    # floors (`resolve_small_regions.clears_run_floors`). Smaller masks are
+    # dropped there anyway; handing their pixels on would only move the
+    # outlines of the shapes round them (low_poly: 3,400 such masks).
+    run_area_px = machine.RUN_MIN_AREA_MM2 * float(p.px_per_mm) ** 2
+    run_loop_px = machine.RUN_MIN_LOOP_MM * float(p.px_per_mm)
+    out: list[dict] = []
+    for i, m in enumerate(masks):
+        area = m.area
+        if not area or area >= floor_px or _held(m) or m.source == "counter":
+            continue
+        if area < run_area_px or 2 * max(m.crop.shape) < run_loop_px:
+            continue
+        wy0, wx0, wy1, wx1 = _window(m, 1)
+        mine = m.window(wy0, wx0, wy1, wx1)
+        ring = cv2.dilate(mine.astype(np.uint8), _K3).astype(bool) & ~mine
+        n = int(ring.sum())
+        if not n:
+            continue
+        mean_w = 2.0 * area / n
+        if mean_w >= limit:
+            continue
+        # The thread test reads the INSCRIBED width (2 x the deepest pixel's
+        # distance to the rim, less the pixel itself): the mean above
+        # under-reads a short stroke by its end caps, and on a coarse source
+        # one source pixel is already 0.6 mm of real stroke.
+        inscribed = 2.0 * float(cv2.distanceTransform(
+            np.pad(m.crop, 1).astype(np.uint8), cv2.DIST_L2, 5).max()) - 1.0
+        if inscribed >= thread_px:
+            continue
+        own = owner[wy0:wy1, wx0:wx1]
+        page = float((ring & p.bg_mask[wy0:wy1, wx0:wx1]).sum()) / n
+        nb = own[ring & (own >= 0) & (own != i)]
+        figure = nb.size / n
+        j = int(np.bincount(nb).argmax()) if nb.size else -1
+        de = (float(deltaE_ciede2000(_thread_lab(chart, thread_indices, m.layer),
+                                     _thread_lab(chart, thread_indices, masks[j].layer)))
+              if j >= 0 else None)
+        out.append({
+            "index": i, "layer": m.layer, "area_px": area,
+            "mean_width_src_px": round(mean_w / _src_px(p), 3),
+            "mean_width_px": round(mean_w, 3), "inscribed_px": round(inscribed, 3),
+            "page": round(page, 3), "figure": round(figure, 3), "neighbour": j,
+            "de_neighbour": None if de is None else round(de, 2),
+            "speck": bool(j >= 0 and figure >= SPECK_FIGURE_CONTACT_MIN
+                          and page <= SPECK_PAGE_CONTACT_MAX and de >= SPECK_MIN_DE00),
+        })
+    return out
+
+
+def prune_specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float,
+                 thread_px: float) -> tuple[list[RegionMask], dict]:
+    """`cfg.speck_prune`: each speck's pixels given to the mask it lies in.
+    -> (masks, {"specks": n}); the list as given when there is none."""
+    if not masks:
+        return masks, {"specks": 0}
+    found = [rec for rec in specks(masks, thread_indices, p, chart, floor_px, thread_px)
+             if rec["speck"]]
+    if not found:
+        return masks, {"specks": 0}
+    masks = list(masks)
+    gone: set[int] = set()
+    for rec in found:
+        i, j = rec["index"], rec["neighbour"]
+        # A speck whose host was itself a speck, handed on already: the host's
+        # pixels now live in ITS host, so follow them there. Two specks that
+        # host each other lead back here: this one stays as it was.
+        seen = {i}
+        while j in gone and j not in seen:
+            seen.add(j)
+            j = next(r["neighbour"] for r in found if r["index"] == j)
+        if j in seen:
+            continue
+        masks[j] = replace(masks[j], crop=masks[j].crop.copy())     # the caller's mask is not ours
+        masks[j].union_from(RegionMask(crop=masks[i].crop, origin=masks[i].origin,
+                                       frame_shape=masks[j].frame_shape, layer=masks[j].layer))
+        gone.add(i)
+    kept = [m for i, m in enumerate(masks) if i not in gone]
+    return kept, {"specks": len(gone)}
 
 
 def prune(masks: list[RegionMask], thread_indices, p, chart) -> tuple[list[RegionMask], dict]:
