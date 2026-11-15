@@ -1,4 +1,5 @@
-"""`cfg.inshape_piece_lift` (built OFF 2026-11-14): the step between two
+"""`cfg.inshape_piece_lift` (built OFF 2026-11-14, ON since that day by Kent's
+flip, "Flip ON"): the step between two
 `stitch_shape` pieces of one shape (`border_from_outline`, `enclosed_white_
 keyline`) is lifted when it leaves the shape and sewn as split travel when it
 stays on it -- never one needle-down stitch longer than a DST record, laid
@@ -26,8 +27,9 @@ def _runs(start, end):
     return [StitchRun(points=[start, end], kind=stitches.FILL, shape_id="S")]
 
 
-def test_off_by_default():
-    assert PipelineConfig().inshape_piece_lift is False
+def test_on_by_default():
+    # Kent's flip 2026-11-14 ("Flip ON"); PRE_FLIP keeps the OFF arm
+    assert PipelineConfig().inshape_piece_lift is True
 
 
 def test_a_step_across_a_hole_is_lifted_and_cut_without_touching_the_callee_run():

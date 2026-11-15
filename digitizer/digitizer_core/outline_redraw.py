@@ -3,9 +3,10 @@ circular arcs, moving nothing further than a fraction of the SOURCE pixel --
 the pen-tool redraw a digitizer does by hand, for every shape, not only
 lettering.
 
-Built 2026-11-13 behind `PipelineConfig.outline_redraw_k` (default None, OFF:
+Built 2026-11-13 behind `PipelineConfig.outline_redraw_k` (built None, OFF:
 the module is imported inside the flag's branch, so off nothing here runs and
-the output is byte-identical). Diagnosis and proof:
+the output is byte-identical); 0.75 since 2026-11-14 by Kent's flip ("Set
+0.75"). A source stage 1 did not upscale still comes through untouched. Diagnosis and proof:
 `docs/jag-source-2026-11-13.md`.
 
 ## Why
@@ -166,6 +167,11 @@ def fit_ring_plain(coords: np.ndarray, tol: float) -> RingFit:
 
 
 _CAP_REPAIR_ROUNDS = 6
+#: a Cancel seam every this many sampled points in `_worst_breach` (2026-11-14:
+#: with the redraw ON by default, one of Becker's 96 mm rings ran 3.1 s on a CI
+#: runner between two checks; `tests/test_cancel_seams_1113.py`). A check reads
+#: a clock and moves no number.
+_SEAM_EVERY = 256
 
 
 def _revert_near(fit: RingFit, pt: np.ndarray, radius: float, tol: float) -> bool:
@@ -202,7 +208,9 @@ def _worst_breach(src_rings, out_rings, tol: float, step: float):
     for A, B in zip(src_rings, out_rings):
         la, lb = LineString(A), LineString(B)
         for P, other in ((densify_ring(B, step), la), (densify_ring(A, step), lb)):
-            for q in P:
+            for i, q in enumerate(P):
+                if not i % _SEAM_EVERY:
+                    deadline.check("outline redraw")
                 d = other.distance(Point(q))
                 if d > worst:
                     worst, where = d, np.asarray(q, float)
@@ -296,7 +304,10 @@ def redraw_polygon(poly: Polygon, tol: float, arcs_only: bool = False) -> tuple[
     src = [np.asarray(poly.exterior.coords, float)] + [np.asarray(h.coords, float) for h in poly.interiors]
     step = sample_step(tol)
     try:
-        fits = [fit_ring_plain(r, tol) for r in src]
+        fits = []
+        for r in src:
+            deadline.check("outline redraw")     # a Cancel inside one shape (BaseException)
+            fits.append(fit_ring_plain(r, tol))
     except Exception as e:                                       # noqa: BLE001
         return poly, f"error:{type(e).__name__}"
     if arcs_only:
@@ -330,6 +341,7 @@ def redraw_polygon(poly: Polygon, tol: float, arcs_only: bool = False) -> tuple[
     # whole shape is refused: one arc's junction must not cost a border its
     # every straight run.
     for _round in range(_CAP_REPAIR_ROUNDS):
+        deadline.check("outline redraw")
         breach = _worst_breach(src, rings, tol, step)
         if breach is None:
             break
@@ -338,6 +350,7 @@ def redraw_polygon(poly: Polygon, tol: float, arcs_only: bool = False) -> tuple[
         rings, new = assemble()
         if new is None or new.is_empty or not new.is_valid or new.geom_type != "Polygon":
             return poly, "invalid"
+    deadline.check("outline redraw")
     mx, _p95 = _cap_check(src, rings, tol, step)
     if mx > tol * (1.0 + 1e-6):
         return poly, "cap"

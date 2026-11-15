@@ -3,6 +3,12 @@
 Diagnosis only. `digitizer_core/` is untouched and no default moves. The pinned
 test is `digitizer/tests/test_flat_regress_three_rows.py`.
 
+**Re-seeded 2026-11-14 (#1515):** `outline_redraw_k` 0.75 (Kent's "Set 0.75")
+moves the MFab LC row: the tripwire ledger now reads 441.9 mm needle-up, not
+389.3 (the flip's own move, +52.6 mm, measured on the CI arm with only that
+flag). The attribution below is of the 389.3 engine and was not re-measured;
+the Gaulke and Fremont rows are unmoved.
+
 ## Question
 
 #1321 traced three more wrong-way tripwire rows to `stage0_scale_relative_grad`
