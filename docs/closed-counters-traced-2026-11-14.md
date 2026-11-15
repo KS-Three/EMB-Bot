@@ -114,7 +114,7 @@ pull's size is untouched (gate 1); the flag decides where it goes.
 |---|---|---|---|---|---|
 | Gaulke E | 0.10 | 0.82 | 0.36 | 0.36 | both ON arms: the arms read apart; `0.5` looks like the pro's |
 | Gaulke S | 0.00 | 0.67 | 0.28 | 0.36 | both bays open, reads S; `0.5` looks like the pro's |
-| Gaulke window | 0.22 | 0.54 | 0.50 | 0.73 | the vertical divider opens; the horizontal one stays shut (those panes are fills) |
+| Gaulke window | 0.22 | 0.54 | 0.50 | 0.73 | the upper vertical divider opens; the horizontal one stays shut (stage-5 growth, below) |
 | TOAT T against the border | 0.60 | 0.98 | as OFF | 0.32 | `true`: the bar stands clear of the line. `0.5`: still touching, as in the pro's own file |
 | ProSeal S | | | | | no visible change in either arm (a re-set small S; thread width) |
 | Bridge, MFab, k_line, bukit, Fremont | | | | | no visible change: their causes are above |
@@ -134,8 +134,8 @@ Share of the render's pixels that change, and stitch count.
 
 | Design | `true` | `0.5` | By eye, `true` |
 |---|---|---|---|
-| Gaulke | 3.86%, 7413 → 7371 | 0.35%, 7413 → 7419 | letter bays and the roof band's inner edge near its apex; nothing reads worse |
-| TOAT beanie | 2.48%, 18081 → 18055 | 0.07%, 18081 → 18081 | the T clears the border. **Catch: the parallel speed-line bars sew thinner**: their facing sides are a same-thread gap under the floor, so they lose the pull there |
+| Gaulke | 3.86%, 7413 → 7371 | 0.35%, 7413 → 7420 | letter bays and the roof band's inner edge near its apex; nothing reads worse |
+| TOAT beanie | 2.45%, 18081 → 18063 | 0.07%, 18081 → 18081 | the T clears the border. **Catch: the parallel speed-line bars sew thinner**: their facing sides are a same-thread gap under the floor, so they lose the pull there |
 | bukit_asam | 2.52% | | the rings' satin edges; still merged |
 | MFab | 1.81% | | AND WELDING's edges; no visible gain or loss |
 | Becker (guard) | 0.21%, 16049 → 16023 | 0.04%, 16049 → 16041 | MARINE's letter edges; nothing reads worse |
@@ -144,25 +144,84 @@ Share of the render's pixels that change, and stitch count.
 | hed_p_e (guard) | 0.01% | | nothing |
 | Bridge, ProSeal, k_line, Fremont | 0.4-0.9% | | edges only |
 
-*(measured 2026-11-14 — `scripts/guard_sheet.py`, sheets in `counters-1114/sheets/`)*
+*(measured 2026-11-14 — `scripts/guard_sheet.py`, sheets in `counters-1114/sheets/`. Gaulke and TOAT
+are on the final code; the other rows are the first build, which differs only at grazing rays)*
 
-**Cost.** ON spends about ten times as long in `_push_rails` (Gaulke: 1 s
-OFF, 11-12 s ON, one shared generation, a loaded laptop); stage 7 rose from
-about 35 to 50-60 s there. Built OFF this costs nothing. It wants a faster
-ray test (one vectorised pass per column) before any flip.
+## The window's horizontal divider: stage-5 growth
+
+All four panes sew as satin. Probed at both dividers (`window_probes.json`),
+gap in mm, art → stage 4 → stage 5 → needle → thread (pro):
+- horizontal divider: 0.8 → 0.7 → **0.4** → 0.5 → 0.1 (0.7);
+- vertical divider between the lower panes: 0.7 → 0.7 → **0.1** → 0.3 → 0.1 (0.63).
+
+Stage 5 grows the two lower panes up and toward each other; the upper panes
+keep their artwork polygon. The satin then sews the grown outline and the
+thread closes what is left. That is `growth_keeps_gaps` (#1485, OFF), not this
+flag. Gaulke, gap at the thread in mm:
+
+| Arm | window (pin) | horizontal divider | E | S | panes by eye | pixels moved |
+|---|---|---|---|---|---|---|
+| OFF | 0.22 | 0.1 | 0.10 | 0.00 | one blob | — |
+| this flag `true` | 0.54 | 0.1 | 0.82 | 0.67 | upper divider only | 3.86% |
+| `growth_keeps_gaps` alone | 0.60 | 0.6 | 0.10 | 0.00 | lower divider and horizontal only | 0.93% |
+| both, `true` | 0.61 | 0.6 | 0.82 | 0.67 | four panes | 4.60% |
+| **both, `0.5`** | **0.60** | **0.6** | **0.36** | **0.28** | **four panes** | **1.29%** |
+| pro | 0.73 | 0.7 | 0.36 | 0.36 | four panes | |
+
+*(measured 2026-11-14 — `runs/gaulke_roofing_hat_{on,growth,both,both05}/`,
+sheet `sheets/gaulke_window_E_S__art_off_on05_both05_pro.png`)*
+
+## Cost
+
+The first build tested each ray with shapely scalars: 15k calls, about 19 s
+of Gaulke's stage 7 under cProfile. `_kept_limits` now does it per column in
+arrays:
+- one numpy ray-edge pass per block of 256 rays, over only the edges inside
+  the block's reach;
+- spans and the first bare span as array operations, with one vectorised
+  `contains_xy`;
+- ring edges in one `get_coordinates` call;
+- the neighbour ink clipped to the column's box before the overlay;
+- `deadline.check` per block, pinned by a test.
+
+It is byte-identical to the per-ray build (Gaulke md5 `22a7ea0b` at `true`,
+`0c2bba77` at `0.5`).
+
+Digitize time, one shared generation, arms interleaved OFF, `true`, OFF,
+`0.5` (stage 7 is the only stage the flag touches):
+
+| Design | `_push_rails` OFF | `true` | `0.5` | stage 7 OFF | `true` | `0.5` |
+|---|---|---|---|---|---|---|
+| Gaulke | 0.8-1.0 s | 1.9 s | 2.1 s | 28.6-28.8 s | 26.5 s | 29.7 s |
+| Becker hat large | 0.22-0.31 s | 0.36 s | 0.38 s | 24.2-29.5 s | 19.9 s | 20.2 s |
+| MFab (105 mm, 20.9k stitches) | 0.84-1.23 s | 2.44 s | 2.57 s | 49.6-63.6 s | 59.8 s | 59.1 s |
+
+*(measured 2026-11-14 — `scripts/time_arms.py`; the laptop carried about 11
+other sessions, and two identical OFF runs of stage 7 differed by up to 30 s
+under heavier load earlier the same evening)*
+
+The new pass differs from the first build's per-ray shapely test at 32 of
+Gaulke's 15,266 rail points. All are rays that run along or graze the
+shape's own edge, which the first build read as a bay.
 
 ## Kent's pick
 
-1. `0.5`: what the pro left open at Gaulke's E and S. It moves least
-   (0.04-0.35% of a design), and the T stays on the border as in his file.
-2. `true`: every gap under 1.5 mm keeps all of it. It clears the T, opens E
-   and S wider than the pro, and thins close parallel bars.
+**What I would ship: `satin_push_keeps_gaps = 0.5`, and for the window
+`growth_keeps_gaps` with it.** At Gaulke's three pins this pair puts our gap
+at 0.36, 0.28 and 0.60 mm, against the pro's 0.36, 0.36 and 0.73. It moves
+1.29% of the design; 0.5 alone moves 0.04-0.57% of the guards. `true` opens
+the E and S to 0.82 and 0.67, twice the pro's, thins close parallel bars, and
+moves up to 3.9%. The one thing `true` cures that `0.5` does not is TOAT's T
+on its border, and the pro's own file has the T on the border too.
+`growth_keeps_gaps` is #1485's flag and its own flip; its sheets are in
+`eye_pairs_out/fat-ink-1113/`.
+
+1. `0.5`, with `growth_keeps_gaps` for the window (recommended).
+2. `true`.
 3. Keep OFF.
 
 ## Not done
 
-- The window's horizontal divider: those panes sew as fills, whose stage-5
-  growth is `growth_keeps_gaps`' lever, not this one.
 - The satin that fans across the S's upper bay (1.9 mm of thread over bare
   fabric) is construction, not push; it is untouched.
 - Bridge's five trace pins wait on the arc re-set; k_line and bukit wait on

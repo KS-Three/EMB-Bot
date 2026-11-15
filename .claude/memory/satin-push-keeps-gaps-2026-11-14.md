@@ -29,7 +29,14 @@ E 0.10/0.82/0.36/0.36, S 0.00/0.67/0.28/0.36, window 0.22/0.54/0.50/0.73.
 Catch: parallel same-thread bars closer than the floor lose pull on facing
 sides (TOAT speed lines sew thinner). Sheets: `counters-1114/sheets/`.
 
-**How to apply:** the floor is Kent's pick (0.5 = the pro's E/S; true = the
-counter rule). Pull magnitude untouched (gate 1). Window's horizontal divider
-is fills: `growth_keeps_gaps`, not this. Related: [[fat-ink-ledger-2026-11-14]],
-[[space-fault-reader-2026-11-12]].
+**Window, measured:** the horizontal divider is stage-5 growth of the lower
+panes (0.7 -> 0.4 at stage 5), owned by `growth_keeps_gaps` (#1485). Both
+flags at 0.5: four panes, E 0.36 / S 0.28 / window 0.60 vs pro 0.36 / 0.36 /
+0.73, 1.29% of Gaulke moves. Ray test vectorised (`_kept_limits`, numpy
+ray-edge, spans as arrays, `deadline.check` per 256 rays): byte-identical,
+Gaulke `_push_rails` 0.8-1.0 s OFF -> 1.9 s ON (first build ~10x).
+
+**How to apply:** the floor is Kent's pick; the worker's is 0.5 plus
+`growth_keeps_gaps` (true doubles the pro's E/S gaps and thins parallel
+bars). Pull magnitude untouched (gate 1). Related:
+[[fat-ink-ledger-2026-11-14]], [[space-fault-reader-2026-11-12]].
