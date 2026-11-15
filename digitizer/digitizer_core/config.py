@@ -1451,9 +1451,35 @@ class PipelineConfig:
     # over the colours already down rather than be clipped away. A whole bar
     # keeps its outline; curved strokes are left as traced. No fabric
     # constant: gate 1 does not apply.
-    # False is the engine before the flag, byte for byte. Tests:
-    # `tests/test_fine_bar.py`.
-    fine_bar_survive: bool = False
+    # **ON since 2026-11-15, Kent's flip** ("Flip both ON", with
+    # `small_text_handover`, from the review sheets). False is the engine
+    # before the flag, byte for byte; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_fine_bar.py`.
+    fine_bar_survive: bool = True
+    # The satin rail push kept out of bays and gaps (`stage6_satin._push_rails`'
+    # `keep`, built OFF 2026-11-14 as `cfg.extra["satin_push_keeps_gaps"]`,
+    # Kent's merged-letter pins: Gaulke's E and S kept their gaps through
+    # stage 5 and lost them to the rail push). True holds a gap as a counter
+    # is held (`cfg.min_detail_mm`); a number is the floor in mm a gap keeps.
+    # Kent ruled it 0.5 on 2026-11-15 ("Flip both, value 0.5", with
+    # `compact_satin_keeps_gaps`); the flip is HELD (Director, 2026-11-15)
+    # until the push never costs a stroke: at 0.5, in
+    # `tests/test_lettering_coverage_regression`'s config, enthusiast's
+    # 2.4 mm tagline lost the E's upper arms and INC's N stem. A field now
+    # (`cfg.extra` was its only door); None is the push as it was, byte for
+    # byte. Tests: `tests/test_satin_push_keeps_gaps.py`.
+    satin_push_keeps_gaps: bool | float | None = None
+    # A compact solid sewn as satin keeps the gaps the art keeps (stage 7's
+    # `compact_solids_satin` path, built OFF 2026-11-14 as
+    # `cfg.extra["compact_satin_keeps_gaps"]`, Gaulke's window: its 0.7-0.85
+    # mm pane dividers sewed shut). The growth stays out of those gaps by
+    # stage 5's own `growth_keeps_gaps` rule, on these shapes only.
+    # **ON since 2026-11-15, Kent's flip** ("Flip both, value 0.5", with
+    # `satin_push_keeps_gaps`, whose flip is held). False is the engine as it
+    # was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_text_gap_flips_2026_11_15.py`.
+    compact_satin_keeps_gaps: bool = True
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
@@ -4356,6 +4382,39 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_small_text_one_baseline.py`.
     small_text_reset_one_baseline: bool = True
+    # The ground a re-set line sits IN is its ground (`small_text._is_ground`,
+    # built OFF 2026-11-14 as `cfg.extra["small_text_reset_ground_ring"]`):
+    # Fremont's EST 1895 sits in a hole of the design-wide white field, which
+    # covers only 0.48 of "1895"'s hull, so it read as an obstacle at distance
+    # 0 and the date stayed `no_room`. A region covering half of a 0.3 mm ring
+    # round the hull and a quarter of the hull is the line's ground.
+    # **ON since 2026-11-15, Kent's flip** ("Flip both ON", with
+    # `small_text_reset_bean_follows`), promoted to a field so the default can
+    # be ON. False is the re-set as it was, byte for byte; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_small_text_ground_ring.py`.
+    small_text_reset_ground_ring: bool = True
+    # A grown bean letter's spines follow it (`small_text._reset_apply`, built
+    # OFF 2026-11-14 as `cfg.extra["small_text_reset_bean_follows"]`): a
+    # dark-ink letter's bean spines are read at its DRAWN size before the
+    # re-set grows it, and stage 7 sews the spines, so Fremont's EST 1895,
+    # re-set to 2x, still sewed 1.7 mm tall. The spines take the letter's own
+    # scale and shift. **ON since 2026-11-15, Kent's flip** ("Flip both ON",
+    # with `small_text_reset_ground_ring`). False is the re-set as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_small_text_ground_ring.py`.
+    small_text_reset_bean_follows: bool = True
+    # The hand-over (`small_text.HANDOVER_RATIO`, built OFF 2026-11-14 as
+    # `cfg.extra["small_text_handover"]`): a line just over the re-set's
+    # cutoff (0.9 to 1.15 caps) gets the true-size retrace too, and its own
+    # thin other-thread slivers go, so no size of a line gets neither repair.
+    # ProSeal's tagline at the hat auto-fit (109.6 mm, 4.01 mm) sewed its raw
+    # trace: FOAM's A without its crossbar, COATINGS' T broken, a teal sliver.
+    # **ON since 2026-11-15, Kent's flip** ("Flip both ON", with
+    # `fine_bar_survive`). False never calls the pass; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_small_text_handover.py`.
+    small_text_handover: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose

@@ -1199,23 +1199,25 @@ def build_generation(
                            # False, the call as it was
                            **({"one_baseline": True}
                               if cfg.small_text_reset_one_baseline else {}),
-                           # the ground a line sits IN counts as ground (2026-11-14,
-                           # built OFF): absent, the call as it was
+                           # the ground a line sits IN counts as ground (ON since
+                           # 2026-11-15, Kent: "Flip both ON"): False, the call as it was
                            **({"ground_ring": True}
-                              if cfg.extra.get("small_text_reset_ground_ring") else {}),
+                              if cfg.small_text_reset_ground_ring else {}),
                            # a grown dark-ink letter's bean spines move with it (read at
-                           # its drawn size; 2026-11-14, built OFF): absent, as it was
+                           # its drawn size; ON since 2026-11-15, Kent: "Flip both
+                           # ON"): False, as it was
                            **({"bean_follows": True}
-                              if cfg.extra.get("small_text_reset_bean_follows") else {}),
+                              if cfg.small_text_reset_bean_follows else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
 
-    # The hand-over (`cfg.extra["small_text_handover"]`, built OFF 2026-11-14):
+    # The hand-over (`cfg.small_text_handover`, ON since 2026-11-15, Kent:
+    # "Flip both ON"; built OFF 2026-11-14):
     # a line just over the re-set's cutoff gets the true-size retrace too, so
     # no size of a line gets neither repair (`small_text.HANDOVER_RATIO`).
     # Absent: never called.
-    if (cfg.extra.get("small_text_handover") and cfg.small_text_cap_mm
+    if (cfg.small_text_handover and cfg.small_text_cap_mm
             and cfg.small_text_restore_mm):
         from .config import true_size_min_counter
         from .small_text import HANDOVER_RATIO, restore_small_text
@@ -1329,7 +1331,8 @@ def build_generation(
         from .regular_structure import apply_regular_structure
         apply_regular_structure(regions, p, cfg)
 
-    # Thin bars kept whole (`cfg.fine_bar_survive`, built OFF 2026-11-14, To
+    # Thin bars kept whole (`cfg.fine_bar_survive`, ON since 2026-11-15,
+    # Kent: "Flip both ON"; built OFF 2026-11-14, To
     # a T's speed lines): a straight thin ink bar stages 2-4 split or
     # notched is read off the art and redrawn as one straight bar, and tagged
     # so stage 5 cannot clip it away. Here, with the art raster in hand and
@@ -2137,6 +2140,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import apex_pro_joints_scope   # `cfg.extra["lettering_columns_apex_pro_joints"]` (built OFF), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.extra["lettering_columns_corner_fold_cap_flared"]` (built OFF), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
+    from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2159,6 +2163,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             apex_pro_joints_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_joints"))), \
             fold_cap_flared_scope(bool((cfg.extra or {}).get("lettering_columns_corner_fold_cap_flared"))), \
             apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))), \
+            flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
             cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \
