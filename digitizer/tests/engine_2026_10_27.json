@@ -233,6 +233,7 @@
  "run_soft_vertices": false,
  "satin": true,
  "satin_push_keeps_gaps": null,
+ "compact_satin_keeps_gaps": false,
  "satin_angle_deg": null,
  "satin_cap_recentre": true,
  "satin_cap_skew_inset": false,

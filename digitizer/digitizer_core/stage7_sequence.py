@@ -3404,7 +3404,7 @@ def sequence(
         reach = 2.0 * fabric.pull_comp_mm + cfg.min_detail_mm + 1.0
         return keep_by_thread[ti].intersection(p.region.polygon.buffer(reach)), keep_floor
 
-    # `cfg.extra["compact_satin_keeps_gaps"]` (built OFF 2026-11-14, Gaulke's
+    # `cfg.compact_satin_keeps_gaps` (built OFF 2026-11-14, Gaulke's
     # window). `compact_solids_satin` sews a compact solid as one satin on
     # `p.polygon`, the polygon stage 5 grew for the FILL it predicted: the
     # pull all round, into the gap the art keeps to the next shape. Gaulke's
@@ -3414,7 +3414,8 @@ def sequence(
     # growth stays out of those gaps by stage 5's own `growth_keeps_gaps`
     # rule (`stage5_overlap._kept_gaps`: same thread always, other colours
     # from `GAP_SEWABLE_MM`), on these shapes only. Off, unread.
-    compact_keep = bool((cfg.extra or {}).get("compact_satin_keeps_gaps"))
+    # ON since 2026-11-15, Kent: "Flip both, value 0.5"
+    compact_keep = bool(cfg.compact_satin_keeps_gaps)
     compact_tree = (shapely.STRtree([o.region.polygon for o in planned])
                     if compact_keep else None)
 

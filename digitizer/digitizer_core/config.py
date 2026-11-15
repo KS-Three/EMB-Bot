@@ -1460,6 +1460,16 @@ class PipelineConfig:
     # PRE_FLIP and `tests/engine_2026_10_27.json` pin it None. Tests:
     # `tests/test_satin_push_keeps_gaps.py`.
     satin_push_keeps_gaps: bool | float | None = 0.5
+    # A compact solid sewn as satin keeps the gaps the art keeps (stage 7's
+    # `compact_solids_satin` path, built OFF 2026-11-14 as
+    # `cfg.extra["compact_satin_keeps_gaps"]`, Gaulke's window: its 0.7-0.85
+    # mm pane dividers sewed shut). The growth stays out of those gaps by
+    # stage 5's own `growth_keeps_gaps` rule, on these shapes only.
+    # **ON since 2026-11-15, Kent's flip** ("Flip both, value 0.5", with
+    # `satin_push_keeps_gaps`). False is the engine as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_text_gap_flips_2026_11_15.py`.
+    compact_satin_keeps_gaps: bool = True
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
