@@ -1361,6 +1361,21 @@ class PipelineConfig:
     # engine before the flag, byte for byte.
     # Tests: `tests/test_outline_frame_guard.py`.
     outline_frame_guard: bool = False
+    # Tiny details kept whole (built OFF 2026-11-14, Kent's heraldic crest,
+    # 2 pins "Missing the eye"). Each eagle eye is about 12 x 6 source pixels:
+    # two white specks either side of a black pupil in a navy head. Stage 2's
+    # anti-alias majority filter repaints every edge pixel to the dominant
+    # interior label round it, and a feature 2-3 px across has no interior,
+    # so two passes wipe it; stage 3 would then drop each colour piece under
+    # the run floors anyway. ON: (1) the filter leaves a pixel that IS its
+    # colour (within `stage2_quantize.PURE_PIXEL_DE` of its centre, at least
+    # `FAR_PIXEL_DE` from the one it would take; a blend sits between both);
+    # (2) touching sub-floor pieces of other colours ringed by one host that
+    # together clear the run floors are kept as one region, on the piece's
+    # colour farthest from the host (`stage3_segment._compound_details`).
+    # Colour reads, no stitch value: gate 1 does not apply. False is the
+    # engine before the flag, byte for byte. Tests: `tests/test_tiny_detail_keep.py`.
+    tiny_detail_keep: bool = False
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
