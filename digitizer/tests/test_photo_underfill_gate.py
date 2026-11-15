@@ -31,7 +31,8 @@ from .conftest import TESTDATA
 #: plan md5 (json of plan_to_design stitches) at 80 mm / left_chest, taken
 #: before the gate on origin/main 13c0eb85: (md5, stitch count).
 LOGO_PINS = {
-    "logo_whitebg.png": ("flat", "6cbfbb8c9ab9b7701b99b88f89644051", 6711),
+    # whitebg re-pinned 2026-11-15: `satin_push_keeps_gaps` 0.5 (Kent's flip) moves its rails
+    "logo_whitebg.png": ("flat", "23ebf33d1a87551508d0330526629092", 6711),
     "photo/gradient_ramp_linear.png": ("gradient", "06bad7d0e0d1c4acd342b87fa28169ff", 10938),
 }
 

@@ -1046,6 +1046,12 @@ PRE_FLIP.update(PUSH_KEEPS_GAPS_2026_11_15_OFF)
 # field since: `tests/test_text_gap_flips_2026_11_15.py`.
 COMPACT_KEEPS_GAPS_2026_11_15_OFF = {"compact_satin_keeps_gaps": False}
 PRE_FLIP.update(COMPACT_KEEPS_GAPS_2026_11_15_OFF)
+#: The six above, OFF as one set: for a test that pins a number this flip
+#: moved but that prices ANOTHER flag (spread into a PipelineConfig), so it
+#: keeps reading the engine its pin was taken on.
+TEXT_GAPS_2026_11_15_OFF = {**FINE_BAR_2026_11_15_OFF, **GROUND_RING_2026_11_15_OFF,
+                            **BEAN_FOLLOWS_2026_11_15_OFF, **HANDOVER_2026_11_15_OFF,
+                            **PUSH_KEEPS_GAPS_2026_11_15_OFF, **COMPACT_KEEPS_GAPS_2026_11_15_OFF}
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
