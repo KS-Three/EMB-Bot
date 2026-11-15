@@ -2170,11 +2170,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         # went back to satin whenever the guard kept its replan)
         planned = result
         bodies: dict = {}        # `outline_inlets_teeth`: the split shapes' bodies
-        # `cfg.extra["outline_inlets_kept"]` (built OFF): a satin that sewed
-        # over its own outline's inlet (a gear's tooth gaps, an open beak)
-        # cannot draw that shape; it is planned again as a fill on a copy of
-        # the regions (`outline_inlets`). OFF: not imported.
-        if (getattr(cfg, "extra", None) or {}).get("outline_inlets_kept"):
+        # `cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick "K-Line
+        # box + gear flags"): a satin that sewed over its own outline's inlet
+        # (a gear's tooth gaps, an open beak) cannot draw that shape; it is
+        # planned again as a fill on a copy of the regions (`outline_inlets`).
+        # OFF: not imported.
+        if getattr(cfg, "outline_inlets_kept", False):
             from . import outline_inlets
             over = outline_inlets.satin_over_inlets(result.regions, plan)
             if over:

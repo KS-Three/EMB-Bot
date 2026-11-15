@@ -48,7 +48,7 @@ def _stand_ins(monkeypatch, guard_keeps_replan: bool):
 
 
 def _cfg(**kw):
-    return PipelineConfig(extra={"outline_inlets_kept": True}, **kw)
+    return PipelineConfig(outline_inlets_kept=True, **kw)
 
 
 def test_the_guards_replan_keeps_the_inlet_rules_fill(monkeypatch):

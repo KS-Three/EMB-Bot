@@ -72,7 +72,8 @@ _LETTER_KEYS = ("text_candidate", "ocr_char", "text_cluster_id")
 
 
 def enabled(cfg) -> bool:
-    return bool((getattr(cfg, "extra", None) or {}).get(FLAG))
+    """`cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick)."""
+    return bool(getattr(cfg, FLAG, False))
 
 
 def inscribed_width(poly: Polygon) -> float:
