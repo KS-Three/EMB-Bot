@@ -85,3 +85,20 @@ def test_stage1_intrusion_loop_has_a_seam(monkeypatch):
     assert np.array_equal(after.bg_mask, before.bg_mask)
     assert after.warnings == before.warnings
     assert "stage 1 intrusion" in rec.labels
+
+
+def test_art_outline_search_has_a_seam_and_moves_nothing(monkeypatch):
+    """`art_outline.find_art_outlines` read no clock: on To a T machine the
+    stretch from plan_stitches' check to stage 5's was 3.9 s, 15.2 s with
+    `group_consistent_outline_body`. A check per holder, body and measure."""
+    from digitizer_core import PipelineConfig
+    from digitizer_core.art_outline import find_art_outlines
+    from digitizer_core.pipeline import run_stages
+    cfg = PipelineConfig(target_width_mm=60.0, garment_id="left_chest", max_colors=6)
+    regions = run_stages(str(HERE.parent / "testdata" / "logo_whitebg.png"), cfg).regions
+    before = find_art_outlines(regions, cfg)
+    rec = _recorded(monkeypatch)
+    after = find_art_outlines(regions, cfg)
+    assert {k: [(s, h.wkb) for s, h in v] for k, v in after.items()} == \
+        {k: [(s, h.wkb) for s, h in v] for k, v in before.items()}
+    assert "art outlines" in rec.labels
