@@ -1198,10 +1198,6 @@ def build_generation(
                            # its drawn size; 2026-11-14, built OFF): absent, as it was
                            **({"bean_follows": True}
                               if cfg.extra.get("small_text_reset_bean_follows") else {}),
-                           # a line just over the cap re-set at the least growth
-                           # (2026-11-14, built OFF): absent, the call as it was
-                           **({"near_cap": True}
-                              if cfg.extra.get("small_text_reset_near_cap") else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
@@ -2119,7 +2115,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .stage6_fill import one_pass_scope       # `cfg.fill_one_pass_sections` (built OFF), the same way
     from .stage6_fill import seam_aware_scope     # `cfg.fill_seam_aware_sections` (built OFF), the same way
     from .stage6_satin import chord_aim_scope     # `cfg.satin_free_end_chord_aim` (built OFF), the same way
+    from .outline_cut import curve_chord_scope    # `cfg.curve_chord_mm` (built OFF), the same way
     with apex_cut_scope(cfg.lettering_columns_apex_cut), \
+            curve_chord_scope(cfg.curve_chord_mm), \
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
