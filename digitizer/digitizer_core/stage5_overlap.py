@@ -922,9 +922,9 @@ def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
                                                       base_deg=explicit) is None
 
 
-#: the two geometry flags (comment at `GAP_SEWABLE_MM`): a pass with neither
-#: is the engine as it was
-GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps")
+#: the geometry flags (comment at `GAP_SEWABLE_MM`, and `outline_inlets`): a
+#: pass with none is the engine as it was
+GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps", "outline_inlets_kept")
 
 
 def _off_angles(regions, fabric, cfg, design_class, hairline) -> dict[str, float]:
@@ -991,7 +991,8 @@ def resolve_overlaps(
     if keep_inlets:
         from . import outline_inlets
     # a fill with no angle of its own keeps the angle it sewed at (`_off_angles`)
-    pinned = _off_angles(regions, fabric, cfg, design_class, hairline) if along or keep_gaps else {}
+    pinned = (_off_angles(regions, fabric, cfg, design_class, hairline)
+              if along or keep_gaps or keep_inlets else {})
     # `cfg.satin_rail_comp` (2026-09-09): a satin-tier shape keeps its
     # artwork polygon here and takes the pull on its rails in stage 6. The
     # tier is read with the same call directional comp uses, for the same
