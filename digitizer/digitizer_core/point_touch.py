@@ -26,19 +26,19 @@ from .textcluster import TOUCH_MAX_MM
 
 # Only bodies: a band (mean width at most this, mm) is a line, and lines
 # touch at their joins on purpose (a script's connected strokes).
-MIN_BODY_WIDTH_MM = 0.8
+TOUCH_BODY_MIN_WIDTH_MM = 0.8
 
-PROTECT_KEYS = ("rescued_small_shape", "enclosed_background", "counter", "dark_ink",
+TOUCH_PROTECT_KEYS = ("rescued_small_shape", "enclosed_background", "counter", "dark_ink",
                 "text_cluster_id")
 # A piece must be a body in its own right (not a serif or a spike): mean
-# width over `MIN_BODY_WIDTH_MM` and at least this area. The tagger's own
+# width over `TOUCH_BODY_MIN_WIDTH_MM` and at least this area. The tagger's own
 # floor is a share of the letter (`NECK_PART_MIN_FRAC` 0.15), which NSYNC's
 # star misses at 13% of star + N; here any shape is in play, so the floor is
 # the piece's own size.
-MIN_PIECE_MM2 = 2.0
+TOUCH_PIECE_MIN_MM2 = 2.0
 # The neck the opening removes may be at most this share of the region (the
 # tagger's `NECK_MAX_AREA_FRAC`): a pinch, not a waist.
-MAX_NECK_FRAC = 0.05
+TOUCH_NECK_MAX_FRAC = 0.05
 
 
 def _touch_split(poly):
@@ -51,8 +51,8 @@ def _touch_split(poly):
     except Exception:                                    # noqa: BLE001 -- fail open
         return None
     geoms = [q for q in getattr(opened, "geoms", [opened]) if q.geom_type == "Polygon"]
-    parts = [q for q in geoms if q.area >= MIN_PIECE_MM2 and q.length > 0
-             and 2.0 * q.area / q.length > MIN_BODY_WIDTH_MM]
+    parts = [q for q in geoms if q.area >= TOUCH_PIECE_MIN_MM2 and q.length > 0
+             and 2.0 * q.area / q.length > TOUCH_BODY_MIN_WIDTH_MM]
     if len(parts) < 2:
         return None
     parts.sort(key=lambda q: (round(q.bounds[0], 6), round(q.bounds[1], 6)))
@@ -67,7 +67,7 @@ def _touch_split(poly):
             neck += piece.area
         best = max(range(len(parts)), key=lambda i: (shared[i], -piece.distance(parts[i])))
         owned[best].append(piece)
-    if neck > MAX_NECK_FRAC * poly.area:
+    if neck > TOUCH_NECK_MAX_FRAC * poly.area:
         return None
     out = [unary_union(g) for g in owned]
     if any(q.geom_type != "Polygon" or q.is_empty for q in out):
@@ -86,11 +86,11 @@ def apply_point_touch_split(regions) -> list[dict]:
         g = r.polygon
         m = r.meta or {}
         if (g.geom_type != "Polygon" or g.is_empty or g.length <= 0
-                or any(m.get(k) for k in PROTECT_KEYS)):
+                or any(m.get(k) for k in TOUCH_PROTECT_KEYS)):
             out.append(r)
             continue
         width = 2.0 * g.area / g.length
-        if width <= MIN_BODY_WIDTH_MM:
+        if width <= TOUCH_BODY_MIN_WIDTH_MM:
             out.append(r)
             continue
         polys = _touch_split(g)
