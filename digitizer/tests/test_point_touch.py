@@ -63,3 +63,23 @@ def test_lettering_and_rescued_details_are_left_alone():
 
 def test_flag_is_off_by_default():
     assert not PipelineConfig().extra.get("point_touch_split")
+
+
+def test_the_photo_lanes_never_call_it(monkeypatch):
+    """Logos only (2026-11-15): MFab hat is classed `photo_scene`, and there
+    the cut broke WELDING's W into a "~"; every corpus photo it ran on moved.
+    The pipeline calls it on a flat design and never on a photo class."""
+    from pathlib import Path
+
+    from digitizer_core import point_touch
+    from digitizer_core.pipeline import build_generation
+
+    calls = []
+    monkeypatch.setattr(point_touch, "apply_point_touch_split",
+                        lambda regions: calls.append(len(regions)) or [])
+    art = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
+    for forced, expect in (("photo_scene", 0), ("photo_subject", 0), ("flat", 1)):
+        calls.clear()
+        build_generation(art, PipelineConfig(target_width_mm=60.0, forced_class=forced,
+                                             extra={"point_touch_split": True}))
+        assert len(calls) == expect, forced

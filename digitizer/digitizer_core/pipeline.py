@@ -1128,7 +1128,11 @@ def build_generation(
     # region, which the column build fanned into spikes): a body pinched
     # under `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
     # tagger, so each is sewn (and tagged) on its own. Absent: never loads.
-    if cfg.extra.get("point_touch_split"):
+    # Logos only (2026-11-15): on a photo class every quantised blob pinches
+    # somewhere -- MFab hat (photo_scene) lost WELDING's W to a cut, and the
+    # three corpus photos moved -- so the photo lanes never call it, as
+    # `sliver_prune` and `bevel_ring_fold` above.
+    if cfg.extra.get("point_touch_split") and classification.class_ not in PHOTO_CLASSES:
         from .point_touch import apply_point_touch_split
         apply_point_touch_split(regions)
 
