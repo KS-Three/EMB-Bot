@@ -71,10 +71,36 @@ satin cover = `columns.satin_cover`):
 
 ## Corpus
 
-PENDING
+Seven configs, OFF -> ON with the flag alone, one digitize at a time. The base is main 5a647125, before tonight's #1533 flips. The metrics cover lettering shapes under 5 mm that have a counter: satin cover (`columns.satin_cover`), bowls under 0.85 cover, and satin needles more than 0.05 mm inside a counter.
+
+| design | size | small letters with a counter | open bowls (cover < 0.85) OFF -> ON | mean satin cover OFF -> ON | stitches | trims | satin needles in counters |
+|---|---|---|---|---|---|---|---|
+| bukit_hat_85.1 | hat_front 85.1 | 6 | 3 -> 0 | 0.801 -> 0.98 | 2271 -> 2362 | 8 -> 8 | 2 -> 4 |
+| bukit_lc_80.4 | left_chest 80.4 | 6 | 2 -> 0 | 0.825 -> 0.979 | 1974 -> 2054 | 9 -> 9 | 7 -> 5 |
+| jakarta_lc_80 | left_chest 80.0 | 5 | 0 -> 0 | 0.996 -> 0.997 | 3166 -> 3174 | 22 -> 22 | 0 -> 0 |
+| proseal_hat | hat_front 85.9 | 7 | 0 -> 0 | 0.972 -> 0.974 | 5707 -> 5709 | 36 -> 36 | 1 -> 1 |
+| fremont_hat (byte-identical) | hat_front 92.6 | 8 | 8 -> 8 | 0.0 -> 0.0 | 16106 -> 16106 | 28 -> 28 | 0 -> 0 |
+| mfab_hat (byte-identical) | hat_front 104.9 | 0 | 0 -> 0 | None -> None | 20954 -> 20954 | 26 -> 26 | 0 -> 0 |
+| bukit_hat_113.5 | hat_front 113.5 | 3 | 0 -> 0 | 0.989 -> 0.996 | 4695 -> 4699 | 17 -> 17 | 0 -> 0 |
+
+- **Bukit, the fault:**
+  - Every open bowl closes at hat 85.1 and at Kent's LC 80.4. 85.1 reads "beyondcoal" ON.
+  - At 80.4 the o's close, but coal's a reads closer to an o ("cool"): its stem barely shows. That is a separate fault, below.
+  - At 113.5 (already read), the change is too small to see.
+- **No design moves for the worse:**
+  - Jakarta, ProSeal and Bukit 113.5 move by a handful of stitches, invisible on the zoomed sheets.
+  - Fremont hat and MFab hat are byte-identical. Fremont's small lettered shapes are not Column-lane satin, so its cover reads 0; MFab has none under 5 mm with a counter.
+- **Counter needles** go 2 -> 4 and 7 -> 5 on Bukit. On the 85.1 lane read none sits deeper than 0.07 mm; the 80.4 needles were not read one by one. The counters stay open on both sheets.
+- **Trims are unchanged everywhere.**
 
 ## Not done
 
 - The e's cut. The fold judge still chooses curved pieces over the ring cut
   it also tried. The flag closes the bowl but does not change which cut is
   chosen.
+- **coal's a at LC 80.4** sews a closed bowl ON (it read as a "z" OFF), but
+  its right stem barely shows, so the word reads closer to "cool". The stem
+  is a separate fault; the flag does not reach it.
+- A walk or underlay line still crosses some counters (the o's centre line
+  on the sheets), with the flag OFF and ON alike. That is the lane's
+  connector rule, not this build.
