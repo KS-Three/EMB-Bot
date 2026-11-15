@@ -71,7 +71,6 @@ import numpy as np
 from shapely.geometry import LineString, Polygon
 from shapely.geometry import Point as SPoint
 from shapely.ops import unary_union
-from shapely.prepared import prep
 from .fast_skimage import medial_axis  # skimage's, tables cached — byte-identical
 
 from . import deadline, machine, shape_memo, stitches
@@ -3712,6 +3711,103 @@ _SEAM_HOLD_MIN_CROSS_MM = 3.0
 #: neighbour (mm): the artwork polygon and the polygon a rail is cast on
 #: differ by raster lean
 PUSH_KEEP_MARGIN_MM = 0.25
+#: rays per numpy block in `_kept_limits` (bounds the rays x edges arrays)
+_KEEP_RAY_BLOCK = 256
+
+
+def _ring_segments(geom) -> np.ndarray:
+    """Every edge of every polygon in `geom` as rows (ax, ay, bx, by)."""
+    import shapely
+    segs = []
+    for part in shapely.get_parts(geom) if geom is not None else ():
+        if part.geom_type != "Polygon" or part.is_empty:
+            continue
+        for ring in (part.exterior, *part.interiors):
+            c = np.asarray(ring.coords, float)[:, :2]
+            if len(c) > 1:
+                segs.append(np.hstack([c[:-1], c[1:]]))
+    return np.vstack(segs) if segs else np.zeros((0, 4))
+
+
+def _ray_hits(starts: np.ndarray, dirs: np.ndarray, segs: np.ndarray, reach: float) -> np.ndarray:
+    """(rays, edges): distance along each unit ray to each edge it crosses
+    within `reach`, NaN where it does not."""
+    if len(segs) == 0 or len(starts) == 0:
+        return np.full((len(starts), 0), np.nan)
+    a, e = segs[:, :2], segs[:, 2:] - segs[:, :2]
+    den = dirs[:, None, 0] * e[None, :, 1] - dirs[:, None, 1] * e[None, :, 0]
+    wx = a[None, :, 0] - starts[:, None, 0]
+    wy = a[None, :, 1] - starts[:, None, 1]
+    with np.errstate(divide="ignore", invalid="ignore"):
+        t = (wx * e[None, :, 1] - wy * e[None, :, 0]) / den
+        s = (wx * dirs[:, None, 1] - wy * dirs[:, None, 0]) / den
+    ok = (np.abs(den) > 1e-12) & (s >= -1e-9) & (s <= 1.0 + 1e-9) & (t >= -1e-9) & (t <= reach)
+    return np.where(ok, np.clip(t, 0.0, reach), np.nan)
+
+
+def _kept_limits(rail_a: list, rail_b: list, poly: Polygon, other, reach: float,
+                 pull_mm: float, floor_mm: float) -> tuple[np.ndarray, np.ndarray]:
+    """`satin_push_keeps_gaps`: per cross, the most each rail may be pushed
+    so the bare fabric its push crosses first keeps `floor_mm` (inf: no gap).
+
+    A gap is the first stretch of a rail's outward ray that lies outside
+    `poly`, starting within the push, and closed by `poly` itself (a bay) or
+    by `other` (same-thread ink) inside `reach`. Its width along the ray is
+    shared by the two sides that push into it, as a counter's is. One numpy
+    ray-edge pass and one vectorised containment test per block of rays."""
+    import shapely
+    pa, pb = np.asarray(rail_a, float), np.asarray(rail_b, float)
+    n = len(pa)
+    dv = pa - pb
+    dl = np.hypot(dv[:, 0], dv[:, 1])
+    good = dl >= 1e-9
+    u = np.zeros_like(dv)
+    u[good] = dv[good] / dl[good, None]
+    starts, dirs = np.vstack([pa, pb]), np.vstack([u, -u])
+    valid = np.concatenate([good, good])
+    lim = np.full(2 * n, np.inf)
+    psegs = _ring_segments(poly)
+    osegs = _ring_segments(other)
+    shapely.prepare(poly)
+    for b0 in range(0, 2 * n, _KEEP_RAY_BLOCK):
+        deadline.check("satin rail push keep")
+        rays = [r for r in range(b0, min(2 * n, b0 + _KEEP_RAY_BLOCK)) if valid[r]]
+        if not rays:
+            continue
+        tp = _ray_hits(starts[rays], dirs[rays], psegs, reach)
+        to = _ray_hits(starts[rays], dirs[rays], osegs, reach)
+        spans, mx, my = [], [], []
+        for k, r in enumerate(rays):
+            hp, ho = tp[k][~np.isnan(tp[k])], to[k][~np.isnan(to[k])]
+            # past the rail, nothing: the ray leaves into open fabric
+            if not (hp > 0.05).any() and not len(ho):
+                continue
+            cuts = np.unique(np.concatenate([[0.0, reach], hp]))
+            for d0, d1 in zip(cuts[:-1], cuts[1:]):
+                if d1 - d0 < 1e-6:
+                    continue
+                t = 0.5 * (d0 + d1)
+                spans.append((k, r, d0, d1))
+                mx.append(starts[r, 0] + dirs[r, 0] * t)
+                my.append(starts[r, 1] + dirs[r, 1] * t)
+        if not spans:
+            continue
+        inside = shapely.contains_xy(poly, np.asarray(mx), np.asarray(my))
+        done = set()
+        for (k, r, d0, d1), ins in zip(spans, inside):
+            if r in done or ins:
+                continue
+            done.add(r)                               # the first span outside the shape
+            if d0 > pull_mm:
+                continue
+            end = d1 if d1 < reach - 1e-6 else None
+            ho = to[k][~np.isnan(to[k])]
+            ho = ho[(ho >= d0 - 1e-9) & (ho <= d1 + 1e-9)]
+            if len(ho):
+                end = float(ho.min()) if end is None else min(end, float(ho.min()))
+            if end is not None:
+                lim[r] = min(pull_mm, max(0.0, (end - d0 - floor_mm) / 2.0))
+    return lim[:n], lim[n:]
 
 
 def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
@@ -3755,57 +3851,21 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
     # `keep` (`cfg.extra["satin_push_keeps_gaps"]`, built OFF; None is the
     # engine as it was): the counter rule above for the gaps a counter test
     # cannot see -- comment at `PUSH_KEEP_MARGIN_MM`
-    other = other_p = None
-    keep_floor = floor_mm
+    kept_a = kept_b = None
     if isinstance(keep, tuple):                       # (ink, the floor a gap keeps)
         keep, keep_floor = keep
+    else:
+        keep_floor = floor_mm
     if keep is not None:
-        bnd, poly_p = poly.boundary, prep(poly)
+        other = None
         if not keep.is_empty:
             o = keep.difference(poly.buffer(PUSH_KEEP_MARGIN_MM))
-            if not o.is_empty:
-                other, other_p = o, prep(o)
-
-    def kept_room(p: tuple, ux: float, uy: float, allowed: float) -> float:
-        """The bare fabric the push crosses first along the cross: closed by
-        the shape itself (a bay) or by same-thread ink (a neighbour)."""
-        tip = (p[0] + ux * reach, p[1] + uy * reach)
-        # most rays leave into open fabric: past the rail they touch nothing
-        tail = LineString([(p[0] + ux * 0.05, p[1] + uy * 0.05), tip])
-        if not poly_p.intersects(tail) and (other_p is None or not other_p.intersects(tail)):
-            return allowed
-        probe = LineString([p, tip])
-        here = SPoint(p)
-        # the ray's crossings of the shape's edge cut it into in / out spans
-        cuts = {0.0, reach}
-        hits = probe.intersection(bnd)
-        for g in getattr(hits, "geoms", [hits]):
-            for c in getattr(g, "coords", ()):
-                cuts.add(min(reach, here.distance(SPoint(c))))
-        cuts = sorted(cuts)
-        near = far = None
-        for d0, d1 in zip(cuts, cuts[1:]):
-            if d1 - d0 < 1e-6:
-                continue
-            t = (d0 + d1) / 2.0
-            if not poly_p.contains(SPoint(p[0] + ux * t, p[1] + uy * t)):
-                near, far = d0, d1
-                break
-        if near is None or near > pull_mm:
-            return allowed
-        end = far if far < reach - 1e-6 else None
-        if other is not None:
-            span = LineString([(p[0] + ux * near, p[1] + uy * near), (p[0] + ux * far, p[1] + uy * far)])
-            if other_p.intersects(span):
-                h = here.distance(span.intersection(other))
-                end = h if end is None else min(end, h)
-        if end is None:
-            return allowed
-        return min(allowed, max(0.0, (end - near - keep_floor) / 2.0))
+            other = None if o.is_empty else o
+        kept_a, kept_b = _kept_limits(rail_a, rail_b, poly, other, reach, pull_mm, keep_floor)
 
     def room(p: tuple, ux: float, uy: float) -> float:
         if not holes:
-            return pull_mm if keep is None else kept_room(p, ux, uy, pull_mm)
+            return pull_mm
         probe = LineString([p, (p[0] + ux * reach, p[1] + uy * reach)])
         allowed = pull_mm
         for h in holes:
@@ -3817,7 +3877,7 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
             if near > pull_mm:
                 continue
             allowed = min(allowed, max(0.0, (chord.length - floor_mm) / 2.0))
-        return allowed if keep is None else kept_room(p, ux, uy, allowed)
+        return allowed
 
     def held_push(p: tuple, ux: float, uy: float, k: float) -> float:
         """Up to the colour already down, not into it. A rail can sit short of
@@ -3827,7 +3887,7 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         return min(k, held[1].distance(SPoint(p)))
 
     out_a, out_b = [], []
-    for pa, pb in zip(rail_a, rail_b):
+    for i, (pa, pb) in enumerate(zip(rail_a, rail_b)):
         deadline.check("satin rail push")
         dx, dy = pa[0] - pb[0], pa[1] - pb[1]
         d = math.hypot(dx, dy)
@@ -3838,6 +3898,8 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         ux, uy = dx / d, dy / d
         ka = room(pa, ux, uy)
         kb = room(pb, -ux, -uy)
+        if kept_a is not None:
+            ka, kb = min(ka, float(kept_a[i])), min(kb, float(kept_b[i]))
         if held is not None and d >= _SEAM_HOLD_MIN_CROSS_MM:
             ka = held_push(pa, ux, uy, ka)
             kb = held_push(pb, -ux, -uy, kb)
