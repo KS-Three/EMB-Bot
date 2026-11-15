@@ -4373,6 +4373,17 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_small_text_ground_ring.py`.
     small_text_reset_bean_follows: bool = True
+    # The hand-over (`small_text.HANDOVER_RATIO`, built OFF 2026-11-14 as
+    # `cfg.extra["small_text_handover"]`): a line just over the re-set's
+    # cutoff (0.9 to 1.15 caps) gets the true-size retrace too, and its own
+    # thin other-thread slivers go, so no size of a line gets neither repair.
+    # ProSeal's tagline at the hat auto-fit (109.6 mm, 4.01 mm) sewed its raw
+    # trace: FOAM's A without its crossbar, COATINGS' T broken, a teal sliver.
+    # **ON since 2026-11-15, Kent's flip** ("Flip both ON", with
+    # `fine_bar_survive`). False never calls the pass; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_small_text_handover.py`.
+    small_text_handover: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose

@@ -1212,11 +1212,12 @@ def build_generation(
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
 
-    # The hand-over (`cfg.extra["small_text_handover"]`, built OFF 2026-11-14):
+    # The hand-over (`cfg.small_text_handover`, ON since 2026-11-15, Kent:
+    # "Flip both ON"; built OFF 2026-11-14):
     # a line just over the re-set's cutoff gets the true-size retrace too, so
     # no size of a line gets neither repair (`small_text.HANDOVER_RATIO`).
     # Absent: never called.
-    if (cfg.extra.get("small_text_handover") and cfg.small_text_cap_mm
+    if (cfg.small_text_handover and cfg.small_text_cap_mm
             and cfg.small_text_restore_mm):
         from .config import true_size_min_counter
         from .small_text import HANDOVER_RATIO, restore_small_text

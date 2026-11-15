@@ -2020,7 +2020,8 @@ def passes_counter_guard(members: list[Region], p: Prep, floor_base_mm: float | 
     return narrow is None or narrow >= counter_floor_mm(floor_base_mm, wt)
 
 
-# `cfg.extra["small_text_handover"]` (built OFF 2026-11-14): a second
+# `cfg.small_text_handover` (ON since 2026-11-15, Kent: "Flip both ON"; built OFF
+# 2026-11-14): a second
 # true-size pass, after the re-set, for the lines it leaves as tall enough --
 # from 0.9 of `small_text_cap_mm` up to this many caps -- so no size of a line
 # gets neither repair. ProSeal's tagline at the Studio's hat auto-fit (109.6

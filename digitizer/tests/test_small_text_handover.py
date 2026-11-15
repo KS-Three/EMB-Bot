@@ -1,4 +1,4 @@
-"""`cfg.extra["small_text_handover"]` (built OFF 2026-11-14): a line just over
+"""`cfg.small_text_handover` (ON since 2026-11-15, Kent; built OFF 2026-11-14): a line just over
 the small-text re-set's cutoff gets the true-size retrace too, so no size of a
 line gets neither repair.
 
@@ -42,12 +42,11 @@ def test_the_pipeline_calls_the_handover_only_on(monkeypatch):
         return real(*a, **k)
     monkeypatch.setattr(small_text, "restore_small_text", spy)
     art = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
-    build_generation(str(art), PipelineConfig(target_width_mm=40.0))
+    build_generation(str(art), PipelineConfig(target_width_mm=40.0, small_text_handover=False))
     assert not any(c["handover"] for c in calls)
     off_calls = len(calls)
     calls.clear()
-    build_generation(str(art), PipelineConfig(target_width_mm=40.0,
-                                              extra={"small_text_handover": True}))
+    build_generation(str(art), PipelineConfig(target_width_mm=40.0, small_text_handover=True))
     hand = [c for c in calls if c["handover"]]
     assert len(calls) == off_calls + 1 and len(hand) == 1
     cfg = PipelineConfig()

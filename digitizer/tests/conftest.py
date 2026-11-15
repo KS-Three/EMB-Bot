@@ -1033,6 +1033,10 @@ GROUND_RING_2026_11_15_OFF = {"small_text_reset_ground_ring": False}
 PRE_FLIP.update(GROUND_RING_2026_11_15_OFF)
 BEAN_FOLLOWS_2026_11_15_OFF = {"small_text_reset_bean_follows": False}
 PRE_FLIP.update(BEAN_FOLLOWS_2026_11_15_OFF)
+# `small_text_handover` ("Flip both ON", with `fine_bar_survive`), a field
+# since: `tests/test_small_text_handover.py`.
+HANDOVER_2026_11_15_OFF = {"small_text_handover": False}
+PRE_FLIP.update(HANDOVER_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
