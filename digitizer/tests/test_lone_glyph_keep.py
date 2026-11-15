@@ -1,4 +1,5 @@
-"""`cfg.extra["lone_glyph_keep"]` (built OFF 2026-11-14): a tittle over a
+"""`cfg.lone_glyph_keep` (ON since 2026-11-15, Kent 2026-11-15, review pack (review-1115): ticked ON; built OFF
+2026-11-14 as `cfg.extra["lone_glyph_keep"]`): a tittle over a
 joined (cursive) word is admitted by the dot rung as a printed i's dot is.
 
 The eye sweep's "Seriously" read "Senaudy" at 70.9 and 80.2 mm: its i-dot
@@ -7,7 +8,7 @@ dot rung's lettering scope finds no stem under it, because a cursive i's
 stroke is one region with its whole word. ON, a dot inside its own colour's
 word, with that word's ink in the dot's columns under it, is kept; a speck
 is not, nor a dot over another colour, nor anything on the photo lane.
-Absent or false: the engine as it was.
+False: the engine as it was.
 """
 from __future__ import annotations
 
@@ -47,7 +48,7 @@ def _scene(word_layer=1, body_top=120):
 
 
 def _kept(regions, *, on, chain_rescue=True):
-    cfg = PipelineConfig(extra={"lone_glyph_keep": True} if on else {})
+    cfg = PipelineConfig() if on is None else PipelineConfig(lone_glyph_keep=bool(on))
     kept, _w = resolve_small_regions(regions, cfg, PX, layer_lab=rgb_to_lab(RGB),
                                      chain_rescue=chain_rescue)
     return [any(k is r for k in kept) for r in regions]
@@ -56,7 +57,8 @@ def _kept(regions, *, on, chain_rescue=True):
 def test_off_the_tittle_of_a_joined_word_is_dropped_as_today():
     _g, dot, word, speck = _kept(_scene(), on=False)
     assert word and not dot and not speck
-    assert _kept(_scene(), on=False) == _kept(_scene(), on=None)
+    # the default is ON since 2026-11-15
+    assert _kept(_scene(), on=True) == _kept(_scene(), on=None)
 
 
 def test_on_the_tittle_is_kept_and_the_speck_is_not():

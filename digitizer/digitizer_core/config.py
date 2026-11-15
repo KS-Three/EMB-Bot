@@ -1401,6 +1401,21 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP (BRIDGE_2026_11_15_OFF) and
     # `tests/engine_2026_10_27.json` pin it False.
     stroke_bridge_keep: bool = True
+    # A tittle over a joined (cursive) word is kept as a printed i's dot is
+    # (`stage3_segment`, the comment at `_TITTLE_GAP_DOTS`; built OFF
+    # 2026-11-14 as `cfg.extra["lone_glyph_keep"]`, #1555, the eye sweep's
+    # "Seriously" read "Senaudy" at 70.9 and 80.2 mm). The dot rung's
+    # lettering scope finds no stem under a cursive i's dot, because the
+    # stroke under it is one region with the whole word, so the dot (0.74 x
+    # 0.96 mm) was dropped. ON, a dot inside its own colour's word, with
+    # that word's ink in the dot's columns under it, is admitted by the dot
+    # rung; flat lane only. Promoted to a field so the default can be ON
+    # (the small_text_bay_mouth / nest_door_aspect pattern).
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (LONE_GLYPH_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_lone_glyph_keep.py`.
+    lone_glyph_keep: bool = True
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
