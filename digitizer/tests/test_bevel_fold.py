@@ -115,6 +115,70 @@ def test_a_bevel_ring_between_a_white_face_and_its_outline_is_one_band():
     assert abs(sum(r.polygon.area for r in ring) - (3.6 + 5.0 + 2.4)) < 0.2
 
 
+def test_a_ramp_sews_its_deeper_end_and_a_patch_its_body():
+    """The pro's Golden Tee gold (Madeira 1172, his worksheet) is the art's
+    ORANGE end (1.5 dE00), not the larger yellow half. Two tones each a
+    substantial share of the merged shape are a ramp: the deeper one sews.
+    A small patch on a large body (the crest's navy, 4%) is shading: the
+    body's tone stays."""
+    top, bottom = box(0, 0, 10, 2.2), box(0, 2.2, 10, 4)       # yellow 55%, orange 45%
+    regions = [_r(top, GOLD_LIGHT, "Y"), _r(bottom, GOLD, "O")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD}
+    body, patch = box(0, 0, 10, 9.6), box(0, 9.6, 10, 10)       # orange body, 4% yellow edge patch
+    regions = [_r(body, GOLD, "B"), _r(patch, GOLD_LIGHT, "P")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert not rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD}
+    regions = [_r(body, GOLD_LIGHT, "B"), _r(patch, GOLD, "P")]  # the deeper tone as the patch
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert not rep["tones"][0]["ramp"] and {r.thread_index for r in regions} == {GOLD_LIGHT}
+
+
+def _gt_with_golf():
+    """A white face, a gold bevel band on its left, the black outline round
+    both, and a gold letter (GOLF) below with a red keyline along it that
+    touches the bevel."""
+    face = box(0, 0, 10, 6)
+    bevel = box(-0.6, 0, 0, 6)
+    outline = box(-1.1, -0.5, 10.5, 6.5).difference(box(-0.6, 0, 10, 6))
+    golf = box(-3, 7.0, 4, 11)
+    key = box(-3, 6.6, 4, 7.0)                                   # 0.4 mm red along GOLF's top
+    return face, bevel, outline, golf, key
+
+
+def test_the_ring_stops_at_a_coloured_letter():
+    """His GT ring stops at the GT's outline; GOLF's own keyline is GOLF's
+    (the band fold gives it to the gold letter), not a piece of the ring."""
+    face, bevel, outline, golf, key = _gt_with_golf()
+    regions = [_r(face, WHITE, "F", enclosed_background=True), _r(bevel, GOLD, "BEV"),
+               _r(outline, BLACK, "OUT"), _r(golf, GOLD, "GOLF"), _r(key, RED, "KEY")]
+    bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    assert not any(r.meta.get(bf.RING_KEY) == "F" and r.shape_id == "KEY" for r in regions)
+    assert "KEY" not in {r.shape_id for r in regions}            # folded into GOLF
+
+
+def test_a_ring_band_out_on_the_page_joins_the_outline_where_it_runs_along_it():
+    """GT's G keyline runs down past the outline onto the page between
+    GOLF's O and L: he sews the outline's black where it runs along the
+    outline, garment beyond it."""
+    face = box(0, 0, 10, 6)
+    bevel = box(10, 0, 10.5, 6)                                  # gold bevel up the right side
+    # the outline round it all, open where the keyline runs out past its bottom
+    outline = (box(-0.5, -0.5, 11.4, 6.5).difference(box(0, 0, 10.9, 6))
+               .difference(box(10.5, 6, 10.9, 6.5)))
+    # a 0.4 mm keyline between the bevel and the outline, running 5.5 mm on past it
+    key = box(10.5, 1.0, 10.9, 12.0)
+    letter = box(20, 0, 30, 4)                                   # a gold body elsewhere
+    regions = [_r(face, WHITE, "F", enclosed_background=True), _r(bevel, GOLD, "BEV"),
+               _r(outline, BLACK, "OUT"), _r(key, RED, "KEY"), _r(letter, GOLD, "L")]
+    rep = bf.apply_bevel_fold(regions, WHITE_PAGE, CFG, CHART)
+    edges = [x for x in rep["rings"] if "outline_edge" in x]
+    assert [e["outline_edge"] for e in edges] == ["KEY"] and edges[0]["ink"] == CHART[BLACK].number
+    assert RED not in {r.thread_index for r in regions}
+    black = [r for r in regions if r.thread_index == BLACK]
+    assert black and max(r.polygon.bounds[3] for r in black) < 12.0 - 2.0   # clipped short of the far end
+
+
 def test_a_ring_with_no_body_ink_is_left_alone():
     """Only a red keyline between the face and the outline, and no red body
     anywhere: nothing says which thread the ring would be, so the ring rule

@@ -68,6 +68,15 @@ FILL_FRAC = 0.5
 TOUCH_FRAC = 0.25
 
 
+#: `cfg.outline_frame_guard`: an outline holds more than it is. Its area
+#: over the area of its looped holes, measured 2026-11-14: To a T's frame
+#: 0.05, MFab's keyline 0.67, Becker's 0.72 (all three the pro borders);
+#: k_line's red box round its white K 1.90 and Ahora's pink ground round its
+#: letters 2.10 (fields round knockouts). 1.0 is the line itself -- more
+#: frame than content -- not a fitted edge. A shape read, not a stitch value.
+FRAME_AREA_RATIO = 1.0
+
+
 def _counter(body, holder, cfg) -> bool:
     return bool((body.meta or {}).get("counter")) or is_lettering(holder, cfg)
 
@@ -87,25 +96,41 @@ def _looped(poly: Polygon) -> list[Polygon]:
             if LineString(r.coords).length >= machine.BORDER_MIN_LOOP_MM]
 
 
-def line_art_reading(holder, bodies: list[tuple[object, Polygon]]) -> tuple[float, float]:
+def line_art_reading(holder, bodies: list[tuple[object, Polygon]], *,
+                     round_any_hole: bool = False) -> tuple[float, float]:
     """(fill share, dropped share) of an outline: the share of it at least
     `machine.MIN_FILL_WIDTH_MM` across (an opening by half that), and the
     share its loops leave and the rest-fill drops -- further than the loop
     width (`outline_width_mm`) from every looped hole, in pieces too thin to
-    fill, as `stage6_border.keyline_rest` reads the band stage 7 sews."""
+    fill, as `stage6_border.keyline_rest` reads the band stage 7 sews.
+
+    `round_any_hole` (`cfg.photo_enclosed_rim`'s half of the guard): a dropped
+    piece's band within the loop width of ANY hole of the outline -- one too
+    short to loop (`machine.BORDER_MIN_LOOP_MM`) included -- is keyline round
+    a small shape, not a stroke the loops leave, and is not counted. The rim
+    gives MFab's keyline back the edge the floor took, round the hyphen and
+    AND WELDING LLC as well; their holes are under a loop's length at 30-50
+    mm, so that band read as dropped, 0.020-0.026 of the keyline at 35-40 mm,
+    past the 0.02 cut: no outline, no white-keyline recipe, no under-fill,
+    and the black band sewed over the keyline (2026-11-14). Read this way
+    every MFab width reads 0.000; Bridge's bowl drawing, whose dropped pieces
+    are stroke ENDS running away from every hole, reads 0.033 at 80 mm (0.067
+    today) and stays line art. False: the reading as it was."""
     poly = holder.polygon
     half = machine.MIN_FILL_WIDTH_MM / 2.0
     fill = poly.buffer(-half).buffer(half).area / poly.area
     width = outline_width_mm(holder, bodies)
     rest = poly.difference(unary_union([h.buffer(width) for h in _looped(poly)]))
-    parts = getattr(rest, "geoms", [rest])
-    dropped = sum(p.area for p in parts
-                  if p.geom_type == "Polygon" and not p.is_empty and p.buffer(-half).is_empty)
-    return fill, dropped / poly.area
+    parts = [p for p in getattr(rest, "geoms", [rest])
+             if p.geom_type == "Polygon" and not p.is_empty and p.buffer(-half).is_empty]
+    if round_any_hole and parts and poly.interiors:
+        ringed = unary_union([Polygon(r).buffer(width) for r in poly.interiors])
+        return fill, sum(p.difference(ringed).area for p in parts) / poly.area
+    return fill, sum(p.area for p in parts) / poly.area
 
 
-def _line_art(holder, bodies) -> bool:
-    fill, dropped = line_art_reading(holder, bodies)
+def _line_art(holder, bodies, round_any_hole: bool = False) -> bool:
+    fill, dropped = line_art_reading(holder, bodies, round_any_hole=round_any_hole)
     return (fill < machine.OUTLINE_LINE_ART_FILL_SHARE
             and dropped >= machine.OUTLINE_LINE_ART_DROP_FRAC)
 
@@ -127,6 +152,7 @@ def find_art_outlines(regions, cfg=None, *,
     regions = list(regions)
     if line_art_guard is None:
         line_art_guard = bool(getattr(cfg, "border_from_outline_line_art_guard", False))
+    frame_guard = bool(getattr(cfg, "outline_frame_guard", False))
     if group_decide is None and getattr(cfg, "group_consistent_outline_body", False):
         from .group_consistency import outline_body_decider
         group_decide = outline_body_decider(machine.MIN_FILL_WIDTH_MM)
@@ -188,9 +214,20 @@ def find_art_outlines(regions, cfg=None, *,
         else:
             found = list(group_decide(o, cands))
         taken.update(b.shape_id for b, _hole in found)
-        if found and line_art_guard and _line_art(o, found):
+        if found and line_art_guard and _line_art(o, found, round_any_hole=bool(
+                getattr(cfg, "photo_enclosed_rim", False))):
             taken.difference_update(b.shape_id for b, _hole in found)
             continue
+        # `cfg.outline_frame_guard` (built OFF 2026-11-14): an outline is a
+        # thin band round what it holds. A box with a letter knocked out of
+        # it is near its hole everywhere (k_line's red box, 0.999) but is
+        # bigger than what it holds: a FIELD round a knockout. It stays in
+        # the result, so its bodies still sew as plain fills, and is tagged;
+        # stage 7 gives it no loop and sews it on the fill tier.
+        if found and frame_guard:
+            ratio = poly.area / max(sum(h.area for h in holes), 1e-9)
+            if ratio >= FRAME_AREA_RATIO:
+                o.meta["framed_field"] = round(ratio, 2)
         for b, hole in found:
             out.setdefault(o.shape_id, []).append((b.shape_id, hole))
     return out
