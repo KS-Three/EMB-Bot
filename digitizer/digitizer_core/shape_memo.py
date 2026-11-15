@@ -69,6 +69,11 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_CORNER_FOLD"),
     ("outline_cut", "_FOLD_APEX_SIDE"),
     ("outline_cut", "_RAIL_PAIR_BARS"),
+    # `cfg.curve_chord_mm` (`curve_chord_scope`), and the outline it guards
+    # against: set per letter inside `letter_columns`, so None at any memo
+    # boundary, but an emitter reads both
+    ("outline_cut", "_CURVE_CHORD"),
+    ("outline_cut", "_CURVE_TRACE"),
     ("stage6_border", "_LOOP_MITRE"),
     ("stage6_border", "_LOOP_CHAIN"),
     ("column_lean", "_ITALIC"),

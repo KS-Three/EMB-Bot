@@ -27,6 +27,7 @@ from shapely.validation import make_valid
 
 from . import bean_rule, deadline, machine
 from .config import PipelineConfig
+from .curve_densify import densify_curves
 from .regions import Region, assign_shape_ids
 from .stage1_prep import Prep
 from .stage3_segment import RegionMask
@@ -554,6 +555,17 @@ def vectorize(
     resolution_gated = p.px_per_mm < _CURVE_MIN_PX_PER_MM
     if curve_turn is not None and not subpixel and resolution_gated:
         curve_turn = None
+    # `curve_chord_stage4` with `curve_chord_mm` (both OFF): a clean curve's
+    # chords split along the curve through its own vertices
+    # (`curve_densify.densify_curves`), every new vertex within one grid
+    # pixel of the trace (the staircase sits half a pixel either side of the
+    # edge) and never past the tracer's tolerance. Not on an UPSCALED source:
+    # `outline_redraw_k` redraws those rings as lines and arcs after stage 4,
+    # and the two would refit the same edge twice.
+    densify_px = (float(cfg.curve_chord_mm) * p.px_per_mm
+                  if (cfg.curve_chord_mm or 0.0) > 0.0 and cfg.curve_chord_stage4
+                  and not upscaled else 0.0)
+    densify_guard = min(eps_px, 1.0)
     lab_img = None
     if native:
         lab_img = _native_profile_image(p)
@@ -683,6 +695,14 @@ def vectorize(
             shell_px = _refine_curves(outer_src.reshape(-1, 2).astype(np.float64),
                                       shell_px.astype(np.float64), eps, curve_turn,
                                       accepted=outer_acc, resolution_gated=resolution_gated)
+        # The same rings the refinement may touch (near-floor lettering and
+        # sub-detail shapes keep their polygon), judged on their own: the
+        # densify reads no raster, so the resolution gate does not apply.
+        densify = (densify_px > 0.0 and not sub_detail
+                   and _wide_enough_to_refine(shell_px, p.px_per_mm))
+        if densify:
+            shell_px = densify_curves(shell_px, outer_src.reshape(-1, 2), densify_px,
+                                      densify_guard)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
 
         holes = []
@@ -702,6 +722,8 @@ def vectorize(
                 h_px = _refine_curves(hole_src.reshape(-1, 2).astype(np.float64),
                                       h_px.astype(np.float64), eps, curve_turn,
                                       accepted=hole_acc, resolution_gated=resolution_gated)
+            if densify and _wide_enough_to_refine(h_px, p.px_per_mm):
+                h_px = densify_curves(h_px, hole_src.reshape(-1, 2), densify_px, densify_guard)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= (small_hole_mm2 if sub_detail else min_area_mm2):
                 holes.append(ring)

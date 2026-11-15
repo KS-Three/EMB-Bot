@@ -377,7 +377,22 @@ def find_cuts(poly: Polygon, W: float):
 # stroke from the cut). Candidates, not fabric constants: layout, judged in
 # the preview (Kent, 2026-10-22).
 _APEX_CUT: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_cut", default=False)
-APEX_MAX_DEG = 80.0            # his merged tips: legs 42-74 deg apart; his folds 90
+# `cfg.curve_chord_mm` (built None = OFF, `curve_chord_scope`): the longest
+# chord a clean curve of a piece keeps when its rails are built, and the
+# letter's outline as it came in, before `SIMPLIFY_MM` (the guard's trace).
+_CURVE_CHORD: contextvars.ContextVar[float | None] = contextvars.ContextVar("curve_chord", default=None)
+_CURVE_TRACE: contextvars.ContextVar = contextvars.ContextVar("curve_trace", default=None)
+# A new rail vertex lies within this share of the simplify tolerance of the
+# letter's own outline, capped at this many mm (stage 4's polygon itself
+# sags a grid pixel, 0.045 mm at 22 px/mm, off the arc between vertices).
+CURVE_GUARD_SHARE = 0.5
+CURVE_GUARD_MAX_MM = 0.08
+# At W/16 a small round end or dot simplifies to a 6- or 7-gon turning
+# 50-60 degrees a vertex, past `curve_densify.DENSIFY_CORNER_DEG`; a real corner
+# turns 90 and more, and below that the guard (a bulge off a straight
+# trace) refuses it.
+CURVE_CORNER_DEG = 75.0
+APEX_MAX_DEG = 80.0           # his merged tips: legs 42-74 deg apart; his folds 90
 APEX_MIN_SIDES_DEG = 20.0      # a tip's two outer edges meet; a leg's two sides run parallel
 APEX_REACH_W = 4.0             # crotch to tip: the M's V 1.6-1.7 W, a W's 2.3-3.2 W
 APEX_CROSS_W = 2.4             # his widest merged cross on 1.1-1.2 mm strokes
@@ -530,6 +545,40 @@ def apex_cut_scope(on: bool):
         yield
     finally:
         _APEX_CUT.reset(token)
+
+
+@contextlib.contextmanager
+def curve_chord_scope(chord_mm: float | None):
+    """`cfg.curve_chord_mm` for the length of one plan
+    (`pipeline.plan_stitches`), as `apex_cut_scope`. None or 0 sets nothing."""
+    if not chord_mm or chord_mm <= 0.0:
+        yield
+        return
+    token = _CURVE_CHORD.set(float(chord_mm))
+    try:
+        yield
+    finally:
+        _CURVE_CHORD.reset(token)
+
+
+def _curve_piece(piece: Polygon, W: float) -> Polygon:
+    """`cfg.curve_chord_mm`: the piece's clean curves split along the curve
+    through its own vertices (`curve_densify`), each new vertex within
+    `CURVE_GUARD_SHARE` of the simplify tolerance (capped at
+    `CURVE_GUARD_MAX_MM`) of the letter's outline as it came in. Cut lines
+    run inside the letter, far from that outline, so they stay straight, and
+    so do counters (the trace is the OUTER outline only); corners and
+    straight runs keep their vertices. The cuts were already
+    made on the simplified letter, so the construction's pieces are the
+    same pieces: only where a rail runs changes."""
+    chord, trace = _CURVE_CHORD.get(), _CURVE_TRACE.get()
+    if not chord or trace is None:
+        return piece
+    from .curve_densify import densify_polygon
+    floor = ((_SMALL_BOLD_SIMPLIFY.get() or SMALL_BOLD_SIMPLIFY_MM) if _SMALL_BOLD.get()
+             else SIMPLIFY_MM)
+    guard = min(CURVE_GUARD_SHARE * max(floor, W / 16.0), CURVE_GUARD_MAX_MM)
+    return densify_polygon(piece, trace, chord, guard, CURVE_CORNER_DEG)
 
 
 def _apex_tips(poly: Polygon, p, bis, convex, W: float) -> list:
@@ -2087,6 +2136,8 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
     per exact key (`_MEMO`); the caller always gets its own copy."""
     if rail_axis is None:
         rail_axis = _RAIL_AXIS.get()
+    if _CURVE_CHORD.get():
+        piece = _curve_piece(piece, W)
     memo = _MEMO.get()
     if memo is None:
         return _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
@@ -2737,6 +2788,17 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     columns (`columns.lettering_columns_shape` sews them through
     `column_runs` and reads them with `sewn_knots`); the fold look then
     refuses a cut that knots (`_fold_refine`)."""
+    if _CURVE_CHORD.get() and _CURVE_TRACE.get() is None:
+        # `cfg.curve_chord_mm`: the letter's OUTER outline before it is
+        # simplified, the trace every new rail vertex must stay on
+        # (`_curve_piece`). Not its counters: a counter edge is what the
+        # stage-7 counter clearance re-cuts against, and a finer one there
+        # re-cut the "p" of and_pizza into a wedge (2026-11-14)
+        ttoken = _CURVE_TRACE.set(poly.exterior)
+        try:
+            return _letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge)
+        finally:
+            _CURVE_TRACE.reset(ttoken)
     if _MEMO.get() is None:         # this letter's columns, each built once (`_MEMO`)
         token = _MEMO.set({})
         try:
