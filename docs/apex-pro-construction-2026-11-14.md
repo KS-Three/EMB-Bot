@@ -240,3 +240,100 @@ large stayed at 10.0 / 0.56.
   stem's level cut sits ~0.7 W below the top. Not built.
 - **The defaults moved on.** #1515 changed defaults after this tree (redraw
   0.75, piece lift). The numbers above are this tree's; re-run before a flip.
+
+## 5. The joints read but not built: `lettering_columns_apex_pro_joints` (built OFF)
+
+The second flag is `cfg.extra["lettering_columns_apex_pro_joints"]`. Its code
+is `outline_cut._apex_pro_joint_cuts`, `_apex_pro_cap_column`, and the notes at
+`_APEX_PRO_JOINTS`. It builds rows 6-8 of section 1. In each joint the
+right-hand stroke owns it and the other stroke ends on a LEVEL line.
+
+**Depths.** The stopping depths are his, read with each letter registered on
+its own thread:
+- **N, top-left (`n_top`).**
+  - The stem's level crosses stop `APEX_PRO_NECK_W` = 0.95 W below the top.
+  - The diagonal's piece takes the stem's top, with upright crosses fanning
+    into the diagonal.
+  - **Correction to row 6:** it said ~0.7 W. That was read without the
+    letter's own registration shift.
+- **N, foot (`n_foot`).**
+  - The diagonal ends on a level line `APEX_PRO_FOOT_W` = 0.70 W above the
+    baseline.
+  - The stem's edge runs down to that line.
+  - The stem's level crosses take the foot below it.
+- **A flat-topped A (`a_cap`).**
+  - It applies to a counter that comes to a point on top, under a straight top
+    run of 1.5 W or more.
+  - A band `APEX_PRO_CAP_W` = 0.65 W deep is laid across the top, crossed
+    upright, over the legs.
+  - **The counter must be pointed.** ProSeal's O (flat-topped counter) took
+    the band in the first run. The test now requires the counter's width
+    0.25 W under its top to be under 0.6 W.
+
+**What it does not cover:**
+- **ProSeal's A** is not a flat top: its run is 1.1 W. Its level cap is what
+  apex_cut ON already sews: 7.2 / 0.23 against OFF 17.4 / 0.26 on the
+  863adf49 tree.
+- **Strokes under `APEX_PRO_MIN_W_MM`** (2 mm) are left alone.
+
+**Instrument** (angle error deg / split-line offset mm). Tree: 2051f77f-era
+main plus both flags. Columns:
+- **NEW:** apex_pro + apex_pro_joints.
+- **+walk+fold:** NEW plus `lettering_columns_connectors_edge_walk` and
+  `lettering_columns_corner_fold_apex_side`, both ruled ON by Kent.
+
+| design | joint | IoU | OFF | NEW | NEW +walk+fold | NEW vs OFF |
+|---|---|---|---|---|---|---|
+| becker hat large | N top | 0.59 | 33.8 / 1.25 | **11.4 / 0.80** | 6.5 / 0.27 | closer on both |
+| becker hat large | N foot | 0.59 | 13.4 / - | **7.1 / -** | 2.7 / - | closer (angle) |
+| becker hat large | A top | 0.63 | 50.3 / 5.00 | **20.0 / 0.71** | 18.9 / 0.71 | closer on both |
+| becker LC large | N top | 0.60 | 39.5 / 5.42 | **9.8 / 0.73** | 10.0 / 0.73 | closer on both |
+| becker LC large | N foot | 0.60 | 13.7 / - | **7.6 / -** | 6.1 / - | closer (angle) |
+| becker LC large | A top | 0.65 | 49.5 / 4.70 | **34.4 / 1.59** | 26.5 / 1.15 | closer on both |
+| becker hat small | N top | 0.58 | 36.8 / 4.13 | **9.5 / 0.44** | 8.3 / 0.26 | closer on both |
+| becker hat small | N foot | 0.58 | 14.7 / - | **9.1 / -** | 3.2 / - | closer (angle) |
+| becker hat small | A top | 0.51 | 48.1 / 3.75 | **17.0 / 0.27** | 16.0 / 0.27 | closer on both |
+| becker chest small | N top | 0.59 | 38.0 / 3.30 | **10.2 / 0.54** | 7.1 / 0.15 | closer on both |
+| becker chest small | N foot | 0.59 | 14.6 / - | **9.2 / -** | 3.3 / - | closer (angle) |
+| becker chest small | A top | 0.51 | 47.2 / 3.75 | **17.4 / 0.29** | 16.4 / 0.29 | closer on both |
+| becker beanie | N top | 0.41 | 30.8 / 0.95 | **11.9 / 0.50** | 13.8 / 0.67 | closer on both |
+| becker beanie | N foot | 0.41 | 15.2 / - | **9.8 / -** | 5.1 / - | closer (angle) |
+| becker beanie | A top | 0.33 | 37.9 / 1.35 | **22.8 / 0.49** | 21.8 / 0.49 | closer on both |
+| proseal hat | A apex, small M | 0.33-0.47 | | = OFF (md5) | | not touched |
+| proseal beanie | A apex, small M | 0.16-0.26 | | = OFF (md5) | | not touched |
+
+**Notes on the table:**
+- **The N foot has no split-line number.** Neither side has a seam in that
+  window: his diagonal turns level into the stem, and so do ours.
+- **The M's V rows** (apex_pro, unchanged by this flag) on this tree:
+  - hat large 16.4 -> 9.5 deg;
+  - LC large 50.1 -> 9.5;
+  - hat small 13.3 -> 10.1;
+  - chest small 12.2 -> 11.4;
+  - beanie 14.2 -> 11.3.
+- **+walk+fold** is closer than NEW alone everywhere except:
+  - beanie N top, 13.8 vs 11.9 (still closer than OFF);
+  - chest small M's V angle, 12.4 vs NEW 11.4 and OFF 12.2. Its seam is
+    better.
+
+**By eye, against the pro (sheets below):**
+- **N top.** The stem stops level and the diagonal's piece fans from upright
+  over the stem's top into the diagonal, as his does.
+- **A top.** The upright band over level legs is his. His band also fans at
+  its right end into the slanted leg; ours stays upright to the edge.
+- **N foot, NEW alone.**
+  - The foot is level and the stem's, as his.
+  - The diagonal's crosses do not turn level the way his do; they meet the line.
+  - A travel stitch runs on top along the diagonal's lower edge into the foot.
+    OFF has the same kind of stitch at chest small.
+- **N foot, +walk+fold.** That stitch is gone and the foot reads clean. Ship
+  the foot with edge-walk on.
+
+**Every case is closer than OFF at every Becker size**, so nothing is gated
+off by size.
+
+**Sheets** (primary checkout, gitignored, under
+`digitizer/eye_pairs_out/apex-like-pro-1114/`):
+- `sheets_joints/`: art | OFF | NEW | pro, every stitch outlined.
+- `sheets_joints_walk_fold/`: OFF | NEW | NEW+walk+fold for hat large and
+  chest small.
