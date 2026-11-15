@@ -494,6 +494,132 @@ def _compound_details(regions, areas, boxes, small, keep, layer_lab, area_px: fl
     return [i for i in small if i not in taken], kept
 
 
+#: `cfg.stroke_bridge_keep`: a bridge touches its hosts at its ENDS, at most
+#: this share of its rim; a halo between two close shapes of one colour lies
+#: ALONG them (both sides of its rim). Arabic's stems: 0.06-0.2.
+BRIDGE_HOST_CONTACT_MAX = 0.35
+#: ... and lies on ground for at least this share of its rim (the page, or a
+#: colour not of the hosts' ink): a stroke drawn on the page, not a seam
+#: between facets.
+BRIDGE_GROUND_MIN = 0.5
+
+
+def _stroke_bridges(regions, areas, boxes, small, keep, layer_lab, area_px: float,
+                    loop_px: float) -> tuple[list[int], list[int]]:
+    """`cfg.stroke_bridge_keep` (built OFF 2026-11-14): a thin stroke of a
+    shape's own ink, drawn on the page between two full-size shapes of that
+    ink, that the quantiser broke into crumbs.
+
+    Kent's arabic calligraphy at 80 mm (2 pins, "missing line"): each stem
+    between two leaves arrives at stage 3 as crumbs split between the leaves'
+    gold (layer 0) and their darker edge gold (layer 1, 11.9 dE76 apart; the
+    page is 65 from both), 6-49 px each and about 120 px together at
+    11.5 px/mm -- under `min_detail_mm`'s 297 px, so the chain rescue does
+    not keep them, and too near the leaves' colour for the contrast rescue.
+    Each is absorbed into a leaf as a spur the satin never sews.
+
+    A chain of touching sub-floor regions (any layers) is a bridge when
+      * its rim touches two or more full-size regions of ONE layer (the
+        hosts), together at most `BRIDGE_HOST_CONTACT_MAX` of the rim;
+      * at least `BRIDGE_GROUND_MIN` of its rim is ground: no region (the
+        page), or a region whose colour's nearest palette colour is not the
+        hosts';
+      * every member's colour has the hosts' colour as its nearest palette
+        colour (the hosts' ink, not a blend toward the ground);
+      * together they clear the run tier's floors (`area_px`, `loop_px`).
+    It is kept as ONE region on the member layer holding most of its pixels,
+    so stage 4 sews it as the run tier's stroke and stage 5 keeps it apart
+    from the hosts. -> (small left, kept)."""
+    if len(small) < 2 or layer_lab is None:
+        return small, []
+    lab = np.asarray(layer_lab, np.float64)
+    nl = len(lab)
+    d = np.linalg.norm(lab[:, None, :] - lab[None, :, :], axis=2)
+    np.fill_diagonal(d, np.inf)
+    nearest = d.argmin(axis=1) if nl > 1 else np.zeros(nl, int)
+
+    def family(layer: int, host: int) -> bool:
+        return layer == host or int(nearest[layer]) == host
+
+    h, w = regions[0].frame_shape
+    owner = np.full((h, w), -1, np.int32)
+    for i, r in enumerate(regions):
+        if boxes[i] is not None:
+            owner[r.frame_slice()][r.crop] = i
+    sset = set(small)
+    keepset = set(keep)
+    parent = {i: i for i in small}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+    for i in small:
+        if boxes[i] is None:
+            continue
+        y0, x0, y1, x1 = boxes[i]
+        wy0, wx0, wy1, wx1 = max(0, y0 - 1), max(0, x0 - 1), min(h, y1 + 1), min(w, x1 + 1)
+        sub = regions[i].window(wy0, wx0, wy1, wx1)
+        ring = _dilate(sub) & ~sub
+        for j in set(owner[wy0:wy1, wx0:wx1][ring].tolist()):
+            if j in sset and j != i:
+                parent[find(i)] = find(j)
+    groups: dict[int, list[int]] = {}
+    for i in small:
+        if boxes[i] is not None:
+            groups.setdefault(find(i), []).append(i)
+    taken: set[int] = set()
+    kept: list[int] = []
+    for members in groups.values():
+        if len(members) < 2:
+            continue
+        total = sum(areas[m] for m in members)
+        y0 = min(boxes[m][0] for m in members); x0 = min(boxes[m][1] for m in members)
+        y1 = max(boxes[m][2] for m in members); x1 = max(boxes[m][3] for m in members)
+        if total < area_px or 2 * max(y1 - y0, x1 - x0) < loop_px:
+            continue
+        wy0, wx0, wy1, wx1 = max(0, y0 - 1), max(0, x0 - 1), min(h, y1 + 1), min(w, x1 + 1)
+        union = np.zeros((wy1 - wy0, wx1 - wx0), bool)
+        for m in members:
+            union |= regions[m].window(wy0, wx0, wy1, wx1)
+        ring = _dilate(union) & ~union
+        around = owner[wy0:wy1, wx0:wx1][ring]
+        n = around.size
+        if not n:
+            continue
+        # the hosts: full-size regions on the rim, by layer
+        by_layer: dict[int, set[int]] = {}
+        for j in set(around.tolist()):
+            if j >= 0 and j in keepset:
+                by_layer.setdefault(regions[j].layer, set()).add(j)
+        host_layer = None
+        for L, ids in sorted(by_layer.items(), key=lambda kv: -len(kv[1])):
+            if len(ids) >= 2 and all(family(regions[m].layer, L) for m in members):
+                host_layer = L
+                break
+        if host_layer is None:
+            continue
+        hosts = by_layer[host_layer]
+        contact = int(np.isin(around, list(hosts)).sum())
+        ground = int(sum(1 for j in around.tolist()
+                         if j < 0 or (j not in sset and not family(regions[j].layer, host_layer))))
+        if contact > BRIDGE_HOST_CONTACT_MAX * n or ground < BRIDGE_GROUND_MIN * n:
+            continue
+        counts: dict[int, int] = {}
+        for m in members:
+            counts[regions[m].layer] = counts.get(regions[m].layer, 0) + areas[m]
+        layer = max(counts, key=lambda L: (counts[L], -L))
+        best = max((m for m in members if regions[m].layer == layer), key=lambda m: areas[m])
+        for m in members:
+            if m != best:
+                regions[best].union_from(regions[m])
+        regions[best].layer = layer
+        kept.append(best)
+        taken.update(members)
+    return [i for i in small if i not in taken], kept
+
+
 def resolve_small_regions(
     regions: list[RegionMask], cfg: PipelineConfig, px_per_mm: float,
     enclosed_mask: np.ndarray | None = None, *, chain_rescue: bool = True,
@@ -659,6 +785,14 @@ def resolve_small_regions(
             regions, areas, boxes, small, keep, layer_lab,
             machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2, machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm,
             cfg.merge_delta_e)
+    # `cfg.stroke_bridge_keep` (built OFF 2026-11-14): a thin stroke of the
+    # hosts' own ink, broken into crumbs, that bridges two of them on the
+    # page is kept whole (`_stroke_bridges`). Off: as before.
+    if getattr(cfg, "stroke_bridge_keep", False) and layer_lab is not None and cfg.small_shape_rescue:
+        small, bridges = _stroke_bridges(
+            regions, areas, boxes, small, keep, layer_lab,
+            machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2, machine.RUN_MIN_LOOP_MM * px_per_mm)
+        compound = list(compound) + bridges
     absorbed = dropped = 0
     absorbed_reportable = dropped_reportable = 0
     rescued: list[int] = list(compound)
