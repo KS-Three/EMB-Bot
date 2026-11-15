@@ -163,6 +163,61 @@ def test_a_letters_notch_is_the_lettering_lanes():
     assert _md5(on) == _md5(off)
 
 
+def test_a_toothed_ring_splits_into_its_body_and_one_piece_per_tooth():
+    gear = _gear()                                   # 12 teeth, root 3.0, tips 3.8, hole 2.0
+    body, teeth = oi.tooth_split(_r(gear, "G"))
+    assert len(teeth) == 12
+    assert body.shape_id == "G" and len(body.polygon.interiors) == 1
+    assert body.polygon.buffer(1e-6).contains(Point(0, 0).buffer(2.95).difference(Point(0, 0).buffer(2.05)))
+    for t in teeth:
+        assert t.shape_id.startswith("G-t") and t.meta["tier"] == "fill"
+        assert t.meta[oi.TOOTH_OF_KEY] == "G"
+        # rows square to the tooth's own (radial) axis: tangential
+        c = t.polygon.centroid
+        radial = math.degrees(math.atan2(c.y, c.x)) % 180.0
+        d = abs((t.meta["fill_angle_deg"] - radial) % 180.0 - 90.0)
+        assert d < 12.0
+        # the tooth reaches under the body, down its own axis
+        assert t.polygon.intersection(body.polygon).area > 0.0
+    # the teeth come first, then the body, in turn round the shape
+    assert [t.meta["sew_order"] for t in teeth] == list(range(12)) and body.meta["sew_order"] == 12
+
+
+def test_a_notch_or_a_mouth_is_not_a_row_of_teeth():
+    assert oi.tooth_split(_r(_notched_disc(), "D")) is None
+    assert oi.tooth_split(_r(box(0, 0, 10, 4), "B")) is None
+
+
+def test_rebuild_splits_toothed_shapes_and_fills_the_rest():
+    regs = [_r(_gear(), "G"), _r(_notched_disc(), "D"), _r(box(20, 0, 22, 2), "X")]
+    out, bodies = oi.rebuild(regs, {"G", "D"}, teeth=True)
+    ids = [r.shape_id for r in out]
+    assert set(bodies) == {"G"}
+    assert ids.count("G") == 1 and sum(i.startswith("G-t") for i in ids) == 12
+    assert next(r for r in out if r.shape_id == "D").meta["tier"] == "fill"
+    assert next(r for r in out if r.shape_id == "X") is regs[2]
+    out2, bodies2 = oi.rebuild(regs, {"G", "D"}, teeth=False)
+    assert bodies2 == {} and all(r.meta.get("tier") == "fill" for r in out2 if r.shape_id in ("G", "D"))
+
+
+def test_a_jump_between_teeth_is_sewn_along_the_root_and_a_trim_is_left():
+    gear = _gear()
+    body, teeth = oi.tooth_split(_r(gear, "G"))
+    a = teeth[0].polygon.centroid
+    b = teeth[1].polygon.centroid
+    r0 = StitchRun(points=[(a.x, a.y)], kind=FILL, shape_id="G-t0")
+    r1 = StitchRun(points=[(b.x, b.y), (b.x + 0.1, b.y)], kind=FILL, shape_id="G-t1", jump=True)
+    r2 = StitchRun(points=[(0.0, 2.5)], kind=FILL, shape_id="G-t2", jump=True, trim=True)
+    other = StitchRun(points=[(9.0, 9.0)], kind=FILL, shape_id="Z", jump=True)
+    plan = StitchPlan(blocks=[StitchBlock(0, "1000", (0, 0, 0), [r0, r1, r2, other])], palette=[])
+    assert oi.bury_tooth_moves(plan, {"G": body.polygon}, 0.5) == 1
+    assert not r1.jump and len(r1.points) > 2
+    # the buried path runs inside the body, just in from its outer edge
+    for p in r1.points[:-2]:
+        assert body.polygon.buffer(0.05).covers(Point(p))
+    assert r2.jump and r2.trim and other.jump        # a trim and another shape's jump stay
+
+
 def test_as_fill_moves_only_the_named_shapes_on_copies():
     a, b = _r(box(0, 0, 1, 1), "A"), _r(box(2, 0, 3, 1), "B")
     out = oi.as_fill([a, b], {"A"})
