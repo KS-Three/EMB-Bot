@@ -359,3 +359,76 @@ fix.
 
 *(measured 2026-11-14 — `tests/test_photo_enclosed_rim.py`; corpus and width
 runs on a Windows desktop, both lanes)*
+
+## Addendum 2026-11-14 (3): the three worse images, fixed behind the flag
+
+**Verified first.** On the start point (PR #1527's tree), with the flag ON,
+the rim moved 2,118 px on kanji_brush (no cutout; 336 of them 6 dE or more
+from the ground), 72,621 on vintage_engraved_badge (cutout; 6,486 over 25
+dE), and 871 on watercolor. That is the leak the second addendum names, and
+it is half the story. Moving only the ground-coloured pixels (the candidate)
+fixed kanji_brush but left vintage_engraved_badge 21% over OFF in stitches,
+still speckled, and watercolor's white specks in place: of vintage's rim,
+63,843 px sat beside enclosed components under the floor, specks of paper
+the rim grew into sewn ones.
+
+**The fix, two rules in `stage2_photo_segment.enclosed_rim`:**
+
+1. Of an accepted piece only the pixels within `merge_delta_e` of the ground
+   it touches move; the rest stay in the main population.
+2. A piece no smaller than all the enclosed components it touches is not
+   their rim and stays. Beside a speck the piece is the bigger thing
+   (vintage: 59,587 px of such pieces, kanji_brush all 2,024, watercolor
+   3,914 of 4,127); none of MFab's pieces (its keyline round the small line
+   at 30 to 37 mm is enclosed pieces under the floor, each bigger than its
+   rim) nor summit_badge's (68 px) are.
+
+No constant was added. A first try that kept only grounds of at least the
+floor (`max_px`) cost MFab a rider at 30 mm (11 to 10) and undid
+summit_badge's gain, so it was dropped.
+
+### The five images, 80 mm, left_chest, 6 colours (ON before ; ON after ; OFF)
+
+| image, lane | stitches | blocks, grade |
+|---|---|---|
+| kanji_brush, no cutout | 13,072 ; 12,765 ; 12,803 | 5 blocks (Smoky added), B ; 4, B ; 4, B |
+| vintage_engraved_badge, cutout | 27,929 ; 24,199 ; 22,508 | C with `ARTWORK_UNCOVERED` ; C without ; C |
+| vintage_engraved_badge, no cutout | 33,402 ; 32,714 ; 32,465 | C ; C ; C |
+| watercolor, cutout | 17,863 ; 17,580 ; 17,786 | B with `ARTWORK_UNCOVERED` ; B without ; B |
+| watercolor, no cutout | 19,197 ; 19,020 ; 19,244 | 8 blocks (Tan twice), C ; 7, **D** ; 7, B |
+| summit_badge, both | 26,996 ; 27,025 ; 28,449 | F 34 ; F 34 ; F 4 (`THREAD_MATCH_POOR`) |
+| logo_mfab_hat, both | 13,710 / 13,756 ; 13,750 / 13,779 ; 13,611 / 13,664 | B ; B ; B |
+
+Renders looked at: kanji_brush loses the dark-grey block inside the strokes
+and matches OFF; vintage loses most of the silver speckle (a little more
+paper shows in the branches than OFF); watercolor (cutout) loses the white
+specks on the bar and gets the oval's inner ring back; summit_badge keeps its
+even outer band.
+
+**Still worse: watercolor, no cutout, D against OFF's B.** Its blocks now
+match OFF, but two findings cross their line by a hair: 79 trims against 77
+(4.15 per 1,000 stitches, limit 4.1), and a stack OFF already has (peak 9.97
+units at the oval's left edge, under the 25 mm2 a patch must reach) grows to
+exactly 25 mm2 (peak 10.66). The rim there is the oval's own edge, taken as
+it is on MFab; not changed.
+
+### MFab hat, flag ON after the fix (fields / riders, blocks; cutout ; no cutout)
+
+| width mm | ON after |
+|---|---|
+| 30 | 2 / 11, Black White ; same |
+| 33, 35, 36, 36.7, 37 | 1 / 13, Black White (both lanes, every width) |
+| 45 | 1 / 13, Black White Black (both) |
+| 60 | 1 / 15 ; 1 / 14, Black White Black |
+| 80 | 1 / 16 ; 1 / 14, Black White Black |
+| 100.8 | 1 / 16 ; 1 / 14, Black White Black |
+| 113.5 | 1 / 14 (both), md5-identical to before |
+
+Flag OFF: MFab at 30, 36.7, 45, 60, 80 and 113.5 mm, both lanes, is
+md5-identical to the start point on the final tree, and the five images'
+OFF rows were on the rule-1 tree (the change is inside `enclosed_rim`,
+which runs only with the flag ON). The 77-image set was
+not re-run (the machine was short of memory).
+
+*(measured 2026-11-14 — `tests/test_photo_enclosed_rim.py`; corpus and width
+runs on a Windows desktop, both lanes)*

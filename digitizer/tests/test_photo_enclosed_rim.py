@@ -71,6 +71,57 @@ def test_rim_reads_a_piece_by_its_median_so_a_few_ink_pixels_do_not_hold_it():
     assert rim is not None and rim[10, 10:30].all()
 
 
+def test_rim_moves_only_its_ground_coloured_pixels():
+    # the median says the piece is the rim, but its ink pixels are not the
+    # ground: moved, the enclosed population's quantiser gave them threads of
+    # their own (kanji_brush 1 spool -> 3, vintage_engraved_badge a new
+    # 5,628 px spool, 2026-11-14). They stay with the ink.
+    labels, valid, enclosed, lab = _keyline()
+    labels[9, 12:15] = 2                   # black pixels joined to the sliver
+    rim = s2.enclosed_rim(labels, valid, enclosed, lab, 6.0)
+    assert rim is not None and rim[10, 10:30].all()
+    assert not rim[9, 12:15].any()
+
+
+def test_rim_holds_each_pixel_to_the_tolerance():
+    # a shaded piece: every pixel within 6 of the ground but the far end's
+    # three, at about dE 9; the piece's median still passes
+    labels, valid, enclosed, lab = _keyline()
+    lab[10, 27:30] = lab[15, 15] - np.array([9.0, 0.0, 0.0])
+    rim = s2.enclosed_rim(labels, valid, enclosed, lab, 6.0)
+    assert rim is not None and rim[10, 10:27].all()
+    assert not rim[10, 27:30].any()
+
+
+def _speck(piece_cols):
+    """The keyline plus a 2 x 2 px enclosed speck out in the black, with a
+    white piece of label 2 beside it, `piece_cols` columns wide."""
+    labels, valid, enclosed, lab = _keyline()
+    lab[33:35, 33:35 + piece_cols] = lab[15, 15]
+    enclosed[33:35, 33:35] = True
+    labels[33:35, 35:35 + piece_cols] = 2
+    return labels, ~enclosed, enclosed, lab
+
+
+def test_rim_leaves_a_piece_no_smaller_than_its_ground():
+    # the 4 px piece beside the 4 px speck is not the speck's missed edge: the
+    # speck is a gap in it, and moved it grew the speck into a sewn one
+    # (vintage_engraved_badge's silver speckle, watercolor's white specks,
+    # kanji_brush's extra spool, 2026-11-14). The core's sliver still moves.
+    labels, valid, enclosed, lab = _speck(2)
+    rim = s2.enclosed_rim(labels, valid, enclosed, lab, 6.0)
+    assert rim is not None and rim[10, 10:30].all()
+    assert not rim[33:35, 35:37].any()
+
+
+def test_rim_still_takes_a_small_grounds_own_edge():
+    # a 2 px sliver beside the 4 px speck is smaller than it: MFab's keyline
+    # round the small line at 30-37 mm is enclosed pieces under the floor
+    labels, valid, enclosed, lab = _speck(1)
+    rim = s2.enclosed_rim(labels, valid, enclosed, lab, 6.0, max_px=21)
+    assert rim is not None and rim[33:35, 35].all()
+
+
 def test_rim_leaves_a_piece_big_enough_to_stand():
     # the 20 px sliver is over a 10 px floor: the floor would keep it, so it stays
     labels, valid, enclosed, lab = _keyline()
