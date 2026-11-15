@@ -75,9 +75,12 @@ about 3 s more to import CUDA torch, so per-job wall is 6.4-6.7 s CPU against
 
 **Practical notes for the next session on that machine.**
 
-- Worktrees have no isolated venvs. Point them at the main checkout's with a
-  directory junction, and remove the junction with a NON-recursive directory
-  delete, or the delete follows it into the real venv.
+- Worktrees have no isolated venvs. Do NOT junction them to the main
+  checkout's: on Windows every file open through a junction leaks kernel
+  memory until a restart (DOCTRINE gotchas, 2026-11-14; this session's
+  junctions cost 25.8 GB of 32 GB and a day of stalled runs). Run the main
+  checkout's interpreter and set `stage1_photo_prep.REMBG_VENV_PYTHON` as
+  `tools/lettering_board.py rembg_from_primary()` does.
 - Bring a pushed branch up to date by merging `main`, never by rebasing: the
   force-push hook blocks the push a rebase needs.
 

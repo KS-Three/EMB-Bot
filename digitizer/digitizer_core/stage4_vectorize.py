@@ -936,6 +936,44 @@ def _sample_lab(lab: np.ndarray) -> np.ndarray:
     return lab[idx]
 
 
+def art_thread_errors(p: Prep, chart):
+    """-> `errors(region, threads) -> {thread: dE00} | None`: the median of the
+    per-pixel CIEDE2000 from a region's own artwork pixels to each chart index
+    in `threads`, read as `revalidate_threads` reads them under
+    `resnap_mask_matches_grader` -- the footprint eroded one pixel, background
+    excluded (preflight's `_region_color_errors` operations), at most
+    `THREAD_REVALIDATE_SAMPLE_PX` samples. None when no pixel survives. The
+    frame goes to Lab once, on the first call. Built 2026-11-14 for
+    `lettering_thread.word_thread`'s guard."""
+    from skimage.color import deltaE_ciede2000
+    x0, y0, x1, y1 = p.art_bbox
+    cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
+    shape = p.rgb.shape[:2]
+    cache: dict = {}
+
+    def errors(region: Region, threads) -> dict[int, float] | None:
+        win = _region_footprint_window(region, shape, cx, cy, p.px_per_mm, pad=1)
+        if win is None:
+            return None
+        wy0, wx0, fp = win
+        wy1, wx1 = wy0 + fp.shape[0], wx0 + fp.shape[1]
+        not_bg = ~p.bg_mask[wy0:wy1, wx0:wx1]
+        eroded = cv2.erode(fp.astype(np.uint8), np.ones((3, 3), np.uint8))
+        sel = (eroded > 0) & not_bg
+        if not sel.any():
+            sel = fp & not_bg   # hairline: erosion ate it
+        if not sel.any():
+            return None
+        if "lab" not in cache:
+            cache["lab"] = rgb_to_lab(p.rgb.reshape(-1, 3)).reshape(*shape, 3)
+        samples = _sample_lab(cache["lab"][wy0:wy1, wx0:wx1][sel])
+        ts = [int(t) for t in threads]
+        per = np.median(deltaE_ciede2000(samples[:, None, :], chart.lab[ts][None, :, :]), axis=0)
+        return {t: float(d) for t, d in zip(ts, per)}
+
+    return errors
+
+
 def revalidate_threads(regions: list[Region], p: Prep,
                        cfg: PipelineConfig, *,
                        palette_indices: list[int] | None = None,

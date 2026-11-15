@@ -62,7 +62,7 @@ from .stage3_segment import (
     merge_duplicate_cone_layers,
     resolve_small_regions,
 )
-from .stage4_vectorize import (enforce_color_cap, garment_sews_enclosed,
+from .stage4_vectorize import (art_thread_errors, enforce_color_cap, garment_sews_enclosed,
                                rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
@@ -1011,6 +1011,17 @@ def build_generation(
     # tendrils everywhere. Off: `masks` untouched, byte for byte.
     if cfg.sliver_prune and classification.class_ not in PHOTO_CLASSES:
         masks, _pruned = sliver_prune.prune(masks, q.thread_indices, p, chart_for(cfg))
+    # `cfg.speck_prune` (built OFF 2026-11-14, Kent's low_poly "Random Black
+    # Spot" pins): a contrasting sub-floor mask stage 3 kept that is narrower
+    # than two source pixels and than the thread, wedged in the figure, goes
+    # to the mask it lies in (`sliver_prune.prune_specks`). Logos only, as
+    # above. Off: `masks` untouched, byte for byte.
+    if cfg.speck_prune and classification.class_ not in PHOTO_CLASSES:
+        from .machine import thread_profile
+        masks, _specks = sliver_prune.prune_specks(
+            masks, q.thread_indices, p, chart_for(cfg),
+            floor_px=(cfg.min_detail_mm * p.px_per_mm) ** 2,
+            thread_px=thread_profile(cfg.thread_wt).width_mm * p.px_per_mm)
     if dbg:
         debugviz.stage3(dbg, p.rgb, masks)
 
@@ -1126,10 +1137,10 @@ def build_generation(
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
                          **({"nest_guard_rotated": True} if cfg.text_cluster_nest_guard_rotated else {}),
-                         # a row of solid blobs is no word (2026-11-13, built
-                         # OFF): absent, the call as it was
+                         # a row of solid blobs is no word (2026-11-13, ON
+                         # since 2026-11-14, Kent's flip): False, the call as it was
                          **({"solid_guard": True}
-                            if cfg.extra.get("text_cluster_solid_guard") else {}),
+                            if cfg.text_cluster_solid_guard else {}),
                          # a letter turned on a ring joins its line (2026-11-07,
                          # ON since 2026-11-08, Kent's flip)
                          **({"nest_door_aspect": True}
@@ -1175,9 +1186,10 @@ def build_generation(
                            # False, the call as it was word for word
                            **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
                            # the height classes of a lowercase line re-set on one
-                           # baseline (2026-11-13, built OFF): absent, the call as it was
+                           # baseline (2026-11-13, ON since 2026-11-14, Kent's flip):
+                           # False, the call as it was
                            **({"one_baseline": True}
-                              if cfg.extra.get("small_text_reset_one_baseline") else {}),
+                              if cfg.small_text_reset_one_baseline else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
@@ -1224,7 +1236,7 @@ def build_generation(
                                 grid_px_mm=1.0 / p.px_per_mm, k=cfg.letterform_priors_k,
                                 words=cfg.lettering_words)
 
-    # Outline redraw (2026-11-13, `cfg.outline_redraw_k`, DEFAULT None): every
+    # Outline redraw (2026-11-13, `cfg.outline_redraw_k`, 0.75 since 11-14): every
     # shape's rings refit to lines and arcs within max(k source pixels, one
     # grid pixel) of the trace -- the same place and the same reason as the
     # letterform pass above, for the shapes that are not letters. Imported
@@ -1494,7 +1506,10 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
 
     # Lettering's thread (`lettering_thread`, both OFF: nothing moves), before
     # the cap below so the cap keeps the last word on the cones.
-    apply_lettering_thread(regions, chart_for(cfg), cfg, shape_overrides)
+    # The word-thread rule's guard reads each candidate's own artwork (2026-11-14).
+    apply_lettering_thread(regions, chart_for(cfg), cfg, shape_overrides,
+                           art_errors=(art_thread_errors(p, chart_for(cfg))
+                                       if cfg.group_consistent_thread and p is not None else None))
 
     # The colour cap's second pass (`cfg.color_cap_sewn`, 2026-10-29): the
     # stage-4 pass ranked the REGIONS before the review edits, the sew-white

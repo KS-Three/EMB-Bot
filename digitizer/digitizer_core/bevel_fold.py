@@ -27,19 +27,35 @@ and folds what the pro folds, by ROLE
    along, the nearest in colour is the parent (a bevel is a tone of what it
    shades). Repeated, so a band stacked on a band folds once the first has.
 
+2026-11-14, the pro's Golden Tee read stitch by stitch
+(`docs/flatten-shading-pro-read-2026-11-14.md`; he sews 3 threads: white,
+ONE gold, black), between passes 2 and 3 (`_pro_read_rules`):
+
+* **Bevel ring.** The bands between a page-ink face and its darkest-ink
+  outline (GT's gold extrusion, cream highlight, red keyline) are ONE band in
+  the ring's ink that sews a body elsewhere (the gold), kept as its own band.
+* **Counter shade.** Light shading in a letter's counter goes to the page.
+* **Substituted shading.** A band whose art ink the colour cap gave another
+  spool (GOLF's teal extrusion, sewn black) goes to the page when it faces it.
+
 Guards (when in doubt, do nothing):
 
 * A band covering `ALL_ROUND` of its parent's outer outline or more wraps it:
   a keyline or an art outline, which the pro BORDERS (Becker's and MFab's
   keylines). Never folded.
 * A band inside its parent (in a hole of it) folds only when it lies within
-  a band's width of the parent's OUTER edge (Drone's ring arcs); a line drawn
-  across the inside (Drone's crosshair) stays.
+  a band's width of the parent's OUTER edge (Drone's ring arcs) or, since
+  2026-11-14, of a COUNTER's wall (a hole holding only the page's colours);
+  a line drawn across the inside (Drone's crosshair) stays.
+* A band in the design's darkest ink, in its own art ink, is drawn (the
+  tee's shadow, the GT outline): never folded (2026-11-14).
 * A body near the page colour is never a parent: a white shape on a white
   page is SEEN by its edge, so that edge stays (Golden Tee's ball arc and its
   GT faces keep their outlines and bevels, as the pro's do). Nor is a band
-  of the page's colour ever folded: it is the page showing through (To a T's
-  white gaps between its brush strokes).
+  in the page's OWN ink ever folded: it is the page showing through (To a
+  T's white gaps between its brush strokes). A light SHADE of the page on a
+  coloured body folds (GOLF's cream highlights); on the darkest ink it is the
+  page's edge (ProSeal's fringe) and stays.
 * Counters, enclosed background and dark-ink lines are never folded. A
   rescued small detail is: one that runs along a body is bevel noise, and
   a free-standing one (the dot of an i) has no body to fold into.
@@ -102,10 +118,36 @@ SHADOW_PAGE_FRAC = 0.4
 PAGE_DE00 = 20.0
 # Passes of the band fold (a band stacked on a band folds on the next one).
 MAX_PASSES = 4
-# Adjacency is read at the trace's own precision: 1.5 source pixels.
-TOUCH_SRC_PX = 1.5
+# A light shade in a letter's counter (the drop shadow seen through it) is a
+# tone OF the page, not the page's own ink: more than this from the page in
+# CIEDE2000 (the same-colour merge, `merge_delta_e`'s 6.0 CIE76, rounded down
+# so the art's own page colour never counts). Golden Tee's GOLF counters
+# hold Fieldstone at 14.3 from the white page.
+PAGE_OWN_DE00 = 3.0
+# A counter shade touches the page along at most this share of its outline
+# (it is enclosed by the letter and its shading; the shadow rule above is
+# for shades lying ON the page). GOLF's O counter shade: 22%. Light grey
+# lettering on the page touches it all round.
+COUNTER_PAGE_FRAC = 0.3
+# ... and lies behind the letter's shading: at least this share of its
+# outline is against bands (the extrusion's walls), the page's own ink (a
+# white counter) or the page, not against a body. A light window drawn in a
+# dark shape touches the body.
+COUNTER_BAND_FRAC = 0.5
+# "The design's darkest ink": within this many L* of the darkest thread any
+# region sews (two near-blacks the palette kept apart are one outline ink).
+DARKEST_L_TOL = 5.0
+# ... and only if it IS dark: at most this L* (black and navy, not a gold
+# that happens to be a gold-and-cream design's darkest thread).
+DARK_L_MAX = 35.0
 
 PROTECT_KEYS = ("counter", "enclosed_background", "dark_ink", "bean_letter_spines")
+# How the 2026-11-14 rules (Golden Tee read against the pro's file,
+# `docs/flatten-shading-pro-read-2026-11-14.md`) mark what they decided, so
+# the band fold leaves it alone.
+RING_KEY = "bevel_ring"
+# Adjacency is read at the trace's own precision: 1.5 source pixels.
+TOUCH_SRC_PX = 1.5
 
 
 def _de00(lab_a, lab_b) -> float:
@@ -207,8 +249,11 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
         return page_lab is not None and _de00(lab(r), page_lab) <= PAGE_DE00
 
     def is_page(r) -> bool:
-        """The band is the art's own page showing through."""
-        return own_page is not None and near_page(r)
+        """The band is the art's own page showing through: its own ink
+        (2026-11-14: was any colour within PAGE_DE00 of it, which kept
+        GOLF's cream highlight slivers, 14.3 from the page, as a thread of
+        their own; To a T's white gaps sit 0.4 from it)."""
+        return own_page is not None and _de00(lab(r), page_lab) <= PAGE_OWN_DE00
 
     # ---- 1. shadows -------------------------------------------------------
     # A drop shadow is cast on the art's OWN page: on a cut-out (no page of
@@ -295,6 +340,17 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
                 changed.add(i)
         report["unions"] += _union_touching(regions, changed, touch, eps)
 
+    # ---- 2026-11-14: the pro's Golden Tee, read stitch by stitch -----------
+    # (`docs/flatten-shading-pro-read-2026-11-14.md`). He sews 3 threads:
+    # white faces, ONE gold, black. Four things the passes above left:
+    _pro_read_rules(regions, graph_factory=lambda: _Graph(regions, touch), lab=lab,
+                    near_page=near_page, page_lab=page_lab, own_page=own_page,
+                    chart=chart, layer_threads=layer_threads, eps=eps, touch=touch,
+                    report=report)
+    darkest = min((float(lab(r)[0]) for r in regions), default=None)
+    # the outline ink: the darkest thread (and any within DARKEST_L_TOL), if dark at all
+    dark_cut = None if darkest is None else min(darkest + DARKEST_L_TOL, DARK_L_MAX)
+
     # ---- 3. bevel bands ---------------------------------------------------
     for _pass in range(MAX_PASSES):
         graph = _Graph(regions, touch)
@@ -306,12 +362,31 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
             # inside its black lettering would close up.
             if _protected(r) or not _poly(r) or _width(g) > BAND_MAX_MM or is_page(r):
                 continue
+            if r.meta.get(RING_KEY):
+                continue                  # a bevel ring the pro sews as its own band
+            # A band in the design's darkest ink, in its own art ink (the cap
+            # did not substitute it), is drawn: the pro sews Golden Tee's tee
+            # shadow, the GT outline and the ball arc in black. Folded, the
+            # tee lost its shadow.
+            # (A rescued sliver is the trace's noise, not drawn: it still folds.)
+            if (dark_cut is not None and float(lab(r)[0]) <= dark_cut
+                    and not r.meta.get("color_cap_merged_from")
+                    and not r.meta.get("rescued_small_shape")):
+                continue
             per = g.length
             cands = []
             for j, v in graph.contacts(i).items():
                 o = regions[j]
                 if (o.thread_index == r.thread_index or not _poly(o) or o.meta.get("counter")
                         or o.polygon.area < g.area or near_page(o)):
+                    continue
+                # A light band along the darkest ink is the page's edge against
+                # a drawn line (ProSeal's 0.13 mm fringe), not a highlight ON a
+                # body (GOLF's cream bevel, which folds since 2026-11-14).
+                # (The art's OWN page only: on a cut-out the garment stands in,
+                # and Drone's silver ring arcs, 7.7 from a cream hat, fold.)
+                if (own_page is not None and near_page(r) and dark_cut is not None
+                        and float(lab(o)[0]) <= dark_cut):
                     continue
                 # a band is a parent only for a band it dwarfs: a keyline
                 # stacked on an outline (Golden Tee's red on GT's black)
@@ -353,10 +428,30 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
             # else inside is drawn there: Drone's reticle crosses the badge,
             # a counter's dark wall (GOLF's O) is the letter's own drawing.
             inside = Polygon(P.exterior).contains(g.representative_point())
-            if inside and r.meta.get("rescued_small_shape"):
-                continue                  # a detail stage 3 kept inside a shape: a counter
+            # (the page's own ink, or -- no page of its own -- near the garment:
+            # Hotel Fremont's white letter insides; a light SHADE of a page,
+            # GOLF's 1.7 mm2 cream sliver, folds)
+            if inside and r.meta.get("rescued_small_shape") and (
+                    is_page(r) or (own_page is None and near_page(r))):
+                continue                  # a light detail stage 3 kept inside a shape: a counter
+            # 2026-11-14: a band along the wall of one of the parent's HOLES
+            # (a letter's counter) folds as one along its outer edge does: the
+            # pro's GOLF G and O are plain gold round open counters. Dark walls
+            # are kept by the darkest-ink rule above, not by this one.
+            # Only a COUNTER's wall: a hole holding nothing but the page's
+            # colours. Precision Drone's badge holds its whole scene in its
+            # holes, and folding the scene's grey edges into the black badge
+            # blacked out the left half.
             if inside and _farthest(g, P.exterior) > BAND_MAX_MM + _width(g):
-                continue                  # drawn inside, not along the edge
+                pt = g.representative_point()
+                wall = [Polygon(h) for h in P.interiors if Polygon(h).contains(pt)]
+                if not wall or _farthest(g, wall[0].exterior) > BAND_MAX_MM + _width(g):
+                    continue              # drawn inside, not along an edge
+                held = [regions[int(k)] for k in graph.tree.query(wall[0])
+                        if int(k) != i and wall[0].contains(regions[int(k)].polygon.representative_point())]
+                if (any(_width(o.polygon) > BAND_MAX_MM and not near_page(o) for o in held)
+                        or not any(near_page(o) for o in held)):
+                    continue              # a hole holding art, or only this band (an inset), is no counter
             # how far it runs along the parent's outline (a band inside touches
             # it on both long sides: half its contact)
             along = shared / 2.0 if inside else shared
@@ -392,6 +487,267 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
         for i in sorted(removed, reverse=True):
             del regions[i]
     return report
+
+
+def _home_layers(regions, layer_threads, skip=()) -> dict:
+    """thread -> the layer that sews it: the earliest quantize layer declaring
+    the cone, else the layer its other regions sew in (one spool, one
+    position: `stage4_vectorize.rehome_resnapped_regions`' rule)."""
+    home = {}
+    for li, t in enumerate(layer_threads or []):
+        home.setdefault(t, li)
+    for r in regions:
+        if r.thread_index not in skip and "layer" in r.meta:
+            home.setdefault(r.thread_index, r.meta["layer"])
+    return home
+
+
+def _rethread(r, t, chart, home, why) -> None:
+    r.meta.setdefault(why, r.thread_number)
+    r.thread_index = t
+    r.thread_number = chart[t].number
+    if t in home and "layer" in r.meta:
+        r.meta["layer"] = home[t]
+
+
+def _union_group(regions, members, touch, eps) -> int:
+    """Union touching regions among `members` only (one thread each group),
+    keeping the largest's identity. -> regions removed."""
+    members = [i for i in members if _poly(regions[i])]
+    parent = {i: i for i in members}
+
+    def find(a):
+        while parent[a] != a:
+            parent[a] = parent[parent[a]]
+            a = parent[a]
+        return a
+
+    for a in members:
+        for b in members:
+            if a < b and regions[a].thread_index == regions[b].thread_index \
+                    and regions[a].polygon.distance(regions[b].polygon) <= touch:
+                parent[find(a)] = find(b)
+    groups: dict[int, list[int]] = {}
+    for i in members:
+        groups.setdefault(find(i), []).append(i)
+    removed = []
+    for grp in groups.values():
+        if len(grp) < 2:
+            continue
+        grp.sort(key=lambda k: (-regions[k].polygon.area, regions[k].shape_id))
+        g = _union([regions[k].polygon for k in grp], eps)
+        if g is None:
+            continue
+        keep = regions[grp[0]]
+        keep.polygon = g
+        keep.area_mm2 = float(g.area)
+        keep.meta.setdefault("bevel_fold", []).extend(regions[k].shape_id for k in grp[1:])
+        removed.extend(grp[1:])
+    for k in sorted(removed, reverse=True):
+        del regions[k]
+    return len(removed)
+
+
+def _pro_read_rules(regions, graph_factory, lab, near_page, page_lab, own_page, chart,
+                    layer_threads, eps, touch, report) -> None:
+    """Three rules read off the pro's Golden Tee file (2026-11-14), each
+    stated on geometry and colour and checked on Precision Drone and the
+    heraldic crest (`docs/flatten-shading-pro-read-2026-11-14.md`). In order:
+
+    (c) **Bevel ring -> one band in a body ink.** Starting at a page-coloured
+        FACE (a body near the page's colour: GT's white letters), the bands
+        that touch it, and the bands touching those, lying mostly off the
+        page and not in the darkest ink, are the face's bevel ring when the
+        ring reaches a darkest-ink shape (its outline). The whole ring is
+        one band in the ring's ink that also sews a BODY elsewhere in the
+        design (largest such area; a ring with no such ink is left alone).
+        He sews GT's ring -- gold ramp, cream highlight and red keyline --
+        as one orange satin inside the black outline; ours folded it into
+        the outline and lost it. Members are marked `RING_KEY` so the band
+        fold keeps them.
+    (a) **Counter shade -> page.** A light region near the page's colour
+        but not its own ink (`PAGE_OWN_DE00`), no wider than a shadow,
+        enclosed by art (`COUNTER_PAGE_FRAC` of its outline on the page at
+        most) and lying mostly against bands or the page's own ink (a
+        letter's shading walls, its white counter), not against a body: the
+        drop shadow seen through a counter. GOLF's O and G show garment
+        there in his file.
+    (b) **Substituted shading -> page.** A band whose own art ink has no
+        spool in this design (the colour cap sewed it in another thread,
+        `color_cap_merged_from`), touching bodies of ONE colour only and
+        not wrapping any, is shading he leaves out: GOLF's dark teal
+        extrusion (cap-merged into black) is garment in his file, not black.
+    """
+    report.setdefault("rings", [])
+    report.setdefault("counter_shades", [])
+    report.setdefault("cap_shading", [])
+    if not regions:
+        return
+
+    def is_band(o):
+        return _poly(o) and _width(o.polygon) <= BAND_MAX_MM
+
+    def body(o):
+        return _poly(o) and _width(o.polygon) > BAND_MAX_MM and not near_page(o) and not _protected(o)
+
+    dark_cut = min(min(float(lab(r)[0]) for r in regions) + DARKEST_L_TOL, DARK_L_MAX)
+
+    def dark(o):
+        return float(lab(o)[0]) <= dark_cut
+
+    # ---- (c) bevel rings --------------------------------------------------
+    body_area: dict[int, float] = {}
+    for o in regions:
+        if body(o) and not dark(o):
+            body_area[o.thread_index] = body_area.get(o.thread_index, 0.0) + o.area_mm2
+    graph = graph_factory()
+    page_c = {}
+
+    def off_page(j):
+        if j not in page_c:
+            g = regions[j].polygon
+            page_c[j] = graph.page_contact(j) < SHADOW_PAGE_FRAC * g.length
+        return page_c[j]
+
+    def member(j, taken):
+        o = regions[j]
+        return (j not in taken and is_band(o) and not dark(o) and not _protected(o)
+                and not o.meta.get("color_cap_merged_from") and off_page(j))
+
+    taken: set[int] = set()
+    plans = []
+    # A face is the page's OWN ink (or a field stage 4 already called page:
+    # `enclosed_background`), not a light shade of it.
+    faces = [k for k, F in enumerate(regions)
+             if _poly(F) and not is_band(F) and near_page(F)
+             and (F.meta.get("enclosed_background")
+                  or (page_lab is not None and _de00(lab(F), page_lab) <= PAGE_OWN_DE00))]
+    for k in faces:
+        ring, todo = set(), [j for j in graph.contacts(k) if member(j, taken)]
+        while todo:
+            j = todo.pop()
+            if j in ring:
+                continue
+            ring.add(j)
+            todo.extend(n for n in graph.contacts(j) if n not in ring and member(n, taken))
+        if not ring:
+            continue
+        # A band of the ring that runs out onto the page (GT's G keyline
+        # running down between GOLF's O and L) still joins when EDGE_HUG_FRAC
+        # of its outline lies against the ring.
+        for j in {n for m in ring for n in graph.contacts(m)} - ring:
+            o = regions[j]
+            if (j in taken or not is_band(o) or dark(o) or _protected(o) or near_page(o)
+                    or o.meta.get("color_cap_merged_from")):
+                continue
+            if sum(v for n, v in graph.contacts(j).items() if n in ring) >= EDGE_HUG_FRAC * o.polygon.length:
+                ring.add(j)
+        if not any(dark(regions[n]) for j in ring for n in graph.contacts(j)):
+            continue                      # no outline: bands on a face alone are drawn on it
+        inks = {regions[j].thread_index for j in ring if not near_page(regions[j])}
+        inks = [t for t in inks if body_area.get(t, 0.0) > 0.0]
+        if not inks:
+            continue
+        ink = max(inks, key=lambda t: (body_area[t], -t))
+        taken |= ring
+        plans.append((regions[k].shape_id, ink, sorted(ring)))
+    if plans:
+        home = _home_layers(regions, layer_threads)
+        members = []
+        for fid, ink, ring in plans:
+            moved = 0
+            for j in ring:
+                r = regions[j]
+                r.meta[RING_KEY] = fid
+                if r.thread_index != ink:
+                    _rethread(r, ink, chart, home, "bevel_ring_from")
+                    moved += 1
+            members.extend(ring)
+            report["rings"].append({"face": fid, "ink": chart[ink].number, "bands": len(ring),
+                                    "rethreaded": moved,
+                                    "area_mm2": round(sum(regions[j].area_mm2 for j in ring), 2)})
+        report["unions"] += _union_group(regions, members, touch, eps)
+
+    # ---- (a) counter shades -----------------------------------------------
+    if own_page is not None and page_lab is not None:
+        graph = graph_factory()
+        drop = []
+        for i, r in enumerate(regions):
+            g = r.polygon
+            if (_protected(r) or not _poly(r) or not near_page(r) or r.meta.get(RING_KEY)
+                    or _width(g) > SHADOW_MAX_MM or _de00(lab(r), page_lab) <= PAGE_OWN_DE00):
+                continue
+            if graph.page_contact(i) > COUNTER_PAGE_FRAC * g.length:
+                continue
+            cont = graph.contacts(i)
+            tot = sum(cont.values())
+            if tot <= 0:
+                continue
+            pc = graph.page_contact(i)
+            walls = pc + sum(v for j, v in cont.items()
+                             if (is_band(regions[j]) and not near_page(regions[j]))
+                             or _de00(lab(regions[j]), page_lab) <= PAGE_OWN_DE00)
+            if walls < COUNTER_BAND_FRAC * (tot + pc):
+                continue
+            drop.append(i)
+            report["counter_shades"].append({"shape_id": r.shape_id, "thread": r.thread_number,
+                                             "area_mm2": round(r.area_mm2, 2)})
+        for i in sorted(drop, reverse=True):
+            del regions[i]
+
+    # ---- (b) substituted shading --------------------------------------------
+    graph = graph_factory()
+    drop = []
+    for i, r in enumerate(regions):
+        g = r.polygon
+        if (_protected(r) or not _poly(r) or _width(g) > BAND_MAX_MM
+                or not r.meta.get("color_cap_merged_from")):
+            continue
+        per = g.length
+        cont = graph.contacts(i)
+        # It must face the page (or a counter's white): dropped, a band
+        # enclosed by art would open a garment-coloured hole in it (Precision
+        # Drone's cap-merged greys inset in its black badge).
+        seen = graph.page_contact(i) + sum(
+            v for j, v in cont.items()
+            if page_lab is not None and _de00(lab(regions[j]), page_lab) <= PAGE_OWN_DE00)
+        if seen < EDGE_HUG_FRAC * per:
+            continue
+        by_thread: dict[int, list] = {}
+        for j, v in cont.items():
+            o = regions[j]
+            if o.thread_index != r.thread_index and body(o):
+                by_thread.setdefault(o.thread_index, []).append((v, j))
+        if len(by_thread) != 1:
+            continue                      # beside no body, or between colours (drawn)
+        (cs,) = by_thread.values()
+        if len(cs) >= 2 and sorted(cs)[-2][0] >= SPLIT_FRAC * per:
+            continue                      # between two shapes of one colour: a line across it
+        shared, j = max(cs)
+        P = regions[j].polygon
+        inside = Polygon(P.exterior).contains(g.representative_point())
+        along = shared / 2.0 if inside else shared
+        if along >= ALL_ROUND * P.exterior.length:
+            continue                      # wraps it: an outline, which the pro sews
+        drop.append(i)
+        report["cap_shading"].append({"shape_id": r.shape_id, "thread": r.thread_number,
+                                      "art_thread": r.meta["color_cap_merged_from"],
+                                      "beside": regions[j].shape_id, "area_mm2": round(r.area_mm2, 2)})
+    # A rescued sliver that touched nothing but the dropped shading is that
+    # shading's trace noise, orphaned on the page (two black flecks under
+    # GOLF): it goes with it. A free-standing detail (an i's dot) touched
+    # nothing to begin with and stays.
+    gone = set(drop)
+    for i, r in enumerate(regions):
+        if i in gone or not r.meta.get("rescued_small_shape") or _protected(r):
+            continue
+        cont = graph.contacts(i)
+        if cont and set(cont) <= gone:
+            drop.append(i)
+            report["cap_shading"].append({"shape_id": r.shape_id, "thread": r.thread_number,
+                                          "orphaned": True, "area_mm2": round(r.area_mm2, 2)})
+    for i in sorted(set(drop), reverse=True):
+        del regions[i]
 
 
 def _union_touching(regions, seeds, touch, eps) -> int:

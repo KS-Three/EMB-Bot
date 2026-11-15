@@ -1036,8 +1036,8 @@ def _cluster(cands: list[_Candidate],
     return list(groups.values())
 
 
-# SOLID GUARD (`cfg.extra["text_cluster_solid_guard"]`, 2026-11-13, built
-# OFF). A letter is drawn with a pen: its stroke is a fraction of its extent.
+# SOLID GUARD (`cfg.text_cluster_solid_guard`, 2026-11-13, built OFF as an
+# extra; ON since 2026-11-14, Kent's flip). A letter is drawn with a pen: its stroke is a fraction of its extent.
 # +Jakarta's mark is a grid of solid squares; three of them in a row (2.54 x
 # 2.62 mm at 80 mm, 2.71-2.75 mm apart) passed the letter door -- aspect
 # 0.97, a square's skeleton is a tidy X, CV low -- and clustered as a
@@ -1163,8 +1163,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        shares with a line-mate (`_turned_candidate`), passes the door and
        links (`_adopt_turned`): a letter turned on a ring. It joins a line,
        never makes one. False: byte for byte.
-       `solid_guard` (`cfg.extra["text_cluster_solid_guard"]`, 2026-11-13,
-       built OFF): a cluster `SOLID_GROUP_SHARE` of whose members are solid
+       `solid_guard` (`cfg.text_cluster_solid_guard`, 2026-11-13, built
+       OFF, ON since 2026-11-14): a cluster `SOLID_GROUP_SHARE` of whose members are solid
        blobs (`_solid`, a stroke `SOLID_STROKE_FRAC` of the longer side or
        more) is not tagged, in either round: a row of a logo's solid squares
        is not a word. False: byte for byte.

@@ -1,6 +1,6 @@
 ---
 name: jag-source-2026-11-13
-description: Kent's 49 smooth/straight pins traced stage by stage — (b) stage-4 chord facets 18, (a) source pixels 10, (d) stitch construction 21 over 3 mechanisms; `outline_redraw_k` built OFF for (a)+(b); satin ends forming flat edges (14 pins) is the next lever
+description: Kent's 49 smooth/straight pins traced stage by stage — (b) stage-4 chord facets 18, (a) source pixels 10, (d) stitch construction 21 over 3 mechanisms; `outline_redraw_k` built OFF for (a)+(b), 0.75 since 11-14 (Kent "Set 0.75"); satin ends forming flat edges (14 pins) is the next lever
 metadata:
   type: project
 ---
@@ -27,7 +27,8 @@ majority:
   a flat edge or corner, 4 are rail wobble on rings, 3 are fans at cusps.
 - (c) pull comp and (e) the renderer: 0 as primary.
 
-**Built:** `outline_redraw_k` (default None). It reuses letterform priors'
+**Built:** `outline_redraw_k` (default None; **0.75 since Kent 2026-11-14**, "Set 0.75",
+accepting Becker's +0.07-0.35 mm2 bare fabric; PRE_FLIP pins None). It reuses letterform priors'
 line/arc geometry on every shape, capped at max(0.75 source px, 1 grid px),
 on UPSCALED sources only. A clean upload is byte-identical (md5 on k_line,
 n_sync, ahora, and_pizza). `outline_redraw_native` (OFF, not recommended)
@@ -40,6 +41,11 @@ adds arcs-only on clean uploads (the (b) cure).
   jobs: roughness falls on every one (Becker 2.8-3.1 deg at every size),
   exposed travel 0 in both arms. Becker's bare fabric in the art rises
   0.07-0.35 mm2 at 4 of its 5 sizes.
+- 2026-11-14, flip PR: on a 50 mm upscaled disc with `subpixel_edges` (shipped)
+  the redraw is rounder (rms 0.018 -> 0.004 mm) but sits the edge 0.065-0.088 mm
+  INSIDE the true circle (subpixel alone +0.016/-0.003), vertices 33 -> 628:
+  the bare-fabric rise's mechanism. CI tripwire, redraw alone: trims Becker hat
+  large 11 -> 16, MFab hat 16 -> 23, needle-up +160 / +179 mm.
 - The "+24 mm bare travel" in #1479 was a bad metric (it counted travel the
   border covers). The line seen beside Becker's border is a STAGE-7 fault,
   in both arms: single needle-down stitches of 14-92 mm joining a shape's

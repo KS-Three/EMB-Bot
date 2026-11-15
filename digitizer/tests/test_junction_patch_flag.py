@@ -87,6 +87,9 @@ def _cfg(**kw) -> PipelineConfig:
     # sews a ground under the letters this patches
     for k, v in RECIPE_2026_10_27.items():
         kw.setdefault(k, v)
+    # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline: the
+    # junctions this patches move with it
+    kw.setdefault("outline_redraw_k", PRE_FLIP["outline_redraw_k"])
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

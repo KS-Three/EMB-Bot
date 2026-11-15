@@ -110,7 +110,8 @@ def stray_word_thread(regions: list[Region], chart, shape_overrides: dict) -> in
 WORD_THREAD_LONE_SHARE = 0.25
 
 
-def word_thread(regions: list[Region], chart, shape_overrides: dict) -> int:
+def word_thread(regions: list[Region], chart, shape_overrides: dict,
+                art_errors=None) -> int:
     """`cfg.group_consistent_thread` (built OFF 2026-11-13): a text-cluster
     letter on a thread under `WORD_THREAD_LONE_SHARE` of its word takes the
     thread over half the word sews, when within `STRAY_MAX_DE00` of it -- the
@@ -123,7 +124,18 @@ def word_thread(regions: list[Region], chart, shape_overrides: dict) -> int:
     against the yellow also made it a dark-ink bean (`thin_ink.bean_dark_ink`)
     -- the thin stitching Kent pinned. A letter moved here drops a dark-ink
     bean none of its word-mates carries, as a review-pinned tier drops it
-    (`thin_ink.settle_dark_ink_bean`), and takes the ladder with them."""
+    (`thin_ink.settle_dark_ink_bean`), and takes the ladder with them.
+
+    GUARD (2026-11-14, Kent's "Hold it, guard first"): with `art_errors`
+    (`stage4_vectorize.art_thread_errors`, what `apply_lettering_thread` is
+    handed in the pipeline) a letter moves only when the word's thread
+    matches the letter's OWN artwork no worse than the thread it has, by the
+    median per-pixel dE00 preflight grades with. drone_render (80 mm
+    left_chest): a Pumpkin 1102 shape, 7.29 dE00 off its art, would move to
+    Fox Fire 1305 at 13.04 -- past preflight's 10 "clearly different" line,
+    and Fox Fire's finding went warn -> block, grade D -> F. Refused, it
+    carries `lettering_word_thread_refused` = [old, new]. Bridge's U moves
+    (15.29 -> 14.11). No pixel to read: the move stands, as built."""
     from .beanletters import BEAN_LETTER_KEY
     from .thin_ink import DARK_INK_GROUND_KEY
 
@@ -142,6 +154,10 @@ def word_thread(regions: list[Region], chart, shape_overrides: dict) -> int:
             if t == word_t or counts[t] >= WORD_THREAD_LONE_SHARE * len(members):
                 continue
             if _pinned(r, shape_overrides) or chart.delta_e(t, word_t) > STRAY_MAX_DE00:
+                continue
+            err = art_errors(r, (t, word_t)) if art_errors is not None else None
+            if err is not None and err[word_t] > err[t]:
+                r.meta["lettering_word_thread_refused"] = [round(err[t], 2), round(err[word_t], 2)]
                 continue
             _set_thread(r, chart, word_t, "lettering_word_thread_from")
             if (r.meta.get(BEAN_LETTER_KEY) and r.meta.get(DARK_INK_GROUND_KEY)
@@ -204,12 +220,14 @@ def _on_sewn_ground(members: list[Region], regions: list[Region]) -> bool:
     return covered >= ON_GROUND_SHARE * word.area
 
 
-def apply_lettering_thread(regions: list[Region], chart, cfg, shape_overrides: dict) -> None:
+def apply_lettering_thread(regions: list[Region], chart, cfg, shape_overrides: dict,
+                           art_errors=None) -> None:
     """Both rules, in `finish_generation`, with `stitched` resolved. The floor
-    first: a stray then takes the thread its word finally sews in."""
+    first: a stray then takes the thread its word finally sews in. `art_errors`
+    (`stage4_vectorize.art_thread_errors`) is the word-thread guard's read."""
     if getattr(cfg, "group_consistent_thread", False):
         # first: the floor then moves the word on the one thread it sews
-        word_thread(regions, chart, shape_overrides)
+        word_thread(regions, chart, shape_overrides, art_errors=art_errors)
     if cfg.lettering_contrast_floor and cfg.garment_rgb is not None:
         contrast_floor(regions, chart, cfg.garment_rgb,
                        cfg.lettering_contrast_floor_de00, shape_overrides)
