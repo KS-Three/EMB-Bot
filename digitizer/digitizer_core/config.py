@@ -3971,6 +3971,20 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False.
     # Tests: `tests/test_column_apex_pro_joints.py`.
     lettering_columns_apex_pro_joints: bool = True
+    # A gate on `lettering_columns_corner_fold_apex_side` (`outline_cut._FOLD_CAP_FLARED`,
+    # 2026-11-14, #1550; built OFF as
+    # `cfg.extra["lettering_columns_corner_fold_cap_flared"]`): the pro CAPS an
+    # L corner whose outline carries a wedge flare (MARINE's E and R at the
+    # top-left: the arm's upright crosses run over the stem's top) and FANS a
+    # plain one (8 of 8 corners read, `docs/apex-pro-construction-2026-11-14.md`
+    # section 6); ON, a flared top corner is cut level at the arm's lower edge
+    # and the fold leaves it. **ON since 2026-11-15, Kent's flip** ("Flip all
+    # three ON", with `lettering_columns_apex_pro` and
+    # `lettering_columns_apex_pro_joints`), promoted from `cfg.extra` to a field
+    # so the default can be ON. False is the cut as it was; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_column_fold_cap_flared.py`.
+    lettering_columns_corner_fold_cap_flared: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
