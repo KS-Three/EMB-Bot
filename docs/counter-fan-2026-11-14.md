@@ -75,6 +75,7 @@ The pro's file is registered to ours, so it is scaled to the same width.
 
 | width | today: angle err | fan: angle err | today: seam | fan: seam | shared mm², today → fan | IoU, today → fan |
 |---|---|---|---|---|---|---|
+| 93 mm | 29.7° | **7.0°** | 3.66 mm | 0.80 mm | 21.8 → 23.3 | 0.519 → 0.555 |
 | 90 mm | 29.9° | **7.1°** | 3.54 mm | 0.67 mm | 20.7 → 22.0 | 0.525 → 0.556 |
 | 75 mm | 68.7° | **6.9°** | 0.52 mm | 0.29 mm | 13.3 → 15.9 | 0.474 → 0.568 |
 
