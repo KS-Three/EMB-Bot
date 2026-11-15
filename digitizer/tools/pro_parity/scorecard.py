@@ -970,7 +970,44 @@ def direction_histogram(dirpath, bin_deg=15.0):
                 by_type=by_type)
 
 
-def score_design(dirpath, explain=False):
+#: A pinned frame (`score_design(frame=...)`) is kept unless a fresh registration
+#: climb beats the solid IoU at the pin by more than this. Measured 2026-11-15:
+#: - becker_hat_large's IoU surface is flat to 0.006 across 0.75 mm of shift
+#:   (0.8959-0.9020);
+#: - the corner fold's re-registration, which moved the grid 0.55 mm, gained 0.001;
+#: - a design that really moves loses 0.014-0.044 at the old pin for 0.5 mm and
+#:   0.028-0.117 for 1 mm (Becker x3, Gaulke hat, MFab hat).
+#: So 0.01 keeps every plateau re-pick and re-registers a real move of ~0.5 mm or
+#: more. Docs: docs/tripwire-frame-pin-2026-11-15.md.
+PIN_MARGIN = 0.01
+
+
+def iou_at_shift(pro_segs, our_segs, dx, dy):
+    """Solid IoU of OURS shifted by (dx, dy) onto PRO, on `register`'s own raster
+    and padded frame, so it is comparable with the IoU `register` returns."""
+    bb = bounds(pro_segs, our_segs)
+    bb = (bb[0] - REG_MAX, bb[1] - REG_MAX, bb[2] + REG_MAX, bb[3] + REG_MAX)
+    pc = solid(raster(pro_segs, bb, res=REG_RES), res=REG_RES)
+    return _iou(pc, solid(raster(our_segs, bb, res=REG_RES, shift=(dx, dy)), res=REG_RES))
+
+
+def pinned_bounds(natural, x0, y0):
+    """`natural` (a `bounds()` box) with its origin moved onto the pinned grid
+    origin (x0, y0): stepped out by whole CELLs when the design now reaches past
+    the pin, so the 2 mm cell grid keeps the pin's phase and nothing is clipped."""
+    def snap(pin, nat):
+        if nat >= pin:
+            return pin
+        return pin - CELL * math.ceil((pin - nat) / CELL - 1e-9)
+    return (snap(x0, natural[0]), snap(y0, natural[1]), natural[2], natural[3])
+
+
+def score_design(dirpath, explain=False, frame=None):
+    """`frame` is the tripwire's frame pin (`tools/tripwire.py --pin-frame`); None
+    (the default) is the original path, unchanged. `{}` registers as usual and
+    reports the frame in `detail["frame"]`. A pin {"dx", "dy", "x0", "y0"} scores
+    ours at that shift on that grid origin, unless a fresh climb beats the pin's
+    IoU by more than `PIN_MARGIN` (the design really moved): then it re-registers."""
     d = Path(dirpath)
     slug = d.name
     _pro_rows, pro, pro_src, p_trims = load_side(d, "pro", slug)
@@ -987,6 +1024,21 @@ def score_design(dirpath, explain=False):
     dx, dy, reg_iou = register(pro, our, bounds(pro, our))
     our_r = shifted(our, dx, dy)
     bb = bounds(pro, our_r)
+    if frame is not None:
+        fresh = {"dx": round(dx, 3), "dy": round(dy, 3), "iou": round(reg_iou, 4)}
+        source = "registered"
+        if "dx" in frame:
+            pin_iou = iou_at_shift(pro, our, frame["dx"], frame["dy"])
+            if reg_iou - pin_iou > PIN_MARGIN:
+                source = "re-registered"
+            else:
+                source = "pinned"
+                dx, dy, reg_iou = frame["dx"], frame["dy"], pin_iou
+                our_r = shifted(our, dx, dy)
+                bb = pinned_bounds(bounds(pro, our_r), frame["x0"], frame["y0"])
+        detail["frame"] = {"source": source, "dx": round(dx, 3), "dy": round(dy, 3),
+                           "x0": round(bb[0], 3), "y0": round(bb[1], 3),
+                           "iou": round(reg_iou, 4), "fresh": fresh}
     detail["registration_mm"] = [round(dx, 2), round(dy, 2)]
     detail["trim_source"] = {"pro": pro_src, "ours": our_src}
 

@@ -91,3 +91,5 @@ Put to him with the kappa table above, he chose **"Accept + investigate (Recomme
 - The corner fold stays ON.
 - Its cost is accepted as the new baseline: becker_hat_large stitch-type kappa 0.337 -> 0.289 and direction kappa 0.365 -> 0.329, and becker_hat_small 0.557 -> 0.518.
 - Where the two hat jobs lose agreement is a separate investigation (`docs/corner-fold-kappa-2026-11-15.md`).
+
+**Correction, same day (#1570):** the cost Kent accepted is not a cost of the fold. Held in one frame, the fold moves becker_hat_large stitch-type kappa by +0.006 and becker_hat_small by −0.008. The −0.048 and −0.039 read above came from `scorecard.register` landing elsewhere on a flat IoU plateau and re-cutting the 2 mm cell grid. The ledger rows still hold the figures as read; the tripwire frame pin (Kent 2026-11-15, "Pin tripwire frame (Recommended)", `docs/tripwire-frame-pin-2026-11-15.md`) is the instrument fix.
