@@ -2578,6 +2578,10 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
     ** 2`): only a piece the floor would absorb moves; a piece big enough to
     stand stays where it is (unbounded, `gradient_mascot` moved 388,284 px,
     whole regions). Measured on MFab at 60 mm: one white label, 275 pieces.
+    Of an accepted piece only the pixels within `max_de` of that ground move
+    (2026-11-14); the piece's other pixels stay in the main population. A
+    piece no smaller than the enclosed components it touches, taken whole, is
+    not their rim and stays (2026-11-14).
 
     Background note: the floor (`resolve_small_regions`) reads only this
     population's regions, so a sub-floor rim piece has no white neighbour to
@@ -2598,10 +2602,14 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
         return None
     # every (piece, enclosed neighbour) contact, 8-neighbourhood; an enclosed
     # pixel touching a piece from two sides counts twice, as a weight
+    n_e, ce, est, _c = cv2.connectedComponentsWithStats(enclosed.astype(np.uint8),
+                                                        connectivity=8)
     pad_e = np.pad(enclosed, 1)
+    pad_ce = np.pad(ce, 1)
     pad_lab = np.pad(lab_img.astype(np.float64), ((1, 1), (1, 1), (0, 0)))
     sums = np.zeros((n + 1, 3))
     cnt = np.zeros(n + 1)
+    pairs = []
     for dy in (-1, 0, 1):
         for dx in (-1, 0, 1):
             if dy == 0 and dx == 0:
@@ -2615,6 +2623,8 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
             cnt += np.bincount(ids, minlength=n + 1)
             for c in range(3):
                 sums[:, c] += np.bincount(ids, weights=nb_lab[:, c], minlength=n + 1)
+            pairs.append(ids.astype(np.int64) * n_e
+                         + pad_ce[1 + dy:1 + dy + h, 1 + dx:1 + dx + w][hit])
     touching = np.nonzero(cnt > 0)[0]
     if touching.size == 0:
         return None
@@ -2622,6 +2632,11 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
     sel = flat > 0
     px = np.bincount(flat[sel], minlength=n + 1).astype(np.float64)
     ground_mean = sums[touching] / cnt[touching, None]
+    # The ground a piece touches, in pixels: every enclosed component it
+    # touches, each counted once, whole.
+    uniq = np.unique(np.concatenate(pairs))
+    ground_px = np.bincount(uniq // n_e, weights=est[uniq % n_e, cv2.CC_STAT_AREA],
+                            minlength=n + 1)
     # the piece's MEDIAN Lab, not its mean: a superpixel that straddles the
     # keyline's edge leaves a few ink pixels in the white label, and their
     # L* ~2 drags a mean far past `max_de` (MFab, cutout lane, 60 mm: an 89 px
@@ -2640,11 +2655,36 @@ def enclosed_rim(labels: np.ndarray, valid: np.ndarray, enclosed: np.ndarray,
     near = np.linalg.norm(own_med - ground_mean, axis=1) < max_de
     if max_px is not None:
         near &= px[touching] < max_px
+    # A rim is smaller than its ground. A piece at least as big as all the
+    # ground it touches is not that ground's missed edge: the ground is a speck
+    # in it (a paper gap in an engraving, a highlight in a brush stroke), and
+    # moved, the piece grew the speck into a sewn one. Measured 2026-11-14 on
+    # the pieces beside a ground under the floor: vintage_engraved_badge
+    # (cutout) 59,587 px of 68,646, kanji_brush (no cutout) all 2,024,
+    # watercolor (cutout) 3,914 of 4,127 -- the silver speckle, the extra
+    # spool, the white specks -- and none of MFab's (164-214 px at 30-36.7 mm,
+    # keyline round the small line) or summit_badge's (68 px).
+    near &= px[touching] < ground_px[touching]
     if not near.any():
         return None
+    # The piece is the rim; only its pixels of the ground's colour move. A
+    # piece read by its median still holds pixels that are not the ground
+    # (ink beside the keyline, a photograph's shading), and moved whole they
+    # entered the enclosed population, whose own quantiser gave them threads
+    # of their own: kanji_brush's ground went from one spool to three,
+    # vintage_engraved_badge took a new spool of 5,628 px (2026-11-14). Each
+    # pixel is held to the same `max_de` from the ground it touches; the rest
+    # stay where they are, and the floor treats them as it does with the flag
+    # OFF.
+    gm = np.zeros((n + 1, 3))
+    gm[touching[near]] = ground_mean[near]
     take = np.zeros(n + 1, bool)
     take[touching[near]] = True
-    return take[comp]
+    rim = take[comp]
+    rim[rim] = np.linalg.norm(lab_img[rim] - gm[comp[rim]], axis=1) < max_de
+    if not rim.any():
+        return None
+    return rim
 
 
 def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
@@ -2860,9 +2900,9 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
             thin = merge_thin_ink(absorbed, thin_without(thin, absorbed.mask))
 
     # --- 3.95 The enclosed ground's rim (`cfg.photo_enclosed_rim`) -----------
-    # Before the floor: a main-population piece that is the enclosed
-    # ground's own colour leaves for the ground's population, so the floor
-    # cannot absorb it into the ink beside it. See `enclosed_rim`.
+    # Before the floor: the ground-coloured pixels of a main-population piece
+    # that is the enclosed ground's rim leave for the ground's population, so
+    # the floor cannot absorb them into the ink beside it. See `enclosed_rim`.
     quant_p = p
     if cfg.photo_enclosed_rim and has_enclosed and merged_count:
         rim = enclosed_rim(merged, base_valid, enclosed, true_lab, cfg.merge_delta_e,

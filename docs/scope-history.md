@@ -13,6 +13,17 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-11-15 (rim flag, three worse images) — fix branch tree `6f0a2312`
+
+Snapshots, not live status:
+
+- **Rim flag ON, 77 images after the pixelwise fix:** 91 designs (77 without the cutout, 14 with). The rim moved pixels on 9 and 8 differed from flag OFF: MFab both lanes, kanji_brush, summit_badge, vintage_engraved_badge both lanes, watercolor both lanes; pencil_sketch moved 61 px and was md5-identical. The line-art guard changed no reading.
+- **Against the start point (PR #1527's tree), flag ON:** kanji_brush 13,072 → 12,765 stitches (OFF 12,803), 5 → 4 blocks; vintage with the cutout 27,929 → 24,199 (OFF 22,508), `ARTWORK_UNCOVERED` gone; watercolor without the cutout 8 → 7 blocks but grade C → D (OFF B), 79 trims against 77.
+- **Desktop state:** 7 of the 91 first-pass jobs were spoiled by the junction kernel-memory leak (2 crashes, 1 timeout at 2,400 s, 4 refused cutouts) and re-run two at a time; stained_glass took 2,057 s.
+- `tests/test_photo_enclosed_rim.py`: 19 passed. The full digitizer suite was not run locally.
+
+---
+
 **Last updated:** 2026-11-14 (second robust-PC round) — review fixes #1463–#1475 and the rim flag on the live engine, main `03c85c7e`
 
 Snapshots, not live status:
