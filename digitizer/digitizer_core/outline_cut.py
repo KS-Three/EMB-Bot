@@ -345,6 +345,8 @@ def find_cuts(poly: Polygon, W: float):
         kept = _apex_cuts(poly, W, kept, reflex, convex)
     if _APEX_PRO_JOINTS.get():    # `apex_pro_joints` (built OFF): the N's joints, a flat A's band
         kept = _apex_pro_joint_cuts(poly, W, kept, reflex)
+    if _FOLD_CAP_FLARED.get():    # `fold_cap_flared` (built OFF): a flared L corner capped, not folded
+        kept = _cap_flared_cuts(poly, W, kept, reflex, convex)
     return [k[:4] for k in kept], reflex, convex
 
 
@@ -1118,6 +1120,121 @@ def _apex_pro_joint_cuts(poly: Polygon, W: float, cuts: list, reflex) -> list:
             drop += mine
             add += keep + [(hl, hr, "apex_pro_cap", math.dist(hl, hr), 1)]
             break
+    return [k for k in cuts if k not in drop] + add
+
+
+# `fold_cap_flared` (`cfg.extra["lettering_columns_corner_fold_cap_flared"]`,
+# 2026-11-14, built OFF): a gate on the corner fold. Read in the pro's files
+# (`docs/apex-pro-construction-2026-11-14.md`, section 6):
+# - He CAPS an L corner whose outer corner carries a flare, a wedge that
+#   bulges past the stem's own edge line: MARINE's E and R at the top-left.
+#   The arm's upright crosses run on over the stem's top, and the stem starts
+#   level under the arm's edge.
+# - He FANS a plain one: MARINE's E at the bottom-left, and every L of
+#   ProSeal's italic PROSEAL.
+# ON, a flared L corner is cut along the arm's edge, continued across the
+# stem ("corner_cap"), and `_fold_corners` leaves it alone. Layout, not a
+# cloth number (gate 1).
+_FOLD_CAP_FLARED: contextvars.ContextVar[bool] = contextvars.ContextVar("fold_cap_flared", default=False)
+FLARE_W = 0.12                 # a bulge this far (in W) past the stem's edge line is a flare (MARINE 0.2+)
+FLARE_NEAR_W = 1.5             # ... within this much outline of the corner
+
+
+@contextlib.contextmanager
+def fold_cap_flared_scope(on: bool):
+    """`cfg.extra["lettering_columns_corner_fold_cap_flared"]` for one plan.
+    False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _FOLD_CAP_FLARED.set(True)
+    try:
+        yield
+    finally:
+        _FOLD_CAP_FLARED.reset(token)
+
+
+def _flared(poly: Polygon, q, W: float) -> bool:
+    """`fold_cap_flared`: does the outline within `FLARE_NEAR_W` of the
+    convex corner q bulge outward past the straight edge it settles into
+    (fitted from 2 W to 4 W along the outline), on either side of q?"""
+    ring = poly.exterior
+    if ring.distance(Point(q)) > 1e-6:
+        return False
+    s0 = ring.project(Point(q))
+    L = ring.length
+    inside = poly.representative_point()
+    for sgn in (1.0, -1.0):
+        far = [ring.interpolate((s0 + sgn * s) % L) for s in np.linspace(2.0 * W, 4.0 * W, 9)]
+        xs = np.array([[p.x, p.y] for p in far])
+        c = xs.mean(0)
+        _u, _s, vt = np.linalg.svd(xs - c, full_matrices=False)
+        d = vt[0]
+        n = np.array([-d[1], d[0]])
+        if float((np.array([inside.x, inside.y]) - c) @ n) > 0:
+            n = -n                                  # n points out of the letter
+        near = [ring.interpolate((s0 + sgn * s) % L) for s in np.linspace(0.1 * W, FLARE_NEAR_W * W, 12)]
+        off = max(float((np.array([p.x, p.y]) - c) @ n) for p in near)
+        if off >= FLARE_W * W:
+            return True
+    return False
+
+
+def _cap_flared_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> list:
+    """`fold_cap_flared`: each L corner (one edge level, one upright) whose
+    apex is flared is cut along its level edge, continued across the upright
+    stroke; the junction cuts from that corner go."""
+    drop, add = [], []
+    for r in reflex:
+        if not 60.0 <= r["turn"] <= 120.0:
+            continue
+        p = r["p"]
+        a, b = _edge_dirs(r)
+        level = [e for e in (a, b) if _off_upright(e) > 65.0]
+        upright = [e for e in (a, b) if _off_upright(e) < 25.0]
+        if len(level) != 1 or len(upright) != 1:
+            continue
+        apex = _apex_nearest(r, convex, poly, W)
+        if not apex or not _flared(poly, apex[0], W):
+            continue
+        mine = [k for k in cuts if math.dist(k[0], p) < 1e-6 or math.dist(k[1], p) < 1e-6]
+        if any(k[2].startswith("apex") for k in mine):
+            continue
+        others = [k for k in cuts if k not in mine]
+        d = (-level[0][0], -level[0][1])
+        h = _clip_ray(poly, p, d, 3.0 * W, others, r["bis"])
+        if h is None or not 0.5 * W < math.dist(p, h) < 2.5 * W:
+            continue
+        drop += mine
+        add.append((p, h, "corner_cap", math.dist(p, h), 1))
+    # a flared corner at the letter's top over an arm whose lower edge ends
+    # in a slot (MARINE's pointed-slot E, which the junction rules leave to
+    # the slot rule): capped at that slot's top corner, level across the stem
+    x0, top, x1, _base = poly.bounds
+    capped = {k[0] for k in add}
+    for o in convex:
+        q = o["p"]
+        if abs(q[1] - top) > 0.1 * W or not _flared(poly, q, W):
+            continue
+        below = [r for r in reflex if top + 0.5 * W < r["p"][1] < top + 2.0 * W
+                 and abs(r["p"][0] - q[0]) < 2.6 * W and r["p"] not in capped]
+        if not below:
+            continue
+        r = min(below, key=lambda r: (r["p"][1], abs(r["p"][0] - q[0])))
+        p = r["p"]
+        sgn = -1.0 if q[0] < p[0] else 1.0
+        start = (p[0] + sgn * 0.02, p[1])
+        if not poly.contains(Point(start)):
+            continue
+        h = _ray_hit(poly, start, (sgn, 0.0), 3.0 * W)
+        if h is None or not 0.5 * W < math.dist(p, h) < 3.0 * W:
+            continue
+        mine = [k for k in cuts if math.dist(k[0], p) < 1e-6 or math.dist(k[1], p) < 1e-6]
+        if any(k[2].startswith("apex") for k in mine):
+            continue
+        drop += mine
+        add.append((p, h, "corner_cap", math.dist(p, h), 1))
+        capped.add(p)
     return [k for k in cuts if k not in drop] + add
 
 
@@ -2285,6 +2402,8 @@ def _fold_corners(columns: list, cuts: list, poly: Polygon, W: float, pitch_mm: 
             continue
         if any(t.distance(Point(p)) < 0.25 * W for t in through):
             continue
+        if any(k[2] == "corner_cap" and math.dist(k[0], p) < 1e-6 for k in cuts):
+            continue    # `fold_cap_flared` (built OFF): this corner is capped, not folded
         for q in (_apex_candidates(r, convex, poly, W) if side else _apex_nearest(r, convex, poly, W)):
             # the two columns whose pieces fill the corner: an E's slot cuts
             # all end on the stem line, so a third piece can touch the corner
@@ -3113,7 +3232,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
                 return True
             return any(ln.crosses(sl) for sl in slines)
 
-        cuts = [c for c in cuts if not clashes(c)] + scuts
+        cuts = [c for c in cuts if c[2] == "corner_cap" or not clashes(c)] + scuts   # `fold_cap_flared` keeps its cap
     pieces = split(poly, cuts)
     # a cut that only shaves off a scrap is not a junction: take it back out
     apex = _APEX_CUT.get()
