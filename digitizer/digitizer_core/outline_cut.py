@@ -388,7 +388,7 @@ _CURVE_TRACE: contextvars.ContextVar = contextvars.ContextVar("curve_trace", def
 CURVE_GUARD_SHARE = 0.5
 CURVE_GUARD_MAX_MM = 0.08
 # At W/16 a small round end or dot simplifies to a 6- or 7-gon turning
-# 50-60 degrees a vertex, past `curve_densify.CORNER_DEG`; a real corner
+# 50-60 degrees a vertex, past `curve_densify.DENSIFY_CORNER_DEG`; a real corner
 # turns 90 and more, and below that the guard (a bulge off a straight
 # trace) refuses it.
 CURVE_CORNER_DEG = 75.0

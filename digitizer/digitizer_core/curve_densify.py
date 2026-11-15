@@ -32,14 +32,14 @@ import numpy as np
 # chord and it is never rounded. Stage 4's facets turn 12-20 degrees, the
 # Column lane's 20-30, a 9.8 px/mm trace's (3 mm chords on a 5 mm radius)
 # about 35; a serif, a stem's foot or a polygon's corner turns 60-90.
-CORNER_DEG = 45.0
+DENSIFY_CORNER_DEG = 45.0
 # ...and so is a vertex turning this much more than both its neighbours,
-# above `SPIKE_MIN_DEG`: a corner in a gentle run, not a curve.
-SPIKE_RATIO = 2.5
-SPIKE_MIN_DEG = 10.0
+# above `DENSIFY_SPIKE_MIN_DEG`: a corner in a gentle run, not a curve.
+DENSIFY_SPIKE_RATIO = 2.5
+DENSIFY_SPIKE_MIN_DEG = 10.0
 # A vertex turning less than this is on a straight run: no edge beside it
 # bends. Two degrees is a 3 mm chord on an 86 mm radius.
-STRAIGHT_DEG = 2.0
+DENSIFY_STRAIGHT_DEG = 2.0
 
 
 def _rot(v: np.ndarray, a: float) -> np.ndarray:
@@ -48,20 +48,21 @@ def _rot(v: np.ndarray, a: float) -> np.ndarray:
 
 
 def densify_curves(ring: np.ndarray, trace, chord: float, guard: float,
-                   corner_deg: float = CORNER_DEG) -> np.ndarray:
+                   corner_deg: float = DENSIFY_CORNER_DEG) -> np.ndarray:
     """`ring` (closed, no repeated last vertex, any unit) with every edge of
     a clean CURVE split into pieces no longer than `chord`.
 
     An edge bends when both ends are on the curve (neither a corner by
-    `CORNER_DEG` or `SPIKE_RATIO`, each turning at least `STRAIGHT_DEG`, the
-    same way), or one end is and the other is a corner (a bowl's first chord
+    `DENSIFY_CORNER_DEG` or `DENSIFY_SPIKE_RATIO`, each turning at least
+    `DENSIFY_STRAIGHT_DEG`, the same way), or one end is and the other is a
+    corner (a bowl's first chord
     off its stem). Its tangent at a vertex is the bisector of the two chords
     there when the edge beyond bends too, the neighbour's own direction when
     that edge is straight (the curve meets it tangentially), and its own
     chord at a corner (never rounded). An edge whose inserted points do not
     ALL lie within `guard` of `trace` (an (N, 2) closed contour, or any
     shapely geometry: the outline the ring was simplified from) keeps its
-    chord. `corner_deg` replaces `CORNER_DEG` for a ring simplified so
+    chord. `corner_deg` replaces `DENSIFY_CORNER_DEG` for a ring simplified so
     coarsely that a small round counter is a 6- or 7-gon (the Column lane's
     W/16): there the guard, not the angle, is what keeps a real corner
     square. Returns `ring` itself when nothing changes."""
@@ -81,8 +82,8 @@ def densify_curves(ring: np.ndarray, trace, chord: float, guard: float,
     at = np.abs(turn)
     nb = np.maximum(np.roll(at, 1), np.roll(at, -1))
     corner = (at > math.radians(corner_deg)) | (
-        (at > math.radians(SPIKE_MIN_DEG)) & (at > SPIKE_RATIO * nb))
-    live = ~corner & (at >= math.radians(STRAIGHT_DEG))
+        (at > math.radians(DENSIFY_SPIKE_MIN_DEG)) & (at > DENSIFY_SPIKE_RATIO * nb))
+    live = ~corner & (at >= math.radians(DENSIFY_STRAIGHT_DEG))
     j = (np.arange(n) + 1) % n
     bends = ((live & live[j] & (np.sign(turn) == np.sign(turn[j])))
              | (live & corner[j]) | (corner & live[j]))
@@ -126,7 +127,7 @@ def densify_curves(ring: np.ndarray, trace, chord: float, guard: float,
     return res
 
 
-def densify_polygon(poly, trace, chord: float, guard: float, corner_deg: float = CORNER_DEG):
+def densify_polygon(poly, trace, chord: float, guard: float, corner_deg: float = DENSIFY_CORNER_DEG):
     """Every ring of a shapely Polygon through `densify_curves`; the polygon
     itself when nothing changes or the result would not be valid."""
     from shapely.geometry import Polygon

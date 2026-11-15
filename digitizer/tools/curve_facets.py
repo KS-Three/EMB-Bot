@@ -32,7 +32,7 @@ import numpy as np
 DIGITIZER = Path(__file__).resolve().parent.parent
 sys.path.insert(0, str(DIGITIZER))
 
-CORNER_DEG = 45.0     # a turn past this is a corner, not a facet (stage4's own line)
+FACET_CORNER_DEG = 45.0     # a turn past this is a corner, not a facet (stage4's own line)
 
 
 def turns_deg(pts: np.ndarray, closed: bool) -> np.ndarray:
@@ -50,7 +50,7 @@ def turns_deg(pts: np.ndarray, closed: bool) -> np.ndarray:
 
 
 # ------------------------------------------------------------------ stages
-def ring_stats(raw: np.ndarray, ring: np.ndarray, px_mm: float, corner: float = CORNER_DEG) -> dict:
+def ring_stats(raw: np.ndarray, ring: np.ndarray, px_mm: float, corner: float = FACET_CORNER_DEG) -> dict:
     import shapely
     from shapely.geometry import LinearRing
     lr = LinearRing(np.asarray(ring, dtype=np.float64))
@@ -278,7 +278,7 @@ def curve_read(E: np.ndarray) -> dict:
         rms = float(np.sqrt((res ** 2).mean()))
     except np.linalg.LinAlgError:
         R, rms = float("nan"), float("nan")
-    tc = t[t <= CORNER_DEG]
+    tc = t[t <= FACET_CORNER_DEG]
     sp = float(np.median(seg))
     return {"n": int(len(E)), "spacing_mm": sp, "radius_mm": float(R),
             "turn_fit": math.degrees(sp / R) if R and R == R and R > 0 else float("nan"),
@@ -310,7 +310,7 @@ def pin_read(spot: dict, capdir: str) -> dict:
                 for f in np.linspace(0, 1, 8):
                     samples.append(V[i] * (1 - f) + V[i + 1] * f)
             dev = float(max(min(ln.distance(Point(p)) for ln in lines) for p in samples))
-        tc = t[t <= CORNER_DEG]
+        tc = t[t <= FACET_CORNER_DEG]
         out["polygon"] = {"vertices": int(len(V)), "chord_mm": float(np.median(seg)),
                           "chord_max_mm": float(seg.max()),
                           "turn_max": float(tc.max()) if len(tc) else 0.0,
@@ -373,6 +373,9 @@ def sheet(spot: dict, cap_off: str, cap_on: str, row_off: dict, row_on: dict) ->
 
 def main(argv=None) -> int:
     argv = list(sys.argv[1:] if argv is None else argv)
+    if not argv or argv[0] in ("-h", "--help"):
+        print(__doc__)
+        return 0
     cmd = argv.pop(0)
     if cmd == "stages":
         name, art, width, garment, *kv = argv
