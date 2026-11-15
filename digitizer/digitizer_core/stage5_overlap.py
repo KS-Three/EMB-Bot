@@ -922,9 +922,9 @@ def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
                                                       base_deg=explicit) is None
 
 
-#: the two geometry flags (comment at `GAP_SEWABLE_MM`): a pass with neither
-#: is the engine as it was
-GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps")
+#: the geometry flags (comment at `GAP_SEWABLE_MM`, and `outline_inlets`): a
+#: pass with none is the engine as it was
+GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps", "outline_inlets_kept")
 
 
 def _off_angles(regions, fabric, cfg, design_class, hairline) -> dict[str, float]:
@@ -987,8 +987,12 @@ def resolve_overlaps(
     flags_extra = getattr(cfg, "extra", None) or {}
     along = bool(flags_extra.get("pull_comp_along_stitch_only")) and pull > 0
     keep_gaps = bool(flags_extra.get("growth_keeps_gaps"))
+    keep_inlets = bool(flags_extra.get("outline_inlets_kept")) and pull > 0
+    if keep_inlets:
+        from . import outline_inlets
     # a fill with no angle of its own keeps the angle it sewed at (`_off_angles`)
-    pinned = _off_angles(regions, fabric, cfg, design_class, hairline) if along or keep_gaps else {}
+    pinned = (_off_angles(regions, fabric, cfg, design_class, hairline)
+              if along or keep_gaps or keep_inlets else {})
     # `cfg.satin_rail_comp` (2026-09-09): a satin-tier shape keeps its
     # artwork polygon here and takes the pull on its rails in stage 6. The
     # tier is read with the same call directional comp uses, for the same
@@ -1302,6 +1306,16 @@ def resolve_overlaps(
                 near = [regions[int(i)] for i in gap_tree.query(poly.buffer(GAP_PROTECT_MM))
                         if regions[int(i)] is not r]
                 grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap)
+
+            # `cfg.extra["outline_inlets_kept"]` (built OFF, `outline_inlets`):
+            # a fill's growth stays out of its own outline's inlets (a notch,
+            # a tooth gap), as `growth_keeps_gaps` keeps it out of counters.
+            # A satin on its rails takes no growth here; a letter's openings
+            # are the lettering lane's (counters, spacing).
+            if (keep_inlets and not on_rails and not satin_by_id[r.shape_id]
+                    and not outline_inlets.is_letter(r)
+                    and grown is not None and not grown.is_empty):
+                grown = outline_inlets.kept_inlets(poly, grown, all_art, pull)
 
             # Never grow back over a color that is already down — except
             # widened lettering. A glyph on a ground was vectorized as a hole
