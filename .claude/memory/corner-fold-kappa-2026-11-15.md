@@ -33,5 +33,16 @@ stitch-type change.
 **How to apply:** before attributing a kappa move to an engine change, check
 whether `registration_mm` moved (`scorecard.register` on both arms). If it did,
 re-score both arms in one frame (OFF's registration and bounds) and quote that
-figure. Instrument options went to Kent via the foreman; see
-[[nightly-tripwire-2026-11-02]] and [[corner-turn-2026-11-14]].
+figure. See [[nightly-tripwire-2026-11-02]] and [[corner-turn-2026-11-14]].
+
+**Kent's ruling, 2026-11-15: "Pin tripwire frame (Recommended)"** (option B of
+four). It is built OFF as `tools/tripwire.py --pin-frame` plus the workflow
+dispatch input `pin_frame`:
+- the ledger's `frames` hold a shift and grid origin per job;
+- `scorecard.score_design(frame=...)` reads at the pin and re-registers only past
+  `PIN_MARGIN` 0.01 IoU (plateau <= 0.006, a real 0.5 mm move 0.014-0.044).
+
+Flipping it is Kent's: a capture with pins, then the schedule passes the flag
+(docs/tripwire-frame-pin-2026-11-15.md). His accepted catch: the corpus
+scorecard and flip-PR kappas still re-register per arm, so quote their deltas
+from one frame.

@@ -226,7 +226,11 @@ def figures_from_baseline(res: dict, secs: dict | None = None) -> dict:
             "secs": secs or {}}
 
 
-def measure(runs: Path, slugs: list[str], with_words: bool, kent_dir: Path | None) -> dict:
+def measure(runs: Path, slugs: list[str], with_words: bool, kent_dir: Path | None,
+            pin: bool = False, frames: dict | None = None) -> dict:
+    """One pass. With `pin` (`--pin-frame`, built OFF) the two kappas are re-read
+    through `pin_kappas` and the pass carries each job's frame; without it the pass
+    is exactly what it always was."""
     from tools import pro_baseline as pb
     runs.mkdir(parents=True, exist_ok=True)
     root = materialise(kent_dir or runs / "_kent", slugs)
@@ -241,7 +245,57 @@ def measure(runs: Path, slugs: list[str], with_words: bool, kent_dir: Path | Non
     out = figures_from_baseline(res, secs)
     out["env"] = environment()
     out["jobs"] = slugs
+    if pin:
+        pin_kappas(out, runs, slugs, frames)
     return out
+
+
+# ------------------------------------------------------------------ the frame pin
+#: The frame pin (Kent 2026-11-15, "Pin tripwire frame (Recommended)"; built OFF,
+#: `--pin-frame`). `scorecard.register` hill-climbs solid IoU, and on a flat plateau
+#: a 0.1 mm change to our outline lands it up to 0.55 mm elsewhere; the 2 mm cell
+#: grid the two kappas are read on moves with it, which alone swung becker_hat_large's
+#: stitch-type kappa by 0.059 (docs/corner-fold-kappa-2026-11-15.md). Pinned, each
+#: job's kappas are read at the ledger's shift and grid origin, re-registering only
+#: when the design really moved (`scorecard.PIN_MARGIN`).
+FRAME_KEYS = ("dx", "dy", "x0", "y0")
+
+
+def pin_kappas(run: dict, runs: Path, slugs: list[str], frames: dict | None) -> dict:
+    """Re-read each job's stitch-type and direction kappa (and the chance floor) in
+    `frames[job]` when the ledger has one, else in the frame a fresh climb finds, and
+    record the frame used in `run["frames"]`. The score directories are the ones
+    `pro_baseline.measure` just wrote."""
+    from tools.lane_census import sttype_kappa
+    from tools.pro_parity import scorecard
+    run["frames"] = {}
+    for s in slugs:
+        pin = {k: frames[s][k] for k in FRAME_KEYS} if frames and s in frames else {}
+        work = runs / s / "score" / s
+        try:
+            score = scorecard.score_design(work, frame=pin)
+        except Exception as e:                                   # noqa: BLE001 -- a row, not a crash
+            run["values"].setdefault(s, {})["kappa_error"] = f"{type(e).__name__}: {e}"[:300]
+            run["values"][s]["sttype_kappa"] = run["values"][s]["direction_kappa"] = None
+            continue
+        k = sttype_kappa(score)
+        run["values"][s]["sttype_kappa"] = _kappa_value(k, "kappa")
+        run["values"][s]["direction_kappa"] = _kappa_value(k, "direction_kappa")
+        run["chance"][s] = _kappa_value(k, "chance")
+        run["frames"][s] = score["detail"]["frame"]
+    return run
+
+
+def frame_summary(run: dict) -> str | None:
+    """One line: how many jobs were read pinned, re-registered or freshly registered."""
+    fr = run.get("frames")
+    if not fr:
+        return None
+    by = {}
+    for s, f in sorted(fr.items()):
+        by.setdefault(f["source"], []).append(s)
+    parts = [f"{len(v)} {k}" + (f" ({', '.join(v)})" if k != "pinned" else "") for k, v in sorted(by.items())]
+    return "frame pin: " + "; ".join(parts)
 
 
 # ------------------------------------------------------------------ the ledger
@@ -282,14 +336,30 @@ def build_ledger(passes: list[dict], run_url: str | None = None) -> dict:
             if fig == "word_cc":
                 row["words"] = passes[0]["words"].get(s)
             rows.append(row)
-    return {"schema": SCHEMA,
-            "captured": {"date": time.strftime("%Y-%m-%d"), "passes": len(passes), "run_url": run_url,
-                         "engine": (passes[0].get("env") or {}).get("engine")},
-            "env": passes[0].get("env"),
-            "figures": {f: {"worse": v["worse"], "res": v["res"]} for f, v in FIGURES.items()},
-            "secs": {s: [p.get("secs", {}).get(s) for p in passes] for s in jobs},
-            "skipped": skipped,      # (job, figure) read in no pass or not in every pass: no row, say so
-            "rows": rows}
+    led = {"schema": SCHEMA,
+           "captured": {"date": time.strftime("%Y-%m-%d"), "passes": len(passes), "run_url": run_url,
+                        "engine": (passes[0].get("env") or {}).get("engine")},
+           "env": passes[0].get("env"),
+           "figures": {f: {"worse": v["worse"], "res": v["res"]} for f, v in FIGURES.items()},
+           "secs": {s: [p.get("secs", {}).get(s) for p in passes] for s in jobs},
+           "skipped": skipped,      # (job, figure) read in no pass or not in every pass: no row, say so
+           "rows": rows}
+    if all(p.get("frames") for p in passes):            # `--pin-frame` passes only
+        led["frames"] = ledger_frames(passes, jobs)
+    return led
+
+
+def ledger_frames(passes: list[dict], jobs: list[str]) -> dict:
+    """The pins: pass 1's frame per job (the passes write one DST, so they find one
+    frame), and whether every pass found the same one."""
+    out = {}
+    for s in jobs:
+        fs = [p["frames"].get(s) for p in passes]
+        if any(f is None for f in fs):
+            continue
+        pin = {k: fs[0][k] for k in FRAME_KEYS}
+        out[s] = {**pin, "passes_agree": all({k: f[k] for k in FRAME_KEYS} == pin for f in fs)}
+    return out
 
 
 #: Passes a stitch-count row needs before a tolerance of 0 is believable. The 2026-11-14
@@ -341,6 +411,9 @@ def validate_ledger(led: dict) -> list[str]:
         for k in r:
             if any(f in k.lower() for f in FORBIDDEN_KEYS):
                 bad.append(f"row {i}: forbidden key {k!r}")
+    for s, f in (led.get("frames") or {}).items():          # optional: a ledger without pins is valid
+        if not isinstance(f, dict) or any(not isinstance(f.get(k), (int, float)) for k in FRAME_KEYS):
+            bad.append(f"frame {s}: needs numeric {', '.join(FRAME_KEYS)}")
     return bad
 
 
@@ -638,6 +711,11 @@ def main(argv=None) -> int:
     ap.add_argument("--table", type=Path, help="check: write the markdown table here too")
     ap.add_argument("--json", dest="json_out", type=Path, help="check: write the compare as JSON here")
     ap.add_argument("--all", action="store_true", help="check: print every row, not only the movers")
+    ap.add_argument("--pin-frame", action="store_true",
+                    help="built OFF (Kent 2026-11-15): read the two kappas in a pinned registration and "
+                         "grid origin. measure: record each job's frame in the pass (capture then writes "
+                         "the ledger's `frames`); check: score at the ledger's pins, re-registering only a "
+                         "design that really moved; a ledger without `frames` registers fresh")
     a = ap.parse_args(argv)
 
     if a.cmd == "jobs":
@@ -674,7 +752,7 @@ def main(argv=None) -> int:
         ap.error(f"not committed pairs: {unknown}")
 
     if a.cmd == "measure":
-        run = measure(a.runs, slugs, not a.no_words, a.kent_dir)
+        run = measure(a.runs, slugs, not a.no_words, a.kent_dir, pin=a.pin_frame)
         out = a.figures or (a.runs / "figures.json")
         _dump(run, out)
         print(f"wrote {out}")
@@ -697,10 +775,16 @@ def main(argv=None) -> int:
     if a.figures and a.figures.exists():
         run = _load(a.figures)
     else:
-        run = measure(a.runs, slugs, not a.no_words, a.kent_dir)
+        frames = led.get("frames") if a.pin_frame else None
+        if a.pin_frame and not frames:
+            print("frame pin: the ledger has no `frames`; every job registers fresh", file=sys.stderr)
+        run = measure(a.runs, slugs, not a.no_words, a.kent_dir, pin=a.pin_frame, frames=frames)
         _dump(run, a.figures or (a.runs / "figures.json"))
     cmp = compare(led, run, a.only)
     text = movers_table(cmp, a.all)
+    fs = frame_summary(run)
+    if fs:
+        text += "\n\n" + fs
     print(text)
     red = red_line(cmp)
     if red and os.environ.get("GITHUB_ACTIONS") == "true":
