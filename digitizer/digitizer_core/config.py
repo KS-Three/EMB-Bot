@@ -1454,19 +1454,22 @@ class PipelineConfig:
     # Kent's merged-letter pins: Gaulke's E and S kept their gaps through
     # stage 5 and lost them to the rail push). True holds a gap as a counter
     # is held (`cfg.min_detail_mm`); a number is the floor in mm a gap keeps.
-    # **0.5 since 2026-11-15, Kent's flip** ("Flip both, value 0.5", with
-    # `compact_satin_keeps_gaps`), promoted to a field so the default can be
-    # set. None is the push as it was, byte for byte; `tests/conftest.py`
-    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it None. Tests:
-    # `tests/test_satin_push_keeps_gaps.py`.
-    satin_push_keeps_gaps: bool | float | None = 0.5
+    # Kent ruled it 0.5 on 2026-11-15 ("Flip both, value 0.5", with
+    # `compact_satin_keeps_gaps`); the flip is HELD (Director, 2026-11-15)
+    # until the push never costs a stroke: at 0.5, in
+    # `tests/test_lettering_coverage_regression`'s config, enthusiast's
+    # 2.4 mm tagline lost the E's upper arms and INC's N stem. A field now
+    # (`cfg.extra` was its only door); None is the push as it was, byte for
+    # byte. Tests: `tests/test_satin_push_keeps_gaps.py`.
+    satin_push_keeps_gaps: bool | float | None = None
     # A compact solid sewn as satin keeps the gaps the art keeps (stage 7's
     # `compact_solids_satin` path, built OFF 2026-11-14 as
     # `cfg.extra["compact_satin_keeps_gaps"]`, Gaulke's window: its 0.7-0.85
     # mm pane dividers sewed shut). The growth stays out of those gaps by
     # stage 5's own `growth_keeps_gaps` rule, on these shapes only.
     # **ON since 2026-11-15, Kent's flip** ("Flip both, value 0.5", with
-    # `satin_push_keeps_gaps`). False is the engine as it was, byte for byte;
+    # `satin_push_keeps_gaps`, whose flip is held). False is the engine as it
+    # was, byte for byte;
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_text_gap_flips_2026_11_15.py`.
     compact_satin_keeps_gaps: bool = True

@@ -1,6 +1,6 @@
 ---
 name: satin-push-keeps-gaps-2026-11-14
-description: Kent's 23 merged-letter fault groups traced on main 66b11432; largest geometry cause = satin rail push into bays / same-thread gaps (counters were held, bays were not); `satin_push_keeps_gaps` built OFF, 0.5 floor lands on the pro at Gaulke's E and S; 0.5 default since 2026-11-15 with compact_satin_keeps_gaps ON (Kent "Flip both, value 0.5")
+description: Kent's 23 merged-letter fault groups traced on main 66b11432; largest geometry cause = satin rail push into bays / same-thread gaps (counters were held, bays were not); `satin_push_keeps_gaps` built OFF, 0.5 floor lands on the pro at Gaulke's E and S
 metadata:
   type: project
 ---
@@ -36,13 +36,11 @@ flags at 0.5: four panes, E 0.36 / S 0.28 / window 0.60 vs pro 0.36 / 0.36 /
 ray-edge, spans as arrays, `deadline.check` per 256 rays): byte-identical,
 Gaulke `_push_rails` 0.8-1.0 s OFF -> 1.9 s ON (first build ~10x).
 
-**Kent's ruling 2026-11-15: "Flip both, value 0.5".** `satin_push_keeps_gaps`
-defaults to 0.5 and `compact_satin_keeps_gaps` (#1557, a compact solid sewn as
-satin keeps the art's gaps; Gaulke's window sews four panes) is ON; both are
-`PipelineConfig` fields, PRE_FLIP pins them None / False. `true` stays a
-setting (it doubles the pro's E/S gaps and thins parallel bars). Pull magnitude untouched (gate 1). Related:
+**How to apply:** the floor is Kent's pick; the worker's is 0.5 plus
+`growth_keeps_gaps` (true doubles the pro's E/S gaps and thins parallel
+bars). Pull magnitude untouched (gate 1). Related:
 [[fat-ink-ledger-2026-11-14]], [[space-fault-reader-2026-11-12]].
 
 **Gaulke's window, 11-14 (#1557):** two panes are predicted fill at stage 5 and grown 14.8 -> 20.4 mm2; `compact_solids_satin` then sews them as satin on that grown polygon, closing the horizontal divider (0.7 -> 0.4 at stage 5, 0.1-0.2 at the thread; pro 0.7). `compact_satin_keeps_gaps` (built OFF) applies stage 5's `_kept_gaps` to compact satins only: divider 0.6, 0.11% of Gaulke moves. With `satin_push_keeps_gaps` 0.5 the window has four panes, like the pro.
 
-**Kent 2026-11-15:** "Flip both, value 0.5" (`satin_push_keeps_gaps` at 0.5 and `compact_satin_keeps_gaps`). Flipped 11-15 (flip PR 2). The flip found `compact_satin_keeps_gaps` alone crashing hed p.e. at 80 mm (`_kept_gaps` gave a polygon plus zero-area lines; `small_solid_satin` raised); `stage7_sequence._one_polygon` now sews the one polygon. `satin_push_keeps_gaps` alone moves the flat golden by one stitch on whitebg and alpha (0.3 mm, re-pinned).
+**Kent 2026-11-15:** "Flip both, value 0.5" (`satin_push_keeps_gaps` at 0.5 and `compact_satin_keeps_gaps`). Ruled ON 11-15, flip pending.
