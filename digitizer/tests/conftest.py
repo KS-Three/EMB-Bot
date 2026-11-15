@@ -1009,6 +1009,10 @@ PRE_FLIP.update(BLEND_BAND_2026_11_14_OFF)
 # `tests/test_column_edge_walk.py`.
 EDGE_WALK_2026_11_14_OFF = {"lettering_columns_connectors_edge_walk": False}
 PRE_FLIP.update(EDGE_WALK_2026_11_14_OFF)
+# `lettering_columns_corner_fold_apex_side` ("Flip ON", the Column-lane
+# flips): `tests/test_column_corner_fold_apex_side.py`.
+CORNER_APEX_2026_11_14_OFF = {"lettering_columns_corner_fold_apex_side": False}
+PRE_FLIP.update(CORNER_APEX_2026_11_14_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

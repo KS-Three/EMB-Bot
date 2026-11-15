@@ -3748,7 +3748,13 @@ class PipelineConfig:
     # apex in reach is tried, nearest first, until `_fold_pair` takes one.
     # Layout, judged in the preview; False is the cut as it is, byte for
     # byte. Tests: `tests/test_column_corner_fold_apex_side.py`.
-    lettering_columns_corner_fold_apex_side: bool = False
+    # **ON since 2026-11-14, Kent's flip** ("Flip ON", from the corner-turn
+    # sheets; told: only the five Becker jobs move, one trim fewer each,
+    # about 150 more stitches per E, and the E's top-left also fans where the
+    # pro's Becker file caps): False is the cut as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False.
+    lettering_columns_corner_fold_apex_side: bool = True
     # Under `lettering_columns`, the INSIDE of every pivot -- an L fold's
     # corner (`lettering_columns_corner_fold`), an S's curl, a bowl -- is
     # sewn the way the professional's files sew it (2026-10-23, built OFF;
