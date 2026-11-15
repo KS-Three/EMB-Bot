@@ -68,6 +68,15 @@ FILL_FRAC = 0.5
 TOUCH_FRAC = 0.25
 
 
+#: `cfg.outline_frame_guard`: an outline holds more than it is. Its area
+#: over the area of its looped holes, measured 2026-11-14: To a T's frame
+#: 0.05, MFab's keyline 0.67, Becker's 0.72 (all three the pro borders);
+#: k_line's red box round its white K 1.90 and Ahora's pink ground round its
+#: letters 2.10 (fields round knockouts). 1.0 is the line itself -- more
+#: frame than content -- not a fitted edge. A shape read, not a stitch value.
+FRAME_AREA_RATIO = 1.0
+
+
 def _counter(body, holder, cfg) -> bool:
     return bool((body.meta or {}).get("counter")) or is_lettering(holder, cfg)
 
@@ -143,6 +152,7 @@ def find_art_outlines(regions, cfg=None, *,
     regions = list(regions)
     if line_art_guard is None:
         line_art_guard = bool(getattr(cfg, "border_from_outline_line_art_guard", False))
+    frame_guard = bool(getattr(cfg, "outline_frame_guard", False))
     if group_decide is None and getattr(cfg, "group_consistent_outline_body", False):
         from .group_consistency import outline_body_decider
         group_decide = outline_body_decider(machine.MIN_FILL_WIDTH_MM)
@@ -208,6 +218,16 @@ def find_art_outlines(regions, cfg=None, *,
                 getattr(cfg, "photo_enclosed_rim", False))):
             taken.difference_update(b.shape_id for b, _hole in found)
             continue
+        # `cfg.outline_frame_guard` (built OFF 2026-11-14): an outline is a
+        # thin band round what it holds. A box with a letter knocked out of
+        # it is near its hole everywhere (k_line's red box, 0.999) but is
+        # bigger than what it holds: a FIELD round a knockout. It stays in
+        # the result, so its bodies still sew as plain fills, and is tagged;
+        # stage 7 gives it no loop and sews it on the fill tier.
+        if found and frame_guard:
+            ratio = poly.area / max(sum(h.area for h in holes), 1e-9)
+            if ratio >= FRAME_AREA_RATIO:
+                o.meta["framed_field"] = round(ratio, 2)
         for b, hole in found:
             out.setdefault(o.shape_id, []).append((b.shape_id, hole))
     return out

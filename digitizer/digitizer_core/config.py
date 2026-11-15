@@ -1344,6 +1344,23 @@ class PipelineConfig:
     # not apply. False is the engine before the flag, byte for byte. Tests:
     # `tests/test_speck_prune.py`; doc `docs/missing-invented-traced-2026-11-14.md`.
     speck_prune: bool = False
+    # An art outline holds more than it is (built OFF 2026-11-14, Kent's
+    # lt_k_line, 3 pins: "the red bean stitch should not have infill outside
+    # of it", "The red box is missing here"). The red box with a white K
+    # knocked out passes `border_from_outline`'s band test (0.999 of it near
+    # the K), so it sewed as the K's art outline: a satin loop hugging the K,
+    # the box's corners left to scraps of fill under it. ON
+    # (`art_outline.find_art_outlines`): a holder whose area is at least that
+    # of its looped holes (`art_outline.FRAME_AREA_RATIO`, 1.0: more frame
+    # than content) is a field round a knockout, tagged `framed_field`: stage
+    # 7 gives it no loop and sews it on the fill tier
+    # (`stage7_sequence._framed_field_fill`), and its bodies stay plain fills
+    # as before. Real outlines read 0.05-0.72 (To a T, MFab, Becker); the
+    # k_line box 1.90, Ahora's pink ground 2.10 and its gear ring 1.37. A
+    # shape read, not a stitch value: gate 1 does not apply. False is the
+    # engine before the flag, byte for byte.
+    # Tests: `tests/test_outline_frame_guard.py`.
+    outline_frame_guard: bool = False
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")

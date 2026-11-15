@@ -160,6 +160,7 @@
  "letterform_priors_k": 0.75,
  "outline_redraw_k": null,
  "outline_redraw_native": false,
+ "outline_frame_guard": false,
  "line_chain_one_thread": false,
  "lettering_columns": true,
  "lettering_columns_apex_cut": false,
