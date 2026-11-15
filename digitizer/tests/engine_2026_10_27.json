@@ -66,6 +66,8 @@
  "contour_tolerance_mm": null,
  "coverage_edges": false,
  "crop": null,
+ "curve_chord_mm": null,
+ "curve_chord_stage4": false,
  "curve_turn_deg": 15.0,
  "cut_every_jump": false,
  "dark_ink_bean": false,
