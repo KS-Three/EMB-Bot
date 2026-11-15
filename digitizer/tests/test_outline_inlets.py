@@ -1,10 +1,11 @@
-"""`cfg.extra["outline_inlets_kept"]` (built OFF 2026-11-14): a shape's own
+"""`cfg.outline_inlets_kept` (built OFF 2026-11-14 in `cfg.extra`; ON since 2026-11-15,
+Kent's tick "K-Line box + gear flags"): a shape's own
 outline inlets -- a gear's tooth gaps, an open beak, a notch -- are kept open
 at stitch time (`digitizer_core.outline_inlets`). Kent's "shape detail lost"
 pins, traced in `docs/shape-detail-traced-2026-11-14.md`.
 
 Every test reads WHERE thread goes; the pull itself (gate 1) is untouched.
-Absent or false keys are the engine as it was.
+False is the engine as it was; `_plan` below runs OFF unless a test asks for ON.
 """
 from __future__ import annotations
 
@@ -47,8 +48,8 @@ def _gear(teeth=12, r_root=3.0, r_tip=3.8, r_hole=2.0):
     return Polygon(shell.exterior, [Point(0, 0).buffer(r_hole, quad_segs=32).exterior.coords])
 
 
-def _plan(regions, **extra):
-    c = PipelineConfig(overlap_mm=0.25, extra=dict(extra))
+def _plan(regions, outline_inlets_kept=False):
+    c = PipelineConfig(overlap_mm=0.25, outline_inlets_kept=outline_inlets_kept)
     planned, _w = resolve_overlaps(regions, PIQUE, c)
     return {p.region.shape_id: p.polygon for p in planned}
 
@@ -72,12 +73,12 @@ def test_inlets_are_the_outline_notches_not_corners_or_counters():
     assert len(gaps) == 12                                        # one per tooth gap
 
 
-def test_absent_and_false_keys_are_the_engine_as_it_was():
+def test_on_by_default_and_a_shape_with_no_inlet_does_not_move():
+    assert PipelineConfig().outline_inlets_kept is True
     def scene():
-        return [_r(_notched_disc(), "D", tier="fill", fill_angle_deg=0.0),
+        return [_r(box(0, -3, 3, 3), "D", tier="fill", fill_angle_deg=0.0),
                 _r(box(4, -3, 9, 3), "B", thread=1, layer=1, tier="fill", fill_angle_deg=90.0)]
-    base = _md5(_plan(scene()))
-    assert _md5(_plan(scene(), outline_inlets_kept=False)) == base
+    assert _md5(_plan(scene(), outline_inlets_kept=True)) == _md5(_plan(scene()))
 
 
 def test_a_fills_growth_keeps_out_of_its_own_notch():
