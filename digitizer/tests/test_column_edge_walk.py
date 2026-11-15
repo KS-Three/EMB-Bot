@@ -92,8 +92,9 @@ def sewn_prod():
     return rows
 
 
-def test_default_off():
-    assert PipelineConfig().lettering_columns_connectors_edge_walk is False
+def test_on_by_default():
+    # Kent's flip 2026-11-14 ("Flip ON"); PRE_FLIP keeps the OFF arm
+    assert PipelineConfig().lettering_columns_connectors_edge_walk is True
 
 
 def test_production_lane_buried_clean_at_offs_trims(sewn_prod):

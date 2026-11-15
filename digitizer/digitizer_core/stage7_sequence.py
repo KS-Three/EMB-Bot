@@ -77,6 +77,7 @@ from .words import is_text, word_key
 from .monoline import bury_hops, clear_finished_underlay, monoline_stroke
 from .script_strokes import script_strokes_shape, script_word
 from .stage6_blend import SourcePixels, blend_fill, region_rides_design_ramp
+from .stage6_counter_fan import counter_fan_runs
 from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
@@ -3102,6 +3103,9 @@ def sequence(
     # inside the shape's fill (`stage6_border.ring_has_room`, MFab's A counter)
     ring_room = (border_style == "significant"
                  and bool((getattr(cfg, "extra", None) or {}).get("border_significant_ring_room")))
+    # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14): a small
+    # three-sided counter as one fanned satin (`stitch_one`, `stage6_counter_fan`)
+    counter_fan = bool((getattr(cfg, "extra", None) or {}).get("counter_fan_satin"))
     # The significance denominator: the design's own stitched area, so the
     # gate is a SHARE and moves with the design instead of being a mm floor
     # (which would be a physical constant, and gate 1 territory).
@@ -3377,6 +3381,52 @@ def sequence(
             seam_by_layer[p.layer] = (prep(ground.buffer(0.1)), ground) if down else None
         return seam_by_layer[p.layer]
 
+    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14): the rail
+    # push of a satin or a lettering column is held out of the bays of its
+    # own shape and its gaps to same-thread ink, as from a counter
+    # (`stage6_satin.PUSH_KEEP_MARGIN_MM`). The ink near one shape, its own
+    # artwork included: one union per thread, clipped to the push's reach.
+    # True holds a gap as a counter is held (`cfg.min_detail_mm`); a number
+    # is the floor in mm a gap keeps instead (the pro's E and S at Gaulke
+    # keep about what a 0.5 floor leaves).
+    _kg = (cfg.extra or {}).get("satin_push_keeps_gaps")
+    keep_gaps = bool(_kg)
+    keep_floor = (float(_kg) if isinstance(_kg, (int, float)) and not isinstance(_kg, bool)
+                  else cfg.min_detail_mm)
+    keep_by_thread: dict[int, object] = {}
+
+    def push_keep(p: PlannedRegion):
+        ti = p.region.thread_index
+        if ti not in keep_by_thread:
+            keep_by_thread[ti] = unary_union([o.region.polygon for o in planned
+                                              if o.region.thread_index == ti])
+        reach = 2.0 * fabric.pull_comp_mm + cfg.min_detail_mm + 1.0
+        return keep_by_thread[ti].intersection(p.region.polygon.buffer(reach)), keep_floor
+
+    # `cfg.extra["compact_satin_keeps_gaps"]` (built OFF 2026-11-14, Gaulke's
+    # window). `compact_solids_satin` sews a compact solid as one satin on
+    # `p.polygon`, the polygon stage 5 grew for the FILL it predicted: the
+    # pull all round, into the gap the art keeps to the next shape. Gaulke's
+    # four panes keep 0.7-0.85 mm dividers through stage 4; two of them are
+    # predicted fill, grown 14.8 -> 20.4 mm2, and the horizontal divider sews
+    # shut (0.4 at stage 5, 0.1 at the thread; the pro's 0.7). ON, the
+    # growth stays out of those gaps by stage 5's own `growth_keeps_gaps`
+    # rule (`stage5_overlap._kept_gaps`: same thread always, other colours
+    # from `GAP_SEWABLE_MM`), on these shapes only. Off, unread.
+    compact_keep = bool((cfg.extra or {}).get("compact_satin_keeps_gaps"))
+    compact_tree = (shapely.STRtree([o.region.polygon for o in planned])
+                    if compact_keep else None)
+
+    def compact_kept(p: PlannedRegion):
+        from .stage5_overlap import GAP_PROTECT_MM, _kept_gaps
+        art = p.region.polygon
+        near = [planned[int(i)].region for i in compact_tree.query(art.buffer(GAP_PROTECT_MM))
+                if planned[int(i)] is not p]
+        local = unary_union([art] + [o.polygon for o in near])
+        kept = _kept_gaps(p.region, art, p.polygon, near, local, None,
+                          fabric.pull_comp_mm + cfg.overlap_mm)
+        return kept if (kept is not None and not kept.is_empty) else p.polygon
+
     # `cfg.stripe_underfill`: a band sewn on a stripe field's fill holds its
     # rails where the fill lies beneath -- the ground already down here is
     # the artwork AND every under-fill outline sewn before it. Untagged: None.
@@ -3590,6 +3640,23 @@ def sequence(
             shape_underlay = p.region.meta.get("underlay_style")
             eff_underlay_style = (shape_underlay if shape_underlay is not None
                                   else underlay_style)
+            # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14,
+            # `stage6_counter_fan`): a small three-sided counter sews as ONE
+            # fanned satin, the pro's way, where every cross fits under the
+            # satin ceiling (`machine.SATIN_MAX_WIDTH_MM`, gate 1). The
+            # shape's OWN tier must be "auto": a review-screen choice wins,
+            # but the design-wide white-field rung above does not (MFab's A
+            # counter is exactly such a field). Refused, the ladder below
+            # exactly as before. (A shape the review screen never touched
+            # carries `tier: None`, which is "auto" too.)
+            own_tier = str(p.region.meta.get("tier") or "auto").lower()
+            if (counter_fan and own_tier == "auto" and p.region.meta.get("enclosed_background")
+                    and not is_lettering(p.region, cfg)):
+                fan = counter_fan_runs(p.region.polygon, p.shape_id,
+                                       pull_mm=fabric.pull_comp_mm,
+                                       spacing_mm=satin_spacing_for(p))
+                if fan is not None:
+                    return fan[0], fan[1], False
             # The run tier comes first: a shape below the sewable-detail floor
             # has nowhere to put fill rows (MIN_FILL_WIDTH_MM) and pinches
             # every satin cross under SATIN_MIN_CROSS_MM, so both real tiers
@@ -4060,7 +4127,10 @@ def sequence(
                     # `cfg.lettering_columns_connectors_edge_walk` (built OFF 2026-11-14):
                     # the walk whose hops lie under satin still to come; off, today's call
                     **({"edge_walk": True}
-                       if cfg.lettering_columns_connectors_edge_walk else {}))
+                       if cfg.lettering_columns_connectors_edge_walk else {}),
+                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14):
+                    # the push held out of bays and gaps; off, today's call
+                    **({"pull_keep": push_keep(p)} if keep_gaps else {}))
                 # `cfg.lettering_columns_cover_handback` (built OFF): a shape the
                 # lane covers under `HANDBACK_COVER_MIN` is sewn down the ladder
                 # as well, as it would be untagged, ONCE (`handback_trying`), and
@@ -4247,6 +4317,8 @@ def sequence(
                     rail_comp_floor_mm=cfg.min_detail_mm,
                     rail_held=(stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
                                else seam_ground(p) if cfg.satin_seam_hold else None),
+                    # `cfg.extra["satin_push_keeps_gaps"]` (built OFF): off, today's call
+                    **({"rail_keep": push_keep(p)} if keep_gaps else {}),
                     cap_skew_inset=cfg.satin_cap_skew_inset,
                     use_shapefield=use_shapefield,
                     spacing_mm=satin_spacing_for(p),
@@ -4320,7 +4392,8 @@ def sequence(
                     and not (is_lettering(p.region, cfg) and not handed_back)
                     and is_small_solid(p.region.polygon, profile_for(p).width_mm)):
                 runs, report = small_solid_satin(
-                    p.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
+                    compact_kept(p) if compact_keep else p.polygon, p.shape_id,
+                    spacing_mm=satin_spacing_for(p),
                     max_width_mm=shape_max, start_near=entry)
                 if not report["empty"]:
                     report["compact_satin"] = 1

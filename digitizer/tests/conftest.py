@@ -999,12 +999,28 @@ PRE_FLIP.update(BASELINE_2026_11_14_OFF)
 # `_outline_body` and `_thread` OFF the same day): `tests/test_group_consistency.py`.
 GROUP_2026_11_14_OFF = {"group_consistent_tier": False, "group_consistent_fill_angle": False}
 PRE_FLIP.update(GROUP_2026_11_14_OFF)
+# `group_consistent_thread` with its guard ("Flip ON with guard", Kent 2026-11-14):
+# `tests/test_word_thread_guard.py`, `tests/test_group_consistency.py`.
+THREAD_2026_11_14_OFF = {"group_consistent_thread": False}
+PRE_FLIP.update(THREAD_2026_11_14_OFF)
+# `group_consistent_outline_body` with its guard ("Flip ON with guard", Kent
+# 2026-11-14): `tests/test_outline_body_guard.py`, `tests/test_group_consistency.py`.
+BODY_2026_11_14_OFF = {"group_consistent_outline_body": False}
+PRE_FLIP.update(BODY_2026_11_14_OFF)
 # `outline_redraw_k` ("Set 0.75"; None before): `tests/test_outline_redraw.py`.
 REDRAW_2026_11_14_OFF = {"outline_redraw_k": None}
 PRE_FLIP.update(REDRAW_2026_11_14_OFF)
 # `flat_blend_band_any_scale` ("Flip ON"): `tests/test_flat_blend_band.py`.
 BLEND_BAND_2026_11_14_OFF = {"flat_blend_band_any_scale": False}
 PRE_FLIP.update(BLEND_BAND_2026_11_14_OFF)
+# `lettering_columns_connectors_edge_walk` ("Flip ON", the Column-lane flips):
+# `tests/test_column_edge_walk.py`.
+EDGE_WALK_2026_11_14_OFF = {"lettering_columns_connectors_edge_walk": False}
+PRE_FLIP.update(EDGE_WALK_2026_11_14_OFF)
+# `lettering_columns_corner_fold_apex_side` ("Flip ON", the Column-lane
+# flips): `tests/test_column_corner_fold_apex_side.py`.
+CORNER_APEX_2026_11_14_OFF = {"lettering_columns_corner_fold_apex_side": False}
+PRE_FLIP.update(CORNER_APEX_2026_11_14_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

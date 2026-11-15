@@ -1,6 +1,6 @@
 ---
 name: thread-guard-2026-11-14
-description: group_consistent_thread's guard (flag still OFF, Kent "Hold it, guard first") - a lone letter takes its word's thread only if that thread matches the letter's own art no worse (median per-pixel dE00, preflight's read); Drone refused 7.27 -> 13.17, Bridge's U moves 15.29 -> 14.11
+description: group_consistent_thread's guard (flag ON with it since 11-14, Kent "Flip ON with guard") - a lone letter takes its word's thread only if that thread matches the letter's own art no worse (median per-pixel dE00, preflight's read); Drone refused 7.27 -> 13.17, Bridge's U moves 15.29 -> 14.11
 metadata:
   type: project
 ---
@@ -30,6 +30,10 @@ pixel moves as built. The flag stays OFF; OFF never builds the reader.
 - Bridge ON+guard renders byte-identical to ON (the U is fixed).
 - The mascot is identical in all three arms. Its feet are `_fill_angle`'s,
   not this rule's.
+
+**Ruled 2026-11-14 (Kent): "Flip ON with guard"**, from the Drone and Bridge
+sheets above. The flag ships ON with this guard; PRE_FLIP and the snapshot
+pin it False. Movers: the group-flags flip PR.
 
 **How to apply:** a rule that recolours a shape for consistency must check
 the shape's own art first. "Its siblings' thread" is not evidence that the

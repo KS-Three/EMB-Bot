@@ -1376,6 +1376,21 @@ class PipelineConfig:
     # Colour reads, no stitch value: gate 1 does not apply. False is the
     # engine before the flag, byte for byte. Tests: `tests/test_tiny_detail_keep.py`.
     tiny_detail_keep: bool = False
+    # A thin stroke of a shape's own ink kept whole (built OFF 2026-11-14,
+    # Kent's arabic calligraphy, 2 pins "missing line"). The stems between the
+    # leaves arrive at stage 3 as crumbs split between the leaves' gold and
+    # their darker edge gold, about 120 px together at 11.5 px/mm, under the
+    # chain rescue's `min_detail_mm` floor and too near the leaves' colour for
+    # the contrast rescue: each is absorbed into a leaf as a spur the satin
+    # never sews. ON (`stage3_segment._stroke_bridges`): a chain of touching
+    # sub-floor crumbs whose nearest palette colour is the hosts', touching
+    # two or more full-size regions of that one colour only at its ends
+    # (`BRIDGE_HOST_CONTACT_MAX` 0.35 of its rim) and lying on ground for half
+    # of it (`BRIDGE_GROUND_MIN`), that clears the run floors, is kept as one
+    # stroke. Shape and colour reads, no stitch value: gate 1 does not apply.
+    # False is the engine before the flag, byte for byte. Tests:
+    # `tests/test_stroke_bridge_keep.py`.
+    stroke_bridge_keep: bool = False
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
@@ -1752,6 +1767,21 @@ class PipelineConfig:
     # unpredictably: smoother on some bowls, a straight cut across the "p"'s
     # arc and an opened seam on others (`docs/jag-source-2026-11-13.md`).
     outline_redraw_native: bool = False
+    # Grow every shape the redraw rewrote by this many mm, mitred
+    # (`outline_redraw.apply_outline_redraw`, 2026-11-14, built OFF at 0.0).
+    # The redraw seats edges inside the source: on a 50 mm upscaled disc
+    # with `subpixel_edges` 0.065-0.088 mm inside the true circle. That inward
+    # seat is Becker's bare-fabric rise AND the redraw's trims. At the pro's
+    # config, redraw -> redraw + 0.07: Becker hat large 17 -> 13 trims (13
+    # without the redraw), MFab hat 24 -> 22 (18), Becker LC 18 -> 16 (15),
+    # MFab LC 24 -> 21 (23), To a T machine 24 -> 21 (23), Becker beanie 15 ->
+    # 14 (17). Not the pieces, the vertex density or the net area (each
+    # tested, none brings them back; `docs/redraw-trims-2026-11-14.md`). A
+    # geometry correction for the fit's own bias, not a cloth value; Kent's
+    # call from sheets. NOT A CANDIDATE AS BUILT: MFab hat's small line reads
+    # worse (the white keyline fattens over the black letters); the bias wants
+    # correcting where the fit put it. Off (0.0): nothing runs, byte-identical.
+    outline_redraw_grow_mm: float = 0.0
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches
@@ -3840,7 +3870,13 @@ class PipelineConfig:
     # apex in reach is tried, nearest first, until `_fold_pair` takes one.
     # Layout, judged in the preview; False is the cut as it is, byte for
     # byte. Tests: `tests/test_column_corner_fold_apex_side.py`.
-    lettering_columns_corner_fold_apex_side: bool = False
+    # **ON since 2026-11-14, Kent's flip** ("Flip ON", from the corner-turn
+    # sheets; told: only the five Becker jobs move, one trim fewer each,
+    # about 150 more stitches per E, and the E's top-left also fans where the
+    # pro's Becker file caps): False is the cut as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False.
+    lettering_columns_corner_fold_apex_side: bool = True
     # Under `lettering_columns`, the INSIDE of every pivot -- an L fold's
     # corner (`lettering_columns_corner_fold`), an S's curl, a bowl -- is
     # sewn the way the professional's files sew it (2026-10-23, built OFF;
@@ -3939,7 +3975,11 @@ class PipelineConfig:
     # does not make the pro's corner: the E's stem and foot still butt, the
     # fold refused there (that doc, "Not done"). Layout (the needle's
     # order), not a physical constant. Tests: `tests/test_column_edge_walk.py`.
-    lettering_columns_connectors_edge_walk: bool = False
+    # **ON since 2026-11-14, Kent's flip** ("Flip ON", from the combined
+    # main | edge-walk | edge-walk + corner sheets beside the art): False is
+    # the walk as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False.
+    lettering_columns_connectors_edge_walk: bool = True
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
@@ -4091,12 +4131,13 @@ class PipelineConfig:
     # dot fill under the loop like AH and RA. A two-piece glyph (the ! and
     # its dot) joins a line its pieces span together. A candidate made a body
     # must be `machine.MIN_FILL_WIDTH_MM` across on average.
-    # HELD OFF (Kent 2026-11-14, "G4 alone looks the best"): beside
-    # `outline_redraw_k` 0.75 the re-fit tips MFab hat's small line (113.5 mm,
-    # Studio hat config) into outline bodies -- thick white borders over the
-    # black letters -- where each flag alone reads clean. Wants a guard so the
-    # re-fit cannot tip the vote.
-    group_consistent_outline_body: bool = False
+    # Held 2026-11-14 ("G4 alone looks the best": beside `outline_redraw_k`
+    # 0.75 the re-fit tipped MFab hat's small line into outline bodies); the
+    # guard (#1517, `group_consistency.outline_side`) needs a width tie-break
+    # wider by more than MARGIN. **ON since 2026-11-14, Kent's "Flip ON with
+    # guard"** (from the MFab 113.5 small-line and AHORA sheets). PRE_FLIP and
+    # the snapshot pin it False.
+    group_consistent_outline_body: bool = True
     # A word's THREAD decided once (`lettering_thread.word_thread`): a
     # text-cluster letter on a thread under a quarter of its word takes the
     # thread over half the word sews, within `lettering_thread.STRAY_MAX_DE00`
@@ -4109,12 +4150,13 @@ class PipelineConfig:
     # and takes the ladder with them (ON: Caribbean satin like the rest). A
     # customer's own recolour is never moved; the cap still has the last
     # word. Not the (hed)p.e. e: no cluster fires there.
-    # HELD OFF (Kent 2026-11-14, "Hold it, guard first"): on the drone render
-    # (80 mm left_chest) it moved a Pumpkin 1102 shape onto its word's Fox
-    # Fire 1305, whose thread match went warn -> block (scorecard D -> F).
-    # Wants a guard: never move a shape onto a thread that matches its art
-    # worse.
-    group_consistent_thread: bool = False
+    # Held 2026-11-14 ("Hold it, guard first": the drone render's Pumpkin 1102
+    # shape moved onto Fox Fire 1305, thread match warn -> block); the guard
+    # (#1516, `lettering_thread.word_thread`) refuses a move onto a thread
+    # that matches the letter's own art worse. **ON since 2026-11-14, Kent's
+    # "Flip ON with guard"** (from the Drone and Bridge OFF | ON | ON+guard
+    # sheets). PRE_FLIP and the snapshot pin it False.
+    group_consistent_thread: bool = True
     # ONE ANGLE per group of like shapes (`group_consistency.shared_angles`,
     # read in stage 7). Kent: "feet are differnt colors" (gradient_mascot: one
     # spool, fills at 39 and 134 deg, two directions read as two shades) and

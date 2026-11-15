@@ -64,6 +64,9 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_APEX_CUT"),
     ("outline_cut", "_APEX_GUARD"),
     ("outline_cut", "_APEX_PRO"),
+    ("columns", "_RING_FLOOR"),
+    ("outline_cut", "_APEX_PRO_JOINTS"),
+    ("outline_cut", "_FOLD_CAP_FLARED"),
     ("outline_cut", "_RAIL_AXIS"),
     ("outline_cut", "_SMALL_BOLD"),
     ("outline_cut", "_SMALL_BOLD_SIMPLIFY"),
@@ -78,6 +81,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("stage6_border", "_LOOP_MITRE"),
     ("stage6_border", "_LOOP_CHAIN"),
     ("column_lean", "_ITALIC"),
+    ("column_lean", "_LEAN_FLAT_ENDS"),
     ("stage6_satin", "_CHORD_AIM"),
 )
 #: ContextVars that are caches, not knobs. `stage6_fill._BRIDGE_MEMO` is one

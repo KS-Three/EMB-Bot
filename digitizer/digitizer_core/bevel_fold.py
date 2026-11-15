@@ -115,6 +115,9 @@ TONE_SEAM_FRAC = 0.2
 # not a shading patch. Golden Tee's golds split 45 / 55; the crest's navy
 # shading is 4% of its blue.
 RAMP_MIN_SHARE = 0.25
+# ... and the two tones must meet inside at least this many separate shapes
+# (a gradient the art repeats across its letters, not two objects touching).
+RAMP_MIN_OBJECTS = 2
 # A shadow is no wider than a fill can hold twice (`MIN_FILL_WIDTH_MM` x 2:
 # a drop shadow is an offset of a millimetre or two), lies on the page along
 # at least SHADOW_PAGE_FRAC of its outline, hugs the art along at least
@@ -330,6 +333,14 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
         # (the crest's navy: 4% of the blue).
         tot = area.get(a, 0.0) + area.get(b, 0.0)
         ramp = tot > 0 and min(area.get(a, 0.0), area.get(b, 0.0)) >= RAMP_MIN_SHARE * tot
+        # ... and a ramp RECURS: the two tones meet inside at least
+        # RAMP_MIN_OBJECTS separate shapes (each of GOLF's four letters is
+        # yellow over orange). Two objects of neighbouring colours touching
+        # once (the isometric icon's apricot and salmon sausages, 29 / 71)
+        # are two colours: the larger keeps its own (2026-11-14, evening:
+        # with the share test alone the apricot sausage sewed salmon).
+        if ramp:
+            ramp = _objects_with_both(regions, graph, to, a, b) >= RAMP_MIN_OBJECTS
         if ramp:
             big, small = (a, b) if (float(chart.lab[a][0]), a) < (float(chart.lab[b][0]), b) else (b, a)
         to[small] = big
@@ -509,6 +520,30 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
         for i in sorted(removed, reverse=True):
             del regions[i]
     return report
+
+
+def _objects_with_both(regions, graph, to, a, b) -> int:
+    """How many separate shapes -- connected groups of touching regions in
+    tones `a` and `b` (after the merges so far, `to`) -- hold BOTH tones."""
+    ids = [i for i, r in enumerate(regions)
+           if to.get(r.thread_index, r.thread_index) in (a, b) and _poly(r)]
+    keep = set(ids)
+    parent = {i: i for i in ids}
+
+    def find(x):
+        while parent[x] != x:
+            parent[x] = parent[parent[x]]
+            x = parent[x]
+        return x
+
+    for i in ids:
+        for j in graph.contacts(i):
+            if j in keep:
+                parent[find(i)] = find(j)
+    tones: dict[int, set] = {}
+    for i in ids:
+        tones.setdefault(find(i), set()).add(to.get(regions[i].thread_index, regions[i].thread_index))
+    return sum(1 for s in tones.values() if len(s) == 2)
 
 
 def _home_layers(regions, layer_threads, skip=()) -> dict:
