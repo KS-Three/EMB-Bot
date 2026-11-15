@@ -161,6 +161,7 @@
  "legibility_check": true,
  "letterform_priors_k": 0.75,
  "outline_redraw_k": null,
+ "outline_redraw_grow_mm": 0.0,
  "outline_redraw_native": false,
  "outline_frame_guard": false,
  "line_chain_one_thread": false,

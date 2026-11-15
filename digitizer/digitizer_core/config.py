@@ -1752,6 +1752,21 @@ class PipelineConfig:
     # unpredictably: smoother on some bowls, a straight cut across the "p"'s
     # arc and an opened seam on others (`docs/jag-source-2026-11-13.md`).
     outline_redraw_native: bool = False
+    # Grow every shape the redraw rewrote by this many mm, mitred
+    # (`outline_redraw.apply_outline_redraw`, 2026-11-14, built OFF at 0.0).
+    # The redraw seats edges inside the source: on a 50 mm upscaled disc
+    # with `subpixel_edges` 0.065-0.088 mm inside the true circle. That inward
+    # seat is Becker's bare-fabric rise AND the redraw's trims. At the pro's
+    # config, redraw -> redraw + 0.07: Becker hat large 17 -> 13 trims (13
+    # without the redraw), MFab hat 24 -> 22 (18), Becker LC 18 -> 16 (15),
+    # MFab LC 24 -> 21 (23), To a T machine 24 -> 21 (23), Becker beanie 15 ->
+    # 14 (17). Not the pieces, the vertex density or the net area (each
+    # tested, none brings them back; `docs/redraw-trims-2026-11-14.md`). A
+    # geometry correction for the fit's own bias, not a cloth value; Kent's
+    # call from sheets. NOT A CANDIDATE AS BUILT: MFab hat's small line reads
+    # worse (the white keyline fattens over the black letters); the bias wants
+    # correcting where the fit put it. Off (0.0): nothing runs, byte-identical.
+    outline_redraw_grow_mm: float = 0.0
     # Even out stitch widths automatically (`stitchwidth.apply_stitch_widths`,
     # 2026-09-29): a letter more than 15% off its word's weight is offset to
     # the word's median, and `lettering_min_column_mm` (when set) reaches

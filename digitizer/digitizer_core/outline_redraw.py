@@ -420,7 +420,8 @@ def redraws_lines(src_px_mm: float, grid_px_mm: float, k: float = K_DEFAULT) -> 
 
 
 def apply_outline_redraw(regions, src_px_mm: float, grid_px_mm: float,
-                         k: float = K_DEFAULT, native: bool = False) -> dict[str, int]:
+                         k: float = K_DEFAULT, native: bool = False,
+                         grow_mm: float = 0.0) -> dict[str, int]:
     """Refit every region's polygon in place (same `shape_id`, `meta` plus
     `outline_redraw` naming the outcome). A letter `letterform_priors` already
     refit is left as it is. Returns outcome counts.
@@ -448,6 +449,14 @@ def apply_outline_redraw(regions, src_px_mm: float, grid_px_mm: float,
             outcome = "letterform"
         else:
             new, outcome = redraw_polygon(r.polygon, tol, arcs_only=arcs_only)
+            if outcome == "redrawn" and grow_mm > 0.0:
+                # `cfg.outline_redraw_grow_mm` (built OFF): the fit's inward
+                # seat given back; kept only if it stays one valid polygon
+                # with the same holes
+                grown = new.buffer(grow_mm, join_style="mitre", mitre_limit=2.0)
+                if (grown.is_valid and not grown.is_empty and grown.geom_type == "Polygon"
+                        and len(grown.interiors) == len(new.interiors)):
+                    new = grown
             if outcome == "redrawn":
                 r.polygon = new
                 r.area_mm2 = float(new.area)
