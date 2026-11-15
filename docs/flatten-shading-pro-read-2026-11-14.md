@@ -76,8 +76,9 @@ apply). All inside `apply_bevel_fold`, so all behind the tick.
 - Drone, tick ON after vs before: about 5 mm2 moves (two cap-merged slivers dropped, two tiny
   bands folded, one black band kept); the ring arcs fold as before.
 - Crest: no rule fires (one 0.37 mm2 Golden Brown sliver).
-- Controls with the tick ON, md5 equal to tick OFF: Becker hat large, Gaulke Roofing hat (and
-  MFab hat, which is `photo_scene`, so the fold never runs). To a T and Hotel Fremont: see the PR.
+- Controls with the tick ON, md5 equal to tick OFF on the final code: Becker hat large, Gaulke
+  Roofing hat, To a T machine hat (the page-showing-through case), Hotel Fremont hat (no page of
+  its own). MFab hat is `photo_scene`, so the fold never runs there.
 - Tick OFF: `pipeline.py` loads `bevel_fold` only when the tick is on, and this change does not
   touch `pipeline.py`, so tick OFF is byte-identical by construction.
 
