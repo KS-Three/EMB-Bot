@@ -206,5 +206,10 @@ GOOD**. The pre-registered minimum is 4 of each, so the outcome is **"no
 verdict: class not filled"**, and `subject_edge_recall` stays a metric only.
 He marked the toadstool LOST, and it reads 0.940, above the 0.90 cut-off: a
 pre-registered miss. Across the two sittings Kent has graded 18 photos (17
-of the corpus's 18, plus the toadstool) and none Good. This lane has to produce photos he calls Good
+of the corpus's 18, plus the toadstool) and none Good.
+
+**Kent's ruling, 2026-11-15:** "Park it, metric only (Recommended)".
+`subject_edge_recall` stays a metric only. It is re-sat only once the photo
+lane produces photos he would call Good. There will be no cap study, no new
+sitting now, and no drop. This lane has to produce photos he calls Good
 before any lost-subject reading can be tested on it.

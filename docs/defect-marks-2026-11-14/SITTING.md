@@ -53,6 +53,19 @@ not anything that would ever be embroidered." The pre-registration has no
 rule for removing an item, so the table keeps it. Without it the counts are
 13 LOST and 0 GOOD, with the same outcome.
 
+## Kent's ruling (2026-11-15)
+
+Relayed by the foreman, verbatim: **"Park it, metric only (Recommended)"**.
+
+- The result is recorded as no verdict.
+- `subject_edge_recall` stays a preflight metric only: no finding, no grade
+  cost, nothing the customer sees.
+- It is re-sat only once the photo lane produces photos he would call Good.
+- He ruled out a photo-grade cap study, a new sitting now, and dropping the
+  metric.
+- His `P_watercolor` note ("Remove this one from the graded list") is
+  recorded above and only reported as a count. Nothing was removed.
+
 ## Exploratory (not pre-registered, decides nothing)
 
 - **Preflight's grade against Kent's, on the same renders.** For each item
