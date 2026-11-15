@@ -248,6 +248,12 @@ export function defaultDigitizedElement(id) {
     // The customer's crop box as fractions of the image, { x0, y0, x1, y1 },
     // or null for the whole image (also what a pre-crop project loads as).
     crop: null,
+    // The INK box inside the crop the upload proposed, fractions of the image
+    // (cropProposal.inkBox), or null: what the auto-fit fits, since the engine
+    // sizes the ink box to the Design width (lib/placement.js). Cleared when
+    // the customer draws a crop, which then fits as it always did; a project
+    // saved before 2026-11-14 loads as null and fits its crop.
+    inkBox: null,
     // The uploaded image's pixel size, { w, h }, as the panel decoded it —
     // the aspect the placement's auto-fit sizes (lib/placement.js). null
     // before an upload and on a project saved before 2026-10-27, which keeps

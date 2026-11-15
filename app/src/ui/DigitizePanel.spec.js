@@ -2095,8 +2095,8 @@ vi.mock("../lib/sourceStore.js", () => ({
   deleteSource: async (key) => { fakeStore.delete(key); },
 }));
 
-const { proposeCropMock } = vi.hoisted(() => ({ proposeCropMock: vi.fn(() => null) }));
-vi.mock("../lib/cropProposal.js", () => ({ proposeCrop: proposeCropMock }));
+const { proposeCropMock, inkBoxMock } = vi.hoisted(() => ({ proposeCropMock: vi.fn(() => null), inkBoxMock: vi.fn(() => null) }));
+vi.mock("../lib/cropProposal.js", () => ({ proposeCrop: proposeCropMock, inkBox: inkBoxMock }));
 
 describe("the upload proposes a crop", () => {
   beforeEach(() => {
@@ -2129,6 +2129,45 @@ describe("the upload proposes a crop", () => {
     expect(patches[0].patch.crop).toEqual(proposal);
     expect(proposeCropMock.mock.calls[0][1]).toBeGreaterThan(0);
     proposeCropMock.mockReturnValue(null);
+  });
+
+  // Review 2026-11-14: the auto-fit fits the INK box inside the proposal (the
+  // engine sizes the ink to the Design width), and the patch keeps it for a
+  // later re-fit; the ink read failing loses the ink box, never the crop.
+  async function uploadWith(inkImpl) {
+    const proposal = { x0: 0, y0: 0, x1: 1, y1: 1 };
+    proposeCropMock.mockReturnValue(proposal);
+    inkBoxMock.mockReset();
+    inkBoxMock.mockImplementation(inkImpl);
+    const patches = [];
+    const { container } = render(Harness, {
+      props: {
+        element: baseElement([], { sourcePng: null, result: null, review: null }),
+        health: { ok: true, limits: { max_upload_bytes: 12 * 1024 * 1024, max_pixels: 40_000_000 } },
+        onPatch: (d) => patches.push(d),
+      },
+    });
+    const input = container.querySelector('.dgp-upload input[type="file"]');
+    Object.defineProperty(input, "files", { value: [new File([new Uint8Array([1, 2, 3])], "l.png", { type: "image/png" })] });
+    await fireEvent.change(input);
+    await waitFor(() => expect(patches.length).toBeGreaterThanOrEqual(1));
+    proposeCropMock.mockReturnValue(null);
+    return { proposal, patch: patches[0].patch };
+  }
+
+  test("the patch carries the ink box inside the proposal, and the width fits it", async () => {
+    // 1400 x 316 px loaded; ink a quarter of the frame tall in the middle half wide
+    const ink = { x0: 0.25, y0: 0.375, x1: 0.75, y1: 0.625 };
+    const { proposal, patch } = await uploadWith(() => ink);
+    expect(inkBoxMock.mock.calls[0][1]).toEqual(proposal);
+    expect(patch.inkBox).toEqual(ink);
+    expect(patch.crop).toEqual(proposal);
+  });
+
+  test("an ink read that throws keeps the proposed crop", async () => {
+    const { proposal, patch } = await uploadWith(() => { throw new Error("no"); });
+    expect(patch.crop).toEqual(proposal);
+    expect(patch.inkBox).toBeNull();
   });
 });
 
