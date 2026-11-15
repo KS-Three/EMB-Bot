@@ -2,7 +2,7 @@
 
 *(measured 2026-11-15 — failing nightly 43722479841 against the last green 43656572379, both CI; attribution by local arms on Kent's laptop, local-ON against local-OFF only; new ledger from CI capture 43754823644, five passes, main `e739234c`.)*
 
-**Verdict: every wrong-way row is explained by #1533** (`lettering_columns_connectors_edge_walk` + `lettering_columns_corner_fold_apex_side` ON, Kent 2026-11-14, "Flip ON" on each). No row traces to #1554 (the two `group_consistent_*` flips), to a non-flip commit, or to the reader. **But the corner fold's flip cost real pro agreement on two Becker jobs, and no ruling PR showed Kent a kappa figure** (#1512, #1518 and #1533 showed trims, travel mm, stitches and sheets). That trade is put to him before the re-captured ledger merges.
+**Verdict: every wrong-way row is explained by #1533** (`lettering_columns_connectors_edge_walk` + `lettering_columns_corner_fold_apex_side` ON, Kent 2026-11-14, "Flip ON" on each). No row traces to #1554 (the two `group_consistent_*` flips), to a non-flip commit, or to the reader. **But the corner fold's flip cost real pro agreement on two Becker jobs, and no ruling PR showed Kent a kappa figure** (#1512, #1518 and #1533 showed trims, travel mm, stitches and sheets). Kent ruled on that trade on 2026-11-15, "Accept + investigate (Recommended)" (last section).
 
 ## The red night
 
@@ -82,4 +82,12 @@ CI capture 43754823644, five passes on main `e739234c` (the red head plus #1563,
 
 **#1505 check:** no stitch row went from a measured tolerance to 0. Every row that had a tolerance before keeps one (Becker small jobs 2, toat_machine_hat 4). The one change is **mfab_lc stitches, narrowed 5 -> 3**, a measured spread of 3 over five passes, not a zero. It is left as measured (no hand edit) and noted here in case a later night lands 4-5 off. mfab_lc needle-up mm gained a tolerance (0.0 -> 1.7, spread 1.7).
 
-The re-captured ledger is in the same PR as this note, **not armed for auto-merge**: merging it accepts the corner fold's kappa cost, which is Kent's trade.
+The re-captured ledger is in the same PR as this note.
+
+## Kent's ruling, 2026-11-15
+
+Put to him with the kappa table above, he chose **"Accept + investigate (Recommended)"**.
+
+- The corner fold stays ON.
+- Its cost is accepted as the new baseline: becker_hat_large stitch-type kappa 0.337 -> 0.289 and direction kappa 0.365 -> 0.329, and becker_hat_small 0.557 -> 0.518.
+- Where the two hat jobs lose agreement is a separate investigation (`docs/corner-fold-kappa-2026-11-15.md`).
