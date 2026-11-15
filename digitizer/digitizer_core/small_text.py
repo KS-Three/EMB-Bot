@@ -2027,12 +2027,14 @@ def passes_counter_guard(members: list[Region], p: Prep, floor_base_mm: float | 
 # (`small_text_restore_mm`), it sewed its raw trace -- FOAM's A without its
 # crossbar, COATINGS' T broken, a 0.13 mm anti-aliased edge of the P kept and
 # snapped to teal -- where at 85.7 mm (3.1) the re-set retraced and read it.
-HANDOVER_RATIO = 1.25
+# 1.25 was tried first: at a 5.0 mm cap (ProSeal 136.5 mm) the retrace broke
+# an R, an O and a G that read OFF; the band stops where it was seen to help.
+HANDOVER_RATIO = 1.15
 # A region of ANOTHER thread lying this much inside the retraced line, and no
 # wider than this, is the letters' own anti-aliased edge traced as a shape:
 # the retraced letter covers it, so it is not sewn.
 HANDOVER_SLIVER_INSIDE = 0.8
-HANDOVER_SLIVER_MAX_W_MM = 0.35
+HANDOVER_SLIVER_MAX_W_MM = 0.2
 
 
 def _handover_slivers(regions: list[Region], group: list[Region]) -> set[int]:
