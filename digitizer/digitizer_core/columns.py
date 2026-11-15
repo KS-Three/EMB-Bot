@@ -59,6 +59,8 @@ NOT yet: tie stitches, an edge-walk underlay for tall caps. Every one of those i
 """
 from __future__ import annotations
 
+import contextlib
+import contextvars
 import math
 from collections import deque
 from dataclasses import dataclass, field, replace
@@ -69,6 +71,27 @@ from shapely.ops import nearest_points, substring, unary_union
 
 from . import machine, stitches
 from .stitches import StitchRun
+
+# `cfg.extra["lettering_columns_ring_floor"]` (built OFF 2026-11-14): under
+# `thin_floor` (`cfg.lettering_columns_small_bold`, a letter under 5 mm), a
+# RING column -- a closed bowl, cut as one piece round its counter -- has its
+# crosses under the floor widened to it (`_floor_crosses`) instead of
+# dropped. A ring has no ends, so one dropped cross opens the bowl: Bukit
+# Asam's tagline at 85.1 mm, its o's top and bottom (0.33-0.49 mm after the
+# rail inset and small_bold's pull) went unsewn while its sides kept twelve
+# crosses, and "beyond coal" read "b-y-n-d cual". Off, today's drop. Set
+# plan-wide by `pipeline.plan_stitches` (`ring_floor_scope`).
+_RING_FLOOR: contextvars.ContextVar[bool] = contextvars.ContextVar("ring_floor", default=False)
+
+
+@contextlib.contextmanager
+def ring_floor_scope(on: bool):
+    """`_RING_FLOOR` for the length of one plan (`pipeline.plan_stitches`)."""
+    token = _RING_FLOOR.set(bool(on))
+    try:
+        yield
+    finally:
+        _RING_FLOOR.reset(token)
 
 # A column end within this many stroke widths (plus a constant for the pull)
 # of another column's centreline sits ON that column: the two meet there.
@@ -2090,7 +2113,14 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                                     width_mm=col.width_mm, rail_a=col.rail_a, rail_b=col.rail_b))
             continue
         kept = [(a, b) for a, b in guarded if math.dist(a, b) >= min_cross_mm]
-        if thin_floor and len(kept) < 3 and len(guarded) >= 3:
+        ring = (thin_floor and len(kept) < len(guarded) and len(guarded) >= 3
+                and _RING_FLOOR.get() and _ring_wall(col, poly))
+        if ring:
+            # `_RING_FLOOR`: a bowl's wall keeps its crosses, widened to the
+            # floor about their own middles -- a dropped one opens the ring
+            kept = _floor_ring_crosses(guarded, min_cross_mm, col.kind == "ring")
+            report["ring_floored"] = report.get("ring_floored", 0) + 1
+        elif thin_floor and len(kept) < 3 and len(guarded) >= 3:
             # a whole piece under the floor (a serif, a bar): sewn at the
             # floor rather than lost; a column that keeps three crosses
             # drops its thin ones as before -- widened, a fan's converging
@@ -2933,6 +2963,37 @@ def _floor_crosses(stations, min_cross_mm: float):
         h = min_cross_mm / 2
         out.append(((m[0] - u[0] * h, m[1] - u[1] * h), (m[0] + u[0] * h, m[1] + u[1] * h)))
     return out
+
+
+def _ring_wall(col, poly: Polygon) -> bool:
+    """`_RING_FLOOR`: is `col` part of a closed bowl? A RING column (cut as
+    one piece round its counter), or a column whose piece runs along one of
+    `poly`'s counters for at least a stroke width -- the fold judge can cut
+    a small e's bowl into curved pieces, each a wall of the ring."""
+    if col.kind == "ring":
+        return True
+    if not poly.interiors or col.piece is None or col.piece.is_empty:
+        return False
+    edge = col.piece.boundary
+    reach = max(col.width_mm, 0.3)
+    for ring in poly.interiors:
+        if edge.intersection(LineString(ring).buffer(0.02)).length >= reach:
+            return True
+    return False
+
+
+def _floor_ring_crosses(stations, min_cross_mm: float, closed: bool):
+    """`_RING_FLOOR`: a bowl wall's crosses under the floor widened to it
+    (`_floor_crosses`). A RING column has no ends, so every cross; an open
+    wall piece keeps the drop at its two end crosses (a fan's converging tip
+    widened crosses itself, `thin_floor`'s reason) and widens the rest."""
+    wide = _floor_crosses(stations, min_cross_mm)
+    if closed:
+        return wide
+    n = len(stations)
+    out = [w for i, (s, w) in enumerate(zip(stations, wide))
+           if 0 < i < n - 1 or math.dist(*s) >= min_cross_mm]
+    return out if len(out) >= 3 else wide     # a piece under the floor: `thin_floor`'s own rule
 
 
 def _recorded_counters(cut_poly: Polygon, letter: Polygon) -> Polygon:
