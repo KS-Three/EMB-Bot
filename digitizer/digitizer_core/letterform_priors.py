@@ -49,6 +49,7 @@ import math
 from dataclasses import dataclass, field
 
 import numpy as np
+import shapely
 from shapely.geometry import LinearRing, LineString, Point, Polygon
 
 from . import deadline
@@ -771,10 +772,9 @@ def _offenders(S: np.ndarray, prims: list[Prim], R: np.ndarray, own: np.ndarray,
         idx = list(range(p.i0, p.i1 + 1)) if p.i1 >= p.i0 else list(range(p.i0, n)) + list(range(0, p.i1 + 1))
         if _any_far(ring, (S[i] for i in idx), tol):
             bad.add(k)
-    for j, (q, k) in enumerate(zip(R[:-1], own)):
-        if not j % _SEAM_EVERY:
-            deadline.check(RING_FIT_SEAM)
-        if k not in bad and prims[k].kind != "pass" and src.distance(Point(q)) > tol:
+    far = _distances(src, R[:-1]) > tol
+    for q_far, k in zip(far, own):
+        if q_far and k not in bad and prims[k].kind != "pass":
             bad.add(int(k))
     return bad
 
@@ -788,24 +788,38 @@ _SEAM_EVERY = 256
 RING_FIT_SEAM = "ring fit"
 
 
-def _any_far(line, pts, tol: float) -> bool:
-    """`any(line.distance(Point(q)) > tol for q in pts)`, with a seam."""
-    for j, q in enumerate(pts):
-        if not j % _SEAM_EVERY:
-            deadline.check(RING_FIT_SEAM)
-        if line.distance(Point(q)) > tol:
-            return True
-    return False
+#: Points per vectorized distance call (2026-11-14, speed only): one shapely
+#: `distance(line, points)` over a chunk is GEOS's own per-pair distance, in the
+#: same argument order as `line.distance(Point(q))`, so every value is the
+#: same float; the redraw spent 27 of To a T machine's 33 s building one
+#: `Point` per sample. One seam per chunk, so the seams stay `_SEAM_EVERY` apart.
+_DIST_CHUNK = _SEAM_EVERY
+
+
+def _as_points(pts) -> np.ndarray:
+    return np.asarray(list(pts) if not isinstance(pts, np.ndarray) else pts, dtype=float).reshape(-1, 2)
 
 
 def _distances(line, pts) -> np.ndarray:
-    """`np.array([line.distance(Point(q)) for q in pts])`, with a seam."""
+    """`np.array([line.distance(Point(q)) for q in pts])`, vectorized per
+    `_DIST_CHUNK`, with a seam per chunk."""
+    P = _as_points(pts)
     out = []
-    for j, q in enumerate(pts):
-        if not j % _SEAM_EVERY:
-            deadline.check(RING_FIT_SEAM)
-        out.append(line.distance(Point(q)))
-    return np.array(out)
+    for j in range(0, len(P), _DIST_CHUNK):
+        deadline.check(RING_FIT_SEAM)
+        out.append(shapely.distance(line, shapely.points(P[j:j + _DIST_CHUNK])))
+    return np.concatenate(out) if out else np.zeros(0)
+
+
+def _any_far(line, pts, tol: float) -> bool:
+    """`any(line.distance(Point(q)) > tol for q in pts)`, vectorized per
+    `_DIST_CHUNK` and still stopping at the first chunk that holds one."""
+    P = _as_points(pts)
+    for j in range(0, len(P), _DIST_CHUNK):
+        deadline.check(RING_FIT_SEAM)
+        if (shapely.distance(line, shapely.points(P[j:j + _DIST_CHUNK])) > tol).any():
+            return True
+    return False
 
 
 def sample_step(tol: float) -> float:

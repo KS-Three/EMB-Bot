@@ -60,7 +60,7 @@ import numpy as np
 from shapely.geometry import LineString, Point, Polygon
 
 from . import deadline
-from .letterform_priors import (MIN_ARC_CHORDS, Prim, RingFit, _cap_check, _chords_of,
+from .letterform_priors import (MIN_ARC_CHORDS, Prim, RingFit, _cap_check, _chords_of, _distances,
                                 _drop_chamfers, _initial_lines, _invalid_point, _merge_arcs,
                                 _offenders, _rebuild, _samples_of, _try_arc, _try_line,
                                 densify_ring, dp_closed, sample_step)
@@ -168,11 +168,6 @@ def fit_ring_plain(coords: np.ndarray, tol: float) -> RingFit:
 
 
 _CAP_REPAIR_ROUNDS = 6
-#: a Cancel seam every this many sampled points in `_worst_breach` (2026-11-14:
-#: with the redraw ON by default, one of Becker's 96 mm rings ran 3.1 s on a CI
-#: runner between two checks; `tests/test_cancel_seams_1113.py`). A check reads
-#: a clock and moves no number.
-_SEAM_EVERY = 256
 
 
 def _revert_near(fit: RingFit, pt: np.ndarray, radius: float, tol: float) -> bool:
@@ -209,12 +204,15 @@ def _worst_breach(src_rings, out_rings, tol: float, step: float):
     for A, B in zip(src_rings, out_rings):
         la, lb = LineString(A), LineString(B)
         for P, other in ((densify_ring(B, step), la), (densify_ring(A, step), lb)):
-            for i, q in enumerate(P):
-                if not i % _SEAM_EVERY:
-                    deadline.check("outline redraw")
-                d = other.distance(Point(q))
-                if d > worst:
-                    worst, where = d, np.asarray(q, float)
+            deadline.check("outline redraw")
+            if not len(P):
+                continue
+            # vectorized (2026-11-14): the same GEOS distance per point; the
+            # first point past the running worst wins, as the loop's `>` did
+            d = _distances(other, P)
+            i = int(np.argmax(d))
+            if d[i] > worst:
+                worst, where = float(d[i]), np.asarray(P[i], float)
     return where
 
 
