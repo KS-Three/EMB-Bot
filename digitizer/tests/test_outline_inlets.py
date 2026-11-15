@@ -311,3 +311,9 @@ def test_a_pinned_fill_still_takes_its_groups_angle():
     assert _fill_angle_for(planned(True), cfg, {"F": 140.0}) == 140.0   # the group's, as OFF
     assert _fill_angle_for(planned(True), cfg, {}) == 45.0              # no group: the pin
     assert _fill_angle_for(planned(False), cfg, {"F": 140.0}) == 45.0   # a compensation axis outranks it
+
+
+def test_teeth_on_by_default_with_the_inlet_rule():
+    """`outline_inlets_teeth` ON since 2026-11-15 (Kent's tick, with `outline_inlets_kept`)."""
+    c = PipelineConfig()
+    assert c.outline_inlets_teeth is True and c.outline_inlets_kept is True
