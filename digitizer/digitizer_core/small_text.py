@@ -1878,7 +1878,8 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
             r.meta[WIDENED_LETTERING_KEY] = round(max(widen, 1e-4), 4)
             spines = r.meta.get("bean_letter_spines") if bean_follows else None
             if spines:
-                # `cfg.extra["small_text_reset_bean_follows"]` (built OFF
+                # `cfg.small_text_reset_bean_follows` (ON since 2026-11-15, Kent:
+                # "Flip both ON"; built OFF
                 # 2026-11-14): a dark-ink stroke got its bean spines from its
                 # DRAWN polygon (`thin_ink.bean_dark_ink`, earlier in stage
                 # 4), and stage 7 sews the spines, so the grown letter sewed

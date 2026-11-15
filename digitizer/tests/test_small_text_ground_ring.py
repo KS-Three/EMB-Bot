@@ -69,7 +69,7 @@ def test_fremont_est_1895_is_raised_and_sews_as_grown_only_on():
     assert len(rows) == 2 and all(r.get("skipped") == "no_room" for r in rows), rows
     assert date == []
     rows, date = date_rows({"small_text_reset_ground_ring": True,
-                            "extra.small_text_reset_bean_follows": True})
+                            "small_text_reset_bean_follows": True})
     assert len(rows) == 2 and all(r.get("scale", 0) > 1.5 for r in rows), rows
     assert len(date) == 7
     assert min(r.polygon.bounds[3] - r.polygon.bounds[1] for r in date) > 3.5   # was 1.9 mm

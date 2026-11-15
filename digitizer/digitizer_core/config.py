@@ -4363,6 +4363,16 @@ class PipelineConfig:
     # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_small_text_ground_ring.py`.
     small_text_reset_ground_ring: bool = True
+    # A grown bean letter's spines follow it (`small_text._reset_apply`, built
+    # OFF 2026-11-14 as `cfg.extra["small_text_reset_bean_follows"]`): a
+    # dark-ink letter's bean spines are read at its DRAWN size before the
+    # re-set grows it, and stage 7 sews the spines, so Fremont's EST 1895,
+    # re-set to 2x, still sewed 1.7 mm tall. The spines take the letter's own
+    # scale and shift. **ON since 2026-11-15, Kent's flip** ("Flip both ON",
+    # with `small_text_reset_ground_ring`). False is the re-set as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_small_text_ground_ring.py`.
+    small_text_reset_bean_follows: bool = True
     # Small lettering at its TRUE size (`small_text.restore_small_text`,
     # 2026-10-13). Kent, on the enlargement above: "you can't change the font
     # size for the final product." For every line of traced lettering whose
