@@ -9,6 +9,8 @@ moves the MFab LC row: the tripwire ledger now reads 441.9 mm needle-up, not
 flag). The attribution below is of the 389.3 engine and was not re-measured;
 the Gaulke and Fremont rows are unmoved.
 
+**Re-seeded again 2026-11-15:** the ledger re-captured after #1533 (CI run 43754823644, five passes) reads MFab LC needle-up **441.0 mm**, not 441.9. The 0.9 mm move lies inside that capture's own 1.7 mm spread between runners, so the ledger now carries a 1.7 mm tolerance there. #1533's edge-walk moves this job's DST; that it moves this row is not separately shown. See `docs/tripwire-red-2026-11-15.md`.
+
 ## Question
 
 #1321 traced three more wrong-way tripwire rows to `stage0_scale_relative_grad`

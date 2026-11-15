@@ -876,19 +876,51 @@ def resolve_small_regions(
         if on_small * 10 >= ring_px * 9:
             return False
         return (not dot_scope or has_stem_below(i, box)
-                or (tittle_on and tittle_of_word(i, box)))
+                or (tittle_on and tittle_of_word(i, box, halo, win)))
 
     # `cfg.extra["lone_glyph_keep"]` (built OFF): a tittle over a joined word
     # (comment at `_TITTLE_GAP_DOTS`). The flat lane only (`chain_rescue`):
     # a photo's specks sit inside big same-colour regions everywhere.
     tittle_on = bool(dot_scope and chain_rescue and (getattr(cfg, "extra", None) or {}).get("lone_glyph_keep"))
 
-    def tittle_of_word(i: int, box) -> bool:
+    def ring_owner(i: int, halo, win) -> int | None:
+        """The one full-size region of ANOTHER colour holding nine tenths of
+        `i`'s one-pixel ring -- the shape it sits in -- or None."""
+        wy0, wx0, wy1, wx1 = win
+        ring_px = int(halo.sum())
+        mine = colour(i)
+        for j in keep:
+            jb = boxes[j]
+            if j == i or jb is None or jb[2] <= wy0 or jb[0] >= wy1 or jb[3] <= wx0 or jb[1] >= wx1:
+                continue
+            if int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum()) * 10 >= ring_px * 9:
+                theirs = colour(j)
+                if mine is None or theirs is None or float(np.linalg.norm(mine - theirs)) > cfg.merge_delta_e:
+                    return j
+        return None
+
+    def rings(owner: int, j: int) -> bool:
+        """Does `owner` hold at least half of region `j`'s own ring? A tittle
+        and its word sit on one ground (2026-11-15: Hotel Fremont's star sat
+        in the black Wisconsin, the white field it was read against did not)."""
+        rj = regions[j]
+        jy0, jx0, jy1, jx1 = rj.bbox
+        wy0, wx0 = max(0, jy0 - 1), max(0, jx0 - 1)
+        wy1, wx1 = min(height, jy1 + 1), min(width, jx1 + 1)
+        sub = rj.window(wy0, wx0, wy1, wx1)
+        ring = _dilate(sub) & ~sub
+        n = int(ring.sum())
+        return n > 0 and int((ring & regions[owner].window(wy0, wx0, wy1, wx1)).sum()) * 2 >= n
+
+    def tittle_of_word(i: int, box, halo=None, win=None) -> bool:
         y0, x0, y1, x1 = box
         dot_h, dot_w = y1 - y0, x1 - x0
         mine = colour(i)
         if mine is None or dot_h <= 0 or dot_w <= 0:
             return False
+        # The shape the dot sits in, if it sits in one: its word must sit in it
+        # too, or the dot is an enclosed mark (a star in a state), not a tittle.
+        owner = ring_owner(i, halo, win) if halo is not None and win is not None else None
         for j, rj in enumerate(regions):
             if j == i:
                 continue
@@ -901,8 +933,11 @@ def resolve_small_regions(
             if not below.any():
                 continue
             theirs = colour(j)
-            if theirs is not None and float(np.linalg.norm(mine - theirs)) <= cfg.merge_delta_e:
-                return True
+            if theirs is None or float(np.linalg.norm(mine - theirs)) > cfg.merge_delta_e:
+                continue
+            if owner is not None and not rings(owner, j):
+                continue
+            return True
         return False
 
     def colour(j: int) -> np.ndarray | None:

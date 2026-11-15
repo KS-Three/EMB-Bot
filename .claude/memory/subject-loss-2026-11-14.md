@@ -25,6 +25,17 @@ toadstool reads 0.940, only 0.009 under the lowest GOOD row. Shipped as metric
 **How to apply:** no threshold/finding/grade from this data. To settle it,
 Kent must grade PHOTOS Good as well as bad (none is today), with the cut-off
 pre-registered. `ARTWORK_ELEMENT_DROPPED` cannot see a recoloured subject.
+
+**Photo sitting 2026-11-15 (`docs/defect-marks-2026-11-14/SITTING.md`,
+pre-reg `34bc7177`): NO VERDICT.** 14 photos, all LOST (detail lost on 14;
+11 Terrible, 2 Bad, 1 Okay), 0 GOOD < the minimum of 4. Toadstool LOST at 0.940
+>= 0.90 = a miss. Of 18 photos graded (17 corpus + toadstool) none is Good, so
+the class cannot fill until the photo lane makes one he likes. Exploratory:
+preflight gave C or better to 8 of these 14 (pencil_sketch A 100).
+**Kent 2026-11-15: "Park it, metric only (Recommended)"**: no verdict
+recorded, metric only, re-sit only when the photo lane makes photos he'd call
+Good; no cap study, no new sitting, no drop. His watercolor note "Remove this
+one from the graded list" is recorded, not acted on (13 LOST / 0 GOOD without it).
 Related: [[dropped-element-finding-2026-11-01]], [[preflight-score-2026-11-05]],
 [[no-warnings-reaches-readouts]], [[photo-corpus-sxs-2026-10-27]],
 [[defect-marks-sitting-2026-11-10]].

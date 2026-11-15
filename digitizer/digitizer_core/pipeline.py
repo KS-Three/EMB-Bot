@@ -2136,6 +2136,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .columns import ring_floor_scope        # `cfg.extra["lettering_columns_ring_floor"]` (built OFF), the same way
     from .outline_cut import apex_pro_joints_scope   # `cfg.extra["lettering_columns_apex_pro_joints"]` (built OFF), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.extra["lettering_columns_corner_fold_cap_flared"]` (built OFF), the same way
+    from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2157,39 +2158,46 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             ring_floor_scope(bool((cfg.extra or {}).get("lettering_columns_ring_floor"))), \
             apex_pro_joints_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_joints"))), \
             fold_cap_flared_scope(bool((cfg.extra or {}).get("lettering_columns_corner_fold_cap_flared"))), \
+            apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
             cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \
             seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \
             seam_aware_scope(cfg.fill_seam_aware_sections), \
             chord_aim_scope(cfg.satin_free_end_chord_aim):
-        plan = _plan_stitches(result, cfg)
-        # the result the plan in hand was sewn from: the guard below replans
-        # THIS one, so a re-tier above survives its replan (review 2026-11-14:
+        # the result the plan in hand is sewn from: the guard below replans
+        # THIS one, so a re-tier here survives its replan (review 2026-11-14:
         # it replanned `result`, and a gear the inlet rule had moved to fill
         # went back to satin whenever the guard kept its replan)
         planned = result
         bodies: dict = {}        # `outline_inlets_teeth`: the split shapes' bodies
-        # `cfg.extra["outline_inlets_kept"]` (built OFF): a satin that sewed
-        # over its own outline's inlet (a gear's tooth gaps, an open beak)
-        # cannot draw that shape; it is planned again as a fill on a copy of
-        # the regions (`outline_inlets`). OFF: not imported.
+        # `cfg.extra["outline_inlets_kept"]` (built OFF): a satin with a row of
+        # regular TEETH on its outline (a gear) cannot draw them -- its rails
+        # are a smoothed offset of the spine -- so it is re-tiered BEFORE the
+        # plan, from its geometry (`outline_inlets.toothed_satins`), and the
+        # design is planned once. The first build planned, measured the satin
+        # over its inlets, and planned the whole design again; on the heraldic
+        # crest at 53 mm that was 4.9x the plan's time (2026-11-15, the two
+        # plans and the twelve feathered satins it turned into slow fills), and
+        # feathers and lobes are not teeth. OFF: not imported.
         if (getattr(cfg, "extra", None) or {}).get("outline_inlets_kept"):
             from . import outline_inlets
-            over = outline_inlets.satin_over_inlets(result.regions, plan)
-            if over:
+            ids = outline_inlets.toothed_satins(result.regions, cfg,
+                                                getattr(result, "design_class", "flat"))
+            if ids:
                 # `cfg.extra["outline_inlets_teeth"]` (built OFF): a toothed
                 # edge splits into its teeth (sewn first) and its body (sewn
                 # over their roots), the pro's ring-and-handles construction,
                 # instead of one fill; the moves between teeth are buried
                 # along the root, under the body
                 teeth = bool(cfg.extra.get("outline_inlets_teeth"))
-                regions, bodies = outline_inlets.rebuild(result.regions, over, teeth)
+                regions, bodies = outline_inlets.rebuild(result.regions, ids, teeth)
                 planned = replace(result, regions=regions)
-                plan = _plan_stitches(planned, cfg)
-                if bodies:
-                    from .machine import TRAVEL_STITCH_MM
-                    outline_inlets.bury_tooth_moves(plan, bodies, TRAVEL_STITCH_MM)
+        plan = _plan_stitches(planned, cfg)
+        if bodies:
+            from . import outline_inlets
+            from .machine import TRAVEL_STITCH_MM
+            outline_inlets.bury_tooth_moves(plan, bodies, TRAVEL_STITCH_MM)
         # `cfg.proofread_guard_clipped` (built OFF): the proof-read reads
         # this plan against the traced raster and, where stage 5's clip cut
         # a shape's own ink away, re-plans inside these same scopes with that
