@@ -2115,7 +2115,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .stage6_fill import one_pass_scope       # `cfg.fill_one_pass_sections` (built OFF), the same way
     from .stage6_fill import seam_aware_scope     # `cfg.fill_seam_aware_sections` (built OFF), the same way
     from .stage6_satin import chord_aim_scope     # `cfg.satin_free_end_chord_aim` (built OFF), the same way
+    from .outline_cut import curve_chord_scope    # `cfg.curve_chord_mm` (built OFF), the same way
     with apex_cut_scope(cfg.lettering_columns_apex_cut), \
+            curve_chord_scope(cfg.curve_chord_mm), \
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
@@ -2124,6 +2126,11 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             seam_aware_scope(cfg.fill_seam_aware_sections), \
             chord_aim_scope(cfg.satin_free_end_chord_aim):
         plan = _plan_stitches(result, cfg)
+        # the result the plan in hand was sewn from: the guard below replans
+        # THIS one, so a re-tier above survives its replan (review 2026-11-14:
+        # it replanned `result`, and a gear the inlet rule had moved to fill
+        # went back to satin whenever the guard kept its replan)
+        planned = result
         # `cfg.extra["outline_inlets_kept"]` (built OFF): a satin that sewed
         # over its own outline's inlet (a gear's tooth gaps, an open beak)
         # cannot draw that shape; it is planned again as a fill on a copy of
@@ -2132,8 +2139,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             from . import outline_inlets
             over = outline_inlets.satin_over_inlets(result.regions, plan)
             if over:
-                plan = _plan_stitches(
-                    replace(result, regions=outline_inlets.as_fill(result.regions, over)), cfg)
+                planned = replace(result, regions=outline_inlets.as_fill(result.regions, over))
+                plan = _plan_stitches(planned, cfg)
         # `cfg.proofread_guard_clipped` (built OFF): the proof-read reads
         # this plan against the traced raster and, where stage 5's clip cut
         # a shape's own ink away, re-plans inside these same scopes with that
@@ -2145,8 +2152,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
 
             def replan(ids):
                 with keep_art_scope(ids):
-                    return _plan_stitches(result, cfg)
-            plan = guard_clipped(result, cfg, plan, replan)
+                    return _plan_stitches(planned, cfg)
+            plan = guard_clipped(planned, cfg, plan, replan)
         return plan
 
 
