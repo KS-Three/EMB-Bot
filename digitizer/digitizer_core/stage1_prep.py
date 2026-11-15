@@ -40,6 +40,7 @@ from pathlib import Path
 import cv2
 import numpy as np
 
+from . import deadline
 from .alpha_edge import extend_opaque_colour, extension_applies  # noqa: F401  (re-exported: stage 1 is where it acts)
 from .config import PipelineConfig, work_grid_px_per_mm
 from .crop import apply_crop
@@ -557,6 +558,9 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         )
         intruded = 0
         for c in range(1, n_fg):
+            # A Cancel lands between shapes (2026-11-14, `tools/flip_timing.py`:
+            # this loop was 3.1 of stage 1's 3.7 s on the drone, no check).
+            deadline.check("stage 1 intrusion")
             comp = fg_cc == c
             cys, cxs = np.nonzero(comp)
             if len(cxs) < 3 or len(cxs) * len(cys) == 0:
@@ -564,10 +568,20 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
             if comp.sum() < min_intrusion_px:
                 continue  # too small to reason about
             hull_pts = cv2.convexHull(np.column_stack([cxs, cys]).astype(np.int32))
-            hull = np.zeros((h, w), np.uint8)
-            cv2.fillConvexPoly(hull, hull_pts, 1)
+            # The hull painted and eroded in its own box grown by the
+            # kernel's reach, not the whole frame: every pixel an erosion
+            # of the hull reads lies inside it, and where the box meets the
+            # frame's edge the erosion's border rule is the frame's own, so
+            # `inner` is the full-frame one, pixel for pixel, and nothing
+            # outside the box is ink (the frame-sized erode was 29 calls,
+            # 3.1 s on the drone).
+            r = margin_px + 1 if kernel is not None else 0
+            bx0, by0 = max(0, int(cxs.min()) - r), max(0, int(cys.min()) - r)
+            bx1, by1 = min(w, int(cxs.max()) + r + 1), min(h, int(cys.max()) + r + 1)
+            hull = np.zeros((by1 - by0, bx1 - bx0), np.uint8)
+            cv2.fillConvexPoly(hull, hull_pts - np.array([bx0, by0], np.int32), 1)
             inner = cv2.erode(hull, kernel) if kernel is not None else hull
-            intruded += int(np.count_nonzero(border_bg & (inner > 0)))
+            intruded += int(np.count_nonzero(border_bg[by0:by1, bx0:bx1] & (inner > 0)))
         if intruded >= min_intrusion_px:
             warnings.append(
                 warn(

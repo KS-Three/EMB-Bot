@@ -1123,6 +1123,15 @@ def build_generation(
         from .bevel_fold import apply_bevel_fold
         apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices))
 
+    # `cfg.extra["point_touch_split"]` (built OFF 2026-11-14, eye sweep fault
+    # 11: NSYNC's star touches its N at one point and the two traced as one
+    # region, which the column build fanned into spikes): a body pinched
+    # under `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
+    # tagger, so each is sewn (and tagged) on its own. Absent: never loads.
+    if cfg.extra.get("point_touch_split"):
+        from .point_touch import apply_point_touch_split
+        apply_point_touch_split(regions)
+
     # Same ordering rationale as `tag_enclosed_background` immediately above:
     # a computed FACT re-derived every generation, so it belongs before shape
     # identity edits/overrides run, not after. The chart is for the one-ink
@@ -2120,7 +2129,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # config, so the flag is set there for the length of this plan
     from .outline_cut import apex_cut_scope
     from .outline_cut import apex_guard_scope    # `cfg.extra["lettering_columns_apex_guard"]` (built OFF), the same way
+    from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
     from .outline_cut import apex_pro_scope      # `cfg.extra["lettering_columns_apex_pro"]` (built OFF), the same way
+    from .outline_cut import apex_pro_joints_scope   # `cfg.extra["lettering_columns_apex_pro_joints"]` (built OFF), the same way
+    from .outline_cut import fold_cap_flared_scope   # `cfg.extra["lettering_columns_corner_fold_cap_flared"]` (built OFF), the same way
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2136,7 +2148,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     with apex_cut_scope(cfg.lettering_columns_apex_cut), \
             curve_chord_scope(cfg.curve_chord_mm), \
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
+            rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
             apex_pro_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro"))), \
+            apex_pro_joints_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_joints"))), \
+            fold_cap_flared_scope(bool((cfg.extra or {}).get("lettering_columns_corner_fold_cap_flared"))), \
             fill_section_travel.enabled(cfg), \
             loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
             cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \

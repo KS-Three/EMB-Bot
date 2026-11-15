@@ -35,7 +35,7 @@ from tests.conftest import FLIP_2026_10_23
 from digitizer_core import PipelineConfig, digitize
 from digitizer_core import columns, stage7_sequence
 from digitizer_core.columns import is_lettering, is_thin_stem
-from tests.conftest import GROUP_2026_11_14_OFF, LETTERING_2026_10_24_OFF, own_thread_only
+from tests.conftest import EDGE_WALK_2026_11_14_OFF, GROUP_2026_11_14_OFF, LETTERING_2026_10_24_OFF, own_thread_only
 
 #: `tools/stem_trace.py --word tsivyl 15.9` / `--word HILTIL`: the fixture's
 #: 28.1 px per mm, where the i stem is 0.57 x 3.73 mm.
@@ -87,8 +87,9 @@ def run(tmp_path_factory, word, small_stem, guard=False):
     # small-text set and small_bold): every arm here was priced without them.
     # ...and `group_consistent_tier`/`_fill_angle` (ON 2026-11-14, Kent): with them ON
     # the sub-floor I stem sews satin, so every arm is priced without them.
+    # ...and edge-walk (ON 2026-11-14, Kent): it re-orders the letters' walk.
     cfg = PipelineConfig(target_width_mm=width, forced_class="flat",
-                         **FLIP_2026_10_23,
+                         **FLIP_2026_10_23, **EDGE_WALK_2026_11_14_OFF,
                          lettering_columns_square_ends=False,
                          lettering_columns_inside_connectors=False,
                          small_dot_rung=False,
