@@ -4,6 +4,65 @@
 image? I could understand 15-25 seconds, but over a minute is insane, no one
 will want to wait that long."
 
+## Correction, same day: the seconds below were a slowed laptop
+
+**Every wall time in the first table was taken with the laptop's clock at about
+1.4 GHz.** A full digitizer test suite and other sessions had been loading all
+eight cores for over an hour. With the laptop idle the same chip runs one core
+at about 3.7 GHz (`% Processor Performance` 181-185 during each run), and the
+same code sews the same stitches 2.7 times faster:
+
+| job | main before #1604 | with #1604 | change | plan md5 |
+|---|---:|---:|---:|---|
+| Becker (hat, large) | 19.1 | 13.0 | -32% | same |
+| Gaulke (hat) | 18.8 | 15.0 | -20% | same |
+| MFab (hat) | 35.1 | 27.6 | -21% | same |
+| Hotel Fremont (hat) | 34.1 | 30.6 | -10% | same |
+| Golden Tee (hat) | 42.0 | 38.4 | -9% | same |
+| Bridge (hat) | 12.6 | 12.0 | -5% | same |
+| Tires (hat 3D) | 6.2 | 6.2 | 0% | same |
+| To a T machine (hat) | 19.1 | 18.2 | -5% | same |
+| Precision drone | 41.8 | 35.6 | -15% | same |
+| **total** | **228.8** | **196.6** | **-14%** | |
+
+n = 1 per cell; the "with" column ran first and the "before" column a few
+minutes later, not interleaved. The three jobs #1604 barely touches agree
+within 5%, so the clock held between the two columns.
+
+**What that changes.**
+
+- **No job is over a minute on an idle laptop.** Nine take 6-38 s. Five are
+  inside Kent's 15-25 s or under it; four are over 25 s (MFab 27.6, Fremont
+  30.6, Drone 35.6, Golden Tee 38.4).
+- **Over a minute is what a busy or hot laptop does to the same job.** Becker,
+  one after another: 13.0 s idle; 19.5 s with seven other cores kept busy for
+  two minutes (19.9 s with three); 37.4 s during the long suite. Kent's laptop
+  is usually running sessions, so over a minute is what he sees. A customer's
+  machine is not measured.
+- **The cuts stand.** The share #1604 took off is the same at either clock
+  (Becker -31% then, -32% now), and identity was always by md5.
+- **Three of the four jobs still over 25 s spend half their time before any
+  stitch is planned** (generation: Fremont 18.2 of 30.6 s, Golden Tee 19.9 of
+  38.4, Drone 16.0 of 35.6). MFab's is the plan (22.5 of 27.6).
+
+**More cores, measured before building (Kent picked it, 2026-11-16).** The
+idea was each letter's cut worked out ahead on the idle cores. Measured with a
+timer round `letter_columns` and round the lettering lane:
+
+| | whole job | lettering lane | of that, the cut | largest one letter's cut |
+|---|---:|---:|---:|---:|
+| Becker | 13.0 s | 3.9 s | 2.3 s | 1.4 s |
+| MFab | 27.7 s | 6.8 s | 6.3 s | 4.5 s |
+
+A pool cannot finish before its slowest letter, so the most it saves is 0.9 s
+on Becker and 1.8 s on MFab (7% each), before the seconds a Windows process
+pool takes to start. The rest of the lane follows the needle from letter to
+letter and cannot run ahead. It also needs
+`lettering_columns_judge_entry_free`, which #1603 measured and left OFF. **Not
+built.**
+
+## The first write-up (wall seconds at 1.4 GHz; shares and md5 still hold)
+
 **Answer.**
 
 - **It is compute on one core, spread over many passes.** The engine is
@@ -133,5 +192,5 @@ remain, neither exact by default:
 - **Fewer passes.** The fold judge and `_edge_walk` re-sew a letter per
   candidate; a cheaper judge or a candidate cap is a quality trade.
 
-A customer's desktop is also faster than this laptop at 1.4 GHz; that is not
-measured here.
+Both were written against the 1.4 GHz seconds. At full clock (correction, top)
+the gap to 25 s is 3-13 s on four jobs, and the more-cores lever measured 7%.
