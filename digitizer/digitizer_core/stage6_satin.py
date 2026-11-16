@@ -3713,6 +3713,34 @@ _SEAM_HOLD_MIN_CROSS_MM = 3.0
 PUSH_KEEP_MARGIN_MM = 0.25
 #: rays per numpy block in `_kept_limits` (bounds the rays x edges arrays)
 _KEEP_RAY_BLOCK = 256
+#: The narrowest cross the gap keep may leave: a hairline column
+#: (`_HAIRLINE_COLUMN_MM`, the minimum cross plus the 20% the rails lose).
+#: The keep only ever takes push away, and on small lettering the push is
+#: what makes a stroke sewable: enthusiast's 2.4 mm tagline (art strokes
+#: 0.07-0.23 mm) at 0.5 had 150 crosses held from ~0.76 mm to under
+#: `SATIN_MIN_CROSS_MM`, which the drop check removes -- the E's upper arms
+#: and INC's N stem went (Director's hold of the flip, 2026-11-15). A cross
+#: the hold would leave under this gets back what it needs, never more than
+#: its unheld push, so the keep can narrow a stroke but never lose one.
+PUSH_KEEP_MIN_CROSS_MM = _HAIRLINE_COLUMN_MM
+
+
+def _keep_yields(d: float, ua: float, ub: float, ka: float, kb: float,
+                 sewable: float = PUSH_KEEP_MIN_CROSS_MM) -> tuple[float, float]:
+    """The two pushes of a cross `d` mm wide after the gap keep, given back
+    where the hold leaves the cross under `sewable`: `ua`/`ub` the pushes
+    before the keep, `ka`/`kb` after it (each <= its unheld push). What is
+    short is returned evenly across the two sides, a side never past its
+    unheld push; a cross whose unheld push cannot reach `sewable` either
+    gets its whole push back, as it had before the keep."""
+    short = sewable - (d + ka + kb)
+    if short <= 0.0:
+        return ka, kb
+    room_a, room_b = max(0.0, ua - ka), max(0.0, ub - kb)
+    ga = min(room_a, short / 2.0)
+    gb = min(room_b, short - ga)
+    ga = min(room_a, short - gb)
+    return ka + ga, kb + gb
 
 
 def _ring_segments(geom) -> np.ndarray:
@@ -3928,7 +3956,9 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         ka = room(pa, ux, uy)
         kb = room(pb, -ux, -uy)
         if kept_a is not None:
+            ua, ub = ka, kb
             ka, kb = min(ka, float(kept_a[i])), min(kb, float(kept_b[i]))
+            ka, kb = _keep_yields(d, ua, ub, ka, kb)     # never a stroke for a gap
         if held is not None and d >= _SEAM_HOLD_MIN_CROSS_MM:
             ka = held_push(pa, ux, uy, ka)
             kb = held_push(pb, -ux, -uy, kb)
