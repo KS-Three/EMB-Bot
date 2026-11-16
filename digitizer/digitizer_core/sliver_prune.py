@@ -50,8 +50,8 @@ nothing (the numbers are beside the constant).
 Never on an alpha cut-out for the page half (no page colour to compare), and
 the pipeline calls neither half on a photo class.
 
-A SPECK (`cfg.speck_prune`, its own flag, built OFF 2026-11-14; `prune_specks`,
-called on its own) is a mask that
+A SPECK (`cfg.speck_prune`, its own flag, built OFF 2026-11-14, ON since
+2026-11-16 by Kent's tick; `prune_specks`, called on its own) is a mask that
   * is under stage 3's detail floor yet clears the run tier's floors (stage
     3's own proxy): one of the small regions its rescue KEPT to sew
     (`resolve_small_regions`, a contrasting sliver), not a dot rung, cored
@@ -81,7 +81,7 @@ called on its own) is a mask that
     speed-line pieces, which `fine_bar_survive` redraws at stage 4) stay
     (2026-11-16: with no such test To a T lost five of its six speed lines and
     the period).
-    HELD OFF ON THE CREST CROWN (2026-11-16, Kent's call): the crown is drawn
+    THE CREST CROWN IS A TRADE (2026-11-16, taken in the flip): the crown is drawn
     with keylines too, and its pieces are fragments like low_poly's. Pruned,
     the crown sews as fewer, longer columns: it covers three spots on its
     outline main leaves bare (37-71% of the art's yellow there showed the

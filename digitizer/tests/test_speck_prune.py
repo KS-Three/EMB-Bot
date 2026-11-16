@@ -1,4 +1,4 @@
-"""`cfg.speck_prune` (built OFF 2026-11-14): a kept sub-floor speck no thread
+"""`cfg.speck_prune` (built OFF 2026-11-14, ON since 2026-11-16): a kept sub-floor speck no thread
 can draw goes to the mask it lies in (`sliver_prune.prune_specks`).
 
 Kent's `low_poly` at 80 mm left chest is the measurement (Commons art, kept in
@@ -102,8 +102,59 @@ def _recs(scene, input_ppm=PPM):
     return {r["index"]: r for r in sliver_prune.specks(masks, threads, p, CHART, FLOOR_PX, THREAD_PX)}
 
 
-def test_default_is_off():
-    assert PipelineConfig().speck_prune is False
+def test_flag_is_on_by_default():
+    """Kent's tick (review-1115, 2026-11-15: "speck_prune (Recommended)"),
+    flipped 2026-11-16 as the fragment rule."""
+    assert PipelineConfig().speck_prune is True
+
+
+def _calls(monkeypatch):
+    calls = []
+    monkeypatch.setattr(sliver_prune, "prune_specks",
+                        lambda masks, *a, **k: calls.append(len(masks)) or (masks, {"specks": 0}))
+    return calls
+
+
+def _art():
+    from pathlib import Path
+    return Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
+
+
+def test_off_never_calls_it(monkeypatch):
+    """False is the engine before the flag: the pass is never asked."""
+    from digitizer_core.pipeline import build_generation
+
+    calls = _calls(monkeypatch)
+    build_generation(_art(), PipelineConfig(target_width_mm=60.0, forced_class="flat", speck_prune=False))
+    assert calls == []
+    build_generation(_art(), PipelineConfig(target_width_mm=60.0, forced_class="flat"))
+    assert len(calls) == 1
+
+
+def test_the_photo_lanes_never_call_it(monkeypatch):
+    """Logos only: a photograph's fragments are specks everywhere. The
+    default asks the flat and gradient classes, never a photo class."""
+    from digitizer_core.pipeline import build_generation
+
+    calls = _calls(monkeypatch)
+    for forced, expect in (("photo_scene", 0), ("photo_subject", 0), ("gradient", 1), ("flat", 1)):
+        calls.clear()
+        build_generation(_art(), PipelineConfig(target_width_mm=60.0, forced_class=forced))
+        assert len(calls) == expect, forced
+
+
+def test_a_dot_rung_tittle_is_never_asked():
+    """`lone_glyph_keep` (ON since 2026-11-15) admits a cursive i's dot
+    through the dot rung; the speck pass holds every dot-rung mask, so a
+    tittle the rung kept is never a prune candidate, however it reads."""
+    s = Scene()
+    k = s.add(BLACK, (50, 79, 60, 81))
+    s.cross(BLACK, 55, 80)
+    masks, threads, p = s.build()
+    masks[k].dot_rung = True
+    assert k not in {r["index"] for r in sliver_prune.specks(masks, threads, p, CHART, FLOOR_PX, THREAD_PX)}
+    out, stats = sliver_prune.prune_specks(masks, threads, p, CHART, FLOOR_PX, THREAD_PX)
+    assert stats == {"specks": 0} and out is masks
 
 
 def test_a_black_crossing_on_the_facets_goes_to_the_one_it_lies_in():
