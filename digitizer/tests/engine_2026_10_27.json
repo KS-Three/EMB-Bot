@@ -223,6 +223,8 @@
  "pro_measured_values": false,
  "proofread": false,
  "proofread_guard_clipped": false,
+ "outline_inlets_kept": false,
+ "outline_inlets_teeth": false,
  "pull_comp_by_stroke": false,
  "rehome_resnapped": true,
  "report_absorb_frac": 0.25,

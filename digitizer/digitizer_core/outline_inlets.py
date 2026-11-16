@@ -1,4 +1,4 @@
-"""A shape's own inlets, kept open at stitch time (`cfg.extra["outline_inlets_kept"]`, built OFF).
+"""A shape's own inlets, kept open at stitch time (`cfg.outline_inlets_kept`, ON since 2026-11-15).
 
 Found 2026-11-14 tracing Kent's "shape detail lost" pins
 (`docs/shape-detail-traced-2026-11-14.md`). An INLET is bare fabric the
@@ -28,8 +28,8 @@ ON, both stop:
 A letter is never moved: its tier is the lettering lane's, and its
 openings are what the per-stroke satin is built to keep.
 
-`cfg.extra["outline_inlets_teeth"]` (built OFF, read only with the flag
-above) sews a TOOTHED shape the pro's way instead of as one fill: its teeth
+`cfg.outline_inlets_teeth` (ON since 2026-11-15, Kent's tick; read only with the
+flag above) sews a TOOTHED shape the pro's way instead of as one fill: its teeth
 first, each a short fill square to its own axis, then its body over their
 roots (`tooth_split`, `rebuild`, `bury_tooth_moves`; comment at "teeth").
 
@@ -72,7 +72,8 @@ _LETTER_KEYS = ("text_candidate", "ocr_char", "text_cluster_id")
 
 
 def enabled(cfg) -> bool:
-    return bool((getattr(cfg, "extra", None) or {}).get(FLAG))
+    """`cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick)."""
+    return bool(getattr(cfg, FLAG, False))
 
 
 def inscribed_width(poly: Polygon) -> float:
@@ -179,7 +180,7 @@ def as_fill(regions, ids) -> list:
 
 
 # ---------------------------------------------------------------- teeth
-# `cfg.extra["outline_inlets_teeth"]` (built OFF, with `outline_inlets_kept`):
+# `cfg.outline_inlets_teeth` (ON since 2026-11-15, with `outline_inlets_kept`):
 # a TOOTHED edge sewn the pro's way. Re-planned whole as one fill (above),
 # Ahora's gear -- a 1.1 mm ring with sixteen 0.85 mm teeth -- kept its teeth
 # but sewed as short tatami rows with crossing travel, and read ragged
