@@ -852,8 +852,8 @@ def ring_has_room(visible, width_mm: float | None = None,
     False when every part has no centreline, or lightens to a bean loop
     because no core is left inside the column. Such a loop runs 0.85 mm
     inside the shape's own fill and covers no edge, which is all a border is
-    for. `cfg.extra["border_significant_ring_room"]` (2026-11-14, built
-    OFF, `stage7_sequence._border_wanted`) uses this to stop "significant"
+    for. `cfg.border_significant_ring_room` (2026-11-14, ON since Kent's
+    2026-11-15 flip, `stage7_sequence._border_wanted`) uses this to stop "significant"
     from earning that loop. MFab's A counter, a 3.35 mm white triangle on the
     photo lane, sewed one on top of its fill: Kent's "random stitch in the
     middle". The pro sews the counter as one piece."""

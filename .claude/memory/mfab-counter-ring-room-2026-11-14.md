@@ -43,4 +43,4 @@ have no fanned-satin construction like the pro's.
 
 Related: [[mfab-photo-route-2026-11-04]].
 
-**Kent 2026-11-15:** "Both ON, keep 5.0" (`border_significant_ring_room` and `counter_fan_satin`, [[counter-fan-2026-11-14]]). The 5.0 mm satin ceiling stays (gate 1). Ruled ON 11-15, flip pending. Open, needs a sew-out: 5.0 vs 5.7 mm satin for the fan.
+**Kent 2026-11-15:** "Both ON, keep 5.0" (`border_significant_ring_room` and `counter_fan_satin`, [[counter-fan-2026-11-14]]). The 5.0 mm satin ceiling stays (gate 1). Ruled ON 11-15; flipped ON 11-16 by flip PR 5, a field now, OFF arm `RING_ROOM_2026_11_15_OFF` in `tests/conftest.py` PRE_FLIP. Census movers: MFab hat at 104.9 (the counter's bean loop gone, tripwire row moves), `night_neon` (one bean loop gone), and `kanji_brush`, `duotone_poster`, `chalkboard_lettering` (a ring or fill re-laid, same coverage, same read). Open, needs a sew-out: 5.0 vs 5.7 mm satin for the fan.
