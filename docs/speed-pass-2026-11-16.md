@@ -61,6 +61,28 @@ letter and cannot run ahead. It also needs
 `lettering_columns_judge_entry_free`, which #1603 measured and left OFF. **Not
 built.**
 
+**The Studio's own click (Kent's next pick, same day).** Headless Chromium on
+the Studio (port 5199), the service from this tree, laptop otherwise idle
+(`% Processor Performance` 166 average over the run). Upload at the Studio's
+defaults (left chest, auto-fit width), press Auto Digitize Image the moment
+the button is live, stop the clock when the canvas caption shows the stitches:
+
+| logo | width | click to stitches | of that, the service job | second click, same settings |
+|---|---:|---:|---:|---:|
+| Becker | 96 mm | 15.6 s | 15.2 s | 0.6 s |
+| MFab | 96 mm | 23.7 s | 22.9 s | 0.7 s |
+| Golden Tee | 84 mm | 38.4 s | 38.1 s | 0.7 s |
+
+- **The Studio adds 0.3-0.8 s to the service job.** The wait is the engine.
+- **The button is live 0.1-0.3 s after the upload.** `/classify` and
+  `/recount` run behind it (Golden Tee: 7.9 and 19.7 s). Clicking at once or
+  8 s later made no difference past noise (38.4 against 41.0 s, 23.7 against
+  23.4, 15.6 against 14.8).
+- **A second click with the same art and settings is the cache:** under a
+  second.
+
+n = 1 per cell. Nothing outside the engine explains a wait over a minute.
+
 ## The first write-up (wall seconds at 1.4 GHz; shares and md5 still hold)
 
 **Answer.**
