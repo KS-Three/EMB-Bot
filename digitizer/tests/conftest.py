@@ -1021,6 +1021,12 @@ PRE_FLIP.update(EDGE_WALK_2026_11_14_OFF)
 # flips): `tests/test_column_corner_fold_apex_side.py`.
 CORNER_APEX_2026_11_14_OFF = {"lettering_columns_corner_fold_apex_side": False}
 PRE_FLIP.update(CORNER_APEX_2026_11_14_OFF)
+# `stroke_bridge_keep` (Kent 2026-11-15, ticked ON): `tests/test_stroke_bridge_keep.py`.
+BRIDGE_2026_11_15_OFF = {"stroke_bridge_keep": False}
+PRE_FLIP.update(BRIDGE_2026_11_15_OFF)
+# `outline_frame_guard` (Kent 2026-11-15, ticked ON): `tests/test_outline_frame_guard.py`.
+FRAME_GUARD_2026_11_15_OFF = {"outline_frame_guard": False}
+PRE_FLIP.update(FRAME_GUARD_2026_11_15_OFF)
 # Kent's flips 2026-11-15, from the review sheets (art | OFF | ON | pro).
 # `fine_bar_survive` ("Flip both ON", with `small_text_handover`):
 # `tests/test_fine_bar.py`.

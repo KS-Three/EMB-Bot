@@ -51,8 +51,9 @@ STEM = [(_mask((19, 20, 21, 25)), 1), (_mask((19, 25, 21, 28)), 0),
         (_mask((19, 28, 21, 35)), 1), (_mask((19, 35, 21, 40)), 0)]
 
 
-def test_default_is_off():
-    assert PipelineConfig().stroke_bridge_keep is False
+def test_default_is_on():
+    # Kent 2026-11-15, review pack (review-1115): ticked ON
+    assert PipelineConfig().stroke_bridge_keep is True
     assert BRIDGE_HOST_CONTACT_MAX < BRIDGE_GROUND_MIN
 
 
