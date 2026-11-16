@@ -75,8 +75,26 @@ def _run(scene, input_ppm=PPM):
     return masks, out, stats
 
 
-def test_default_is_off():
-    assert PipelineConfig().speck_prune is False
+def test_flag_is_on_by_default():
+    # Kent 2026-11-15, review pack (review-1115): ticked "speck_prune (Recommended)"
+    assert PipelineConfig().speck_prune is True
+
+
+def test_off_never_calls_it(monkeypatch):
+    """False is the engine before the flag: the pass is never asked."""
+    from pathlib import Path
+
+    from digitizer_core.pipeline import build_generation
+
+    calls = []
+    monkeypatch.setattr(sliver_prune, "prune_specks",
+                        lambda masks, *a, **k: calls.append(len(masks)) or (masks, {"specks": 0}))
+    art = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
+    build_generation(art, PipelineConfig(target_width_mm=60.0, forced_class="flat",
+                                         speck_prune=False))
+    assert calls == []
+    build_generation(art, PipelineConfig(target_width_mm=60.0, forced_class="flat"))
+    assert len(calls) == 1
 
 
 def test_a_black_speck_on_the_facets_goes_to_the_one_it_lies_in():
