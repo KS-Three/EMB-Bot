@@ -1081,6 +1081,13 @@ PRE_FLIP.update(LONE_GLYPH_2026_11_15_OFF)
 # `speck_prune` (Kent's tick 2026-11-15, the fragment rule): `tests/test_speck_prune.py`.
 SPECK_2026_11_16_OFF = {"speck_prune": False}
 PRE_FLIP.update(SPECK_2026_11_16_OFF)
+# `outline_inlets_kept` (Kent's tick 2026-11-15, "K-Line box + gear flags"):
+# `tests/test_outline_inlets.py`.
+INLETS_2026_11_15_OFF = {"outline_inlets_kept": False}
+PRE_FLIP.update(INLETS_2026_11_15_OFF)
+# `outline_inlets_teeth` (the same tick): `tests/test_outline_inlets.py`.
+TEETH_2026_11_15_OFF = {"outline_inlets_teeth": False}
+PRE_FLIP.update(TEETH_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

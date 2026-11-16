@@ -48,7 +48,7 @@ def _stand_ins(monkeypatch, guard_keeps_replan: bool):
 
 
 def _cfg(**kw):
-    return PipelineConfig(extra={"outline_inlets_kept": True}, **kw)
+    return PipelineConfig(outline_inlets_kept=True, **kw)
 
 
 def test_the_guards_replan_keeps_the_inlet_rules_fill(monkeypatch):
@@ -69,7 +69,7 @@ def test_either_flag_alone_is_the_plan_as_it_was(monkeypatch):
     plan = pipeline.plan_stitches(_result(), _cfg())                 # inlets alone
     assert [a["gear"] for a in asked] == ["fill"] and plan.tiers["gear"] == "fill"   # planned once
     asked.clear()
-    plan = pipeline.plan_stitches(_result(), PipelineConfig(proofread_guard_clipped=True))   # guard alone
+    plan = pipeline.plan_stitches(_result(), PipelineConfig(proofread_guard_clipped=True, outline_inlets_kept=False))   # guard alone
     assert [a["gear"] for a in asked] == ["auto", "auto"] and plan.tiers["gear"] == "auto"
     res = _result()
     pipeline.plan_stitches(res, _cfg(proofread_guard_clipped=True))
