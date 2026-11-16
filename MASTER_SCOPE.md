@@ -542,6 +542,19 @@ never packaged rather than switched off at runtime. Licence texts ship three way
 pulled fonts, `docs/lawyer-brief-cc-by-sa-2026-08-04.md`) and the bluenesia
 permission screenshots (audit §8).
 
+### Digitize time — over Kent's bar, and not a one-stage problem
+
+**Kent's bar (2026-11-16): 15-25 s is understandable; over a minute, "no one
+will want to wait that long".** Nine hat jobs take 15-95 s on his laptop,
+four over a minute. It is one core of Python and GEOS (seven idle), spread
+over many passes: no stage is the hog, and the Column lane re-sews a letter
+per cut and per walk it tries. Eight exact cuts took 10.5% off the nine
+(stitches md5-identical); none over about 3 s is left. Reaching the bar needs
+more cores (letter cuts ahead of the walk, in a pool) or fewer passes (a
+quality trade): both Kent's call. Laptop wall time moves 10% run to run;
+compare trees back to back, by CPU and md5.
+*(measured 2026-11-16 — `docs/speed-pass-2026-11-16.md`, `tests/test_speed_exact_1116.py`)*
+
 ### CI feedback speed
 
 **Four required jobs; one dominates.** Re-measured 2026-09-14, last 70 runs,

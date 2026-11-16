@@ -815,8 +815,41 @@ def end_face_hold(columns: list[Column], poly: Polygon):
     return _ring_edges(poly), frozenset(end_faces(columns, poly))
 
 
+#: `sewn_rails`, once per exact column inside one `lettering_columns_shape`
+#: call (speed only, 2026-11-16). A letter is sewn many times before it is
+#: sewn for good -- once per cut the fold judge tries, once per walk
+#: `_edge_walk` tries -- and most of those sews push the same columns of the
+#: same letter by the same pull: 234 pushes on Becker's hat, 6 s of it. The
+#: key is everything `sewn_rails` reads: the letter (its bytes), the column's
+#: stations, kind and axis, the pull and its floor, the terminal faces (the
+#: edges come from the letter), and the keep's ink (by identity, held alive by
+#: the entry) and floor. A cache, not a knob: `shape_memo._CACHES`.
+_RAILS_MEMO: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
+    "sewn_rails_memo", default=None)
+
+
 def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None,
                keep=None):
+    """`_sewn_rails`, once per exact call inside a letter (`_RAILS_MEMO`);
+    the caller always gets its own lists."""
+    memo = _RAILS_MEMO.get()
+    if memo is None:
+        return _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep)
+    ink, floor = keep if isinstance(keep, tuple) else (keep, None)
+    key = (poly.wkb, tuple((a[0], a[1], b[0], b[1]) for a, b in col.stations), col.kind,
+           None if col.axis is None else (float(col.axis[0]), float(col.axis[1])),
+           float(pull_mm), float(pull_floor_mm),
+           None if hold is None else hold[1],
+           None if ink is None else id(ink), floor, isinstance(keep, tuple))
+    hit = memo.get(key)
+    if hit is None:
+        a_pts, b_pts = _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep)
+        hit = memo[key] = (a_pts, b_pts, ink)
+    return list(hit[0]), list(hit[1])
+
+
+def _sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None,
+                keep=None):
     """One column's crosses as the fabric gets them, before the cross floor:
     rails inset, pushed by the pull, a fanned straight end's face given the
     rails' reach -- and, with `hold` (`end_face_hold`, under
@@ -3166,6 +3199,12 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     if corner_fold_apex_side:
         with fold_apex_side_scope(True):
             return lettering_columns_shape(**{**_args, "corner_fold_apex_side": False})
+    if _RAILS_MEMO.get() is None:       # this letter's rails, each column pushed once
+        token = _RAILS_MEMO.set({})
+        try:
+            return lettering_columns_shape(**_args)
+        finally:
+            _RAILS_MEMO.reset(token)
 
     if small_bold:
         pull_mm = min(pull_mm, SMALL_BOLD_PULL_FRAC * stroke_width(poly))

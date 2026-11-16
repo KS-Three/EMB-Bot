@@ -13,6 +13,17 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-11-16 (speed pass, exact cuts) — branch `claude/speed-pass` on main `91e3fc42`
+
+Snapshots, not live status:
+
+- **Digitize wall seconds, main -> lane, one run each, Kent's laptop (Ryzen 7 4700U at 1.4 GHz):** Becker hat 54.5 -> 37.4, Gaulke hat 52.5 -> 39.0, MFab hat 102.0 -> 85.7, Hotel Fremont hat 92.8 -> 81.2, Golden Tee hat 103.2 -> 94.6, Bridge hat 34.7 -> 32.3, Tires hat 15.5 -> 15.1, To a T machine hat 47.7 -> 50.3, Precision drone 89.4 -> 94.3; total 592.3 -> 529.9. Plan md5 the same on all nine.
+- **Becker hat on the 2026-11-14 engine (`d310bfe5`) against main, interleaved twice:** 44.3 and 43.2 CPU s against 54.1 and 52.9.
+- `_cross_unobstructed` answered 29,784 of 46,334 keyline crosses on four hat jobs, 0 unlike the overlay.
+- `tests/test_speed_exact_1116.py`: 29 passed.
+
+---
+
 **Last updated:** 2026-11-15 (keyline_loop_fit built OFF) — branch `feat/keyline-loop-fit` on main `6f0dead8`
 
 Snapshots, not live status:

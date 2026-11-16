@@ -50,6 +50,8 @@ from __future__ import annotations
 
 import math
 
+import numpy as np
+import shapely
 from shapely.geometry import LineString, Polygon
 from shapely.ops import unary_union
 
@@ -286,19 +288,25 @@ def band_thickness(band, hole: Polygon) -> list[float]:
     n = max(8, int(total / _THICKNESS_STEP_MM))
     cap = machine.SATIN_MAX_WIDTH_MM + 1.0
     out: list[float] = []
-    for i in range(n):
-        s = total * i / n
-        p = ring.interpolate(s)
-        a = ring.interpolate((s - 0.15) % total)
-        b = ring.interpolate((s + 0.15) % total)
-        tx, ty = b.x - a.x, b.y - a.y
+    # the ring read at every station in three GEOS calls, not three a station
+    # (speed only, 2026-11-16): the same distances, so the same points
+    at = [total * i / n for i in range(n)]
+
+    def along(dists):
+        return shapely.get_coordinates(
+            shapely.line_interpolate_point(ring, np.asarray(dists, float))).tolist()
+    here = along(at)
+    back = along([(s - 0.15) % total for s in at])
+    fore = along([(s + 0.15) % total for s in at])
+    for (px, py), (ax, ay), (bx, by) in zip(here, back, fore):
+        tx, ty = bx - ax, by - ay
         d = (tx * tx + ty * ty) ** 0.5
         if d < 1e-9:
             continue
         nx, ny = -ty / d, tx / d
         # one side of the ring is the hole (0), the other the band
-        out.append(max(_exact_cross(p.x + nx * 1e-4, p.y + ny * 1e-4, nx, ny, cap, band),
-                       _exact_cross(p.x - nx * 1e-4, p.y - ny * 1e-4, -nx, -ny, cap, band)))
+        out.append(max(_exact_cross(px + nx * 1e-4, py + ny * 1e-4, nx, ny, cap, band),
+                       _exact_cross(px - nx * 1e-4, py - ny * 1e-4, -nx, -ny, cap, band)))
     return out
 
 

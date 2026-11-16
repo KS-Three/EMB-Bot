@@ -206,28 +206,110 @@ def _ring_partners(inner: list[tuple[float, float]], P: np.ndarray, nearest: np.
     LO3 = np.concatenate([LO1 - total, LO1, LO1 + total])
     HI3 = np.concatenate([HI1 - total, HI1, HI1 + total])
     longest = float(Ls.max())
+    return _square_partners(P, nearest, S3, R3, LO3, HI3, longest, total)
+
+
+#: ring readings handled in one pass of `_square_partners` (bounds its arrays)
+_PARTNER_BLOCK = 1_000_000
+
+
+def _square_partners(P: np.ndarray, nearest: np.ndarray, S3: np.ndarray, R3: np.ndarray,
+                     LO3: np.ndarray, HI3: np.ndarray, longest: float, total: float) -> np.ndarray:
+    """`_ring_partners`' reading itself: for each sample, the ring stretch
+    within reach of its nearest point (`S3`, three laps), the chord under
+    each ring point there, and the place the sample stands square to one.
+
+    Every sample's stretch is laid end to end and read as one array (speed
+    only, 2026-11-16: one sample at a time, fifteen array calls each, was
+    10 s of MFab's hat). Each element gets the arithmetic it
+    got in its own sample's arrays, in the same order, and a crossing is
+    only read between two neighbours of ONE sample's stretch, so every
+    partner is the float the per-sample loop returned
+    (`tests/test_speed_exact_1116.py`).
+
+    One case is still read alone (`_square_partner_alone`). `S3`'s laps meet
+    at the ring's length, which GEOS and the running sum here can round one
+    unit in the last place apart, so `S3` can step BACK by that much at a lap
+    seam. `np.interp` on a value inside such a step answers by the path its
+    search took, and the path differs between one long array and many short
+    ones. A sample that reads a chord end there is read as it always was."""
     out = np.array(nearest, float)
-    for i in range(len(P)):
-        if i % 256 == 0:
-            deadline.check("keyline")
-        s0 = float(nearest[i])
-        w = float(np.hypot(*(P[i] - R3[np.searchsorted(S3, s0)])))
-        half = longest / 2.0 + w + 2.0 * _READ_MM
-        lo, hi = int(np.searchsorted(S3, s0 - half)), int(np.searchsorted(S3, s0 + half, side="right"))
-        s = S3[lo:hi]
-        back = np.maximum(s - w, LO3[lo:hi])
-        on = np.minimum(s + w, HI3[lo:hi])
+    n = len(P)
+    if n == 0:
+        return out
+    back_steps = np.flatnonzero(S3[1:] < S3[:-1])
+    seams = [(float(S3[k + 1]), float(S3[k])) for k in back_steps.tolist()]
+    s0 = np.asarray(nearest, float)
+    k0 = np.searchsorted(S3, s0)
+    w = np.hypot(P[:, 0] - R3[k0, 0], P[:, 1] - R3[k0, 1])
+    half = longest / 2.0 + w + 2.0 * _READ_MM
+    lo = np.searchsorted(S3, s0 - half)
+    hi = np.searchsorted(S3, s0 + half, side="right")
+    cnt = np.maximum(hi - lo, 0)
+    upto = np.cumsum(cnt)
+    a = 0
+    while a < n:
+        deadline.check("keyline")
+        done = int(upto[a - 1]) if a else 0
+        b = max(a + 1, int(np.searchsorted(upto, done + _PARTNER_BLOCK, side="right")))
+        c = cnt[a:b]
+        own = np.repeat(np.arange(a, b), c)                 # the sample each reading belongs to
+        first = np.cumsum(c) - c
+        J = np.repeat(lo[a:b] - first, c) + np.arange(int(c.sum()))
+        a = b
+        if len(J) < 2:
+            continue
+        s, wi = S3[J], w[own]
+        back = np.maximum(s - wi, LO3[J])
+        on = np.minimum(s + wi, HI3[J])
+        alone = np.zeros(0, int)
+        if seams:
+            at_seam = np.zeros(len(J), bool)
+            for low, high in seams:
+                at_seam |= ((on >= low) & (on <= high)) | ((back >= low) & (back <= high))
+            alone = np.unique(own[at_seam])
         cx = np.interp(on, S3, R3[:, 0]) - np.interp(back, S3, R3[:, 0])
         cy = np.interp(on, S3, R3[:, 1]) - np.interp(back, S3, R3[:, 1])
-        dx, dy = P[i, 0] - R3[lo:hi, 0], P[i, 1] - R3[lo:hi, 1]
+        dx, dy = P[own, 0] - R3[J, 0], P[own, 1] - R3[J, 1]
         f = cx * dx + cy * dy                       # 0 where the sample stands square to the chord
         out_side = cy * dx - cx * dy > 0.0          # ... and on the band's side of it (the ring CCW)
-        hit = np.flatnonzero((f[:-1] > 0.0) & (f[1:] <= 0.0) & out_side[:-1] & out_side[1:])
-        if not len(hit):
-            continue
-        at = s[hit] + (s[hit + 1] - s[hit]) * f[hit] / (f[hit] - f[hit + 1])
-        out[i] = float(at[np.argmin(np.abs(at - s0))]) % total
+        hit = np.flatnonzero((own[:-1] == own[1:]) & (f[:-1] > 0.0) & (f[1:] <= 0.0)
+                             & out_side[:-1] & out_side[1:])
+        if len(hit):
+            at = s[hit] + (s[hit + 1] - s[hit]) * f[hit] / (f[hit] - f[hit + 1])
+            whose = own[hit]
+            off = np.abs(at - s0[whose])
+            starts = np.flatnonzero(np.concatenate([[True], whose[1:] != whose[:-1]]))
+            ends = np.concatenate([starts[1:], [len(whose)]])
+            for g0, g1 in zip(starts.tolist(), ends.tolist()):
+                out[whose[g0]] = float(at[g0 + int(np.argmin(off[g0:g1]))]) % total
+        for i in alone.tolist():
+            out[i] = _square_partner_alone(i, P, nearest, S3, R3, LO3, HI3, longest, total)
     return out
+
+
+def _square_partner_alone(i: int, P: np.ndarray, nearest: np.ndarray, S3: np.ndarray,
+                          R3: np.ndarray, LO3: np.ndarray, HI3: np.ndarray, longest: float,
+                          total: float) -> float:
+    """One sample's partner, read in arrays of its own: `_ring_partners`'
+    loop body as it ran for every sample until 2026-11-16."""
+    s0 = float(nearest[i])
+    w = float(np.hypot(*(P[i] - R3[np.searchsorted(S3, s0)])))
+    half = longest / 2.0 + w + 2.0 * _READ_MM
+    lo, hi = int(np.searchsorted(S3, s0 - half)), int(np.searchsorted(S3, s0 + half, side="right"))
+    s = S3[lo:hi]
+    back = np.maximum(s - w, LO3[lo:hi])
+    on = np.minimum(s + w, HI3[lo:hi])
+    cx = np.interp(on, S3, R3[:, 0]) - np.interp(back, S3, R3[:, 0])
+    cy = np.interp(on, S3, R3[:, 1]) - np.interp(back, S3, R3[:, 1])
+    dx, dy = P[i, 0] - R3[lo:hi, 0], P[i, 1] - R3[lo:hi, 1]
+    f = cx * dx + cy * dy
+    out_side = cy * dx - cx * dy > 0.0
+    hit = np.flatnonzero((f[:-1] > 0.0) & (f[1:] <= 0.0) & out_side[:-1] & out_side[1:])
+    if not len(hit):
+        return float(nearest[i])
+    at = s[hit] + (s[hit + 1] - s[hit]) * f[hit] / (f[hit] - f[hit + 1])
+    return float(at[np.argmin(np.abs(at - s0))]) % total
 
 
 def _read_band(band, hole: Polygon):
@@ -263,7 +345,10 @@ def _read_band(band, hole: Polygon):
         return None                         # the outer edge does not go once round this ring
     u = at[0] + np.concatenate([[0.0], np.cumsum(step)[:-1]])
     u = np.maximum.accumulate(u)
-    R = np.asarray([ring.interpolate(float(v) % total).coords[0] for v in u], float)
+    # one GEOS call for the whole ring, not one a sample (speed only,
+    # 2026-11-16): the same distances, so the same points
+    R = shapely.get_coordinates(shapely.line_interpolate_point(
+        ring, np.asarray([float(v) % total for v in u], float)))
     cross = P - R
     reach = np.hypot(*cross.T)
     if float(reach.max()) > machine.SATIN_MAX_WIDTH_MM:

@@ -1352,6 +1352,9 @@ def _neck_split(poly: Polygon, half_width_mm: float,
     rest = poly.difference(unary_union(parts))
     owned: list[list[Polygon]] = [[g] for g in parts]
     neck_area = 0.0
+    # each part's hair-wide halo, built once (speed only, 2026-11-16: it was
+    # rebuilt for every leftover piece, 393 x the parts on Becker's ring)
+    halos = [g.buffer(1e-6) for g in parts]
     for piece in getattr(rest, "geoms", [rest]):
         # Once per leftover piece: Becker's ring border at 96 mm leaves 393
         # of them and this loop was 5 s with no seam (2026-11-13).
@@ -1359,7 +1362,7 @@ def _neck_split(poly: Polygon, half_width_mm: float,
         if piece.is_empty or piece.geom_type != "Polygon":
             continue
         edge = piece.boundary
-        shared = [edge.intersection(g.buffer(1e-6)).length for g in parts]
+        shared = [edge.intersection(halo).length for halo in halos]
         if sum(1 for s in shared if s > 1e-6) >= 2:
             neck_area += piece.area
         best = max(range(len(parts)), key=lambda i: (shared[i], -piece.distance(parts[i])))
