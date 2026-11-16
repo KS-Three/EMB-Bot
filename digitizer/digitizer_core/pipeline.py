@@ -2218,7 +2218,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         # was 4.9x the plan's time (the two plans and the twelve feathered
         # satins it turned into slow fills), and feathers and lobes are not
         # teeth. OFF: not imported.
-        if getattr(cfg, "outline_inlets_kept", False):
+        if getattr(cfg, "outline_inlets_kept", False) and getattr(result, "regions", None):
             from . import outline_inlets
             ids = outline_inlets.toothed_satins(result.regions, cfg,
                                                 getattr(result, "design_class", "flat"))

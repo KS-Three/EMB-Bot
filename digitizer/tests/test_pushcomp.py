@@ -31,7 +31,7 @@ from digitizer_core.stage6_satin import (is_satin_candidate, satin_shape,
                                          strip_splits)
 from digitizer_core.stage7_sequence import sequence
 
-from .conftest import cfg, frozen_cfg
+from .conftest import INLETS_2026_11_15_OFF, cfg, frozen_cfg
 
 PIQUE = get_fabric("pique_knit")          # 0.30 mm pull comp
 PULL = PIQUE.pull_comp_mm
@@ -395,7 +395,9 @@ def test_flag_off_still_grows_every_face_by_exactly_pull():
 def test_flag_off_records_no_direction():
     """Nothing downstream may start depending on a stitch angle the shipped
     path never computed."""
-    p, _ = planned_for(bar(30, 20), directional=False)
+    # `outline_inlets_kept` (ON, Kent 2026-11-15) pins a free fill's OFF angle
+    # (`_off_angles`): its own arm, not this flag's
+    p, _ = planned_for(bar(30, 20), directional=False, **INLETS_2026_11_15_OFF)
     assert p.stitch_angle_deg is None
     assert p.satin_tier is False
 
