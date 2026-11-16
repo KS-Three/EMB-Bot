@@ -70,11 +70,21 @@ called on its own) is a mask that
     speck itself or under the run tier's floors, scraps that leave anyway).
     That is a highlight the art cut into a body, and it stays (2026-11-15:
     with no such exemption the heraldic crest lost three of the left wing's
-    five white feather quills and four of the right's, which main sews).
-    NOT ENOUGH TO FLIP (2026-11-16 combined check): a DARK mark the art
-    draws is still taken -- To a T's speed-line pieces (`fine_bar_survive`'s
-    bars, pruned here before it can redraw them) and the period in "LLC.".
-Its pixels go to the mask it has the most rim on. Kent's `low_poly` at 80 mm
+    five white feather quills and four of the right's, which main sews),
+  * and is a FRAGMENT: the art's ink of the speck's own kind (darker than its
+    host for a dark speck, lighter for a light one) runs on out of it by at
+    least `SPECK_FRAGMENT_MIN_ARMS` arms that the masks sew in ANOTHER colour.
+    The speck is then a piece of a longer line the rest of which is lost, a
+    dot where the art has a line: low_poly's crossings and edge pieces.
+    A WHOLE mark (no ink leaves it: the period in "LLC.", a speed line drawn
+    as one bar) and a piece whose line is sewn on in its own colour (To a T's
+    speed-line pieces, which `fine_bar_survive` redraws at stage 4) stay
+    (2026-11-16: with no such test To a T lost five of its six speed lines and
+    the period).
+Each of its pixels goes to the nearest mask that stays (not a speck leaving,
+not a scrap under the run tier's floors): handing a whole keyline piece to the
+one body with the most rim shrank the crest crown's navy gaps under the hole
+floor and filled them yellow. Kent's `low_poly` at 80 mm
 (sitting 2026-11-11, "Random Black Spot", 7 pins): the art's polygon edges
 are one-pixel black lines; quantisation labels only their crossings black,
 and each crossing kept as a 0.13-0.30 mm2 black run loop. This half runs at
@@ -141,6 +151,26 @@ SPECK_MIN_DE00 = TENDRIL_MIN_DE00
 # dark grey that lie in one host stay (112 specks -> 109 pruned), as main
 # sews them. A candidate in the 26-45 gap, not a measured edge.
 SPECK_SLIT_MIN_DL = 40.0
+# A FRAGMENT (module note). The art's ink: a top-hat on CIELAB L (closing
+# minus L for a dark speck, L minus opening for a light one) this many SOURCE
+# pixels across, at least `SPECK_INK_MIN_DL` -- a thin line darker (lighter)
+# than what is round it, wider facets and bodies read no ink. Its arms are the
+# pieces of that ink, joined to the speck, on a ring from one source pixel out
+# to `SPECK_ARM_REACH_SRC_PX`; an arm is LOST when at least
+# `SPECK_ARM_LOST_MIN` of it lies on masks sewn at least `SPECK_MIN_DE00` from
+# the speck's thread (or on no mask). Measured 2026-11-16, 80 mm left chest:
+# low_poly 103 of its 110 specks are fragments, every one of Kent's seven
+# "Random Black Spot" pins among them, and every dark dot the speck pass took
+# with no such test (4,558 render px) is still taken; To a T hat, beanie and
+# machine beanie give 0, 1 and 1 of 95, 79 and 79, and none is a dark mark
+# main sews. The top-hat at 8-20 L and rings to 3-6 source pixels give the
+# same To a T verdicts and 92-103 on low_poly; at a lost share of 0.5, 537 px
+# of low_poly's dots come back. Candidates read off those, not measured edges.
+SPECK_INK_KERNEL_SRC_PX = 5.0
+SPECK_INK_MIN_DL = 12.0
+SPECK_ARM_REACH_SRC_PX = 4.0
+SPECK_ARM_LOST_MIN = 0.3
+SPECK_FRAGMENT_MIN_ARMS = 2
 
 _K3 = np.ones((3, 3), np.uint8)
 
@@ -299,6 +329,46 @@ def _without(m: RegionMask, crop: np.ndarray, origin: tuple[int, int]) -> Region
                    origin=(y0 + int(ys.min()), x0 + int(xs.min())))
 
 
+def _scrap_test(p):
+    """Stage 3's own proxy for the run tier's floors
+    (`resolve_small_regions.clears_run_floors`): True for a mask stage 4 drops."""
+    run_area_px = machine.RUN_MIN_AREA_MM2 * float(p.px_per_mm) ** 2
+    run_loop_px = machine.RUN_MIN_LOOP_MM * float(p.px_per_mm)
+    return lambda m: m.area < run_area_px or 2 * max(m.crop.shape) < run_loop_px
+
+
+def _arms(m: RegionMask, i: int, p, owner: np.ndarray, dark: bool, de_to) -> tuple[int, int]:
+    """(arms, lost arms) of the art's ink leaving speck `i` (module note,
+    FRAGMENT); `de_to(k)` is CIEDE2000 from its thread to mask k's."""
+    s = _src_px(p)
+    k = int(np.ceil(SPECK_INK_KERNEL_SRC_PX * s))
+    k += 1 - (k % 2)
+    r1, r2 = max(1.5, s), SPECK_ARM_REACH_SRC_PX * s
+    wy0, wx0, wy1, wx1 = _window(m, int(np.ceil(r2)) + k + 2)
+    mine = m.window(wy0, wx0, wy1, wx1)
+    win = p.rgb[wy0:wy1, wx0:wx1]
+    L = rgb_to_lab(win.reshape(-1, 3)).reshape(win.shape[:2] + (3,))[..., 0].astype(np.float32)
+    ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    hat = (cv2.morphologyEx(L, cv2.MORPH_CLOSE, ker) - L) if dark else (L - cv2.morphologyEx(L, cv2.MORPH_OPEN, ker))
+    d = cv2.distanceTransform((~mine).astype(np.uint8), cv2.DIST_L2, 5)
+    reach = (((hat >= SPECK_INK_MIN_DL) | mine) & (d <= r2)).astype(np.uint8)
+    _, lbl = cv2.connectedComponents(reach, connectivity=8)
+    ring = (np.isin(lbl, np.unique(lbl[mine])) & (d > r1) & (d <= r2)).astype(np.uint8)
+    na, arm, stats, _ = cv2.connectedComponentsWithStats(ring, connectivity=8)
+    own = owner[wy0:wy1, wx0:wx1]
+    n = lost = 0
+    for a in range(1, na):
+        if stats[a, cv2.CC_STAT_AREA] < 2:
+            continue
+        n += 1
+        under = own[arm == a]
+        under = under[under != i]
+        if under.size and np.mean([o < 0 or de_to(int(o)) >= SPECK_MIN_DE00
+                                   for o in under]) >= SPECK_ARM_LOST_MIN:
+            lost += 1
+    return n, lost
+
+
 def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, thread_px: float,
            owner: np.ndarray | None = None) -> list[dict]:
     """`cfg.speck_prune`: one record per kept sub-floor mask thin enough to be
@@ -308,15 +378,10 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
     if owner is None:
         owner = _owner(masks, p.bg_mask.shape)
     limit = SPECK_WIDTH_SRC_PX * _src_px(p)
-    # Only what stage 4 would SEW: stage 3's own proxy for the run tier's
-    # floors (`resolve_small_regions.clears_run_floors`). Smaller masks are
-    # dropped there anyway; handing their pixels on would only move the
-    # outlines of the shapes round them (low_poly: 3,400 such masks).
-    run_area_px = machine.RUN_MIN_AREA_MM2 * float(p.px_per_mm) ** 2
-    run_loop_px = machine.RUN_MIN_LOOP_MM * float(p.px_per_mm)
-
-    def _scrap(m: RegionMask) -> bool:
-        return m.area < run_area_px or 2 * max(m.crop.shape) < run_loop_px
+    # Only what stage 4 would SEW. Smaller masks are dropped there anyway;
+    # handing their pixels on would only move the outlines of the shapes
+    # round them (low_poly: 3,400 such masks).
+    _scrap = _scrap_test(p)
 
     out: list[dict] = []
     others: list[set[int]] = []
@@ -365,41 +430,77 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
     # A slit (module note) is read against the first verdicts: what else is on
     # its rim must be a speck leaving or a scrap stage 4 drops.
     first = {rec["index"] for rec in out if rec["speck"]}
+    de_cache: dict[tuple[int, int], float] = {}
+
+    def _de(a: int, b: int) -> float:
+        if (a, b) not in de_cache:
+            de_cache[(a, b)] = float(deltaE_ciede2000(_thread_lab(chart, thread_indices, a),
+                                                      _thread_lab(chart, thread_indices, b)))
+        return de_cache[(a, b)]
+
     for rec, rest in zip(out, others):
         rec["slit"] = bool(rec["speck"] and rec["dl_neighbour"] >= SPECK_SLIT_MIN_DL
                            and all(k in first or _scrap(masks[k]) for k in rest))
-        if rec["slit"]:
-            rec["speck"] = False
+        rec["arms"] = rec["arms_lost"] = None
+        if rec["speck"] and not rec["slit"]:
+            me = masks[rec["index"]].layer
+            rec["arms"], rec["arms_lost"] = _arms(masks[rec["index"]], rec["index"], p, owner,
+                                                  rec["dl_neighbour"] < 0,
+                                                  lambda k: _de(me, masks[k].layer))
+        rec["fragment"] = bool(rec["arms_lost"] is not None
+                               and rec["arms_lost"] >= SPECK_FRAGMENT_MIN_ARMS)
+        rec["speck"] = bool(rec["speck"] and not rec["slit"] and rec["fragment"])
     return out
+
+
+def _tight(piece: np.ndarray, oy: int, ox: int) -> tuple[np.ndarray, tuple[int, int]]:
+    ys, xs = np.nonzero(piece)
+    return (np.ascontiguousarray(piece[ys.min():ys.max() + 1, xs.min():xs.max() + 1]),
+            (oy + int(ys.min()), ox + int(xs.min())))
 
 
 def prune_specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float,
                  thread_px: float) -> tuple[list[RegionMask], dict]:
-    """`cfg.speck_prune`: each speck's pixels given to the mask it lies in.
-    -> (masks, {"specks": n}); the list as given when there is none."""
+    """`cfg.speck_prune`: each speck's pixels given to the nearest mask that
+    stays. -> (masks, {"specks": n}); the list as given when there is none."""
     if not masks:
         return masks, {"specks": 0}
-    found = [rec for rec in specks(masks, thread_indices, p, chart, floor_px, thread_px)
+    owner = _owner(masks, p.bg_mask.shape)
+    found = [rec["index"] for rec in specks(masks, thread_indices, p, chart, floor_px, thread_px, owner)
              if rec["speck"]]
     if not found:
         return masks, {"specks": 0}
+    from scipy import ndimage
+
+    # Pixels go to masks that stay and that stage 4 sews: not to another speck
+    # leaving, and not to a scrap, which they could lift over the run floors.
+    _scrap = _scrap_test(p)
+    out_of = np.array(sorted(set(found) | {k for k, m in enumerate(masks) if _scrap(m)}))
+    given = masks
     masks = list(masks)
+    copied: set[int] = set()
     gone: set[int] = set()
-    for rec in found:
-        i, j = rec["index"], rec["neighbour"]
-        # A speck whose host was itself a speck, handed on already: the host's
-        # pixels now live in ITS host, so follow them there. Two specks that
-        # host each other lead back here: this one stays as it was.
-        seen = {i}
-        while j in gone and j not in seen:
-            seen.add(j)
-            j = next(r["neighbour"] for r in found if r["index"] == j)
-        if j in seen:
-            continue
-        masks[j] = replace(masks[j], crop=masks[j].crop.copy())     # the caller's mask is not ours
-        masks[j].union_from(RegionMask(crop=masks[i].crop, origin=masks[i].origin,
-                                       frame_shape=masks[j].frame_shape, layer=masks[j].layer))
+    pad = int(np.ceil(SPECK_ARM_REACH_SRC_PX * _src_px(p))) + 1
+    for i in found:
+        wy0, wx0, wy1, wx1 = _window(given[i], pad)
+        own = owner[wy0:wy1, wx0:wx1]
+        seed = (own >= 0) & ~np.isin(own, out_of)
+        if not seed.any():
+            continue                                   # nothing to hand it to: it stays
+        mine = given[i].window(wy0, wx0, wy1, wx1)
+        _, (iy, ix) = ndimage.distance_transform_edt(~seed, return_indices=True)
+        to = own[iy, ix]
+        for j in np.unique(to[mine]):
+            j = int(j)
+            if j not in copied:                        # the caller's mask is not ours
+                masks[j] = replace(masks[j], crop=masks[j].crop.copy())
+                copied.add(j)
+            crop, origin = _tight(mine & (to == j), wy0, wx0)
+            masks[j].union_from(RegionMask(crop=crop, origin=origin,
+                                           frame_shape=masks[j].frame_shape, layer=masks[j].layer))
         gone.add(i)
+    if not gone:
+        return given, {"specks": 0}
     kept = [m for i, m in enumerate(masks) if i not in gone]
     return kept, {"specks": len(gone)}
 
