@@ -1,6 +1,6 @@
 ---
 name: counter-fan-2026-11-14
-description: MFab's A counter sewn as ONE lagging-pivot fanned satin, the pro's way (`counter_fan_satin`, #1559): angle error 29.9 -> 7.1 deg at 90 mm; the 5.0 mm cap refuses it from ~94 mm; Kent 11-15 "Both ON, keep 5.0", flip pending
+description: MFab's A counter sewn as ONE lagging-pivot fanned satin, the pro's way (`counter_fan_satin`, #1559): angle error 29.9 -> 7.1 deg at 90 mm; the 5.0 mm cap refuses it from ~94 mm; Kent 11-15 "Both ON, keep 5.0", flipped ON 11-16 (flip PR 5)
 metadata:
   type: project
 ---
@@ -13,5 +13,10 @@ merging them is the follow-up. `tier: None` means auto.
 
 **Kent 2026-11-15:** "Both ON, keep 5.0" (this flag and
 `border_significant_ring_room`). The 5.0 mm satin ceiling stays (gate 1).
-Ruled ON 11-15, flip pending. Open, needs a sew-out: 5.0 vs 5.7 mm satin for
-the fan. Related: [[mfab-counter-ring-room-2026-11-14]].
+Ruled ON 11-15; flipped ON 11-16 by flip PR 5, a field now, OFF arm
+`COUNTER_FAN_2026_11_15_OFF` in `tests/conftest.py` PRE_FLIP. Census over the
+kits, the tripwire set and MFab at 75/90/93/96/104.9 mm: the fan moves MFab at
+75, 90 and 93 (the pro's fan; 96 and up refused by the cap) and `low_poly` at
+80 mm, one light three-sided facet sewn as a fan, same read. Open, needs a
+sew-out: 5.0 vs 5.7 mm satin for the fan.
+Related: [[mfab-counter-ring-room-2026-11-14]].
