@@ -1,5 +1,5 @@
-"""`cfg.extra["lettering_columns_corner_fold_cap_flared"]` (2026-11-14, built
-OFF): a gate on the corner fold, read off the pro's files
+"""`cfg.lettering_columns_corner_fold_cap_flared` (2026-11-14, built OFF as a `cfg.extra` key; ON since
+2026-11-15, Kent's flip): a gate on the corner fold, read off the pro's files
 (`docs/apex-pro-construction-2026-11-14.md`, section 6). He caps a corner
 whose outline carries a flare (MARINE's E and R at the top-left) and fans a
 plain one (MARINE's E at the bottom-left, every L of ProSeal's italic
@@ -40,11 +40,12 @@ def test_the_scope_is_off_by_default_and_puts_itself_back():
     assert oc._FOLD_CAP_FLARED.get() is False
 
 
-def test_plan_stitches_sets_it_from_the_extra_key(monkeypatch):
+def test_plan_stitches_sets_it_from_the_field_for_its_own_plan_only(monkeypatch):
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: oc._FOLD_CAP_FLARED.get())
-    on = replace(PipelineConfig(), extra={"lettering_columns_corner_fold_cap_flared": True})
-    assert pipeline.plan_stitches(None, on) is True
-    assert pipeline.plan_stitches(None, PipelineConfig()) is False
+    assert pipeline.plan_stitches(None, PipelineConfig()) is True      # ON since 2026-11-15
+    off = replace(PipelineConfig(), lettering_columns_corner_fold_cap_flared=False)
+    assert pipeline.plan_stitches(None, off) is False
+    assert oc._FOLD_CAP_FLARED.get() is False
 
 
 def test_the_flare_test_reads_a_wedge_not_a_square_or_italic_corner():

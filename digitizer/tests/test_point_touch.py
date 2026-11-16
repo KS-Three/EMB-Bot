@@ -1,5 +1,6 @@
-"""`cfg.extra["point_touch_split"]` (built OFF 2026-11-14): two shapes of one ink
-touching at a point are two shapes.
+"""`cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review pack
+(review-1115): ticked ON; built OFF 2026-11-14 as `cfg.extra["point_touch_split"]`):
+two shapes of one ink touching at a point are two shapes.
 
 NSYNC at 70.9 mm (eye sweep 2026-11-14, fault 11): the star's arm tip touches
 the italic N at one point (a neck of about 0.05 mm), the two traced as one
@@ -61,5 +62,45 @@ def test_lettering_and_rescued_details_are_left_alone():
         assert apply_point_touch_split(regions) == [] and len(regions) == 1
 
 
-def test_flag_is_off_by_default():
-    assert not PipelineConfig().extra.get("point_touch_split")
+def test_flag_is_on_by_default():
+    # Kent 2026-11-15, review pack (review-1115): ticked ON
+    assert PipelineConfig().point_touch_split is True
+
+
+def test_off_never_calls_it(monkeypatch):
+    """False is the engine before the flag: the module is never asked."""
+    from pathlib import Path
+
+    from digitizer_core import point_touch
+    from digitizer_core.pipeline import build_generation
+
+    calls = []
+    monkeypatch.setattr(point_touch, "apply_point_touch_split",
+                        lambda regions: calls.append(len(regions)) or [])
+    art = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
+    build_generation(art, PipelineConfig(target_width_mm=60.0, forced_class="flat",
+                                         point_touch_split=False))
+    assert calls == []
+
+
+def test_the_photo_lanes_never_call_it(monkeypatch):
+    """Flat logos only (2026-11-15): MFab hat is classed `photo_scene`, and
+    there the cut broke WELDING's W into a "~"; every corpus photo it ran on
+    moved. On `drone_render` (gradient) it cut a shading blend that then read
+    as a fourth blocking THREAD_MATCH_POOR (`test_thread_match_area_in_message`).
+    The pipeline calls it on a flat design and never on a photo or gradient
+    class."""
+    from pathlib import Path
+
+    from digitizer_core import point_touch
+    from digitizer_core.pipeline import build_generation
+
+    calls = []
+    monkeypatch.setattr(point_touch, "apply_point_touch_split",
+                        lambda regions: calls.append(len(regions)) or [])
+    art = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
+    for forced, expect in (("photo_scene", 0), ("photo_subject", 0), ("gradient", 0), ("flat", 1)):
+        calls.clear()
+        build_generation(art, PipelineConfig(target_width_mm=60.0, forced_class=forced,
+                                             point_touch_split=True))
+        assert len(calls) == expect, forced

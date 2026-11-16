@@ -3059,6 +3059,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             edge_walk: bool = False,
                             corner_fold_apex_side: bool = False,
                             pull_keep=None,
+                            edge_walk_judge_off: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3101,7 +3102,11 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     -- see `column_runs`.
     `corner_fold_apex_side`: `cfg.lettering_columns_corner_fold_apex_side`
     (2026-11-14) -- under `corner_fold`, a corner's fold counts only the
-    pieces on its apex side (`outline_cut._FOLD_APEX_SIDE`)."""
+    pieces on its apex side (`outline_cut._FOLD_APEX_SIDE`).
+    `edge_walk_judge_off`: `cfg.extra["edge_walk_judge_off_walk"]` (built OFF
+    2026-11-16) -- under `edge_walk`, `fold_cuts`' judge reads each cut
+    candidate on the walk OFF sews instead of `connectors_buried`'s; off,
+    today's judge."""
     _args = dict(locals())
     from .outline_cut import fold_apex_side_scope, letter_columns, stroke_width
 
@@ -3164,21 +3169,32 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         from .outline_cut import sewn_knots
         # `edge_walk` orders the walk, not the cut: the judge reads the cut
         # on `connectors_buried`'s walk, so the cut is the one that arm takes
-        # and each candidate is sewn once, not once per walk tried
-        judge_kw = ({**{k: v for k, v in run_kw.items() if k != "edge_walk"}, "connectors_buried": True}
-                    if edge_walk else run_kw)
+        # and each candidate is sewn once, not once per walk tried.
+        # `edge_walk_judge_off` (`cfg.extra["edge_walk_judge_off_walk"]`,
+        # built OFF 2026-11-16): the judge reads OFF's walk instead. The walk
+        # sets each column's sewing direction and `sewn_knots` reads the
+        # zigzag's station legs, so the walk moves the reading and the cut:
+        # on buried's walk and_pizza's p takes a 4-column cut where OFF takes
+        # 2 (a slit at the bowl's top right, the top-left shoulder flat); on
+        # OFF's walk Gaulke's hat "&" takes a cut with a hairline slit at its
+        # waist that buried's avoids, and Bukit Asam's 3 mm script "d" reads
+        # less legibly. Kent rules it from the sheet.
+        judge_kw = {k: v for k, v in run_kw.items() if k != "edge_walk"}
+        if edge_walk and not edge_walk_judge_off:
+            judge_kw = {**judge_kw, "connectors_buried": True}
 
         def judge(cols, cpoly):
-            return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **judge_kw)[0])
+            return sewn_knots(column_runs(leaned(cols, cpoly), recorded(cpoly), shape_id, **judge_kw)[0])
         lc_kw["judge"] = judge
 
-    def leaned(cols):
+    def leaned(cols, lpoly):
         # `text_lean_deg`: the convention's crosses on every straight column
-        # the house can span; None hands the cut's columns back untouched
+        # the house can span; None hands the cut's columns back untouched.
+        # `lpoly`, the cut's letter, for `lean_flat_ends` (its counters)
         if text_lean_deg is None:
             return cols
         from .column_lean import lean_columns
-        return lean_columns(cols, text_lean_deg, spacing_mm)
+        return lean_columns(cols, text_lean_deg, spacing_mm, letter=lpoly)
 
     def sew(plain: bool = False, **extra):
         lk, rk = lc_kw, run_kw
@@ -3186,14 +3202,26 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             lk = {k: v for k, v in lc_kw.items() if k != "small_bold"}
             rk = {k: v for k, v in run_kw.items() if k != "thin_floor"}
         cut = letter_columns(poly, pitch_mm=spacing_mm, **lk, **extra)
+        runs, report = sew_cut(cut.columns, cut.cuts, cut.unsewn, cut.poly, rk)
+        if cut.before_absorb is not None:
+            # `absorb_unsewn` (built OFF) merged a bare piece: kept only if
+            # the letter sews better for it (`absorb_gains`)
+            runs0, report0 = sew_cut(*cut.before_absorb, cut.poly, rk)
+            if absorb_gains(runs0, runs, poly):
+                report["absorbed"] = len(cut.before_absorb[2]) - len(cut.unsewn)
+            else:
+                runs, report = runs0, report0
+        return runs, report
+
+    def sew_cut(cols, cuts, unsewn, cpoly, rk):
         # `cfg.lettering_columns_apex_cut`: the merged tips' crosses, for the
         # walk (`column_runs`); a cut with none, the call is today's
-        apex_x = [(c[0], c[1]) for c in cut.cuts if c[2] == "apex"]
+        apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"]
         if apex_x:
             rk = {**rk, "apex_crosses": apex_x}
-        runs, report = column_runs(leaned(cut.columns), recorded(cut.poly), shape_id, **rk)
-        report["cuts"] = len(cut.cuts)
-        report["columns_unsewn"] += len(cut.unsewn)
+        runs, report = column_runs(leaned(cols, cpoly), recorded(cpoly), shape_id, **rk)
+        report["cuts"] = len(cuts)
+        report["columns_unsewn"] += len(unsewn)
         return runs, report
     runs, report = sew()
     if small_bold:
@@ -3221,6 +3249,17 @@ def satin_cover(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> f
     if not segs or poly.area <= 0:
         return 0.0
     return unary_union([q.buffer(half_mm) for q in segs]).intersection(poly).area / poly.area
+
+
+def absorb_gains(before: list[StitchRun], after: list[StitchRun], poly: Polygon) -> bool:
+    """`outline_cut.absorb_unsewn`'s sewn judge: the merged cut's runs
+    (`after`) cover more of the letter than the cut's own (`before`), and add
+    at least as much thread inside it as outside it (`thread_cover_spill`;
+    the same "net" rule as `HANDBACK_RULE`). A merge that re-pairs a ring
+    across its counter, or folds a column through an arm, covers less."""
+    c0, s0 = thread_cover_spill(before, poly)
+    c1, s1 = thread_cover_spill(after, poly)
+    return c1 > c0 and c1 - c0 >= s1 - s0
 
 
 def thread_cover_spill(runs: list[StitchRun], poly: Polygon,
