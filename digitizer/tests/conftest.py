@@ -1089,12 +1089,6 @@ PRE_FLIP.update(CAP_FLARED_2026_11_15_OFF)
 # `lettering_columns_ring_floor` (ticked ON, Kent 2026-11-15): `tests/test_ring_floor.py`.
 RING_FLOOR_2026_11_15_OFF = {"lettering_columns_ring_floor": False}
 PRE_FLIP.update(RING_FLOOR_2026_11_15_OFF)
-# `lettering_columns_judge_entry_free` + `lettering_columns_reading_order`
-# ("On!", Kent 2026-11-16), fields since (`cfg.extra` was their only door):
-# `tests/test_judge_entry_free.py`, `tests/test_lettering_reading_order.py`.
-ENTRY_ORDER_2026_11_16_OFF = {"lettering_columns_judge_entry_free": False,
-                              "lettering_columns_reading_order": False}
-PRE_FLIP.update(ENTRY_ORDER_2026_11_16_OFF)
 # `lone_glyph_keep` (Kent's tick 2026-11-15): `tests/test_lone_glyph_keep.py`.
 LONE_GLYPH_2026_11_15_OFF = {"lone_glyph_keep": False}
 PRE_FLIP.update(LONE_GLYPH_2026_11_15_OFF)

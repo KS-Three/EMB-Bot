@@ -1,5 +1,4 @@
-"""`cfg.lettering_columns_reading_order` (built OFF 2026-11-16 as a `cfg.extra`
-key; ON since 2026-11-16, Kent's flip "On!"): a
+"""`cfg.extra["lettering_columns_reading_order"]` (built OFF 2026-11-16): a
 span's letters sewn in reading order, not nearest-neighbour from the needle.
 
 Under the Column lane a word's letters went nearest-neighbour from wherever
@@ -32,7 +31,7 @@ def _orders(monkeypatch, shapes, letters, end_at, extra):
 
     fabric = fabric_for_garment("left_chest")
     off = _sew_order(S7.sequence(_one_colour(shapes, letters), fabric,
-                                 PipelineConfig(underlay=False, **{FLAG: False}))[0])
+                                 PipelineConfig(underlay=False))[0])
     end = end_at(off)
 
     def fake_lane(poly, sid, **kw):
@@ -43,7 +42,7 @@ def _orders(monkeypatch, shapes, letters, end_at, extra):
 
     monkeypatch.setattr(S7, "lettering_columns_shape",
                         own_thread_only(fake_lane, S7.lettering_columns_shape))
-    cfg = PipelineConfig(underlay=False, lettering_columns=True, **extra)
+    cfg = PipelineConfig(underlay=False, lettering_columns=True, extra=extra)
     return off, _sew_order(S7.sequence(_one_colour(shapes, letters), fabric, cfg)[0])
 
 
@@ -58,15 +57,9 @@ def _on_l3(off):
     return (c.x, c.y)
 
 
-def test_on_by_default():
-    """Kent's flip, 2026-11-16 ("On!")."""
-    assert PipelineConfig().lettering_columns_reading_order is True
-    assert PipelineConfig().lettering_columns_judge_entry_free is True
-
-
-@pytest.mark.parametrize("extra", [{FLAG: False}])
+@pytest.mark.parametrize("extra", [{}, {FLAG: False}])
 def test_off_a_letters_exit_reorders_the_word(monkeypatch, extra):
-    """The OFF arm, the field False: every letter ends
+    """The OFF arm, as main sews it, flag absent or False: every letter ends
     on L3, so L3 is sewn second -- the exit decides the word's order."""
     import digitizer_core.stage7_sequence as S7
     calls = []
@@ -92,7 +85,7 @@ def test_on_a_word_entered_from_its_right_still_reads_left_to_right(monkeypatch)
     def at_l3_top(off):
         assert off == ["A", "L3", "L2", "L1", "B"], off
         return (10.0, -5.0)
-    _off, off_lane = _orders(monkeypatch, shapes, LETTERS, at_l3_top, {FLAG: False})
+    _off, off_lane = _orders(monkeypatch, shapes, LETTERS, at_l3_top, {})
     _off, on = _orders(monkeypatch, shapes, LETTERS, at_l3_top, {FLAG: True})
     assert off_lane == ["A", "L3", "L2", "L1", "B"]
     assert on == ["A", "L1", "L2", "L3", "B"]

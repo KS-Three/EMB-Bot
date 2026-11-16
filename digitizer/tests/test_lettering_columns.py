@@ -697,12 +697,8 @@ def _off_then_stubbed_lane(monkeypatch, shapes, letters, end_at):
     from digitizer_core.fabrics import fabric_for_garment
 
     fabric = fabric_for_garment("left_chest")
-    # `lettering_columns_reading_order` (ON since 2026-11-16) is held False in
-    # this harness: these tests pin the span rule and the nearest-neighbour
-    # pick under it; reading order has `test_lettering_reading_order.py`.
     off_blocks, _ = S7.sequence(_one_colour(shapes, letters), fabric,
-                                PipelineConfig(underlay=False,
-                                               lettering_columns_reading_order=False))
+                                PipelineConfig(underlay=False))
     off = _sew_order(off_blocks)
     end = end_at(off)
     calls = []
@@ -717,8 +713,7 @@ def _off_then_stubbed_lane(monkeypatch, shapes, letters, end_at):
     monkeypatch.setattr(S7, "lettering_columns_shape",
                         own_thread_only(fake_lane, S7.lettering_columns_shape))
     on_blocks, _ = S7.sequence(_one_colour(shapes, letters), fabric,
-                               PipelineConfig(underlay=False, lettering_columns=True,
-                                              lettering_columns_reading_order=False))
+                               PipelineConfig(underlay=False, lettering_columns=True))
     assert any(r.points[-1] == end for b in on_blocks for r in b.runs
                if r.shape_id in letters)
     return off, _sew_order(on_blocks), calls
