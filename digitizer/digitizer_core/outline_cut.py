@@ -2549,6 +2549,84 @@ def _fold_join(A: Column, B: Column, sa, ia: int, sb, ib: int, p, q, poly: Polyg
                   width_mm=W, dropped_mm=A.dropped_mm + B.dropped_mm)
 
 
+# `absorb_unsewn` (`cfg.extra["lettering_columns_absorb_unsewn"]`, 2026-11-16,
+# built OFF). A small bold letter (`_SMALL_BOLD`, under 5 mm) can be cut into
+# a column plus pieces that neither construction fits (`build_column` ->
+# None): a junction blob, a foot. They sew nothing and the letter loses that
+# part. Bukit Asam's tagline at 80.4 mm left chest, the 2.5 mm italic a of
+# "coal": a ring round its counter plus its stem's lower part (0.25 mm^2) and
+# its foot (0.12 mm^2), both unsewn, so with `lettering_columns_ring_floor` the
+# a sewed as an o and the word read "cool". ON, each unsewn piece merges into
+# the column it shares the longest edge with (at least `ABSORB_SHARE_W` W),
+# the cut between them taken out, and that column is rebuilt on the union; a
+# rebuild that is no column, or a column of another construction (Commons
+# Bukit's "beyond" at 85.1 mm hat: the e's curved column re-scanned straight,
+# 1.6 mm crosses along its bowl), leaves both as they were. The a's ring then
+# runs its crosses (0.9-1.0 mm) down into the stem and foot. The merge can also
+# sew WORSE, so it is judged sewn: `columns.lettering_columns_shape` sews the
+# cut with and without it and keeps it only on `columns.absorb_gains`. K
+# Line's 1.5 mm caps at 80 mm left chest: a D's ring took a 0.08 mm^2 serif
+# and re-paired its rails across the counter, 20 crosses then dropped as thin
+# (satin cover 0.99 -> 0.38, the D sewed as an I); an E's curved column took
+# its middle arm (folds 1 -> 5, cover 0.90 -> 0.54). Layout, not a cloth
+# number (gate 1).
+_ABSORB_UNSEWN: contextvars.ContextVar[bool] = contextvars.ContextVar("absorb_unsewn", default=False)
+ABSORB_SHARE_W = 0.25          # an unsewn piece joins a column only along this much shared edge (in W)
+
+
+@contextlib.contextmanager
+def absorb_unsewn_scope(on: bool):
+    """`cfg.extra["lettering_columns_absorb_unsewn"]` for one plan. False
+    sets nothing."""
+    if not on:
+        yield
+        return
+    token = _ABSORB_UNSEWN.set(True)
+    try:
+        yield
+    finally:
+        _ABSORB_UNSEWN.reset(token)
+
+
+def _absorb_unsewn(columns: list, cuts: list, unsewn: list, W: float, pitch_mm: float,
+                   mitre_ends: bool) -> tuple[list, list, list]:
+    """`absorb_unsewn`: each piece in `unsewn` merged into the column whose
+    piece shares the longest edge with it (at least `ABSORB_SHARE_W` W), the
+    cuts lying along that edge removed, and the column rebuilt on the union.
+    -> (columns, cuts, pieces still unsewn)."""
+    if not unsewn or not columns:
+        return columns, cuts, unsewn
+    columns, cuts, left = list(columns), list(cuts), []
+    for u in unsewn:
+        best, share = None, 0.0
+        near = u.buffer(0.02)
+        for i, c in enumerate(columns):
+            s = c.piece.boundary.intersection(near).length
+            if s > share:
+                best, share = i, s
+        if best is None or share < ABSORB_SHARE_W * W:
+            left.append(u)
+            continue
+        col = columns[best]
+        merged = unary_union([col.piece, u])
+        if merged.geom_type != "Polygon":
+            merged = merged.buffer(1e-6).buffer(-1e-6)     # a hairline seam between the two
+        if merged.geom_type != "Polygon":
+            left.append(u)
+            continue
+        shared = col.piece.buffer(0.02)
+        keep = [k for k in cuts
+                if not (LineString([k[0], k[1]]).intersection(near).length > 0.5 * k[3]
+                        and LineString([k[0], k[1]]).intersection(shared).length > 0.5 * k[3])]
+        new = build_column(merged, [LineString([k[0], k[1]]) for k in keep], W, pitch_mm,
+                           mitre_ends=mitre_ends)
+        if new is None or new.kind != col.kind:     # extends the column, never re-makes it
+            left.append(u)
+            continue
+        columns[best], cuts = new, keep
+    return columns, cuts, left
+
+
 # `flare_top_fold` (`cfg.extra["lettering_columns_flare_top_fold"]`,
 # 2026-11-15, built OFF). MARINE's I carries the wedge its E and R carry at
 # the top-left (a bulge stepping out past the stem's edge and back), with no
@@ -3417,14 +3495,18 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
 class LetterCut:
     """What `letter_columns` returns: the cleaned polygon, its stroke width,
     the cuts taken, and the Columns (one per piece the construction could
-    sew; `unsewn` holds the pieces it could not)."""
+    sew; `unsewn` holds the pieces it could not). `before_absorb`: the
+    (columns, cuts, unsewn) `absorb_unsewn` started from, when it merged a
+    piece -- the sewn judge (`columns.lettering_columns_shape`) keeps the
+    merge only if it sews more of the letter; None otherwise."""
 
-    def __init__(self, poly, W, cuts, columns, unsewn):
+    def __init__(self, poly, W, cuts, columns, unsewn, before_absorb=None):
         self.poly = poly
         self.W = W
         self.cuts = cuts
         self.columns = columns
         self.unsewn = unsewn
+        self.before_absorb = before_absorb
 
 
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
@@ -3636,4 +3718,9 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         columns, cuts = _fold_corners(columns, cuts, poly, W, pitch_mm)
     if _FLARE_TOP_FOLD.get():      # `flare_top_fold` (built OFF): an I's wedge folded
         columns = _flare_top_folds(columns, cuts, poly, W, pitch_mm)
+    if _ABSORB_UNSEWN.get() and _SMALL_BOLD.get() and unsewn:   # `absorb_unsewn` (built OFF)
+        before = (columns, cuts, unsewn)
+        columns, cuts, unsewn = _absorb_unsewn(columns, cuts, unsewn, W, pitch_mm, mitre_ends)
+        if len(unsewn) < len(before[2]):    # the caller sews both and keeps the better
+            return LetterCut(poly, W, cuts, columns, unsewn, before_absorb=before)
     return LetterCut(poly, W, cuts, columns, unsewn)
