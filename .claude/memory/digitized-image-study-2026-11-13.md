@@ -15,6 +15,10 @@ approximate count, and what EMB-Bot does today).
 **Where the material is.** Pictures and per-picture notes are in the gitignored
 `scratch_digitized_study/` in the main checkout (`images/`, `notes/*.json`,
 `notes/rules_dump.txt`). Third-party art: never commit it, and it has no backup.
+The rule 7 and rule 12 reader scripts and per-file tables are in the repo at
+`docs/digitized-image-study-2026-11-13/` (saved 2026-11-16, README says how to
+re-run); the per-piece JSON, our DSTs (main `19013abe`), logs and crops are in
+`scratch_digitized_study/measure/`, local only.
 
 **What it found that changes what we do.**
 
