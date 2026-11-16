@@ -293,6 +293,9 @@ class Column:
     rail_a: list[tuple[float, float]] = field(default_factory=list)
     rail_b: list[tuple[float, float]] = field(default_factory=list)
     dropped_mm: float = 0.0             # scanline length a straight scan left unstationed
+    # `lean_flat_ends`: the ends (0 the first station, 1 the last) turned to a
+    # flat face (`column_lean._flat_ends`); read by `column_runs`' cover-the-hop
+    turned: tuple = ()
 
     @property
     def start(self) -> tuple[float, float]:
@@ -307,7 +310,8 @@ class Column:
     def reversed(self) -> "Column":
         return Column(stations=self.stations[::-1], piece=self.piece, kind=self.kind,
                       axis=self.axis, width_mm=self.width_mm,
-                      rail_a=self.rail_a[::-1], rail_b=self.rail_b[::-1], dropped_mm=self.dropped_mm)
+                      rail_a=self.rail_a[::-1], rail_b=self.rail_b[::-1], dropped_mm=self.dropped_mm,
+                      turned=tuple(sorted(1 - e for e in self.turned)))
 
 
 def is_lettering(region, cfg=None) -> bool:
@@ -1449,6 +1453,47 @@ def _tuck_stations(col: Column, end: int, through: Polygon, tuck_mm: float,
     return out
 
 
+def _cover_the_hop(sts, tail, done, pitch_mm: float, cover, W: float, axis=None):
+    """`lean_flat_ends` (`column_runs`): a satin leg's stations `sts`,
+    continued back from its first station along its column's `axis` (else
+    its own advance), one station a pitch, until its first cross lies level
+    with `tail` (the needle's last point) -- no further than 2 W back, and
+    only while the letter (`cover`) covers each cross. Only when the straight
+    way from `tail` to the leg's first centre lies more than `_APEX_EXIT_MM`
+    on `done` (the letter's finished satin); otherwise `sts` as given. The
+    axis, not the first crosses' midpoints: a leg butting another starts on
+    crosses cut short by that stroke, and their midpoints walk sideways
+    (Drone's N stem: 0.19 mm a station, off the letter in two)."""
+    if len(sts) < 2:
+        return sts
+    (a0, b0), (a1, b1) = sts[0], sts[1]
+    m0 = ((a0[0] + b0[0]) / 2, (a0[1] + b0[1]) / 2)
+    m1 = ((a1[0] + b1[0]) / 2, (a1[1] + b1[1]) / 2)
+    L = math.dist(m0, m1)
+    if L < 1e-9 or math.dist(tail, m0) < 1e-9:
+        return sts
+    if LineString([tail, m0]).intersection(done).length <= _APEX_EXIT_MM:
+        return sts
+    d = ((m0[0] - m1[0]) / L, (m0[1] - m1[1]) / L)
+    if axis is not None:
+        s = 1.0 if axis[0] * d[0] + axis[1] * d[1] >= 0 else -1.0
+        d = (s * axis[0], s * axis[1])
+    reach = (tail[0] - m0[0]) * d[0] + (tail[1] - m0[1]) * d[1]
+    if reach <= _APEX_EXIT_MM or reach > 2.0 * W:
+        return sts
+    ext = []
+    k = 1
+    while k * pitch_mm <= reach + 0.5 * pitch_mm:
+        sh = k * pitch_mm
+        a = (a0[0] + d[0] * sh, a0[1] + d[1] * sh)
+        b = (b0[0] + d[0] * sh, b0[1] + d[1] * sh)
+        if not cover.covers(LineString([a, b])):
+            break
+        ext.append((a, b))
+        k += 1
+    return ext[::-1] + list(sts) if ext else sts
+
+
 def _coords(geom):
     if geom.is_empty:
         return []
@@ -2184,7 +2229,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             report["columns_unsewn"] += 1
             continue
         ready.append(Column(stations=kept, piece=col.piece, kind=col.kind, axis=col.axis,
-                            width_mm=col.width_mm, rail_a=col.rail_a, rail_b=col.rail_b))
+                            width_mm=col.width_mm, rail_a=col.rail_a, rail_b=col.rail_b,
+                            turned=col.turned))
     if counter_clear_mm > 0 and ready:
         # Small print: a bar between two counters that no column sews (the
         # slashed 0's slash, once its crosses stop running over the
@@ -2363,6 +2409,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                               if len(st_) >= 2 else None)
         if apex_crosses:
             laid = unary_union([g_ for g_ in leg_ground if g_ is not None]).buffer(_APEX_EXIT_MM)
+    from .column_lean import _LEAN_FLAT_ENDS
+    lean_ends = _LEAN_FLAT_ENDS.get()
     for li, leg in enumerate(all_legs):
         col = ready[leg["ci"]]
         lo, hi = min(leg["i0"], leg["i1"]), max(leg["i0"], leg["i1"])
@@ -2452,6 +2500,22 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 ta, tb = (_on_top([e, g], done, later) for e in (sts[-1][0], sts[-1][1]))
                 if ta + _ON_TOP_SWAP_MM < tb:
                     sts = [(b, a) for a, b in sts]
+        if (lean_ends and leg["sat"] and li > 0 and sewn and runs
+                and runs[-1].shape_id == shape_id and runs[-1].kind == stitches.SATIN):
+            # `lean_flat_ends`: a leg sewn after one that ended on a turned
+            # face -- the face's corner is the letter's edge, so the way to
+            # this leg's start crossed the satin just finished (Drone's N:
+            # its diagonal's level foot ended in the corner and the needle
+            # ran 0.76 mm back up over it to the stem). The leg is continued
+            # back along its own column to cover the way in, as the pro's
+            # stem runs down to the baseline over the diagonal's foot.
+            prev = all_legs[li - 1]
+            pcol = ready[prev["ci"]]
+            pend = (1 if prev["i1"] == len(pcol.stations) - 1 else 0 if prev["i1"] == 0 else None)
+            if prev["sat"] and pend in pcol.turned:
+                sts = _cover_the_hop(sts, runs[-1].points[-1], unary_union(list(sewn.values())),
+                                     spacing_mm, tuck_cover if square_ends else poly_link, W,
+                                     axis=col.axis)
         mids = _mids(sts)
         # The walk is continuous along CENTRELINES; a zigzag ends on a
         # rail. From that rail point to the next leg's first penetration

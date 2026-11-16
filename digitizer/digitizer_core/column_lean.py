@@ -190,6 +190,25 @@ FLAT_END_SPAN = 0.6
 #   (the mitre 8.1), the pro's "crosses parallel to the baseline, the last
 #   one lying ON it" (`docs/flat-ends-pro-2026-11-14.md`, #11).
 FLAT_END_TURN_W = 1.5
+# - a stroke that narrows to its end is a tapered tip, not a flat end: its
+#   original crosses (rail to rail, before the lean) third to fifth from that
+#   end under `FLAT_END_TAPER` of the column's median. Golden Tee's tails
+#   read 0.38-0.61 there and the flag turned their last crosses along the
+#   stroke; every flat foot and top the flag was built for reads 0.83 or more
+#   (Gaulke's N's and arms, ProSeal's A, Drone's N's, Becker's N). The last two
+#   crosses are the face's own to cut, so they do not vote.
+FLAT_END_TAPER = 0.7
+
+
+def _tapers(col: Column, last) -> bool:
+    """Does `col` narrow to the end whose leaned last cross is `last`?"""
+    L = [math.dist(a, b) for a, b in col.stations]
+    if len(L) < 6:
+        return False
+    med = sorted(L)[len(L) // 2]
+    m = ((last[0][0] + last[1][0]) / 2, (last[0][1] + last[1][1]) / 2)
+    near = L[-5:-2] if math.dist(m, col.end) <= math.dist(m, col.start) else L[2:5]
+    return min(near) < FLAT_END_TAPER * med
 
 
 def _end_face(st, piece: Polygon, u, n, cut_lines, W: float, end: int, med: float):
@@ -262,6 +281,8 @@ def _flat_ends(st, col: Column, c, cut_lines, pitch_mm: float):
         order = st if end > 0 else st[::-1]
         if set(order[-1]) & set(order[-2]):
             continue                                    # a fan already ends on its slant
+        if _tapers(col, order[-1]):
+            continue                                    # a tapered tip, not a flat end
         face = _end_face(st, piece, u, n, cut_lines, W, end, med)
         if face is None:
             continue
@@ -323,11 +344,14 @@ def lean_column(col: Column, house_deg: float, pitch_mm: float, cut_lines=()) ->
     if sc is None:
         return col
     st, dropped = sc
+    turned = ()
     if _LEAN_FLAT_ENDS.get():
+        st0 = st
         st = _flat_ends(st, col, (cx, cy), cut_lines, pitch_mm)
+        turned = tuple(e for e, (a, b) in ((0, (st0[0], st[0])), (1, (st0[-1], st[-1]))) if a != b)
     return Column(stations=st, piece=col.piece, kind=col.kind, axis=col.axis,
                   width_mm=col.width_mm, rail_a=list(col.rail_a), rail_b=list(col.rail_b),
-                  dropped_mm=dropped)
+                  dropped_mm=dropped, turned=turned)
 
 
 def lean_columns(columns: list[Column], house_deg: float | None, pitch_mm: float,
