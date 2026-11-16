@@ -195,8 +195,10 @@ outline the art gives you", not "add one".
 pair looks sewn. Ring calls rest on the reader's geometric constants. The
 reader cannot see a ring in the ground's own colour block, or an own-colour
 ring on a piece under 4.5 mm. Machine's colours were not read. A re-run of MFab
-on a later commit was cut off and is unverified. Scripts are throwaway, in the
-session scratchpad.
+on a later commit was cut off and is unverified. The scripts and per-file
+tables for this and for rule 7 are in
+[`digitized-image-study-2026-11-13/`](digitized-image-study-2026-11-13/README.md)
+(saved 2026-11-16); the per-piece data, our DSTs and the crops stay local.
 
 ## Rule 7, measured (2026-11-13, same day)
 
