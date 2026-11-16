@@ -3169,16 +3169,17 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                     if edge_walk else run_kw)
 
         def judge(cols, cpoly):
-            return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **judge_kw)[0])
+            return sewn_knots(column_runs(leaned(cols, cpoly), recorded(cpoly), shape_id, **judge_kw)[0])
         lc_kw["judge"] = judge
 
-    def leaned(cols):
+    def leaned(cols, lpoly):
         # `text_lean_deg`: the convention's crosses on every straight column
-        # the house can span; None hands the cut's columns back untouched
+        # the house can span; None hands the cut's columns back untouched.
+        # `lpoly`, the cut's letter, for `lean_flat_ends` (its counters)
         if text_lean_deg is None:
             return cols
         from .column_lean import lean_columns
-        return lean_columns(cols, text_lean_deg, spacing_mm)
+        return lean_columns(cols, text_lean_deg, spacing_mm, letter=lpoly)
 
     def sew(plain: bool = False, **extra):
         lk, rk = lc_kw, run_kw
@@ -3203,7 +3204,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"]
         if apex_x:
             rk = {**rk, "apex_crosses": apex_x}
-        runs, report = column_runs(leaned(cols), recorded(cpoly), shape_id, **rk)
+        runs, report = column_runs(leaned(cols, cpoly), recorded(cpoly), shape_id, **rk)
         report["cuts"] = len(cuts)
         report["columns_unsewn"] += len(unsewn)
         return runs, report
