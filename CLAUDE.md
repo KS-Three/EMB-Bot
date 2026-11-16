@@ -65,6 +65,32 @@ with independent work. The director asks Kent and relays his words verbatim
 (Kent, 2026-10-27: "qestions from your workers should roll up to you for me to
 answer").
 
+## A flip question comes with pictures
+
+**Kent's ruling 2026-11-16.** Never ask Kent whether to flip a digitizing flag
+(ON, OFF, or a changed default or threshold) until the before and the after
+are in front of him: "I need to see photo comparisons Before and after, to
+know what it looks like." A table of trims, kappa or millimetres is not a
+picture and does not stand in for one.
+
+- **What to show.** For each design the flag moves: the render with the flag
+  OFF (before) beside the render with it ON (after), same size and frame,
+  labelled, with the original art alongside. Lead with the designs where the
+  change shows, and include every one that got worse. Say how many designs
+  moved and how many are on the page.
+- **How.** `cd digitizer && python -m tools.eye_pairs_gallery --labelled`
+  builds the "Flag Before After" page from what `python -m tools.eye_pairs
+  --render` wrote (`COOKBOOK.md`,
+  "The labelled before | after page"); republish to its existing artifact URL.
+  For one or two designs an inline pair sent in the chat is enough.
+- **Then ask.** The pictures go up first, the `AskUserQuestion` after, and the
+  question says where the pictures are. Numbers sit beside them.
+- **A flag that changes nothing you can see** (angle only, metrics only) still
+  gets its pair, with "no visible change" said in words.
+- **A worker session** sends the pictures (committed under `docs/renders/`, or
+  an artifact link) with its question; the director shows them to Kent before
+  asking. A flip question that arrives without them goes back to the worker.
+
 ## Open PRs ready for review, not as drafts
 
 **Kent's call 2026-08-28.** Open a PR ready-for-review whenever you have
