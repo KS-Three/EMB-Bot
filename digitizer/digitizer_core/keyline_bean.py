@@ -32,6 +32,7 @@ angle is `curve_fidelity`'s, the loop floor is the run tier's.
 from __future__ import annotations
 
 import math
+import statistics
 
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
@@ -355,8 +356,42 @@ def _walks(pieces: list[tuple[str, list[tuple[float, float]]]], poly):
     return walk
 
 
+#: `cfg.extra["keyline_loop_fit"]` (built OFF 2026-11-15, Kent: "Fix MFab
+#: white loops"). The hairline gate hands a keyline over 0.6 mm to the satin
+#: loop, which is never under `machine.OUTLINE_WIDTH_MM`'s 1.5 mm. That loop
+#: is wider than the line the art draws, and what it gains it takes from the
+#: bodies it rings. MFab's hat with `photo_enclosed_rim` ON (the keyline read
+#: at its true width), cutout lane: at 38 to 60 mm the keyline is 0.60 to
+#: 0.95 mm, the loop 1.62 to 2.01 mm, the letter strokes 1.90 to 2.95 mm; the
+#: faces sew as slivers between white loops and the hyphen is lost. As a bean
+#: the same sizes sew black faces, a thin white line and the hyphen. ON, a
+#: thread whose loops do not FIT its bodies (`loop_fits`) is read against the
+#: loop's own width instead of the hairline's, so its keylines sew as the
+#: bean; every other test of `keyline_regions` still applies. Layout, judged
+#: in the preview, as `OUTLINE_WIDTH_MM` is; unsewn.
+LOOP_FIT_KEY = "keyline_loop_fit"
+
+
+def loop_fits(strokes: list[float], keyline_mm: float, loop_mm: float) -> bool:
+    """Whether a satin loop `loop_mm` wide suits the bodies it rings.
+
+    The loop is `loop_mm - keyline_mm` wider than the line the art draws.
+    It fits when the median body (`strokes`: each body's 2 x area /
+    perimeter), less that excess, is still at least as wide as the loop: a
+    border is not wider than the face it borders. No body: it fits.
+
+    MFab hat, rim ON (stroke, keyline, loop -> face left): 38 mm 1.90, 0.60,
+    1.62 -> 0.88; 50 mm 2.50, 0.82, 1.72 -> 1.59; 60 mm 2.95, 0.95, 2.01 ->
+    1.88 (none fits); 70 mm 3.43, 1.08, 2.06 -> 2.45; 100.8 mm 4.93, 1.42,
+    2.12 -> 4.23 (the pro borders it at 2.40). Rim OFF, 55 mm: 2.50, 0.66,
+    1.50 -> 1.66, fits, as it sews today."""
+    if not strokes:
+        return True
+    return statistics.median(strokes) - (loop_mm - keyline_mm) >= loop_mm
+
+
 def keyline_regions(regions, outline_ids, cfg, ink=None, *, sewn_only: bool = True,
-                    min_width_mm: float = 0.0) -> set[str]:
+                    min_width_mm: float = 0.0, bodies: dict | None = None) -> set[str]:
     """Which regions sew as a keyline bean -> shape ids.
 
     Decided per THREAD, never per ring: one design's keylines are one drawn
@@ -391,7 +426,12 @@ def keyline_regions(regions, outline_ids, cfg, ink=None, *, sewn_only: bool = Tr
     image enlarged to 198 mm (1.1 mm a pixel) carries a 0.16 mm blend ring
     between two flat colours, a seventh of a pixel; it read as a hairline
     outline, glowed, and asked Keep / Remove about nothing. Kent's logo draws
-    its outline 8 source pixels wide."""
+    its outline 8 source pixels wide.
+
+    `bodies` ({outline id: [(body id, hole, loop width mm)]}, the art-outline
+    pass's map) is read only with `cfg.extra["keyline_loop_fit"]`: a thread
+    whose loops do not fit its bodies (`loop_fits`) is held to the loop's
+    width in place of the hairline's. Off or None: never read."""
     from .columns import is_lettering
     from .stage6_hairline import _BLOB_FACTOR, block_thread_wt, measure
 
@@ -411,12 +451,37 @@ def keyline_regions(regions, outline_ids, cfg, ink=None, *, sewn_only: bool = Tr
                 # 1.5 source pixels) is the raster's fringe, not a line
                 and keyline_width_mm(poly) >= min_width_mm)
 
-    measured: dict[str, dict | None] = {}
+    measured: dict[tuple[str, float], dict | None] = {}
 
-    def width(r):
-        if r.shape_id not in measured:
-            measured[r.shape_id] = measure(r.polygon, limit(r), ink=ink)
-        return measured[r.shape_id]
+    def width(r, lim: float):
+        if (r.shape_id, lim) not in measured:
+            measured[r.shape_id, lim] = measure(r.polygon, lim, ink=ink)
+        return measured[r.shape_id, lim]
+
+    fit = bool(bodies) and bool((getattr(cfg, "extra", None) or {}).get(LOOP_FIT_KEY))
+    by_id = {r.shape_id: r for r in regions} if fit else {}
+
+    def gate(outlines) -> float:
+        """The width this thread's keylines are read against: the hairline's,
+        or with `keyline_loop_fit` the loop's own when the loop does not fit."""
+        lim = limit(outlines[0])
+        if not fit:
+            return lim
+        held = [(by_id[b].polygon, w) for o in outlines
+                for b, _hole, w in bodies.get(o.shape_id, ()) if b in by_id]
+        length = sum(o.polygon.length for o in outlines)
+        if not held or length <= 0:
+            return lim
+        loop = max(w for _p, w in held)
+        keyline = 2.0 * sum(o.polygon.area for o in outlines) / length
+        # a band already as wide as the narrowest loop is a border by the
+        # pro's own files (`machine.OUTLINE_WIDTH_MM`), whatever it rings: a
+        # 1.6 mm band round a 1.9 mm bar misses the fit by 0.05 mm and is no
+        # line
+        if (keyline >= machine.OUTLINE_WIDTH_MM[0]
+                or loop_fits([keyline_width_mm(p) for p, _w in held], keyline, loop)):
+            return lim
+        return max(lim, loop)
 
     pool: dict[int, list] = {}
     for r in regions:
@@ -430,17 +495,20 @@ def keyline_regions(regions, outline_ids, cfg, ink=None, *, sewn_only: bool = Tr
         # median alone: a gear's ring read 0.05 mm on the skeleton and 0.86
         # by area (Commons "Ahora" at 60 mm), and as a bean it lost its
         # teeth.
-        if not all(ring(r) and width(r) is not None for r in outlines):
+        if not all(ring(r) for r in outlines):
+            continue
+        lim = gate(outlines)
+        if not all(width(r, lim) is not None for r in outlines):
             continue
         length = sum(r.polygon.length for r in outlines)
-        if length <= 0 or 2.0 * sum(r.polygon.area for r in outlines) / length > limit(outlines[0]):
+        if length <= 0 or 2.0 * sum(r.polygon.area for r in outlines) / length > lim:
             continue
         taken = set()
         for r in regions:
             if r.thread_index != thread or not ring(r):
                 continue
-            m = width(r)
-            if m is not None and m["width_p95_mm"] <= _BLOB_FACTOR * limit(r):
+            m = width(r, lim)
+            if m is not None and m["width_p95_mm"] <= _BLOB_FACTOR * lim:
                 taken.add(r.shape_id)
         # ... and the thread draws nearly nothing BUT keyline. A frame in the
         # logo's own ink is a drawn part of it, which the pro borders (To-a-T
