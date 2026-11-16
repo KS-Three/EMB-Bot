@@ -371,5 +371,7 @@
  "lettering_columns_apex_pro": false,
  "lettering_columns_apex_pro_joints": false,
  "lettering_columns_corner_fold_cap_flared": false,
- "lettering_columns_ring_floor": false
+ "lettering_columns_ring_floor": false,
+ "lettering_columns_judge_entry_free": false,
+ "lettering_columns_reading_order": false
 }

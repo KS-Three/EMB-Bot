@@ -2939,12 +2939,13 @@ def sequence(
             if _is:
                 off_span[_sid] = _span
             _prev = _is
-    # `cfg.extra["lettering_columns_reading_order"]` (built OFF 2026-11-16):
+    # `cfg.lettering_columns_reading_order` (built OFF 2026-11-16 as a
+    # `cfg.extra` key; ON since 2026-11-16, Kent's flip "On!"):
     # a span's letters in reading order (`reading_order.reading_ranks`), not
     # nearest-neighbour from the needle, so no letter's exit can turn the
     # word round. Off, empty, and the picks below are today's.
     read_rank: dict[str, int] = {}
-    if off_rank is not None and cfg.extra.get("lettering_columns_reading_order"):
+    if off_rank is not None and cfg.lettering_columns_reading_order:
         _by_span: dict[int, dict] = {}
         for _p in planned:
             if _p.shape_id in off_span:
@@ -4180,11 +4181,12 @@ def sequence(
                     # off, today's call
                     **({"edge_walk_judge_off": True}
                        if cfg.extra.get("edge_walk_judge_off_walk") else {}),
-                    # `cfg.extra["lettering_columns_judge_entry_free"]` (built OFF
-                    # 2026-11-16): the fold-cut judge sews from no entry; off,
-                    # today's call
+                    # `cfg.lettering_columns_judge_entry_free` (built OFF
+                    # 2026-11-16 as a `cfg.extra` key; ON since 2026-11-16,
+                    # Kent's flip "On!"): the fold-cut judge sews from no
+                    # entry; False, the call as it was
                     **({"judge_entry_free": True}
-                       if cfg.extra.get("lettering_columns_judge_entry_free") else {}),
+                       if cfg.lettering_columns_judge_entry_free else {}),
                     # `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14):
                     # the push held out of bays and gaps; off, today's call
                     **({"pull_keep": push_keep(p)} if keep_gaps else {}))

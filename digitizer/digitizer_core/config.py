@@ -4068,6 +4068,33 @@ class PipelineConfig:
     # False is the lane as it was; `tests/conftest.py` PRE_FLIP and
     # `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_ring_floor.py`.
     lettering_columns_ring_floor: bool = True
+    # The fold-cut judge test-sews each candidate cut from NO entry point
+    # (`columns.lettering_columns_shape`'s `judge_entry_free`,
+    # `stage7_sequence.stitch_one`; built OFF 2026-11-16 as
+    # `cfg.extra["lettering_columns_judge_entry_free"]`, #1589), so a
+    # letter's cut no longer depends on which side the needle arrives from:
+    # Becker's A entered from its left took 489 needles against 441, 206
+    # shared. 14 pro-paired designs: 11 byte-identical, every moved letter
+    # closer to the pro, trims -2. **ON since 2026-11-16, Kent's flip**
+    # ("On!", with `lettering_columns_reading_order`), promoted from
+    # `cfg.extra` to a field so the default can be ON. False is the judge as
+    # it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False. Tests: `tests/test_judge_entry_free.py`.
+    lettering_columns_judge_entry_free: bool = True
+    # A span's letters sew in reading order, lines top first and each left to
+    # right (`reading_order.reading_ranks`, `stage7_sequence`; built OFF
+    # 2026-11-16 as `cfg.extra["lettering_columns_reading_order"]`, #1590),
+    # not nearest-neighbour from wherever the last letter ended, so one
+    # letter's exit cannot turn a word round. Lines sewn the pro's way: 6 of
+    # 18 -> 13. With `lettering_columns_judge_entry_free`: 22 letters closer
+    # to the pro, 10 further, trims net 0. Known catches: Gaulke LC's G
+    # 13.4 -> 23.4 (the pro starts his G at its top end), Becker's small-hat
+    # A 14.3 -> 16.3, Fremont +3 trims, MFab hat +2. **ON since 2026-11-16,
+    # Kent's flip** ("On!", shown the Gaulke G sheet first), promoted from
+    # `cfg.extra` to a field so the default can be ON. False is the order as
+    # it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False. Tests: `tests/test_lettering_reading_order.py`.
+    lettering_columns_reading_order: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
