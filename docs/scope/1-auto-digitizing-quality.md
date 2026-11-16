@@ -5364,7 +5364,44 @@ Moved verbatim from `MASTER_SCOPE.md` when defects 2, 4, 6 and 26 were rewritten
 
 59. **Small-lettering follow-ons (2026-10-14/15): (a) and (f) ON since PR #977, five built OFF and outside the switch, one instrument, one trace. Fremont is UNREPRESENTATIVE: it reproduces defects, it sizes nothing; every value is a gate-1 candidate and nothing is sewn.** Full numbers: [area 1](docs/scope/1-auto-digitizing-quality.md#eighth-pass-the-small-lettering-follow-ons-pr-945-956); the paragraph as it stood after PR #968: [area 1](docs/scope/1-auto-digitizing-quality.md#item-59-small-lettering-follow-ons-the-paragraph-as-it-stood-after-pr-968). **(a) `bean_letter_counter_hold_mm` (PR #952; ON at 0.25 as a PLAIN default since PR #977, Kent 2026-10-15; None stays OFF, the three sew-out card tools pin None; unsewn):** a 0.25 hold opens both of the 8's counters and the tagline's 1 of 4 → 4 of 4; a held letter sews up to about 0.1 mm wider outside. **(b) `bean_letter_passes` (PR #950, OFF):** passes per spine, `None` = 3, byte-identical. **(c) `small_letter_ties` (PR #956, merged, OFF):** lock thread piled on the ink of bean and skeleton runs −65% at 81 mm, −64% at 92.5 mm, trims unchanged, 6 of 9 logos byte-identical; still owed on cloth are the same 3 mm cap letter, bounce lock vs ties, and tails pulled by hand after a wash. **(d) Trace (PR #953, measure only):** 0 needle points off the ink in all six readings, so the 1's OCR miss is the instrument's window, not the engine; single-glyph OCR is unstable, so judge structurally (bays at the 50% rule, no thread hole, needle points on ink). **(e) `cfg.preflight_glyph_metric` (PR #945, merged, OFF):** per-glyph legibility and `counters_shut` as preflight metrics, no finding or grade change (Kent 2026-10-02); 2.6 to 2.8 s per job, over the 2 s target, hence OFF. **Card v3's `small_glyph_keep` OFF pin is stale** (ON since #908): its N block is still a valid A/B, its F3 and T 'today' arms are not. **(f) `cfg.bean_letter_bay_hold` (PR #967; ON at 0.2 as a PLAIN default since PR #977, Kent 2026-10-15 chose the flip over sewing first; unsewn, block B of the card below settles it):** each bean station within the hold of a BAY (a 0.45 mm closing of the letter's ink with its counters filled, minus the ink, at least 0.05 mm²) moves to the least crowded point of its own spine's ink; a station between a bay and a counter is never pushed into the counter, and satin runs are md5-identical OFF vs ON in all 17 designs. With the switch ON plus a 0.2 mm hold: the 5's upper bay at 81 mm Hat goes 0.36 → 0.53 bare (open by #905's 50% rule, a thin margin), THE's E at 92.5 mm goes 1 false counter → 0 and THE 0.667 → 1.000, the 92.5 mm tagline S (never a closed loop: 0 thread holes in every arm) reads S instead of 8, and 1895 legibility and OCR do not move. **Cost:** a held letter sews up to about 0.1 mm wider outside (EST at 92.5 mm 0.984 → 0.964 at 0.2, 0.930 at 0.25); 7 of 17 designs move, only in bean letters, `ARTWORK_UNCOVERED` rises nowhere. 0.2 is the corpus arm and 0.25 the alternative, both candidates. DOCTRINE 2026-09-30 (no same-shape notch guard) is about the satin rail push, which this does not touch. **(g) `cfg.edge_cap_bean_pitch_mm` (PR #969, MERGED 2026-10-15, OFF, not in the switch):** None sews the BEAN edge cap at 0.73 mm byte for byte (md5-pinned on three flat goldens and two default-config plans); a number re-spaces the silhouette cap's stations only, while the run tier (7,679 short or stacked stitches at every pitch), bean letters, the border's bean fallback and the satin cap keep 0.73. It is the census's option A ("Speed is the operator's", area 4). On the 11 census designs at 80 mm, short-or-stacked penetrations 55,906 → 52,204 / 51,034 / 50,913 (**−6.6 / −8.7 / −8.9%**) at 1.0 / 1.2 / 1.5 mm; penetrations −1.4 / −2.0 / −2.6%; stacking barely moves (−0.4% at most: the three passes return to the same holes); thread flat, trims move by at most 1. **1.2 mm is the measured knee** (the cap's own short or stacked 5,487 → 621; 1.5 buys 0.2 points more). **The cost is edge cover:** share of the outer silhouette with no linear stitching within the host margin (median / max over the 11) 0.40 / 3.33% OFF → 0.37 / 4.59 at 1.0, 0.47 / 4.73 at 1.2, 0.70 / 5.49 at 1.5; worst chord excursion 0.19 → 0.28 / 0.30 / 0.40 mm; Hotel Fremont 0.75 → 2.34% and the Golke screenshot 3.33 → 5.49% at 1.5, and the ~4 mm ® disc turns into a visible decagon there. `ARTWORK_UNCOVERED` barely moves (Becker 12.4 → 13.8 mm²). 1.0, 1.2 and 1.5 are gate-1 candidates; the pitch is picked from cloth only (block P of the card below). **(h) Sew-out card, bay hold and edge-cap pitch (PR #970, MERGED 2026-10-15; UNSEWN, with Kent):** full text moved verbatim: [area 1](docs/scope/1-auto-digitizing-quality.md#waiting-on-kent-59h-the-bay-hold-and-edge-cap-pitch-card-as-it-stood-after-pr-1135). **Card (#959, merged, with Kent, NOT sewn):** a separate 4×4 card, 20 arms, 40 wt, Hat, the switch ON in every arm; block A is hold OFF vs 0.25, B1/B2 are ties OFF vs ON at 81 and 92.5 mm; C (passes) stays on `card-passes-2026-10-14`. **PR #977 price (both holds explicit, measured 2026-10-15):** Fremont Hat 80 mm 14,812 / 43 → 14,824 / 43; 81 mm 15,330 → 15,340 / 41; 92.5 mm 18,675 → 18,706 / 54; the corpus moves only where bean letters sew, no trim gained or lost. **(i) `cfg.bean_letter_straight_mm` (built 2026-10-20 for Kent's "1 is wiggly", "Eat Stay play are wiggly"; ON at 0.7 the same day, Kent's pick over 0.9 on the renders; None is `PRE_FLIP`, the card tools pin None):** a straight stretch of a bean spine takes the coarsest even pitch up to the knob whose chords stay within `STRAIGHT_SAG_MM` 0.08 of the spine; curves keep 0.45. At 0.9 on Fremont 81 mm Hat the T, Y and 1 stems sew as long stitches instead of beads, needle max 0.045 mm off the ink, 15,359 → 15,221 stitches, trims 42 either way. At 0.7: 15,281 stitches. Smoothing the spine first moved nothing (DOCTRINE 2026-10-20). Unsewn; the stitch length is gate 1. `tests/test_bean_straight.py`. *(measured 2026-10-14/15 — PRs #945, #950, #952, #953, #956, #959, #967, #969, #977, `tests/test_bean_bay_hold.py`, `tests/test_bean_counter_hold.py`, `tests/test_small_letter_ties.py`, `tests/test_bean_glyph_trace.py`, `tests/test_edge_cap_bean_pitch.py`, `docs/renders/edge-cap-bean-pitch/`; confirmed 2026-10-15 — PR #970, `tests/test_sewout_card_bayhold_edgecap.py`, its committed read-back)*
 
-### A shaped outline follows its outer edge (2026-11-13, `border_from_outline_follow_shape`, built OFF)
+### A shaped outline follows its outer edge (2026-11-13, `border_from_outline_follow_shape`, ON since 2026-11-16)
+
+**ON since 2026-11-16 (Kent: "Flip ON", then "Fix wedges here").** Two things
+had changed on main between the build and the flip, and both had to be fixed
+before the flip meant anything:
+
+- `outline_frame_guard` went ON 2026-11-15. Its ratio reads area and teeth are
+  area (the gear 1.37), so the gear sewed as a fill and this flag reached
+  nothing: identical stitches ON or OFF. A band the layout takes is now not a
+  framed field (`art_outline._sews_shaped`); the k_line box and Ahora's pink
+  ground are thicker than a satin and stay fields.
+- `outline_redraw_k` (ON 2026-11-14) hands the hole's ring over as lines and
+  arcs: the gear's disc at 160 mm is 59 vertices with facets up to 1.3 mm. The
+  layout paired each outer hole with the NEAREST ring point, which piles the
+  crosses on a faceted ring's vertices, and the band showed bare wedges at 12
+  and 9 o'clock at 100 and 160 mm. A sample's partner is now where it stands
+  square to the ring's chord, as long either side as the stitch
+  (`shaped_band._ring_partners`); a vertex of 30 degrees or more is a corner
+  of the body and fans as before. A side wall is sewn once only where its two
+  crosses lie within half the density of each other, so a tooth that tapers
+  keeps both.
+
+Measured on the real gear's bands, bare band before the fix to after (0.4 mm
+thread): 100 mm 1.1% to 0.5%, 160 mm 1.6% to 0.5%, 40 mm 1.5% to 1.3%; 60 mm
+0.5% to 1.3% (0.2 mm nicks on the ring edge, the same by eye). Rendered
+through the pipeline at 40 / 60 / 100 / 160 mm
+(`docs/renders/shaped-outline-flip-2026-11-16/`): no wedge at any size.
+
+**Who sews the gear, with `outline_inlets_kept` / `_teeth` ON (2026-11-15,
+#1594).** At 100 and 160 mm the inlets flags take it first (teeth as fill
+blocks, 586 and 963 white points) and this flag changes nothing: identical
+ON and OFF, and that is the cleaner gear. At 40 and 60 mm the inlets flags
+leave it, main sewed a fill blob, and this flag sews the toothed satin (79
+and 130 points): the flip's whole visible effect
+(`gear-merged-main-vs-flipped-40-to-160mm.jpg`). Scan with the flag
+ON over 11 logos at 19 sizes: only the gear is laid out; MFab hat and LC at
+100 mm and "(hed) p.e." at 180 mm sew the same stitches ON and OFF (plan md5).
+(measured 2026-11-16, `tests/test_outline_follow_shape.py`, 35 tests)
 
 Kent on Commons "Ahora": "now fix the Ahora gear so it sews as a gear". The
 outline rule sews one loop of one width on the body's edge, so the 17-tooth
