@@ -4152,6 +4152,11 @@ def sequence(
                     # the walk whose hops lie under satin still to come; off, today's call
                     **({"edge_walk": True}
                        if cfg.lettering_columns_connectors_edge_walk else {}),
+                    # `cfg.extra["edge_walk_judge_off_walk"]` (built OFF 2026-11-16):
+                    # under the edge walk, the fold-cut judge reads OFF's walk;
+                    # off, today's call
+                    **({"edge_walk_judge_off": True}
+                       if cfg.extra.get("edge_walk_judge_off_walk") else {}),
                     # `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14):
                     # the push held out of bays and gaps; off, today's call
                     **({"pull_keep": push_keep(p)} if keep_gaps else {}))

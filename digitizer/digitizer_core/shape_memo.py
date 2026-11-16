@@ -70,6 +70,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_FOLD_CAP_FLARED"),
     ("outline_cut", "_APEX_BAND_KNOTS"),
     ("outline_cut", "_FLARE_TOP_FOLD"),
+    ("outline_cut", "_ABSORB_UNSEWN"),
     ("outline_cut", "_RAIL_AXIS"),
     ("outline_cut", "_SMALL_BOLD"),
     ("outline_cut", "_SMALL_BOLD_SIMPLIFY"),
