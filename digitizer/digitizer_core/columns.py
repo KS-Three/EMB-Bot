@@ -3293,12 +3293,14 @@ def _stroke_floor_judged(args: dict) -> tuple[list[StitchRun], dict]:
     """`_STROKE_FLOOR`'s sewn judge: the letter sewn with the floor and
     without it, and the floored sew kept only if it differs and puts more
     new thread inside the letter than it adds outside (`handback_wins`,
-    "net", the same rule as `HANDBACK_RULE`). The floor can move the
-    small-bold ladder as well as the crosses: Commons Bukit's e at 85.1 mm
-    hat, floored, cleared `SMALL_BOLD_COVER_MIN` on its first cut and kept
-    that cut instead of the resimplified one, and the column round its
-    mouth laid a 0.71 mm underlay chord over bare cloth (cover 0.92 ->
-    0.98, spill 0.40 -> 0.55: refused). Equal runs: the unfloored sew.
+    "net", the same rule as `HANDBACK_RULE`, with `bare_underlay` counted as
+    spill). The floor can move the small-bold ladder as well as the crosses:
+    Commons Bukit's e at 85.1 mm hat, floored, cleared `SMALL_BOLD_COVER_MIN`
+    on its first cut and kept that cut instead of the resimplified one, and
+    its satin spilled more than it covered (cover 0.92 -> 0.98, spill 0.40
+    -> 0.55: refused). Both of its sews lay an underlay chord across the
+    e's mouth, so `bare_underlay` does not decide that one (0.046 -> 0.032).
+    Equal runs: the unfloored sew.
     A sew the floor reached no column in IS the unfloored one (the flag is
     read nowhere else), so it is not sewn twice."""
     fired: list = []
@@ -3312,7 +3314,7 @@ def _stroke_floor_judged(args: dict) -> tuple[list[StitchRun], dict]:
     with stroke_floor_scope(False):
         runs0, report0 = lettering_columns_shape(**args)
     if ([r.points for r in runs] == [r.points for r in runs0]
-            or not handback_wins(runs0, runs, args["poly"], rule="net")):
+            or not handback_wins(runs0, runs, args["poly"], rule="net", underlay=True)):
         return runs0, report0
     report["stroke_floor_kept"] = 1
     return runs, report
@@ -3331,12 +3333,42 @@ def satin_cover(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> f
 def absorb_gains(before: list[StitchRun], after: list[StitchRun], poly: Polygon) -> bool:
     """`outline_cut.absorb_unsewn`'s sewn judge: the merged cut's runs
     (`after`) cover more of the letter than the cut's own (`before`), and add
-    at least as much thread inside it as outside it (`thread_cover_spill`;
-    the same "net" rule as `HANDBACK_RULE`). A merge that re-pairs a ring
-    across its counter, or folds a column through an arm, covers less."""
-    c0, s0 = thread_cover_spill(before, poly)
-    c1, s1 = thread_cover_spill(after, poly)
+    at least as much thread inside it as outside it (`thread_cover_spill`
+    with `bare_underlay` counted as spill; the same "net" rule as
+    `HANDBACK_RULE`). A merge that re-pairs a ring across its counter, or
+    folds a column through an arm, covers less."""
+    c0, s0 = _judged_cover_spill(before, poly)
+    c1, s1 = _judged_cover_spill(after, poly)
     return c1 > c0 and c1 - c0 >= s1 - s0
+
+
+def bare_underlay(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> float:
+    """Underlay laid OUTSIDE `poly` that no satin or fill of `runs` lies
+    over -- needle-down thread on bare cloth -- as a share of `poly`'s area,
+    each needle-to-needle stitch widened by `half_mm` a side (underlay sews in
+    the top thread). `thread_cover_spill` reads satin and fill only, so an
+    underlay chord across a letter's mouth, over cloth no satin reaches, is
+    invisible to it. Underlay outside the letter but UNDER its satin's spill
+    is not counted twice: that satin already is."""
+    under = [LineString([a, b]) for r in runs if r.kind == stitches.UNDERLAY
+             for a, b in zip(r.points, r.points[1:]) if math.dist(a, b) > 1e-9]
+    if not under or poly.area <= 0:
+        return 0.0
+    bare = unary_union([q.buffer(half_mm) for q in under]).difference(poly)
+    top = [LineString([a, b]) for r in runs if r.kind in (stitches.SATIN, stitches.FILL)
+           for a, b in zip(r.points, r.points[1:]) if math.dist(a, b) > 1e-9]
+    if top:
+        bare = bare.difference(unary_union([q.buffer(half_mm) for q in top]))
+    return bare.area / poly.area
+
+
+def _judged_cover_spill(runs: list[StitchRun], poly: Polygon) -> tuple[float, float]:
+    """`thread_cover_spill` with `bare_underlay` added to the spill: the
+    measure of the two built-OFF flags' sewn judges (`absorb_gains`,
+    `_stroke_floor_judged`). `HANDBACK_RULE`'s cover hand-back keeps the
+    plain `thread_cover_spill`."""
+    cover, spill = thread_cover_spill(runs, poly)
+    return cover, spill + bare_underlay(runs, poly)
 
 
 def thread_cover_spill(runs: list[StitchRun], poly: Polygon,
@@ -3364,11 +3396,15 @@ HANDBACK_RULE = "net"
 
 
 def handback_wins(lane_runs: list[StitchRun], ladder_runs: list[StitchRun], poly: Polygon,
-                  rule: str | None = None) -> bool:
-    """Does the ladder sew `poly` better than the Column lane did?"""
+                  rule: str | None = None, underlay: bool = False) -> bool:
+    """Does the ladder sew `poly` better than the Column lane did?
+    `underlay`: count `bare_underlay` as spill (`_judged_cover_spill`); the
+    stroke floor's judge asks for it, `cfg.lettering_columns_cover_handback`
+    does not."""
     rule = rule or HANDBACK_RULE
-    c0, s0 = thread_cover_spill(lane_runs, poly)
-    c1, s1 = thread_cover_spill(ladder_runs, poly)
+    measure = _judged_cover_spill if underlay else thread_cover_spill
+    c0, s0 = measure(lane_runs, poly)
+    c1, s1 = measure(ladder_runs, poly)
     if c1 <= c0:
         return False
     if rule == "strict":
