@@ -1086,6 +1086,9 @@ PRE_FLIP.update(RING_FLOOR_2026_11_15_OFF)
 # `lone_glyph_keep` (Kent's tick 2026-11-15): `tests/test_lone_glyph_keep.py`.
 LONE_GLYPH_2026_11_15_OFF = {"lone_glyph_keep": False}
 PRE_FLIP.update(LONE_GLYPH_2026_11_15_OFF)
+# `speck_prune` (Kent's tick 2026-11-15, the fragment rule): `tests/test_speck_prune.py`.
+SPECK_2026_11_16_OFF = {"speck_prune": False}
+PRE_FLIP.update(SPECK_2026_11_16_OFF)
 # `outline_inlets_kept` (Kent's tick 2026-11-15, "K-Line box + gear flags"):
 # `tests/test_outline_inlets.py`.
 INLETS_2026_11_15_OFF = {"outline_inlets_kept": False}

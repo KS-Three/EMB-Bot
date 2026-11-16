@@ -1341,9 +1341,17 @@ class PipelineConfig:
     # where `sliver_prune` never runs). Both widths are reads of the raster
     # against existing measures (the source pixel; `thread_profile().width_mm`,
     # the weight `RUN_MIN_AREA_MM2` squares), no new stitch value: gate 1 does
-    # not apply. False is the engine before the flag, byte for byte. Tests:
+    # not apply. Since 2026-11-16 only a FRAGMENT goes -- a piece of a longer
+    # line the art draws and the masks lost, its ink running on out of it by
+    # two or more arms sewn in another colour (`sliver_prune` module note);
+    # a whole mark, a slit (the crest's quills), a line sewn on in its own
+    # colour (To a T's speed lines) and a dot-rung tittle (`lone_glyph_keep`)
+    # stay. **ON since 2026-11-16, Kent's tick** (review pack review-1115,
+    # 2026-11-15: "speck_prune (Recommended)"; the rule is that narrower
+    # fragment rule). False is the engine as it was; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_speck_prune.py`; doc `docs/missing-invented-traced-2026-11-14.md`.
-    speck_prune: bool = False
+    speck_prune: bool = True
     # An art outline holds more than it is (built OFF 2026-11-14, Kent's
     # lt_k_line, 3 pins: "the red bean stitch should not have infill outside
     # of it", "The red box is missing here"). The red box with a white K
