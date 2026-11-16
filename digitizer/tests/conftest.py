@@ -1040,8 +1040,8 @@ PRE_FLIP.update(HANDOVER_2026_11_15_OFF)
 # `satin_push_keeps_gaps` ("Flip both, value 0.5", with
 # `compact_satin_keeps_gaps`; the counters worker's #1529), a field since
 # (`cfg.extra` was its only door): `tests/test_satin_push_keeps_gaps.py`.
-# Its flip is HELD (Director 2026-11-15; the default is still None), so this
-# pin is the default today and keeps the set whole for the flip to come.
+# Held until the push never cost a stroke (#1577's `_keep_yields`); 0.5
+# since 2026-11-16, so this pin is the OFF arm.
 PUSH_KEEPS_GAPS_2026_11_15_OFF = {"satin_push_keeps_gaps": None}
 PRE_FLIP.update(PUSH_KEEPS_GAPS_2026_11_15_OFF)
 # `compact_satin_keeps_gaps` (same ruling; the counters worker's #1557), a
