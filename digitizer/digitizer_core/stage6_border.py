@@ -71,6 +71,7 @@ import contextvars
 import math
 
 import numpy as np
+import shapely
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import nearest_points, unary_union
 from shapely.prepared import prep
@@ -352,10 +353,115 @@ def _clamped_cross(px: float, py: float, nx: float, ny: float, width: float,
     return (px, py), 0.0
 
 
+#: `_cross_unobstructed` (speed only, 2026-11-16). An outline edge further
+#: than this from a ray cannot touch it: twelve orders above the rounding of
+#: the distance read here, far under any length the engine resolves.
+_CROSS_CLEAR_MM = 1e-9
+#: ... and the stretch at the rail left out of that reading. A cross starts
+#: ON the outline, so edges always pass within `_CROSS_CLEAR_MM` of its first
+#: point; `_exact_cross` takes a piece as starting at the rail when it starts
+#: within 1e-6 of it, and this is a tenth of that.
+_CROSS_RAIL_MM = 1e-7
+#: the last clamp read: [(clamp, edge tree or None, edges (E, 4))]
+_CROSS_EDGES: list = []
+
+
+def _clamp_edges(clamp):
+    """-> (STRtree over `clamp`'s ring edges, the edges as rows ax ay bx by),
+    or (None, None) when `clamp` is not plain valid polygons. One clamp is
+    read for a whole loop, so the last one read is kept."""
+    slot = _CROSS_EDGES[0] if _CROSS_EDGES else None
+    if slot is not None and slot[0] is clamp:
+        return slot[1], slot[2]
+    tree = segs = None
+    if (getattr(clamp, "geom_type", None) in ("Polygon", "MultiPolygon")
+            and not clamp.is_empty and clamp.is_valid):
+        xy, ring = shapely.get_coordinates(shapely.get_rings(shapely.get_parts(clamp)),
+                                           return_index=True)
+        same = ring[1:] == ring[:-1]
+        segs = np.hstack([xy[:-1][same], xy[1:][same]])
+        if len(segs):
+            tree = shapely.STRtree(shapely.linestrings(segs.reshape(-1, 2, 2)))
+            shapely.prepare(clamp)
+    _CROSS_EDGES[:] = [(clamp, tree, segs)]
+    return tree, segs
+
+
+def _point_seg_mm(px: float, py: float, ax: float, ay: float, bx: float, by: float) -> float:
+    ex, ey = bx - ax, by - ay
+    ee = ex * ex + ey * ey
+    t = 0.0 if ee <= 0.0 else max(0.0, min(1.0, ((px - ax) * ex + (py - ay) * ey) / ee))
+    return math.hypot(px - (ax + ex * t), py - (ay + ey * t))
+
+
+def _seg_seg_mm(px: float, py: float, qx: float, qy: float,
+                ax: float, ay: float, bx: float, by: float) -> float:
+    """Distance between the segments PQ and AB; 0.0 where they cross."""
+    o1 = (qx - px) * (ay - py) - (qy - py) * (ax - px)
+    o2 = (qx - px) * (by - py) - (qy - py) * (bx - px)
+    o3 = (bx - ax) * (py - ay) - (by - ay) * (px - ax)
+    o4 = (bx - ax) * (qy - ay) - (by - ay) * (qx - ax)
+    if o1 * o2 < 0.0 and o3 * o4 < 0.0:
+        return 0.0
+    return min(_point_seg_mm(ax, ay, px, py, qx, qy), _point_seg_mm(bx, by, px, py, qx, qy),
+               _point_seg_mm(px, py, ax, ay, bx, by), _point_seg_mm(qx, qy, ax, ay, bx, by))
+
+
+def _cross_unobstructed(px: float, py: float, qx: float, qy: float, clamp) -> float | None:
+    """`_exact_cross`' answer for a ray P -> Q that no edge of `clamp`
+    touches past the rail, without the overlay; None when an edge does (the
+    overlay decides, as before).
+
+    The overlay of one ray on a whole outline is 0.3 ms, and a keyline asks
+    it at every station: 16,000 times on Becker's or MFab's hat, 8-11 s of a
+    digitize. Most of those rays cross nothing: the cross is whole, or lies
+    wholly in the hole. With no edge within `_CROSS_CLEAR_MM` of the ray,
+    the ray is all inside `clamp` or all outside it, and the overlay returns
+    the ray itself or nothing: the answer is the ray's own length, or 0.0.
+    With edges only at the rail (the first `_CROSS_RAIL_MM`: a cross starts
+    on the outline) and the rest inside, the overlay's piece starts within
+    that of the rail and ends on Q, the ray's own end point: the same
+    length. Anything else is left to the overlay. Held equal to it, wherever
+    it answers, by `tests/test_speed_exact_1116.py`; on four hat jobs it
+    answered 29,784 of 46,334 crosses, every one the overlay's float
+    (`docs/speed-pass-2026-11-16.md`)."""
+    tree, segs = _clamp_edges(clamp)
+    if tree is None:
+        return None
+    full = math.dist((qx, qy), (px, py))
+    if not full > 100.0 * _CROSS_RAIL_MM:
+        return None
+    pad = 1e-6
+    near = tree.query(shapely.box(min(px, qx) - pad, min(py, qy) - pad,
+                                  max(px, qx) + pad, max(py, qy) + pad))
+    f = _CROSS_RAIL_MM / full
+    rx, ry = px + (qx - px) * f, py + (qy - py) * f           # the ray past the rail
+    at_rail = False
+    for ax, ay, bx, by in segs[near].tolist():
+        if _seg_seg_mm(px, py, qx, qy, ax, ay, bx, by) > _CROSS_CLEAR_MM:
+            continue
+        if _seg_seg_mm(rx, ry, qx, qy, ax, ay, bx, by) <= _CROSS_CLEAR_MM:
+            return None
+        at_rail = True
+    inside = bool(shapely.contains_xy(clamp, (rx + qx) / 2.0, (ry + qy) / 2.0))
+    if inside:
+        return full
+    return None if at_rail else 0.0
+
+
 def _exact_cross(px: float, py: float, nx: float, ny: float, width: float,
                  clamp) -> float:
     """How far the cross from (px, py) along (nx, ny) stays inside `clamp`,
     up to `width` mm: the length of the ray's piece that starts at the rail."""
+    fast = _cross_unobstructed(px, py, px + nx * width, py + ny * width, clamp)
+    if fast is not None:
+        return fast
+    return _exact_cross_overlay(px, py, nx, ny, width, clamp)
+
+
+def _exact_cross_overlay(px: float, py: float, nx: float, ny: float, width: float,
+                         clamp) -> float:
+    """`_exact_cross` by the overlay itself: the ray cut by `clamp`."""
     ray = LineString([(px, py), (px + nx * width, py + ny * width)])
     part = ray.intersection(clamp)
     best = 0.0

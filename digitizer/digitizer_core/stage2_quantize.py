@@ -424,6 +424,19 @@ def _rgb_chord_t(j: int, oa, ob, mean_rgb: dict, bg_edge_rgb, delta_e: float) ->
     return t if float(np.linalg.norm(lab_j - on_chord)) < delta_e else None
 
 
+def _distinct_colors(rgb: np.ndarray) -> int:
+    """How many distinct rows `rgb` (N, 3) holds: `len(np.unique(rgb, axis=0))`.
+
+    8-bit rows are counted as one packed integer each (speed only,
+    2026-11-16): the row-wise unique sorts N three-byte records and took 7 s
+    of Hotel Fremont's 57 s generation for this one count. Any other dtype
+    takes the row-wise call as before."""
+    if rgb.dtype == np.uint8 and rgb.ndim == 2 and rgb.shape[1] == 3:
+        c = rgb.astype(np.uint32)
+        return len(np.unique((c[:, 0] << 16) | (c[:, 1] << 8) | c[:, 2]))
+    return len(np.unique(rgb, axis=0))
+
+
 def _quantize_population(
     flat_rgb: np.ndarray,
     valid: np.ndarray,
@@ -493,7 +506,7 @@ def _quantize_population(
     idx = np.nonzero(valid.reshape(-1))[0]
     lab = rgb_to_lab(flat_rgb[idx])
 
-    k = max(1, min(cfg.max_colors, len(np.unique(flat_rgb[idx], axis=0))))
+    k = max(1, min(cfg.max_colors, _distinct_colors(flat_rgb[idx])))
     centers = _kmeans(
         lab, k, cfg.seed,
         drop=None if fringe is None else fringe.reshape(-1)[idx],

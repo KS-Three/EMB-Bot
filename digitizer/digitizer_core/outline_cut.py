@@ -1589,6 +1589,16 @@ def _spine_ends(piece: Polygon):
     return [((x - 2) / PX + x0, (y - 2) / PX + y0) for x, y in path]
 
 
+def _along(line, dists) -> list[tuple[float, float]]:
+    """`[line.interpolate(d).coords[0] for d in dists]`, as one GEOS call
+    (speed only, 2026-11-16: the per-point form was 74,000 calls a design on
+    MFab's hat, 5.6 s of its rail building). The same function on the same
+    distances: every coordinate is the float the loop returned."""
+    import shapely
+    xy = shapely.get_coordinates(shapely.line_interpolate_point(line, np.asarray(dists, float)))
+    return list(map(tuple, xy.tolist()))
+
+
 def _arc(ring_pts, i, j):
     n = len(ring_pts)
     out = [ring_pts[i]]
@@ -1613,7 +1623,7 @@ def ring_rails(piece: Polygon):
             ring = LinearRing(list(ring.coords)[::-1])
         t0 = ring.project(start)
         L = ring.length
-        return [ring.interpolate((t0 + t) % L).coords[0] for t in np.arange(0, L, _RAIL_STEP_MM)]
+        return _along(ring, (t0 + np.arange(0, L, _RAIL_STEP_MM)) % L)
 
     return walk(ext, pe), walk(hole, ph)
 
@@ -1632,7 +1642,7 @@ def rails(piece: Polygon, cut_lines, W: float):
     d0 = _unit((sp[0][0] - sp[k][0], sp[0][1] - sp[k][1]))
     d1 = _unit((sp[-1][0] - sp[-1 - k][0], sp[-1][1] - sp[-1 - k][1]))
     ring = piece.exterior
-    dense = [ring.interpolate(t).coords[0] for t in np.arange(0, ring.length, _RAIL_STEP_MM)]
+    dense = _along(ring, np.arange(0, ring.length, _RAIL_STEP_MM))
 
     def exit_idx(p, d):
         q = LineString([p, (p[0] + d[0] * 50, p[1] + d[1] * 50)]).intersection(ring)
@@ -1702,6 +1712,28 @@ def pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
     return list(memo[key])
 
 
+def _dtw_cost(D: np.ndarray) -> np.ndarray:
+    """The accumulated cost table of `_pair_rails`' matching:
+    C[i, j] = D[i, j] + min(C[i-1, j], C[i-1, j-1], C[i, j-1]).
+
+    Filled one anti-diagonal at a time (speed only, 2026-11-16; it was a
+    Python loop over every cell, 4 s of MFab's hat). A cell's three
+    neighbours all lie on the two diagonals before its own, so each cell
+    still gets the one addition and the same three-way minimum it always
+    had: the table is the loop's, float for float
+    (`tests/test_speed_exact_1116.py`)."""
+    n, m = D.shape
+    C = np.full((n, m), np.inf)
+    C[0, :] = np.cumsum(D[0, :])
+    C[:, 0] = np.cumsum(D[:, 0])
+    for k in range(2, n + m - 1):
+        deadline.check("column rail pairing")
+        i = np.arange(max(1, k - (m - 1)), min(n - 1, k - 1) + 1)
+        j = k - i
+        C[i, j] = D[i, j] + np.minimum(np.minimum(C[i - 1, j], C[i - 1, j - 1]), C[i, j - 1])
+    return C
+
+
 def _pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
     """Rail to rail: the two outline arcs paired by the monotone matching that
     keeps every cross as short as it can be (dynamic time warping), so crosses
@@ -1712,20 +1744,11 @@ def _pair_rails(A, B, pitch_mm: float) -> list[tuple[tuple, tuple]]:
     crosses. -> [(pa, pb), ...]."""
     la, lb = LineString(A), LineString(B)
     step = _DTW_STEP_MM
-    a = np.array([la.interpolate(t).coords[0] for t in np.arange(0, la.length + step, step)])
-    b = np.array([lb.interpolate(t).coords[0] for t in np.arange(0, lb.length + step, step)])
+    a = np.array(_along(la, np.arange(0, la.length + step, step)))
+    b = np.array(_along(lb, np.arange(0, lb.length + step, step)))
     n, m = len(a), len(b)
     D = np.hypot(a[:, None, 0] - b[None, :, 0], a[:, None, 1] - b[None, :, 1])
-    C = np.full((n, m), np.inf)
-    C[0, 0] = D[0, 0]
-    for j in range(1, m):
-        C[0, j] = C[0, j - 1] + D[0, j]
-    for i in range(1, n):
-        deadline.check("column rail pairing")
-        C[i, 0] = C[i - 1, 0] + D[i, 0]
-        row, prev = C[i], C[i - 1]
-        for j in range(1, m):
-            row[j] = D[i, j] + min(prev[j], prev[j - 1], row[j - 1])
+    C = _dtw_cost(D)
     i, j, path = n - 1, m - 1, [(n - 1, m - 1)]
     while i > 0 or j > 0:
         if i == 0:
@@ -3107,6 +3130,7 @@ def sewn_knots(runs) -> tuple[int, int, int]:
     of another satin run of the letter) is SHORT under SEWN_SHORT_FRAC of
     that median, and CROSSED when it crosses a non-adjacent leg of its own
     run -- the zigzag folding over itself where two columns meet."""
+    import shapely
     from .stage6_satin import strip_splits
     from .stitches import strip_ties
     sat = [np.asarray(strip_splits(strip_ties(list(r.points))), dtype=float)
@@ -3134,25 +3158,32 @@ def sewn_knots(runs) -> tuple[int, int, int]:
         others = [ln for j, ln in enumerate(lines) if j != k]
         if not others:
             continue
-        legs = [LineString([pts[i], pts[i + 1]]) for i in range(len(pts) - 1)]
-        length = np.array([lg.length for lg in legs])
+        deadline.check("column knot count")
+        # The same GEOS calls as one leg at a time, asked as arrays (speed
+        # only, 2026-11-16: 188,000 `crosses` a design on Becker's hat). Two
+        # legs whose boxes do not meet cannot cross, so only the tree's pairs
+        # are asked; every answer and every distance is the scalar call's.
+        legs = shapely.linestrings(np.stack([pts[:-1], pts[1:]], axis=1))
+        length = shapely.length(legs)
         real = length > 0.05
         if not real.any():
             continue
         med = float(np.median(length[real]))
-        hit = set()
-        for i in np.nonzero(real)[0]:
-            deadline.check("column knot count")
-            for j in np.nonzero(real[i + 2:])[0] + i + 2:
-                if legs[i].crosses(legs[j]):
-                    hit.update((int(i), int(j)))
-        for i in np.nonzero(real)[0]:
-            deadline.check("column knot count")
-            m = legs[i].interpolate(0.5, normalized=True)
-            if min(o.distance(m) for o in others) >= med:
-                continue
-            short += bool(length[i] < SEWN_SHORT_FRAC * med)
-            crossed += int(i) in hit
+        idx = np.nonzero(real)[0]
+        mine = legs[idx]
+        a, b = shapely.STRtree(mine).query(mine)
+        far = idx[b] >= idx[a] + 2                  # a later leg, not the next one
+        a, b = a[far], b[far]
+        x = shapely.crosses(mine[a], mine[b])
+        hit = np.zeros(len(legs), bool)
+        hit[idx[a[x]]] = True
+        hit[idx[b[x]]] = True
+        deadline.check("column knot count")
+        mids = shapely.line_interpolate_point(mine, 0.5, normalized=True)
+        gap = shapely.distance(np.asarray(others, dtype=object)[:, None], mids[None, :]).min(axis=0)
+        near = ~(gap >= med)
+        short += int((length[idx][near] < SEWN_SHORT_FRAC * med).sum())
+        crossed += int(hit[idx][near].sum())
     return folds, short, crossed
 
 

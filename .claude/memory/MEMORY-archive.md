@@ -285,3 +285,4 @@ live index; new archive lines go at the bottom.
 - [Sparse smooth nodes](sparse-nodes-spec-2026-11-04.md) — Kent 11-04: Ember-style few smooth/corner nodes on digitized rings, 9 rulings; PR 1 lib `sparseNodes.js`, PR 2 Studio; add-hole in, Knife out
 - [Stitchist teardown](stitchist-teardown-2026-11-04.md) — server-side engine, $50 Pro; MFab at 36.7: 3,018 st, keyline as tatami, readable; trace re-runs per size
 - [Claude as the eye](vlm-judge-2026-11-04.md) — session judged pro-lettering-1102 blind: kappa +0.36 [+0.16, +0.55] above chance (n 54); sides n 16 no evidence; agreement = shared ties + base picks
+- [MFab photo route](mfab-photo-route-2026-11-04.md) — MFab classes photo_scene at every width (gate 0.298/0.28, veto 0.856/0.90); 60 and 101 mm = photo lane skips the 8 px/mm grid, W+E stay joined (NOT the segmenter, corrected 11-05); `photo_work_grid` OFF
