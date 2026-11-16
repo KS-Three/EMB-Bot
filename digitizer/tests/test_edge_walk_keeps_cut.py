@@ -11,8 +11,9 @@ md5-identical to 11-14. Under the edge walk the judge reads every candidate on
 where OFF takes 2. The flag moves the judge to OFF's walk. Which walk the
 judge reads is a coin the cut depends on, not a fix for it: on OFF's walk
 Gaulke's hat "&" takes a cut with a hairline slit at its waist that buried's
-walk avoids, so the flag is built OFF and Kent rules it from the sheet
-(eye_pairs_out/flips-1115/edge-walk-p).
+walk avoids, and Bukit Asam's 3 mm script "d" reads less legibly
+(legibility_worst 0.571 -> 0.0), so the flag is built OFF and Kent rules it
+from the sheet (eye_pairs_out/flips-1115/edge-walk-p).
 
 The p is recorded as stage 7 hands it to the lane
 (`testdata/pizza80_lane_p.json`, &pizza logo, Wikimedia Commons, public

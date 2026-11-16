@@ -3177,7 +3177,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         # on buried's walk and_pizza's p takes a 4-column cut where OFF takes
         # 2 (a slit at the bowl's top right, the top-left shoulder flat); on
         # OFF's walk Gaulke's hat "&" takes a cut with a hairline slit at its
-        # waist that buried's avoids. Kent rules it from the sheet.
+        # waist that buried's avoids, and Bukit Asam's 3 mm script "d" reads
+        # less legibly. Kent rules it from the sheet.
         judge_kw = {k: v for k, v in run_kw.items() if k != "edge_walk"}
         if edge_walk and not edge_walk_judge_off:
             judge_kw = {**judge_kw, "connectors_buried": True}
