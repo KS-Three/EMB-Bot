@@ -1,6 +1,6 @@
 ---
 name: shaped-outline-gear-2026-11-13
-description: "2026-11-13 — `border_from_outline_follow_shape` built OFF (Kent on Commons Ahora: \"now fix the Ahora gear so it sews as a gear\", then \"it's an improvement but not across the board\"): a shaped band is laid out from its OUTER edge (`shaped_band`), a needle hole on every corner and wall end, no line on top"
+description: "2026-11-13, ON since 2026-11-16 — `border_from_outline_follow_shape` (Kent on Commons Ahora: \"now fix the Ahora gear so it sews as a gear\", then \"it's an improvement but not across the board\"): a shaped band is laid out from its OUTER edge (`shaped_band`), a needle hole on every corner and wall end, no line on top"
 metadata:
   type: project
 ---
@@ -85,23 +85,35 @@ band round ONE body is laid out from its outer ring:
 overlap (1.4 mm) is a dense patch on a 5 to 7 mm gear, as it is on every
 loop. A band with a FEW notches (under 10% of its ring) is not shaped by the
 p90 - p10 rule. A star round a disc is not read as an outline at all. The
-flip is Kent's.
+flip was Kent's (ON 2026-11-16, below).
 
-**Flip attempt 2026-11-16 (Kent: "Flip ON"), parked as a draft PR.** Two
-things changed on main between the build and the flip:
+**ON since 2026-11-16 (Kent: "Flip ON", then "Fix wedges here").** A bare
+flip did nothing and then looked worse; two things on main had moved under it:
 - `outline_frame_guard` went ON 11-15. Its ratio reads area, teeth are area
-  (gear 1.37), so the gear sews as a FILL and this flag reaches nothing:
-  identical stitches flag ON or OFF. A bare flip is a no-op. The branch adds
-  `art_outline._sews_shaped`: a band the layout takes is not a framed field.
-- Rendered on that main at 40 / 60 / 100 / 160 mm
-  (`docs/renders/shaped-outline-flip-2026-11-16/`): the fill is now a clean
-  square-toothed gear at 100 and 160 mm, and the flipped satin shows two
-  bare wedges through the band at both sizes (12 and 9 o'clock) that the
-  11-13 renders did not have. At 40 and 60 mm the satin is truer than the
-  fill's blob. Not a flip until the wedges are traced (suspect: the traced
-  ring changed under `outline_redraw_k` 0.75, ON since 11-14).
-The logo scan was stopped after Ahora 60 and To-a-T 40 (none taken but the
-gear); rerun `scan2`-style before any flip.
+  (gear 1.37), so the gear sewed as a FILL and this flag reached nothing
+  (identical stitches ON or OFF). Fix: `art_outline._sews_shaped`, a band the
+  layout takes is not a framed field.
+- `outline_redraw_k` 0.75 (ON 11-14) hands the hole's ring over as lines and
+  arcs: 59 vertices, facets to 1.3 mm at 160 mm. NEAREST ring point is square
+  to each facet: crosses pile on vertices, jump at dents, a tooth tip stood
+  0.45 mm off its radius, and with wall-sewn-once dropping one more ring hole
+  the band showed bare wedges at 12 and 9 o'clock (100 and 160 mm). Fix:
+  `shaped_band._ring_partners`, the partner is where the sample stands square
+  to the ring's CHORD, as long either side as the stitch; a vertex of
+  `_FACET_DEG` (30) or more is a corner of the body and fans as before. And a
+  wall is sewn once only where its two crosses lie within half the density.
+- First try smoothed the normal per vertex (mean of two facets): not enough,
+  0.1 mm kinks between facets still swung a 3.5 mm stitch by 0.5 mm. The
+  reading has to scale with the stitch.
+- Measured, bare band before -> after: 100 mm 1.1% -> 0.5%, 160 mm 1.6% ->
+  0.5%; 60 mm 0.5% -> 1.3% (0.2 mm ring-edge nicks, same by eye). Against
+  main's fill: truer at 40 / 60 mm, a tie at 100 / 160 mm. Scan, 11 logos at
+  19 sizes: only the gear laid out; MFab hat / LC 100 and hed 180 identical
+  md5 ON and OFF. Renders: `docs/renders/shaped-outline-flip-2026-11-16/`.
+- Tools that made this fast: save the band + hole WKT from one digitize, then
+  replay `shaped_band.layout` offline (seconds) with needle holes drawn.
+- `outline_inlets_teeth` (OFF, another lane) aims at the same gear another
+  way; if it flips, one of the two must own the gear.
 
 Related: [[hairline-keyline-bean-2026-11-13]], [[eye-first-diagnosis-2026-11-13]],
 [[border-from-outline-line-art-guard-2026-10-25]].

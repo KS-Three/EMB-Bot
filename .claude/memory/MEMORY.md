@@ -90,7 +90,7 @@ the OLDEST lines whole to the archive.
 - [Satin push keeps gaps](satin-push-keeps-gaps-2026-11-14.md) — 23 merged-letter groups traced; rail push held counters not bays/neighbours; `satin_push_keeps_gaps` OFF: Gaulke E 0.10 -> 0.36 at floor 0.5 = pro; floor Kent's pick
 - [Scorecard recapture 11-12](scorecard-recapture-2026-11-12.md) — ruler 292418a8 -> ffefc3b1, run 43253187536: 10/20/8/10/4 -> 8/20/6/10/8, mean 71.9 -> 68.7 FELL; flag-off CI arms name #1301, #1263, #1329, #1378; 1 row part unattributed
 - [Second digitize timing](second-digitize-timing-2026-11-13.md) — 11-12's 44 s = laptop contention (same run 19 -> 55 s as load moved); Cancel held the worker 1.4-5.5 s: seams added in neck splits, letterform priors, keyline -> 0.2 s
-- [Shaped outline gear](shaped-outline-gear-2026-11-13.md) — `border_from_outline_follow_shape` OFF: gear sewed a ring; ON = laid out from the OUTER edge, a hole on every corner
+- [Shaped outline gear](shaped-outline-gear-2026-11-13.md) — `border_from_outline_follow_shape` ON (Kent 11-16): gear laid out from its OUTER edge, ring read off a chord
 - [Sliver prune](sliver-prune-2026-11-10.md) — `sliver_prune` OFF: Pooh 54 mm white edge runs = page-halo masks, red arm spike = shirt tendril on a crease; enlarged x1.25+ only; 80 mm sheet 20/20 same; his on-screen run was gradient, not flat
 - [Small bowls](small-bowls-2026-11-14.md) — Bukit's beyondcoal bowls lost in the cross floor; `lettering_columns_ring_floor` widens a ring's thin crosses (o 0.70 -> 1.00 cover); ticked ON 11-15, pending
 - [Small marks](small-marks-2026-11-14.md) — Bukit's 0.5 mm dots (stage 3) and neon (R) gaps (stage 1); pro's smallest block 1.0 mm = gate 1; tiny_detail_keep stays OFF, tiny run marks not built (Kent 11-15)
