@@ -104,6 +104,16 @@ COVERED_KEEP_MIN = 0.5
 #: split, 6 -> 19 trims on Becker hat large), and half a width leaves the
 #: stage-5 pull growth under the black too.
 LETTER_HOST_INSET_W = 0.5
+#: `cfg.silhouette_underfill_ground_guard`: a ring is ON a ground, not a
+#: silhouette, when the layers its host would move ahead of border this share
+#: of its OUTER edge from outside. Measured 2026-11-16 on the Studio's request
+#: (memory `underfill-ground-guard-2026-11-16`): the NASA insignia's white
+#: letters-and-orbit welds read 0.86-1.00 at every width that reads one (80,
+#: 90, 100, 120, 150 mm; seven rings); the 22 pro-paired jobs read 15 rings,
+#: 14 whose host does not move (never asked) and one that does, MFab LC's
+#: band, at 0.00. No ring between 0.00 and 0.86: the middle of the gap, not
+#: a fitted number.
+GROUND_EDGE_MIN = 0.5
 
 #: every tag a lettering lane reads a shape by: a lettering RING (an O round
 #: a dot) is the lettering lane's, never a silhouette
@@ -330,9 +340,66 @@ def _inner(ring, regions, used: set[str]):
     return outline, out
 
 
-def plan(regions, unsewn=(), riders=(), outlines=None):
+def _jumped_ground_share(ring, host, inner, regions) -> float:
+    """`cfg.silhouette_underfill_ground_guard`: the share of `ring`'s OUTER
+    edge bordered, from outside, by shapes of the layers `apply` would move
+    `host`'s layer ahead of. 0.0 when the host would not move.
+
+    `apply` puts the host's layer at the place of the earliest layer among
+    the ring's and the inner colours', so every layer from there up to the
+    host's own is jumped. A silhouette's outside is garment, or colours it
+    does not hold: the jumped layers' shapes are inside it. When they also
+    wrap its outer edge (within `STRIPE_TOUCH_MM`) the ring is a shape ON
+    that ground, and the move would sew the host's whole thread layer under
+    the ground meant to lie beneath it. No move: 0.0, whatever borders the
+    ring (Bridge's yellow already sews first).
+
+    Read on the layers as `plan` is given them and on the unpinned move:
+    an earlier ring's move and a review-pinned layer (`apply`'s `pinned`,
+    which can only shorten the jump) are not read, so the guard can refuse
+    a ring `apply` would have moved less far, never accept one it would
+    have moved further. Only the host's thread and layer enter, which the
+    riders do not change (`find_riders` reads `plan` without them)."""
+    here = host.meta["layer"]
+    first = min((r.meta["layer"] for r in [ring, *inner]
+                 if r.thread_index != host.thread_index), default=here)
+    if first >= here:
+        return 0.0
+    ext = ring.polygon.exterior
+    if ext.length <= 0:
+        return 0.0
+    inside = {ring.shape_id, host.shape_id, *(r.shape_id for r in inner)}
+    x0, y0, x1, y1 = ext.bounds
+    t = STRIPE_TOUCH_MM
+    near = []
+    for r in regions:
+        p = r.polygon
+        if (r.shape_id in inside or not first <= r.meta["layer"] < here
+                or p is None or p.is_empty):
+            continue
+        bx0, by0, bx1, by1 = p.bounds
+        if bx1 < x0 - t or bx0 > x1 + t or by1 < y0 - t or by0 > y1 + t:
+            continue
+        near.append(p)
+    if not near:
+        return 0.0
+    touched = ext.intersection(unary_union(near).buffer(t))
+    return float(touched.length / ext.length)
+
+
+def _on_jumped_ground(ring, host, inner, regions) -> bool:
+    """`_jumped_ground_share` at or over `GROUND_EDGE_MIN`: no silhouette."""
+    return _jumped_ground_share(ring, host, inner, regions) >= GROUND_EDGE_MIN
+
+
+def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False):
     """-> [(ring, host, outline, merged ids, inner shapes)] for every ring
     this reads, the biggest first; a shape serves one ring at most.
+
+    `ground_guard` (`cfg.silhouette_underfill_ground_guard`): a ring whose
+    host would move ahead of the ground it lies on is no silhouette
+    (`_on_jumped_ground`) and reads no ring; its shapes stay free for another
+    ring. False: as before.
 
     A shape of the under-fill's colour that inner shapes of other colours
     cover (`COVERED_KEEP_MIN`) is never merged. `outlines`
@@ -397,6 +464,8 @@ def plan(regions, unsewn=(), riders=(), outlines=None):
                 reach = unary_union([loops.buffer(-inset)]
                                     + [Polygon(h) for h in ring.polygon.interiors])
                 outline = outline.intersection(reach)
+        if ground_guard and _on_jumped_ground(ring, host, inner, regions):
+            continue
         out.append((ring, host, outline, merged, inner))
         used.update({ring.shape_id, host.shape_id, *(r.shape_id for r in inner)})
     return out
@@ -423,7 +492,8 @@ def _hole_of(r, field):
     return None
 
 
-def find_riders(regions, unsewn=(), outlines=None, untagged=False) -> list[str]:
+def find_riders(regions, unsewn=(), outlines=None, untagged=False,
+                ground_guard=False) -> list[str]:
     """`cfg.silhouette_underfill_panels`: the shape ids that ride a white
     panel instead of merging into the under-fill (module note above).
     `outlines`: `art_outline.find_art_outlines`' {outline id: [(body id,
@@ -441,7 +511,8 @@ def find_riders(regions, unsewn=(), outlines=None, untagged=False) -> list[str]:
     rides = {w for w, ids in words.items()
              if sum(1 for i in ids if i not in bodies) > WORD_NONBODY_MIN * len(ids)}
     out = []
-    for _ring, host, _outline, _merged, inner in plan(regions, unsewn):
+    for _ring, host, _outline, _merged, inner in plan(regions, unsewn,
+                                                      ground_guard=ground_guard):
         for r in inner:
             if untagged and _untagged_rider(r, host, inner, fields):
                 out.append(r.shape_id)
@@ -495,21 +566,25 @@ def apply_cfg(regions, unsewn, cfg, outlines, pinned=()):
     `sew_enclosed_white` and `border_from_outline`) the riders are found,
     dropped from the outlines' body lists (a rider is no outline's body: no
     loop round it, no body fill) and passed on; with none, `apply` exactly
-    as before and the outlines untouched. `pinned`: see `apply`."""
+    as before and the outlines untouched. `pinned`: see `apply`.
+    `cfg.silhouette_underfill_ground_guard` goes to every `plan` read."""
+    guard = bool(getattr(cfg, "silhouette_underfill_ground_guard", False))
     riders = []
     if (getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white
             and cfg.border_from_outline):
         riders = find_riders(regions, unsewn, outlines,
-                             untagged=getattr(cfg, "underfill_untagged_riders", False))
+                             untagged=getattr(cfg, "underfill_untagged_riders", False),
+                             ground_guard=guard)
     if not riders:
-        out, report = apply(regions, unsewn, outlines=outlines, pinned=pinned)
+        out, report = apply(regions, unsewn, outlines=outlines, pinned=pinned,
+                            ground_guard=guard)
         return out, report, outlines
     gone = set(riders)
     outlines = {oid: [b for b in bodies if b[0] not in gone]
                 for oid, bodies in (outlines or {}).items()}
     outlines = {k: v for k, v in outlines.items() if v} or None
     out, report = apply(regions, unsewn, riders=riders, outlines=outlines,
-                        overlap_mm=cfg.overlap_mm, pinned=pinned)
+                        overlap_mm=cfg.overlap_mm, pinned=pinned, ground_guard=guard)
     return out, report, outlines
 
 
@@ -712,7 +787,7 @@ def apply_stripes(regions, pinned=()):
 
 
 def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0, pinned=(),
-          rings=None):
+          rings=None, ground_guard=False):
     """`cfg.silhouette_underfill` ON: -> (regions as copies, report). The
     hosts carry `UNDERFILL_KEY` and the fill tier, merged shapes are gone,
     and each host's layer sews before its ring's and its inner colours'.
@@ -731,9 +806,10 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0,
     of a pinned shape's layer -- at most to just after it. None pinned: as
     before.
 
-    `rings`: a plan already made (`apply_stripes`); None reads the rings."""
+    `rings`: a plan already made (`apply_stripes`); None reads the rings.
+    `ground_guard`: see `plan`; not read when `rings` is given."""
     if rings is None:
-        rings = plan(regions, unsewn, riders, outlines)
+        rings = plan(regions, unsewn, riders, outlines, ground_guard=ground_guard)
     if not rings:
         return regions, []
     panels = _panels(regions, set(riders), outlines, overlap_mm) if riders else {}

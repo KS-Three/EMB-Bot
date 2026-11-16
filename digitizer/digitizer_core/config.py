@@ -2571,6 +2571,24 @@ class PipelineConfig:
     # (`silhouette_underfill_panels` + `sew_enclosed_white` +
     # `border_from_outline`). OFF: never read, byte for byte.
     underfill_untagged_riders: bool = False
+    # `silhouette_underfill_ground_guard` (2026-11-16, BUILT OFF): a ring that
+    # lies ON a ground is no silhouette. The under-fill moves its host's whole
+    # thread layer ahead of every colour the ring holds, on the evidence of the
+    # ring alone. On the NASA insignia at 100 mm (960 px Commons PNG) the white
+    # S, second A and orbit trace as one 330 mm2 shape whose only hole is the
+    # A's 9 mm2 blue counter: it read as a ring, hosted itself, and the white
+    # layer moved ahead of the blue -- the blue ground it sits on. Every white
+    # shape then sewed FIRST and the 4,246 mm2 ground sewed over them: the
+    # 0.6 mm orbit line buried along its left arc, six stars gone, the letters'
+    # edges under the ground's pull growth (27,170 stitches, 42 trims; with the
+    # under-fill off 23,290 and 33). ON: a ring whose host would move ahead of
+    # layers that border `silhouette_underfill.GROUND_EDGE_MIN` of the ring's
+    # OUTER edge reads no ring (`_on_jumped_ground`); the insignia's reads
+    # 1.00. A silhouette's outside is garment, and a host that does not move
+    # is never asked. Read only with `silhouette_underfill`. Layout: Kent's
+    # call from the renders. OFF: never read, byte for byte.
+    # Tests: `tests/test_underfill_ground_guard.py`.
+    silhouette_underfill_ground_guard: bool = False
     # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
     # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
     # `sew_enclosed_white`): a sewn white field's slivers fold back into it

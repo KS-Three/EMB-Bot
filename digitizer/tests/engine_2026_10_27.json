@@ -288,6 +288,7 @@
  "silhouette_underfill_panels": false,
  "silhouette_underfill_rim": false,
  "silhouette_underfill_photo": true,
+ "silhouette_underfill_ground_guard": false,
  "simplify_tol_mm": 0.2,
  "skip_covered_shapes": false,
  "sliver_prune": false,
