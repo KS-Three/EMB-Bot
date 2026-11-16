@@ -81,14 +81,17 @@ called on its own) is a mask that
     speed-line pieces, which `fine_bar_survive` redraws at stage 4) stay
     (2026-11-16: with no such test To a T lost five of its six speed lines and
     the period).
-    NOT ENOUGH TO FLIP (2026-11-16 scoped check): the heraldic crest's crown
-    is drawn with keylines too, and its pieces between the yellow band and
-    the yellow pearls are fragments like low_poly's. Handed on, the pearls
-    touch the band, the band's hole joins the crown (four holes to three at
-    stage 4), and the crown's column satin then runs over the navy gaps
-    between its scrolls, which it still holds as holes. No test on the speck
-    alone tells those pieces from low_poly's: low_poly's crossings separate
-    same-thread facets of the same sizes (54-93 px against 1,000-2,500).
+    HELD OFF ON THE CREST CROWN (2026-11-16, Kent's call): the crown is drawn
+    with keylines too, and its pieces are fragments like low_poly's. Pruned,
+    the crown sews as fewer, longer columns: it covers three spots on its
+    outline main leaves bare (37-71% of the art's yellow there showed the
+    navy fill), and its rails' pull push lays about 0.8 mm2 more yellow into
+    two lens-shaped navy holes (`stage6_satin._push_rails` holds a counter
+    only to `floor_mm` ALONG the cross: a 1 mm lens crossed lengthwise has
+    room). No column crosses a hole in either (no satin over 0.3 mm inside).
+    No test on the speck alone tells these pieces from low_poly's: low_poly's
+    crossings separate same-thread facets of the same sizes (54-93 px
+    against 1,000-2,500).
 Its pixels go to the mask it has the most rim on. Kent's `low_poly` at 80 mm
 (sitting 2026-11-11, "Random Black Spot", 7 pins): the art's polygon edges
 are one-pixel black lines; quantisation labels only their crossings black,
