@@ -346,7 +346,7 @@ def test_the_capture_workflow_measures_five_passes_and_builds_the_ledger_from_al
     assert re.findall(r"tripwire-pass-(\d+)\.json", from_args.group(1)) == [str(p) for p in passes]
 
 
-# ------------------------------------------------------------------ the frame pin (built OFF)
+# ------------------------------------------------------------------ the frame pin (ON since 2026-11-15)
 FRAME = {"source": "registered", "dx": 0.35, "dy": 0.15, "x0": -59.0, "y0": -40.85, "iou": 0.9, "fresh": {}}
 
 
@@ -380,11 +380,16 @@ def test_a_pinned_check_prints_which_jobs_were_pinned_or_re_registered(tmp_path,
     assert code == 0 and f"frame pin: 1 re-registered ({JOB})" in out
 
 
-def test_the_workflow_passes_the_pin_only_when_a_dispatch_asks():
-    """The scheduled nightly never sets `pin_frame`, so its two commands are unchanged."""
+def test_the_scheduled_nightly_and_a_default_dispatch_read_in_the_pinned_frame():
+    """ON since Kent's 2026-11-15 "Flip ON now (Recommended)": a `schedule` event has no
+    inputs, so the schedule is named in the expression; a dispatch defaults to ticked and
+    unticking it is the way back to the fresh-registration reading. Both commands, the
+    nightly `check` and the capture's `measure`, carry the same expression."""
     text = (DIGITIZER.parent / ".github" / "workflows" / "nightly-tripwire.yml").read_text(encoding="utf-8")
-    assert "pin_frame:" in text and "default: false" in text.split("pin_frame:")[1].split("\n\n")[0]
-    assert text.count("${{ inputs.pin_frame && '--pin-frame' || '' }}") == 2
+    assert "pin_frame:" in text and "default: true" in text.split("pin_frame:")[1].split("\n\n")[0]
+    expr = "${{ (github.event_name == 'schedule' || inputs.pin_frame) && '--pin-frame' || '' }}"
+    assert text.count(expr) == 2
+    assert "inputs.pin_frame && '--pin-frame'" not in text
 
 
 # ------------------------------------------------------------------ the committed ledger
@@ -402,6 +407,10 @@ def test_the_committed_ledger_is_well_formed_and_covers_every_committed_pair():
         assert {"stitches", "trims", "hops", "needle_up_mm"} <= figs, job
     for key in ("raw", "agreement"):
         assert key not in text.lower().replace("direction", ""), key
+    # The nightly reads in the pinned frame (Kent 2026-11-15): a job with no pin would
+    # silently register fresh, the jump the pin exists to stop.
+    assert set(led.get("frames") or {}) == jobs, "capture with pin_frame ticked: every job needs a frame"
+    assert all(f["passes_agree"] for f in led["frames"].values()), led["frames"]
 
 
 def test_the_committed_ledgers_hand_edits_match_its_rows():

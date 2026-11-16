@@ -3565,7 +3565,8 @@ def sequence(
         keyline_beans = set()
     elif keyline_beans is None:
         keyline_beans = (keyline_regions([_p.region for _p in planned], set(outline_rings),
-                                         cfg, ink=ink_source) if outline_rings else set())
+                                         cfg, ink=ink_source, bodies=art_outlines)
+                         if outline_rings else set())
     keyline_limits = keyline_body_limits(planned, keyline_beans) if keyline_beans else {}
     # `cfg.group_consistent_fill_angle`: the shared angles (see the
     # declaration of `group_fill` above).
