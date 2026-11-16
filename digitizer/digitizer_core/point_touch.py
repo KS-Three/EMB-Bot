@@ -9,13 +9,15 @@ where the star hangs off it. Nothing upstream parts them: the text
 tagger's neck split (`textcluster._neck_splits`) only looks at a region
 beside a line of letters in the same ink, and the N's ink is not SYNC's.
 
-`cfg.extra["point_touch_split"]` (built OFF): a region narrower at a neck
+`cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review pack
+(review-1115): ticked ON; built OFF as `cfg.extra["point_touch_split"]`): a
+region narrower at a neck
 than `textcluster.TOUCH_MAX_MM` (0.15 mm, the tagger's own "two letters
 touching" bound) is cut there into the pieces the tagger's stroke rule
 would cut it into, when both cuts agree -- the same test `_neck_splits`
 applies to touching letters, here for any body of any ink. Each piece
 keeps the region's thread, layer and meta and gets its own shape id.
-Absent, nothing runs: the engine is byte-identical. Logos only: the pipeline
+False, nothing runs: the engine is byte-identical. Logos only: the pipeline
 never calls it on a photo class (2026-11-15: on MFab hat, classed
 `photo_scene`, it cut WELDING's W into a "~", and it moved every corpus photo
 it was run on; a photo's quantised blobs pinch everywhere).
