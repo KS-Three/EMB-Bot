@@ -48,7 +48,14 @@ lighthouse is generic and names no landmark.
 - The baseball's white shading sewed as grey rings. It was re-digitized on 2026-11-12 with `forced_class: "flat"`
   (Kent's ruling), so the row above is the new file: one white field, no grey.
 - The turtle loses its shell shading. Its shell, legs and head merge into one colour on the automatic lane. Kent kept
-  the shipped file.
+  the shipped file on 2026-11-12. **Kent, 2026-11-16, after seeing it in the Studio: not acceptable ("trash"), the
+  shell detail is missing.** Open: nothing is decided yet. The shipped DST is unchanged; the measured remedy and its
+  cost (15 cones, +77% stitches, preflight F) are in the weak-spots doc.
+- **The bumblebee's eye is missing (Kent, 2026-11-16).** New, and not in the weak-spots doc. Read from the shipped
+  DST: the eye IS in the file, in the white block, which sews first. The black block sews second and its head fill
+  has no opening there, so black covers the eye completely (thread coverage in a 2.5 mm circle on the eye: white
+  100%, then black 100%; on the smile, which does show, black is 52%). So this is the digitized file, not the
+  Studio's thread colours. Open: no cause traced in the pipeline and no remedy tried.
 - The monarch's white wing dots cost 86 trims. It was re-digitized on 2026-11-12 with `borders_last: false` at the
   pack's 90.0 mm target (Kent's ruling), so the row above is the new file, with 67 trims. A "drift" that briefly held it
   was a width mistake ([correction](monarch-orange-drift-2026-11-12.md)). The same slip had made the first flat
