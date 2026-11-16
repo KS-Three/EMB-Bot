@@ -93,6 +93,45 @@ def ring_floor_scope(on: bool):
     finally:
         _RING_FLOOR.reset(token)
 
+
+# `cfg.extra["lettering_columns_stroke_floor"]` (built OFF 2026-11-16): under
+# `thin_floor`, a column that keeps fewer than HALF its crosses over the floor
+# is floored whole (`_floor_crosses`), as one that keeps fewer than three
+# already is. Commons Bukit Asam at 80.4 mm left chest, the y of "beyond":
+# its left arm and tail are one curved column drawn 0.55-0.59 mm wide, 0.46-
+# 0.49 mm after the rail inset, and four crosses at the join reached 0.50-
+# 0.51. Keeping "three", the column dropped the other nine; the right arm,
+# keeping one, was floored and sewed, and the y read as an r. The floor is
+# the same `min_cross_mm`; only which columns reach it moves. A letter it
+# changes is kept only if it sews better (`_stroke_floor_judged`). Off,
+# today's drop. Set plan-wide by `pipeline.plan_stitches` (`stroke_floor_scope`).
+_STROKE_FLOOR: contextvars.ContextVar[bool] = contextvars.ContextVar("stroke_floor", default=False)
+# Set round `_stroke_floor_judged`'s floored sew, so that sew is not judged
+# again: the list each column the floor reaches is recorded in (`column_runs`);
+# none recorded, the sew is the unfloored one. No memoized emitter reads it
+# (`shape_memo._INERT`).
+_STROKE_JUDGING: contextvars.ContextVar[list | None] = contextvars.ContextVar("stroke_judging", default=None)
+
+
+@contextlib.contextmanager
+def stroke_floor_scope(on: bool):
+    """`_STROKE_FLOOR` for the length of one plan (`pipeline.plan_stitches`)."""
+    token = _STROKE_FLOOR.set(bool(on))
+    try:
+        yield
+    finally:
+        _STROKE_FLOOR.reset(token)
+
+
+@contextlib.contextmanager
+def floor_scopes(ring: bool, stroke: bool):
+    """`ring_floor_scope` and `stroke_floor_scope` as ONE context manager.
+    `pipeline.plan_stitches` opens every plan-wide scope in a single `with`,
+    and CPython allows 20 statically nested blocks -- each manager is one;
+    the 21st is a SyntaxError at import (hit 2026-11-16 adding this flag)."""
+    with ring_floor_scope(ring), stroke_floor_scope(stroke):
+        yield
+
 # A column end within this many stroke widths (plus a constant for the pull)
 # of another column's centreline sits ON that column: the two meet there.
 # routeGlyph's `mergeR = max(2, 1.3 * medW)`; at 0.75 Becker's M left its
@@ -2126,11 +2165,18 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             # floor about their own middles -- a dropped one opens the ring
             kept = _floor_ring_crosses(guarded, min_cross_mm, col.kind == "ring")
             report["ring_floored"] = report.get("ring_floored", 0) + 1
-        elif thin_floor and len(kept) < 3 and len(guarded) >= 3:
+        elif thin_floor and len(guarded) >= 3 and (
+                len(kept) < 3 or (_STROKE_FLOOR.get() and 2 * len(kept) < len(guarded))):
             # a whole piece under the floor (a serif, a bar): sewn at the
             # floor rather than lost; a column that keeps three crosses
             # drops its thin ones as before -- widened, a fan's converging
-            # tip crosses each other
+            # tip crosses each other. `_STROKE_FLOOR`: one that keeps under
+            # half is a stroke under the floor, not a column with thin tips
+            if len(kept) >= 3:
+                report["stroke_floored"] = report.get("stroke_floored", 0) + 1
+                fired = _STROKE_JUDGING.get()
+                if fired is not None:       # `_stroke_floor_judged`: the floor reached a column
+                    fired.append(col)
             kept = _floor_crosses(guarded, min_cross_mm)
             report["floored"] = report.get("floored", 0) + 1
         report["thin_crosses"] += len(col.stations) - len(kept)
@@ -3110,6 +3156,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     _args = dict(locals())
     from .outline_cut import fold_apex_side_scope, letter_columns, stroke_width
 
+    if _STROKE_FLOOR.get() and _STROKE_JUDGING.get() is None:
+        return _stroke_floor_judged(_args)       # `stroke_floor` (built OFF)
     if corner_fold_apex_side:
         with fold_apex_side_scope(True):
             return lettering_columns_shape(**{**_args, "corner_fold_apex_side": False})
@@ -3238,6 +3286,35 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 if satin_cover(runs3, poly) >= cover + SMALL_BOLD_PLAIN_GAIN:
                     runs, report = runs3, report3
                     report["small_bold_plain"] = 1
+    return runs, report
+
+
+def _stroke_floor_judged(args: dict) -> tuple[list[StitchRun], dict]:
+    """`_STROKE_FLOOR`'s sewn judge: the letter sewn with the floor and
+    without it, and the floored sew kept only if it differs and puts more
+    new thread inside the letter than it adds outside (`handback_wins`,
+    "net", the same rule as `HANDBACK_RULE`). The floor can move the
+    small-bold ladder as well as the crosses: Commons Bukit's e at 85.1 mm
+    hat, floored, cleared `SMALL_BOLD_COVER_MIN` on its first cut and kept
+    that cut instead of the resimplified one, and the column round its
+    mouth laid a 0.71 mm underlay chord over bare cloth (cover 0.92 ->
+    0.98, spill 0.40 -> 0.55: refused). Equal runs: the unfloored sew.
+    A sew the floor reached no column in IS the unfloored one (the flag is
+    read nowhere else), so it is not sewn twice."""
+    fired: list = []
+    token = _STROKE_JUDGING.set(fired)
+    try:
+        runs, report = lettering_columns_shape(**args)
+    finally:
+        _STROKE_JUDGING.reset(token)
+    if not fired:
+        return runs, report
+    with stroke_floor_scope(False):
+        runs0, report0 = lettering_columns_shape(**args)
+    if ([r.points for r in runs] == [r.points for r in runs0]
+            or not handback_wins(runs0, runs, args["poly"], rule="net")):
+        return runs0, report0
+    report["stroke_floor_kept"] = 1
     return runs, report
 
 
