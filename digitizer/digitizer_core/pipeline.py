@@ -982,8 +982,15 @@ def build_generation(
     # sub-floor stroke is kept rather than absorbed into what it touches. The
     # photo segmenters make their own call without it, on purpose.
     counters_on = bool(cfg.keep_counters and classification.class_ not in PHOTO_CLASSES)
+    # `cfg.lone_glyph_keep` (ON since 2026-11-15): logos only. A photograph
+    # quantised on this route keeps specks inside big same-colour regions
+    # everywhere, and the tittle rule read them as i-dots (2026-11-16:
+    # dof_meadow sewed 365 more stitches of tacks); the photo segmenters
+    # already pass `chain_rescue=False`, which turns it off there.
+    small_cfg = (replace(cfg, lone_glyph_keep=False)
+                 if cfg.lone_glyph_keep and classification.class_ in PHOTO_CLASSES else cfg)
     masks, small_warnings = resolve_small_regions(
-        masks, cfg, p.px_per_mm, p.enclosed_mask,
+        masks, small_cfg, p.px_per_mm, p.enclosed_mask,
         layer_lab=rgb_to_lab(q.cluster_rgb) if (
             cfg.keep_thin_strokes or counters_on
             or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)
@@ -2146,7 +2153,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .column_lean import lean_flat_ends_scope   # `cfg.extra["lettering_columns_lean_flat_ends"]` (built OFF), the same way
     from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
     from .outline_cut import apex_pro_scope      # `cfg.lettering_columns_apex_pro` (ON since 2026-11-15, Kent's flip), the same way
-    from .columns import ring_floor_scope        # `cfg.lettering_columns_ring_floor` (ON since 2026-11-15, Kent's flip), the same way
+    # `cfg.lettering_columns_ring_floor` (ON since 2026-11-15, Kent's flip) and
+    # `cfg.extra["lettering_columns_stroke_floor"]` (built OFF), the same way, as ONE
+    # manager: the `with` below is at CPython's 20 nested blocks (`columns.floor_scopes`)
+    from .columns import floor_scopes
     from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
@@ -2170,7 +2180,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             lean_flat_ends_scope(bool((cfg.extra or {}).get("lettering_columns_lean_flat_ends"))), \
             rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
             apex_pro_scope(cfg.lettering_columns_apex_pro), \
-            ring_floor_scope(cfg.lettering_columns_ring_floor), \
+            floor_scopes(cfg.lettering_columns_ring_floor,
+                         bool((cfg.extra or {}).get("lettering_columns_stroke_floor"))), \
             apex_pro_joints_scope(cfg.lettering_columns_apex_pro_joints), \
             fold_cap_flared_scope(cfg.lettering_columns_corner_fold_cap_flared), \
             apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))), \
