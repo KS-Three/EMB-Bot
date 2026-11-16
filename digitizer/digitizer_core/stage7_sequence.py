@@ -3411,8 +3411,8 @@ def sequence(
     # True holds a gap as a counter is held (`cfg.min_detail_mm`); a number
     # is the floor in mm a gap keeps instead (the pro's E and S at Gaulke
     # keep about what a 0.5 floor leaves).
-    # Kent ruled 0.5 (2026-11-15); the flip is held until the push never
-    # costs a stroke (comment at the field in config.py)
+    # 0.5 since 2026-11-16, Kent: "Flip both, value 0.5" (held until the
+    # push never cost a stroke: `stage6_satin._keep_yields`, #1577)
     _kg = cfg.satin_push_keeps_gaps
     keep_gaps = bool(_kg)
     keep_floor = (float(_kg) if isinstance(_kg, (int, float)) and not isinstance(_kg, bool)

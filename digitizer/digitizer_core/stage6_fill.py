@@ -985,6 +985,26 @@ class _Sewn:
         return np.flatnonzero((b[:, 0] <= x1) & (b[:, 2] >= x0)
                               & (b[:, 1] <= y1) & (b[:, 3] >= y0))
 
+    def _repaired(self, idx: np.ndarray) -> np.ndarray:
+        """The footprints at `idx` made valid, in place, for the call GEOS
+        refused (see `_cut`)."""
+        fixed = shapely.make_valid(self._parts[idx])
+        self._parts[idx] = fixed
+        return fixed
+
+    def _cut(self, geom, idx: np.ndarray):
+        """`geom` intersected with each footprint at `idx`. A footprint is a
+        buffered path (`_footprint`), and a buffer of a path that doubles back
+        within the last bits can come out invalid; GEOS then raises
+        TopologyException ("side location conflict") on the intersection, and
+        the whole digitize died with it (heraldic crest with `speck_prune`,
+        2026-11-15). Only then are those footprints made valid and the cut
+        asked again: a call GEOS answers is the call as it always was."""
+        try:
+            return shapely.intersection(geom, self._parts[idx])
+        except shapely.errors.GEOSException:
+            return shapely.intersection(geom, self._repaired(idx))
+
     def clipped(self, x0: float, y0: float, x1: float, y1: float):
         """The sewn fill inside the box: each footprint that meets it, cut to
         it, then unioned -- the box's share of work, not the shape's."""
@@ -993,8 +1013,7 @@ class _Sewn:
             return Polygon()
         # `intersection`, not `clip_by_rect`: the faster clip builds
         # three-point rings on a two-pass fill's footprints and GEOS refuses them.
-        return shapely.union_all(shapely.intersection(self._parts[idx],
-                                                      box(x0, y0, x1, y1)))
+        return shapely.union_all(self._cut(box(x0, y0, x1, y1), idx))
 
     def on_line(self, line: LineString) -> float:
         """Length of `line` over the sewn fill: the line cut by each nearby
@@ -1006,8 +1025,7 @@ class _Sewn:
         idx = self._hits(*line.bounds)
         if not len(idx):
             return 0.0
-        pieces = shapely.get_parts(shapely.get_parts(
-            shapely.intersection(line, self._parts[idx])))
+        pieces = shapely.get_parts(shapely.get_parts(self._cut(line, idx)))
         pieces = pieces[(shapely.get_type_id(pieces) == 1)     # LineStrings
                         & ~shapely.is_empty(pieces)]
         if not len(pieces):

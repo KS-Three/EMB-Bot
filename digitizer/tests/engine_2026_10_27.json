@@ -319,6 +319,7 @@
  "speck_prune": false,
  "tiny_detail_keep": false,
  "stroke_bridge_keep": false,
+ "point_touch_split": false,
  "split_satin": true,
  "split_satin_above_mm": null,
  "split_shapes": {},
@@ -363,5 +364,9 @@
  "underfill_untagged_riders": false,
  "stage0_scale_relative_grad": false,
  "regular_structure": false,
- "bevel_ring_fold": false
+ "bevel_ring_fold": false,
+ "lettering_columns_apex_pro": false,
+ "lettering_columns_apex_pro_joints": false,
+ "lettering_columns_corner_fold_cap_flared": false,
+ "lettering_columns_ring_floor": false
 }
