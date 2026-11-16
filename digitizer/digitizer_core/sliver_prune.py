@@ -50,8 +50,8 @@ nothing (the numbers are beside the constant).
 Never on an alpha cut-out for the page half (no page colour to compare), and
 the pipeline calls neither half on a photo class.
 
-A SPECK (`cfg.speck_prune`, its own flag, built OFF 2026-11-14; `prune_specks`,
-called on its own) is a mask that
+A SPECK (`cfg.speck_prune`, its own flag, built OFF 2026-11-14, ON since
+2026-11-16 by Kent's tick; `prune_specks`, called on its own) is a mask that
   * is under stage 3's detail floor yet clears the run tier's floors (stage
     3's own proxy): one of the small regions its rescue KEPT to sew
     (`resolve_small_regions`, a contrasting sliver), not a dot rung, cored
@@ -64,7 +64,34 @@ called on its own) is a mask that
     than the mark,
   * is wedged in the figure, as a tendril is (rim on other masks, none to
     speak of on the page),
-  * and is another colour than the mask it lies in (CIEDE2000 of the threads).
+  * and is another colour than the mask it lies in (CIEDE2000 of the threads),
+  * and is not a SLIT: a mark at least `SPECK_SLIT_MIN_DL` lighter (CIELAB L)
+    than its host, lying in that host alone (every other mask on its rim is a
+    speck itself or under the run tier's floors, scraps that leave anyway).
+    That is a highlight the art cut into a body, and it stays (2026-11-15:
+    with no such exemption the heraldic crest lost three of the left wing's
+    five white feather quills and four of the right's, which main sews),
+  * and is a FRAGMENT: the art's ink of the speck's own kind (darker than its
+    host for a dark speck, lighter for a light one) runs on out of it by at
+    least `SPECK_FRAGMENT_MIN_ARMS` arms that the masks sew in ANOTHER colour.
+    The speck is then a piece of a longer line the rest of which is lost, a
+    dot where the art has a line: low_poly's crossings and edge pieces.
+    A WHOLE mark (no ink leaves it: the period in "LLC.", a speed line drawn
+    as one bar) and a piece whose line is sewn on in its own colour (To a T's
+    speed-line pieces, which `fine_bar_survive` redraws at stage 4) stay
+    (2026-11-16: with no such test To a T lost five of its six speed lines and
+    the period).
+    THE CREST CROWN IS A TRADE (2026-11-16, taken in the flip): the crown is drawn
+    with keylines too, and its pieces are fragments like low_poly's. Pruned,
+    the crown sews as fewer, longer columns: it covers three spots on its
+    outline main leaves bare (37-71% of the art's yellow there showed the
+    navy fill), and its rails' pull push lays about 0.8 mm2 more yellow into
+    two lens-shaped navy holes (`stage6_satin._push_rails` holds a counter
+    only to `floor_mm` ALONG the cross: a 1 mm lens crossed lengthwise has
+    room). No column crosses a hole in either (no satin over 0.3 mm inside).
+    No test on the speck alone tells these pieces from low_poly's: low_poly's
+    crossings separate same-thread facets of the same sizes (54-93 px
+    against 1,000-2,500).
 Its pixels go to the mask it has the most rim on. Kent's `low_poly` at 80 mm
 (sitting 2026-11-11, "Random Black Spot", 7 pins): the art's polygon edges
 are one-pixel black lines; quantisation labels only their crossings black,
@@ -124,6 +151,35 @@ SPECK_WIDTH_SRC_PX = TENDRIL_WIDTH_SRC_PX
 SPECK_FIGURE_CONTACT_MIN = TENDRIL_FIGURE_CONTACT_MIN
 SPECK_PAGE_CONTACT_MAX = TENDRIL_PAGE_CONTACT_MAX
 SPECK_MIN_DE00 = TENDRIL_MIN_DE00
+# A SLIT, not a speck: at least this much lighter than its host (CIELAB L of
+# the threads, 0-100) and in that host alone. Measured 2026-11-15, 80 mm left
+# chest: the heraldic crest's white quills read L 100 on the navy wing's 34.0
+# (66). low_poly's grey specks the rule is there to take read 11.9-19.2 over
+# their facets and 26.1 (dark grey on black); three light marks on black or
+# dark grey that lie in one host stay (112 specks -> 109 pruned), as main
+# sews them. A candidate in the 26-45 gap, not a measured edge.
+SPECK_SLIT_MIN_DL = 40.0
+# A FRAGMENT (module note). The art's ink: a top-hat on CIELAB L (closing
+# minus L for a dark speck, L minus opening for a light one) this many SOURCE
+# pixels across, at least `SPECK_INK_MIN_DL` -- a thin line darker (lighter)
+# than what is round it, wider facets and bodies read no ink. Its arms are the
+# pieces of that ink, joined to the speck, on a ring from one source pixel out
+# to `SPECK_ARM_REACH_SRC_PX`; an arm is LOST when at least
+# `SPECK_ARM_LOST_MIN` of it lies on masks sewn at least `SPECK_MIN_DE00` from
+# the speck's thread (or on no mask). Measured 2026-11-16, 80 mm left chest:
+# low_poly 81 of its 110 specks are fragments, every one of Kent's seven
+# "Random Black Spot" pins among them and 42 of its 43 dark ones (the 43rd has
+# one arm); To a T hat, beanie and machine beanie give 0, 1 and 1 of 95, 79
+# and 79, none a dark mark main sews; Golden Tee 1 of 6. Before the lightness
+# bound below, the top-hat at 8-20 L and rings of 3-6 source pixels gave the
+# same To a T verdicts and 92-103 on low_poly, and at a lost share of 0.5,
+# 537 render px of low_poly's dots came back. Candidates read off those, not
+# measured edges.
+SPECK_INK_KERNEL_SRC_PX = 5.0
+SPECK_INK_MIN_DL = 12.0
+SPECK_ARM_REACH_SRC_PX = 4.0
+SPECK_ARM_LOST_MIN = 0.3
+SPECK_FRAGMENT_MIN_ARMS = 2
 
 _K3 = np.ones((3, 3), np.uint8)
 
@@ -282,6 +338,54 @@ def _without(m: RegionMask, crop: np.ndarray, origin: tuple[int, int]) -> Region
                    origin=(y0 + int(ys.min()), x0 + int(xs.min())))
 
 
+def _scrap_test(p):
+    """Stage 3's own proxy for the run tier's floors
+    (`resolve_small_regions.clears_run_floors`): True for a mask stage 4 drops."""
+    run_area_px = machine.RUN_MIN_AREA_MM2 * float(p.px_per_mm) ** 2
+    run_loop_px = machine.RUN_MIN_LOOP_MM * float(p.px_per_mm)
+    return lambda m: m.area < run_area_px or 2 * max(m.crop.shape) < run_loop_px
+
+
+def _arms(m: RegionMask, i: int, p, owner: np.ndarray, l_me: float, l_host: float,
+          de_to) -> tuple[int, int]:
+    """(arms, lost arms) of the art's ink leaving speck `i` (module note,
+    FRAGMENT); `l_me`/`l_host` are the CIELAB L of its thread and its
+    host's, `de_to(k)` CIEDE2000 from its thread to mask k's."""
+    dark = l_me < l_host
+    s = _src_px(p)
+    k = int(np.ceil(SPECK_INK_KERNEL_SRC_PX * s))
+    k += 1 - (k % 2)
+    r1, r2 = max(1.5, s), SPECK_ARM_REACH_SRC_PX * s
+    wy0, wx0, wy1, wx1 = _window(m, int(np.ceil(r2)) + k + 2)
+    mine = m.window(wy0, wx0, wy1, wx1)
+    win = p.rgb[wy0:wy1, wx0:wx1]
+    L = rgb_to_lab(win.reshape(-1, 3)).reshape(win.shape[:2] + (3,))[..., 0].astype(np.float32)
+    ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
+    hat = (cv2.morphologyEx(L, cv2.MORPH_CLOSE, ker) - L) if dark else (L - cv2.morphologyEx(L, cv2.MORPH_OPEN, ker))
+    d = cv2.distanceTransform((~mine).astype(np.uint8), cv2.DIST_L2, 5)
+    # Ink of the speck's OWN kind: also no further from its lightness than
+    # its host is. A light body's convex corners read in a light top-hat too;
+    # Golden Tee's dark-teal ramp along the T's top (L 21 on black, beside
+    # the white fill) read two arms there and went, and the T sewed a cream run.
+    ink = (hat >= SPECK_INK_MIN_DL) & (np.abs(L - l_me) <= abs(l_me - l_host))
+    reach = ((ink | mine) & (d <= r2)).astype(np.uint8)
+    _, lbl = cv2.connectedComponents(reach, connectivity=8)
+    ring = (np.isin(lbl, np.unique(lbl[mine])) & (d > r1) & (d <= r2)).astype(np.uint8)
+    na, arm, stats, _ = cv2.connectedComponentsWithStats(ring, connectivity=8)
+    own = owner[wy0:wy1, wx0:wx1]
+    n = lost = 0
+    for a in range(1, na):
+        if stats[a, cv2.CC_STAT_AREA] < 2:
+            continue
+        n += 1
+        under = own[arm == a]
+        under = under[under != i]
+        if under.size and np.mean([o < 0 or de_to(int(o)) >= SPECK_MIN_DE00
+                                   for o in under]) >= SPECK_ARM_LOST_MIN:
+            lost += 1
+    return n, lost
+
+
 def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, thread_px: float,
            owner: np.ndarray | None = None) -> list[dict]:
     """`cfg.speck_prune`: one record per kept sub-floor mask thin enough to be
@@ -291,18 +395,18 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
     if owner is None:
         owner = _owner(masks, p.bg_mask.shape)
     limit = SPECK_WIDTH_SRC_PX * _src_px(p)
-    # Only what stage 4 would SEW: stage 3's own proxy for the run tier's
-    # floors (`resolve_small_regions.clears_run_floors`). Smaller masks are
-    # dropped there anyway; handing their pixels on would only move the
-    # outlines of the shapes round them (low_poly: 3,400 such masks).
-    run_area_px = machine.RUN_MIN_AREA_MM2 * float(p.px_per_mm) ** 2
-    run_loop_px = machine.RUN_MIN_LOOP_MM * float(p.px_per_mm)
+    # Only what stage 4 would SEW. Smaller masks are dropped there anyway;
+    # handing their pixels on would only move the outlines of the shapes
+    # round them (low_poly: 3,400 such masks).
+    _scrap = _scrap_test(p)
+
     out: list[dict] = []
+    others: list[set[int]] = []
     for i, m in enumerate(masks):
         area = m.area
         if not area or area >= floor_px or _held(m) or m.source == "counter":
             continue
-        if area < run_area_px or 2 * max(m.crop.shape) < run_loop_px:
+        if _scrap(m):
             continue
         wy0, wx0, wy1, wx1 = _window(m, 1)
         mine = m.window(wy0, wx0, wy1, wx1)
@@ -326,18 +430,44 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
         nb = own[ring & (own >= 0) & (own != i)]
         figure = nb.size / n
         j = int(np.bincount(nb).argmax()) if nb.size else -1
-        de = (float(deltaE_ciede2000(_thread_lab(chart, thread_indices, m.layer),
-                                     _thread_lab(chart, thread_indices, masks[j].layer)))
-              if j >= 0 else None)
+        lab = _thread_lab(chart, thread_indices, m.layer)
+        host = _thread_lab(chart, thread_indices, masks[j].layer) if j >= 0 else None
+        de = float(deltaE_ciede2000(lab, host)) if j >= 0 else None
+        others.append({int(k) for k in np.unique(nb)} - {j})
         out.append({
             "index": i, "layer": m.layer, "area_px": area,
             "mean_width_src_px": round(mean_w / _src_px(p), 3),
             "mean_width_px": round(mean_w, 3), "inscribed_px": round(inscribed, 3),
             "page": round(page, 3), "figure": round(figure, 3), "neighbour": j,
             "de_neighbour": None if de is None else round(de, 2),
+            "l": round(float(lab[0]), 2), "l_neighbour": None if host is None else round(float(host[0]), 2),
+            "dl_neighbour": None if host is None else round(float(lab[0] - host[0]), 2),
             "speck": bool(j >= 0 and figure >= SPECK_FIGURE_CONTACT_MIN
                           and page <= SPECK_PAGE_CONTACT_MAX and de >= SPECK_MIN_DE00),
         })
+    # A slit (module note) is read against the first verdicts: what else is on
+    # its rim must be a speck leaving or a scrap stage 4 drops.
+    first = {rec["index"] for rec in out if rec["speck"]}
+    de_cache: dict[tuple[int, int], float] = {}
+
+    def _de(a: int, b: int) -> float:
+        if (a, b) not in de_cache:
+            de_cache[(a, b)] = float(deltaE_ciede2000(_thread_lab(chart, thread_indices, a),
+                                                      _thread_lab(chart, thread_indices, b)))
+        return de_cache[(a, b)]
+
+    for rec, rest in zip(out, others):
+        rec["slit"] = bool(rec["speck"] and rec["dl_neighbour"] >= SPECK_SLIT_MIN_DL
+                           and all(k in first or _scrap(masks[k]) for k in rest))
+        rec["arms"] = rec["arms_lost"] = None
+        if rec["speck"] and not rec["slit"]:
+            me = masks[rec["index"]].layer
+            rec["arms"], rec["arms_lost"] = _arms(masks[rec["index"]], rec["index"], p, owner,
+                                                  rec["l"], rec["l_neighbour"],
+                                                  lambda k: _de(me, masks[k].layer))
+        rec["fragment"] = bool(rec["arms_lost"] is not None
+                               and rec["arms_lost"] >= SPECK_FRAGMENT_MIN_ARMS)
+        rec["speck"] = bool(rec["speck"] and not rec["slit"] and rec["fragment"])
     return out
 
 

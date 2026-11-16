@@ -1018,11 +1018,14 @@ def build_generation(
     # tendrils everywhere. Off: `masks` untouched, byte for byte.
     if cfg.sliver_prune and classification.class_ not in PHOTO_CLASSES:
         masks, _pruned = sliver_prune.prune(masks, q.thread_indices, p, chart_for(cfg))
-    # `cfg.speck_prune` (built OFF 2026-11-14, Kent's low_poly "Random Black
-    # Spot" pins): a contrasting sub-floor mask stage 3 kept that is narrower
-    # than two source pixels and than the thread, wedged in the figure, goes
-    # to the mask it lies in (`sliver_prune.prune_specks`). Logos only, as
-    # above. Off: `masks` untouched, byte for byte.
+    # `cfg.speck_prune` (Kent's low_poly "Random Black Spot" pins; ON since
+    # 2026-11-16 by Kent's tick, review-1115: "speck_prune (Recommended)"): a
+    # contrasting sub-floor mask stage 3 kept that is narrower than two source
+    # pixels and than the thread, wedged in the figure, and a FRAGMENT of a
+    # line the art draws and the masks lost, goes to the mask it lies in
+    # (`sliver_prune.prune_specks`). A dot-rung tittle `lone_glyph_keep`
+    # admitted above is held and never asked. Logos only, as above. Off:
+    # `masks` untouched, byte for byte.
     if cfg.speck_prune and classification.class_ not in PHOTO_CLASSES:
         from .machine import thread_profile
         masks, _specks = sliver_prune.prune_specks(
@@ -2198,35 +2201,37 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         # photograph's quantised blobs have inlets everywhere, and none of the
         # flip's combined-check photo moves was read by eye. MFab hat is classed
         # photo_scene, and is left as it was.
+        # (`outline_inlets_teeth` is read only under it, so one key turns both off.)
         if (getattr(result, "design_class", "flat") in PHOTO_CLASSES
-                and any((cfg.extra or {}).get(k) for k in _INLET_FLAGS)):
-            cfg = replace(cfg, extra={k: v for k, v in cfg.extra.items() if k not in _INLET_FLAGS})
+                and getattr(cfg, "outline_inlets_kept", False)):
+            cfg = replace(cfg, outline_inlets_kept=False)
         # the result the plan in hand is sewn from: the guard below replans
         # THIS one, so a re-tier here survives its replan (review 2026-11-14:
         # it replanned `result`, and a gear the inlet rule had moved to fill
         # went back to satin whenever the guard kept its replan)
         planned = result
         bodies: dict = {}        # `outline_inlets_teeth`: the split shapes' bodies
-        # `cfg.extra["outline_inlets_kept"]` (built OFF): a satin with a row of
-        # regular TEETH on its outline (a gear) cannot draw them -- its rails
-        # are a smoothed offset of the spine -- so it is re-tiered BEFORE the
-        # plan, from its geometry (`outline_inlets.toothed_satins`), and the
-        # design is planned once. The first build planned, measured the satin
-        # over its inlets, and planned the whole design again; on the heraldic
-        # crest at 53 mm that was 4.9x the plan's time (2026-11-15, the two
-        # plans and the twelve feathered satins it turned into slow fills), and
-        # feathers and lobes are not teeth. OFF: not imported.
-        if (getattr(cfg, "extra", None) or {}).get("outline_inlets_kept"):
+        # `cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick "K-Line box
+        # + gear flags"): a satin with a row of regular TEETH on its outline (a
+        # gear) cannot draw them -- its rails are a smoothed offset of the spine
+        # -- so it is re-tiered BEFORE the plan, from its geometry
+        # (`outline_inlets.toothed_satins`), and the design is planned once.
+        # The first build planned, measured the satin over its inlets, and
+        # planned the whole design again; on the heraldic crest at 53 mm that
+        # was 4.9x the plan's time (the two plans and the twelve feathered
+        # satins it turned into slow fills), and feathers and lobes are not
+        # teeth. OFF: not imported.
+        if getattr(cfg, "outline_inlets_kept", False) and getattr(result, "regions", None):
             from . import outline_inlets
             ids = outline_inlets.toothed_satins(result.regions, cfg,
                                                 getattr(result, "design_class", "flat"))
             if ids:
-                # `cfg.extra["outline_inlets_teeth"]` (built OFF): a toothed
-                # edge splits into its teeth (sewn first) and its body (sewn
-                # over their roots), the pro's ring-and-handles construction,
-                # instead of one fill; the moves between teeth are buried
-                # along the root, under the body
-                teeth = bool(cfg.extra.get("outline_inlets_teeth"))
+                # `cfg.outline_inlets_teeth` (ON since 2026-11-15, Kent's tick
+                # "K-Line box + gear flags"): a toothed edge splits into its
+                # teeth (sewn first) and its body (sewn over their roots), the
+                # pro's ring-and-handles construction, instead of one fill; the
+                # moves between teeth are buried along the root, under the body
+                teeth = bool(getattr(cfg, "outline_inlets_teeth", False))
                 regions, bodies = outline_inlets.rebuild(result.regions, ids, teeth)
                 planned = replace(result, regions=regions)
         plan = _plan_stitches(planned, cfg)
@@ -2253,10 +2258,6 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                 return p
             plan = guard_clipped(planned, cfg, plan, replan)
         return plan
-
-
-#: `outline_inlets`'s two flags, off on a photo class (`plan_stitches`)
-_INLET_FLAGS = ("outline_inlets_kept", "outline_inlets_teeth")
 
 
 def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:

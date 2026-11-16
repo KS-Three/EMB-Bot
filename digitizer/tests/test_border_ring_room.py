@@ -1,4 +1,5 @@
-"""`cfg.extra["border_significant_ring_room"]` (2026-11-14, built OFF): the photo
+"""`cfg.border_significant_ring_room` (2026-11-14, ON since Kent's 2026-11-15
+flip, "Both ON, keep 5.0"; PRE_FLIP pins it OFF): the photo
 lanes' "significant" border earns no ring where the ring has no room for a
 column (`stage6_border.ring_has_room`, `stage7_sequence._border_wanted`'s
 `room`).
@@ -18,8 +19,10 @@ import inspect
 from shapely.geometry import Polygon, box
 
 from digitizer_core import stage7_sequence as s7
+from digitizer_core.config import PipelineConfig
 from digitizer_core.regions import Region
 from digitizer_core.stage6_border import border_runs, ring_has_room
+from tests.conftest import PRE_FLIP
 
 #: MFab's A counter at 104.9 mm, near enough: a 5.5 x 6 mm right triangle, its
 #: inscribed circle 3.35 mm across (the column ring needs 3.8: 2 x (0.85 + 0.85 + 0.2))
@@ -70,4 +73,11 @@ def test_both_readers_pass_the_same_room_and_only_under_the_flag():
     src = inspect.getsource(s7)
     assert src.count("functools.partial(ring_has_room,") == 2
     assert src.count("if ring_room else {}") == 2
-    assert 'get("border_significant_ring_room")' in src
+    assert "bool(cfg.border_significant_ring_room)" in src
+
+
+def test_flag_is_on_and_pinned_off():
+    """Kent's flip 2026-11-15 ("Both ON, keep 5.0"): the default is ON; the
+    OFF arm, the border as it was, is pinned in `tests/conftest.py`."""
+    assert PipelineConfig().border_significant_ring_room is True
+    assert PRE_FLIP["border_significant_ring_room"] is False

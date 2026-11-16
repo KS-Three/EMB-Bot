@@ -20,6 +20,8 @@ from digitizer_core import PipelineConfig, get_fabric
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import GAP_SEWABLE_MM, resolve_overlaps
 
+from .conftest import INLETS_2026_11_15_OFF
+
 PIQUE = get_fabric("pique_knit")          # 0.30 mm pull
 PULL = PIQUE.pull_comp_mm
 
@@ -30,7 +32,7 @@ def _r(poly, sid, thread=0, layer=0, **meta) -> Region:
 
 
 def _plan(regions, **extra):
-    c = PipelineConfig(overlap_mm=0.25, extra=dict(extra))
+    c = PipelineConfig(overlap_mm=0.25, extra=dict(extra), **INLETS_2026_11_15_OFF)
     planned, _w = resolve_overlaps(regions, PIQUE, c)
     return {p.region.shape_id: p.polygon for p in planned}
 
@@ -129,7 +131,7 @@ def _off_angle(regions, sid):
     with neither flag."""
     from digitizer_core.machine import FILL_ROW_MM
     from digitizer_core.stage6_fill import best_fill_angle_deg
-    planned, _w = resolve_overlaps(regions, PIQUE, PipelineConfig(overlap_mm=0.25))
+    planned, _w = resolve_overlaps(regions, PIQUE, PipelineConfig(overlap_mm=0.25, **INLETS_2026_11_15_OFF))
     poly = next(p.polygon for p in planned if p.region.shape_id == sid)
     return best_fill_angle_deg(poly, FILL_ROW_MM * max(0.1, PIQUE.density_adjust))
 
@@ -152,12 +154,12 @@ def test_a_fill_with_no_angle_of_its_own_keeps_the_angle_it_sewed_at():
                   {"pull_comp_along_stitch_only": True, "growth_keeps_gaps": True}):
         def scene():
             return [_r(g, sid, tier="fill") for sid, g in shapes.items()]
-        planned, _w = resolve_overlaps(scene(), PIQUE, PipelineConfig(overlap_mm=0.25, extra=dict(flags)))
+        planned, _w = resolve_overlaps(scene(), PIQUE, PipelineConfig(overlap_mm=0.25, extra=dict(flags), **INLETS_2026_11_15_OFF))
         for p in planned:
             want = _off_angle(scene(), p.region.shape_id)
             assert p.stitch_angle_deg is not None and _same_angle(p.stitch_angle_deg, want), (flags, p.region.shape_id)
 
 
 def test_off_hands_stage_7_no_angle_for_a_free_fill():
-    planned, _w = resolve_overlaps([_r(box(0, 0, 20, 6), "F", tier="fill")], PIQUE, PipelineConfig(overlap_mm=0.25))
+    planned, _w = resolve_overlaps([_r(box(0, 0, 20, 6), "F", tier="fill")], PIQUE, PipelineConfig(overlap_mm=0.25, **INLETS_2026_11_15_OFF))
     assert planned[0].stitch_angle_deg is None

@@ -1341,9 +1341,17 @@ class PipelineConfig:
     # where `sliver_prune` never runs). Both widths are reads of the raster
     # against existing measures (the source pixel; `thread_profile().width_mm`,
     # the weight `RUN_MIN_AREA_MM2` squares), no new stitch value: gate 1 does
-    # not apply. False is the engine before the flag, byte for byte. Tests:
+    # not apply. Since 2026-11-16 only a FRAGMENT goes -- a piece of a longer
+    # line the art draws and the masks lost, its ink running on out of it by
+    # two or more arms sewn in another colour (`sliver_prune` module note);
+    # a whole mark, a slit (the crest's quills), a line sewn on in its own
+    # colour (To a T's speed lines) and a dot-rung tittle (`lone_glyph_keep`)
+    # stay. **ON since 2026-11-16, Kent's tick** (review pack review-1115,
+    # 2026-11-15: "speck_prune (Recommended)"; the rule is that narrower
+    # fragment rule). False is the engine as it was; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_speck_prune.py`; doc `docs/missing-invented-traced-2026-11-14.md`.
-    speck_prune: bool = False
+    speck_prune: bool = True
     # An art outline holds more than it is (built OFF 2026-11-14, Kent's
     # lt_k_line, 3 pins: "the red bean stitch should not have infill outside
     # of it", "The red box is missing here"). The red box with a white K
@@ -1498,6 +1506,22 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_text_gap_flips_2026_11_15.py`.
     compact_satin_keeps_gaps: bool = True
+    # A small three-sided counter sews as ONE fanned satin, the pro's way
+    # (`stage6_counter_fan`, `stage7_sequence.stitch_one`; built OFF
+    # 2026-11-14 as `cfg.extra["counter_fan_satin"]`, #1559, #1563). Kent's
+    # MFab pin "random stitch in the middle", and "I want it exactly like the
+    # pros": the pro sews the A's white counter as an underlay zigzag and one
+    # satin base to tip whose crosses turn along the narrow arm; ours sewed a
+    # fill. Only a shape whose OWN tier is "auto", that is an enclosed
+    # background and not lettering; refused wherever a cross would pass the
+    # satin ceiling (`machine.SATIN_MAX_WIDTH_MM`, gate 1: MFab at its own
+    # 104.9 mm refuses, the 5.7 mm arm waits on a sew-out). **ON since
+    # 2026-11-15, Kent's flip** ("Both ON, keep 5.0", with
+    # `border_significant_ring_room`), promoted from `cfg.extra` to a field so
+    # the default can be ON. False is the ladder as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_counter_fan.py`.
+    counter_fan_satin: bool = True
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
@@ -6640,6 +6664,20 @@ class PipelineConfig:
     # ruling: expect to move them once real portraits are on screen.
     border_significant_area_share: float | None = None
     border_abrupt_raggedness: float | None = None
+    # "significant" earns no ring where the ring has no room for a column
+    # (`stage6_border.ring_has_room`, `stage7_sequence._border_wanted`'s
+    # `room`; built OFF 2026-11-14 as `cfg.extra["border_significant_ring_
+    # room"]`, #1519). A shape too narrow for the border column lightened its
+    # ring to a three-pass bean loop 0.85 mm inside its own fill, on top of
+    # it, covering no edge: MFab's A counter, a 3.35 mm white triangle on the
+    # photo lane, Kent's pin "random stitch in the middle". The pro sews the
+    # counter as one piece. Per-shape intent still beats it; the other border
+    # modes never read it. **ON since 2026-11-15, Kent's flip** ("Both ON,
+    # keep 5.0", with `counter_fan_satin`), promoted from `cfg.extra` to a
+    # field so the default can be ON. False is the border as it was, byte for
+    # byte; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False. Tests: `tests/test_border_ring_room.py`.
+    border_significant_ring_room: bool = True
 
     # Stage 6 — the appliqué tier (docs/specialty-techniques-2026-08-01.md §2).
     #
@@ -6970,6 +7008,44 @@ class PipelineConfig:
     # (`PipelineResult.proof_art`, set by `finish_generation` when this is on).
     # OFF: no read, no re-plan, the plan and report byte for byte.
     proofread_guard_clipped: bool = False
+    # A shape's own outline inlets kept open at stitch time
+    # (`digitizer_core/outline_inlets.py`, 2026-11-14, #1528; built OFF as
+    # `cfg.extra["outline_inlets_kept"]`). Kent's "shape detail lost" pins:
+    # dot_music's notch ("Missing the notch taken out of the circle"),
+    # Ahora's gear ("should look more like a gear"), the crest's open beak.
+    # Stage 4 traces the inlet; stage 5's pull growth closed a fill's notch
+    # from both walls, and a satin's smoothed rails ran over a gear's tooth
+    # gaps. ON: a fill's growth keeps out of its own inlets (0.5-2 mm across)
+    # and their mouths, when it has at most two (a notch) or its edge is a
+    # regular row of teeth; a satin whose edge is a regular row of teeth
+    # (inlets 3% of its area, tooth areas alike) is re-tiered as a fill before
+    # the one plan (or, with `outline_inlets_teeth`, split into teeth and
+    # body). Feathered and lobed edges, letters and hand-set tiers never move
+    # (#1567: the first build cost 4.9x on the heraldic crest at 53 mm).
+    # Shape reads, no stitch value (gate 1 does not apply).
+    # **ON since 2026-11-15, Kent's tick "K-Line box + gear flags"** (relayed
+    # by the director), promoted from `cfg.extra` to a field so the default
+    # can be ON. False is the engine as it was; `tests/conftest.py` PRE_FLIP
+    # and `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_outline_inlets.py`.
+    outline_inlets_kept: bool = True
+    # A toothed edge sewn the pro's way (`outline_inlets.tooth_split`,
+    # 2026-11-14, #1536; built OFF as `cfg.extra["outline_inlets_teeth"]`).
+    # Read only when `outline_inlets_kept` re-plans a satin: re-planned whole
+    # as one fill, Ahora's gear kept its teeth but sewed ragged. ON, a shape
+    # with at least three inlets of about one depth sews its teeth FIRST, each
+    # a fill with rows square to its own axis, then its body on its own tier
+    # (the gear's ring stays a smooth radial satin) over their roots; the
+    # moves between teeth are buried along the root. Read off the pro's
+    # Bridge steering wheel (one satin ring, a column per handle). Ahora at
+    # 80 mm: 16 square tooth blocks, white thread 2 jumps / 1 trim (OFF 1/0).
+    # Shape reads, no stitch value (gate 1 does not apply).
+    # **ON since 2026-11-15, Kent's tick "K-Line box + gear flags"** (relayed
+    # by the director), promoted from `cfg.extra` to a field. False is the
+    # engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_outline_inlets.py`.
+    outline_inlets_teeth: bool = True
 
     # Stage 7 — chaining. Whether a needle-up move that would be trimmed may
     # instead be sewn as a needle-down link, when its path is buried under a

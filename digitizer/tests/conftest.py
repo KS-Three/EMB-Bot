@@ -1069,6 +1069,14 @@ PRE_FLIP.update(COMPACT_KEEPS_GAPS_2026_11_15_OFF)
 TEXT_GAPS_2026_11_15_OFF = {**FINE_BAR_2026_11_15_OFF, **GROUND_RING_2026_11_15_OFF,
                             **BEAN_FOLLOWS_2026_11_15_OFF, **HANDOVER_2026_11_15_OFF,
                             **PUSH_KEEPS_GAPS_2026_11_15_OFF, **COMPACT_KEEPS_GAPS_2026_11_15_OFF}
+# `border_significant_ring_room` ("Both ON, keep 5.0", with
+# `counter_fan_satin`), a field since (`cfg.extra` was its only door):
+# `tests/test_border_ring_room.py`.
+RING_ROOM_2026_11_15_OFF = {"border_significant_ring_room": False}
+PRE_FLIP.update(RING_ROOM_2026_11_15_OFF)
+# `counter_fan_satin` (same ruling), a field since: `tests/test_counter_fan.py`.
+COUNTER_FAN_2026_11_15_OFF = {"counter_fan_satin": False}
+PRE_FLIP.update(COUNTER_FAN_2026_11_15_OFF)
 # `lettering_columns_apex_pro` ("Flip all three ON", Kent 2026-11-15, the apex_pro family): `tests/test_column_apex_pro.py`.
 APEX_PRO_2026_11_15_OFF = {"lettering_columns_apex_pro": False}
 PRE_FLIP.update(APEX_PRO_2026_11_15_OFF)
@@ -1084,6 +1092,16 @@ PRE_FLIP.update(RING_FLOOR_2026_11_15_OFF)
 # `lone_glyph_keep` (Kent's tick 2026-11-15): `tests/test_lone_glyph_keep.py`.
 LONE_GLYPH_2026_11_15_OFF = {"lone_glyph_keep": False}
 PRE_FLIP.update(LONE_GLYPH_2026_11_15_OFF)
+# `speck_prune` (Kent's tick 2026-11-15, the fragment rule): `tests/test_speck_prune.py`.
+SPECK_2026_11_16_OFF = {"speck_prune": False}
+PRE_FLIP.update(SPECK_2026_11_16_OFF)
+# `outline_inlets_kept` (Kent's tick 2026-11-15, "K-Line box + gear flags"):
+# `tests/test_outline_inlets.py`.
+INLETS_2026_11_15_OFF = {"outline_inlets_kept": False}
+PRE_FLIP.update(INLETS_2026_11_15_OFF)
+# `outline_inlets_teeth` (the same tick): `tests/test_outline_inlets.py`.
+TEETH_2026_11_15_OFF = {"outline_inlets_teeth": False}
+PRE_FLIP.update(TEETH_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

@@ -2092,8 +2092,8 @@ def _border_wanted(region, border_style: str, total_area: float,
     seam-ownership prediction ahead of it, so the two cannot disagree about
     which shapes are the bordered ones.
 
-    `room` (`cfg.extra["border_significant_ring_room"]`, built OFF
-    2026-11-14): a callable, the shape's `stage6_border.ring_has_room`.
+    `room` (`cfg.border_significant_ring_room`, built OFF 2026-11-14, ON
+    since Kent's 2026-11-15 flip): a callable, the shape's `stage6_border.ring_has_room`.
     "significant" earns no border where the ring has no room for a column,
     only for a bean loop inside the fill. Per-shape intent still beats it.
     None: as before.
@@ -3135,14 +3135,16 @@ def sequence(
     # a photograph stage 0 routes to gradient does not get borders
     # automatically. That is a stage-0 routing question, not a border one.
     border_style = (cfg.border or ("significant" if photo else "off")).lower()
-    # `cfg.extra["border_significant_ring_room"]` (built OFF 2026-11-14):
-    # "significant" earns no ring where it would only lighten to a bean loop
-    # inside the shape's fill (`stage6_border.ring_has_room`, MFab's A counter)
+    # `cfg.border_significant_ring_room` (built OFF 2026-11-14): "significant"
+    # earns no ring where it would only lighten to a bean loop inside the
+    # shape's fill (`stage6_border.ring_has_room`, MFab's A counter).
+    # ON since 2026-11-15, Kent: "Both ON, keep 5.0"
     ring_room = (border_style == "significant"
-                 and bool((getattr(cfg, "extra", None) or {}).get("border_significant_ring_room")))
-    # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14): a small
-    # three-sided counter as one fanned satin (`stitch_one`, `stage6_counter_fan`)
-    counter_fan = bool((getattr(cfg, "extra", None) or {}).get("counter_fan_satin"))
+                 and bool(cfg.border_significant_ring_room))
+    # `cfg.counter_fan_satin` (built OFF 2026-11-14): a small three-sided
+    # counter as one fanned satin (`stitch_one`, `stage6_counter_fan`).
+    # ON since 2026-11-15, Kent: "Both ON, keep 5.0"
+    counter_fan = bool(cfg.counter_fan_satin)
     # The significance denominator: the design's own stitched area, so the
     # gate is a SHARE and moves with the design instead of being a mm floor
     # (which would be a physical constant, and gate 1 territory).
@@ -3685,8 +3687,8 @@ def sequence(
             shape_underlay = p.region.meta.get("underlay_style")
             eff_underlay_style = (shape_underlay if shape_underlay is not None
                                   else underlay_style)
-            # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14,
-            # `stage6_counter_fan`): a small three-sided counter sews as ONE
+            # `cfg.counter_fan_satin` (built OFF 2026-11-14, ON since
+            # Kent's 2026-11-15 flip; `stage6_counter_fan`): a small three-sided counter sews as ONE
             # fanned satin, the pro's way, where every cross fits under the
             # satin ceiling (`machine.SATIN_MAX_WIDTH_MM`, gate 1). The
             # shape's OWN tier must be "auto": a review-screen choice wins,

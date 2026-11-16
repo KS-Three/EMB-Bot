@@ -1,5 +1,6 @@
 """A small three-sided counter sewn as ONE fanned satin, the way the pro's
-file sews it (`cfg.extra["counter_fan_satin"]`, built OFF 2026-11-14).
+file sews it (`cfg.counter_fan_satin`, built OFF 2026-11-14; ON since Kent's
+2026-11-15 flip, "Both ON, keep 5.0").
 
 Kent's MFab pin "random stitch in the middle" and his word that day, "I want it
 exactly like the pros". The A's white counter in M-FAB (hat, 104.9 mm) is a

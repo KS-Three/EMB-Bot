@@ -929,9 +929,10 @@ def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
                                                       base_deg=explicit) is None
 
 
-#: the geometry flags (comment at `GAP_SEWABLE_MM`, and `outline_inlets`): a
-#: pass with none is the engine as it was
-GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps", "outline_inlets_kept")
+#: the geometry flags in `cfg.extra` (comment at `GAP_SEWABLE_MM`): a pass
+#: with none -- and with `cfg.outline_inlets_kept` off, `_off_angles` -- is
+#: the engine as it was
+GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps")
 
 
 def _off_angles(regions, fabric, cfg, design_class, hairline) -> dict[str, float]:
@@ -942,7 +943,8 @@ def _off_angles(regions, fabric, cfg, design_class, hairline) -> dict[str, float
     guessed the old shape). So stage 5 runs once as it was, and each such
     fill's angle is read off the shape that run plans for it. -> {shape id:
     the angle stage 6 would have sewn it at}."""
-    off = replace(cfg, extra={k: v for k, v in (cfg.extra or {}).items() if k not in GROWTH_FLAGS})
+    off = replace(cfg, extra={k: v for k, v in (cfg.extra or {}).items() if k not in GROWTH_FLAGS},
+                  outline_inlets_kept=False)
     planned, _w = resolve_overlaps(regions, fabric, off, design_class, hairline)
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     by_id = {r.shape_id: r for r in regions}
@@ -994,7 +996,10 @@ def resolve_overlaps(
     flags_extra = getattr(cfg, "extra", None) or {}
     along = bool(flags_extra.get("pull_comp_along_stitch_only")) and pull > 0
     keep_gaps = bool(flags_extra.get("growth_keeps_gaps"))
-    keep_inlets = bool(flags_extra.get("outline_inlets_kept")) and pull > 0
+    # `cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick "K-Line box
+    # + gear flags"; comment at the field): a fill's growth keeps out of its
+    # own outline's inlets.
+    keep_inlets = bool(getattr(cfg, "outline_inlets_kept", False)) and pull > 0
     if keep_inlets:
         from . import outline_inlets
     # a fill with no angle of its own keeps the angle it sewed at (`_off_angles`)
@@ -1315,7 +1320,7 @@ def resolve_overlaps(
                         if regions[int(i)] is not r]
                 grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap)
 
-            # `cfg.extra["outline_inlets_kept"]` (built OFF, `outline_inlets`):
+            # `cfg.outline_inlets_kept` (ON, Kent 2026-11-15; `outline_inlets`):
             # a fill's growth stays out of its own outline's inlets (a notch,
             # a tooth gap), as `growth_keeps_gaps` keeps it out of counters.
             # A satin on its rails takes no growth here; a letter's openings
