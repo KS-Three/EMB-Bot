@@ -3060,6 +3060,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             corner_fold_apex_side: bool = False,
                             pull_keep=None,
                             edge_walk_judge_off: bool = False,
+                            judge_entry_free: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3106,7 +3107,11 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     `edge_walk_judge_off`: `cfg.extra["edge_walk_judge_off_walk"]` (built OFF
     2026-11-16) -- under `edge_walk`, `fold_cuts`' judge reads each cut
     candidate on the walk OFF sews instead of `connectors_buried`'s; off,
-    today's judge."""
+    today's judge.
+    `judge_entry_free`: `cfg.extra["lettering_columns_judge_entry_free"]`
+    (built OFF 2026-11-16) -- `fold_cuts`' judge sews each candidate cut
+    from no entry and to no exit, so where stage 7 brings the needle in
+    cannot change the cut; off, today's judge."""
     _args = dict(locals())
     from .outline_cut import fold_apex_side_scope, letter_columns, stroke_width
 
@@ -3182,6 +3187,16 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         judge_kw = {k: v for k, v in run_kw.items() if k != "edge_walk"}
         if edge_walk and not edge_walk_judge_off:
             judge_kw = {**judge_kw, "connectors_buried": True}
+        # `judge_entry_free` (`cfg.extra["lettering_columns_judge_entry_free"]`,
+        # built OFF 2026-11-16): each candidate is sewn from no entry and to
+        # no exit. With them, the walk -- which column sews first, so which
+        # end is tucked under its neighbour and which butts it -- followed
+        # the needle's way in, the judge's reading followed the walk, and
+        # the cut followed the reading: Becker's A took another cut with
+        # its word entered from the left. The letter's own walk still
+        # starts by the needle (`sew` below).
+        if judge_entry_free:
+            judge_kw = {**judge_kw, "start_near": None, "end_near": None}
 
         def judge(cols, cpoly):
             return sewn_knots(column_runs(leaned(cols, cpoly), recorded(cpoly), shape_id, **judge_kw)[0])

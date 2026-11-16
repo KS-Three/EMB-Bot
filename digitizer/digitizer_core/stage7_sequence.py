@@ -4170,6 +4170,11 @@ def sequence(
                     # off, today's call
                     **({"edge_walk_judge_off": True}
                        if cfg.extra.get("edge_walk_judge_off_walk") else {}),
+                    # `cfg.extra["lettering_columns_judge_entry_free"]` (built OFF
+                    # 2026-11-16): the fold-cut judge sews from no entry; off,
+                    # today's call
+                    **({"judge_entry_free": True}
+                       if cfg.extra.get("lettering_columns_judge_entry_free") else {}),
                     # `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14):
                     # the push held out of bays and gaps; off, today's call
                     **({"pull_keep": push_keep(p)} if keep_gaps else {}))
