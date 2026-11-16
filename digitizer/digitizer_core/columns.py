@@ -3162,11 +3162,14 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         # this letter will be, and read for folds and knots
         # (`outline_cut._fold_refine`, `outline_cut.sewn_knots`)
         from .outline_cut import sewn_knots
-        # `edge_walk` orders the walk, not the cut: the judge reads the cut
-        # on `connectors_buried`'s walk, so the cut is the one that arm takes
-        # and each candidate is sewn once, not once per walk tried
-        judge_kw = ({**{k: v for k, v in run_kw.items() if k != "edge_walk"}, "connectors_buried": True}
-                    if edge_walk else run_kw)
+        # `edge_walk` orders the walk, not the cut: the judge reads every
+        # candidate on the walk the lane sews with `edge_walk` OFF, so the cut
+        # is the one OFF takes and each candidate is sewn once, not once per
+        # walk tried. (Until 2026-11-15 it read them on `connectors_buried`'s
+        # walk, whose rerouted hops move `sewn_knots`' reading: and_pizza's p
+        # took a 4-column cut where OFF takes 2, a slit opened at the bowl's
+        # top right and its top-left shoulder was cut flat.)
+        judge_kw = {k: v for k, v in run_kw.items() if k != "edge_walk"}
 
         def judge(cols, cpoly):
             return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **judge_kw)[0])
