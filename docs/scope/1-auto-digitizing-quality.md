@@ -5390,8 +5390,15 @@ Measured on the real gear's bands, bare band before the fix to after (0.4 mm
 thread): 100 mm 1.1% to 0.5%, 160 mm 1.6% to 0.5%, 40 mm 1.5% to 1.3%; 60 mm
 0.5% to 1.3% (0.2 mm nicks on the ring edge, the same by eye). Rendered
 through the pipeline at 40 / 60 / 100 / 160 mm
-(`docs/renders/shaped-outline-flip-2026-11-16/`): against main's fill the
-satin is truer at 40 and 60 mm and a tie at 100 and 160 mm. Scan with the flag
+(`docs/renders/shaped-outline-flip-2026-11-16/`): no wedge at any size.
+
+**Who sews the gear, with `outline_inlets_kept` / `_teeth` ON (2026-11-15,
+#1594).** At 100 and 160 mm the inlets flags take it first (teeth as fill
+blocks, 586 and 963 white points) and this flag changes nothing: identical
+ON and OFF, and that is the cleaner gear. At 40 and 60 mm the inlets flags
+leave it, main sewed a fill blob, and this flag sews the toothed satin (79
+and 130 points): the flip's whole visible effect
+(`gear-merged-main-vs-flipped-40-to-160mm.jpg`). Scan with the flag
 ON over 11 logos at 19 sizes: only the gear is laid out; MFab hat and LC at
 100 mm and "(hed) p.e." at 180 mm sew the same stitches ON and OFF (plan md5).
 (measured 2026-11-16, `tests/test_outline_follow_shape.py`, 35 tests)

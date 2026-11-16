@@ -112,8 +112,14 @@ flip did nothing and then looked worse; two things on main had moved under it:
   md5 ON and OFF. Renders: `docs/renders/shaped-outline-flip-2026-11-16/`.
 - Tools that made this fast: save the band + hole WKT from one digitize, then
   replay `shaped_band.layout` offline (seconds) with needle holes drawn.
-- `outline_inlets_teeth` (OFF, another lane) aims at the same gear another
-  way; if it flips, one of the two must own the gear.
+- **Who sews the gear now.** `outline_inlets_kept` / `_teeth` went ON the
+  same day (#1594, Kent's 11-15 tick). Rendered on the merged tree: at 100
+  and 160 mm the inlets flags take the gear first (teeth as fill blocks) and
+  this flag changes nothing, identical ON and OFF, and that is the cleaner
+  gear. At 40 and 60 mm inlets leaves it, main sewed a fill blob, and this
+  flag sews the toothed satin. So the flip's visible effect is the SMALL
+  gear only. Check main for a second owner before measuring a flip: it moved
+  three times under this one (frame guard, redraw, inlets).
 
 Related: [[hairline-keyline-bean-2026-11-13]], [[eye-first-diagnosis-2026-11-13]],
 [[border-from-outline-line-art-guard-2026-10-25]].
