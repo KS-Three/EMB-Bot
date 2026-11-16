@@ -3187,14 +3187,26 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             lk = {k: v for k, v in lc_kw.items() if k != "small_bold"}
             rk = {k: v for k, v in run_kw.items() if k != "thin_floor"}
         cut = letter_columns(poly, pitch_mm=spacing_mm, **lk, **extra)
+        runs, report = sew_cut(cut.columns, cut.cuts, cut.unsewn, cut.poly, rk)
+        if cut.before_absorb is not None:
+            # `absorb_unsewn` (built OFF) merged a bare piece: kept only if
+            # the letter sews better for it (`absorb_gains`)
+            runs0, report0 = sew_cut(*cut.before_absorb, cut.poly, rk)
+            if absorb_gains(runs0, runs, poly):
+                report["absorbed"] = len(cut.before_absorb[2]) - len(cut.unsewn)
+            else:
+                runs, report = runs0, report0
+        return runs, report
+
+    def sew_cut(cols, cuts, unsewn, cpoly, rk):
         # `cfg.lettering_columns_apex_cut`: the merged tips' crosses, for the
         # walk (`column_runs`); a cut with none, the call is today's
-        apex_x = [(c[0], c[1]) for c in cut.cuts if c[2] == "apex"]
+        apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"]
         if apex_x:
             rk = {**rk, "apex_crosses": apex_x}
-        runs, report = column_runs(leaned(cut.columns, cut.poly), recorded(cut.poly), shape_id, **rk)
-        report["cuts"] = len(cut.cuts)
-        report["columns_unsewn"] += len(cut.unsewn)
+        runs, report = column_runs(leaned(cols, cpoly), recorded(cpoly), shape_id, **rk)
+        report["cuts"] = len(cuts)
+        report["columns_unsewn"] += len(unsewn)
         return runs, report
     runs, report = sew()
     if small_bold:
@@ -3222,6 +3234,17 @@ def satin_cover(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> f
     if not segs or poly.area <= 0:
         return 0.0
     return unary_union([q.buffer(half_mm) for q in segs]).intersection(poly).area / poly.area
+
+
+def absorb_gains(before: list[StitchRun], after: list[StitchRun], poly: Polygon) -> bool:
+    """`outline_cut.absorb_unsewn`'s sewn judge: the merged cut's runs
+    (`after`) cover more of the letter than the cut's own (`before`), and add
+    at least as much thread inside it as outside it (`thread_cover_spill`;
+    the same "net" rule as `HANDBACK_RULE`). A merge that re-pairs a ring
+    across its counter, or folds a column through an arm, covers less."""
+    c0, s0 = thread_cover_spill(before, poly)
+    c1, s1 = thread_cover_spill(after, poly)
+    return c1 > c0 and c1 - c0 >= s1 - s0
 
 
 def thread_cover_spill(runs: list[StitchRun], poly: Polygon,
