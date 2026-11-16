@@ -16,6 +16,14 @@ input stage 7 handed over, four flip-1 flags ON
   0.35 mm inner-corner chamfer, where the pro sews level crosses to the top;
 - Drone's N: the diagonal's foot stepped its needles back up the stem, the
   "upright stub".
+
+The 11-16 re-check (reading order and the entry-free judge ON in both arms)
+held it on two faults of its own, fixed 11-16 and read here too:
+- Golden Tee's script tails taper to a point, and the flag turned their last
+  crosses along the stroke (`column_lean.FLAT_END_TAPER`);
+- Drone's N: the level foot ends in the letter's corner, and the needle ran
+  0.76 mm back up over it to the stem -- a running stitch on top of finished
+  satin (`columns._cover_the_hop`).
 """
 from __future__ import annotations
 
@@ -149,3 +157,46 @@ def test_the_drone_n_foot_has_no_upright_stub():
     assert len(right) >= 4
     assert all(r1 >= r0 - 0.02 for r0, r1 in zip(right[:-1], right[1:])), right
     assert x1 - right[-1] < 0.12, right
+
+
+def test_a_tapered_tip_is_not_a_flat_end():
+    # Golden Tee's script tails narrow to a point: their original crosses
+    # third to fifth from the tip read 0.38-0.61 of the column's median, where
+    # every flat end the flag was built for reads 0.83 or more. The flag
+    # turned their last crosses along the stroke. Left alone: ON is OFF.
+    for name in ("goldentee_tail", "goldentee_slash"):
+        _p, off = _sew_lane(name, False)
+        _p, on = _sew_lane(name, True)
+        assert [(r.points, r.kind) for r in on] == [(r.points, r.kind) for r in off], name
+
+
+def _worst_on_top(runs) -> float:
+    """The most of any one way between stitches -- a travel or underlay run,
+    or the step into a satin run -- lying on satin the letter finished before
+    it and under none sewn after (`columns._on_top`; a stitch reaches 0.2 mm)."""
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    sat = [(k, LineString(r.points).buffer(0.2)) for k, r in enumerate(runs)
+           if r.kind == stitches.SATIN and len(r.points) >= 2]
+    worst = 0.0
+    for k, r in enumerate(runs[1:], 1):
+        if r.jump:
+            continue
+        path = [runs[k - 1].points[-1], *(r.points if r.kind != stitches.SATIN else r.points[:1])]
+        done = [g for j, g in sat if j < k]
+        later = [g for j, g in sat if j >= k]
+        if done and LineString(path).length > 1e-9:
+            worst = max(worst, columns._on_top(path, unary_union(done),
+                                               unary_union(later) if later else None))
+    return worst
+
+
+def test_no_thread_crosses_the_drone_n_finished_foot():
+    # Turned level, the diagonal's foot ends in the N's corner, and the stem
+    # it butts began 0.85 mm higher: the needle ran back up over the foot,
+    # 0.76 mm of running stitch on top (OFF: 0.25 at most, the left stem's
+    # step onto the diagonal). Now the stem continues down its own axis to
+    # the corner and covers the way in, as the pro's stem runs to the baseline.
+    _p, off = _sew_lane("drone_N", False)
+    _p, on = _sew_lane("drone_N", True)
+    assert _worst_on_top(on) <= _worst_on_top(off) + 0.01
