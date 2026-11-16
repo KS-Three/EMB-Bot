@@ -980,6 +980,13 @@ def direction_histogram(dirpath, bin_deg=15.0):
 #: So 0.01 keeps every plateau re-pick and re-registers a real move of ~0.5 mm or
 #: more. Docs: docs/tripwire-frame-pin-2026-11-15.md.
 PIN_MARGIN = 0.01
+#: A pin is stored rounded to 3 decimals (`detail["frame"]`, the ledger's `frames`).
+#: Read back, a shift or origin within this of the fresh one IS the fresh one, and the
+#: fresh float is used. Without it the pinned path re-cut by ~1e-16: stitch coordinates
+#: are 0.01 mm values and shifts multiples of 0.05 mm, so points sit exactly on 2 mm
+#: cell edges and the float noise flips their bins. Seen 2026-11-15 on precision_drone:
+#: one DST (md5 fda567df), one frame, record 0.373 vs pinned 0.359 (check 43777340840).
+SAME_MM = 1e-6
 
 
 def iou_at_shift(pro_segs, our_segs, dx, dy):
@@ -996,6 +1003,8 @@ def pinned_bounds(natural, x0, y0):
     origin (x0, y0): stepped out by whole CELLs when the design now reaches past
     the pin, so the 2 mm cell grid keeps the pin's phase and nothing is clipped."""
     def snap(pin, nat):
+        if abs(nat - pin) < SAME_MM:
+            return nat                     # the pin IS this origin (stored rounded): keep its exact float
         if nat >= pin:
             return pin
         return pin - CELL * math.ceil((pin - nat) / CELL - 1e-9)
@@ -1033,7 +1042,9 @@ def score_design(dirpath, explain=False, frame=None):
                 source = "re-registered"
             else:
                 source = "pinned"
-                dx, dy, reg_iou = frame["dx"], frame["dy"], pin_iou
+                if abs(frame["dx"] - dx) >= SAME_MM or abs(frame["dy"] - dy) >= SAME_MM:
+                    dx, dy, reg_iou = frame["dx"], frame["dy"], pin_iou
+                # else the climb landed on the pin: keep its exact floats (`SAME_MM`)
                 our_r = shifted(our, dx, dy)
                 bb = pinned_bounds(bounds(pro, our_r), frame["x0"], frame["y0"])
         detail["frame"] = {"source": source, "dx": round(dx, 3), "dy": round(dy, 3),
