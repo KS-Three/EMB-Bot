@@ -414,3 +414,76 @@ def test_under_the_frame_guard_a_field_with_no_teeth_stays_a_field():
     off, tag_off = _guarded(FIELD, FACE, **{FLAG: False})
     assert tag_on == tag_off == 1.11
     assert _md5(on) == _md5(off)
+
+
+# --- a coarse ring (2026-11-16: outline redraw hands the hole over as lines and arcs) ---
+
+def _coarse_gear(sides, taper=0.0, r_hole=R_HOLE, r_root=R_ROOT, r_tip=R_TIP, teeth=TEETH):
+    """`_gear` round a hole of `sides` straight facets, its teeth narrowing by
+    `taper` mm a side from root to tip. -> (band, hole)"""
+    from shapely.geometry import Polygon
+
+    core = Point(0, 0).buffer(r_root, quad_segs=48)
+    half = math.pi * r_root / teeth / 2.0
+    tooth = Polygon([(-half, r_root - 0.2), (half, r_root - 0.2), (half - taper, r_tip), (-half + taper, r_tip)])
+    cogs = [affinity.rotate(tooth, 360.0 * k / teeth, origin=(0, 0)) for k in range(teeth)]
+    hole = Polygon([(r_hole * math.cos(0.1 + 2 * math.pi * k / sides), r_hole * math.sin(0.1 + 2 * math.pi * k / sides))
+                    for k in range(sides)])
+    return unary_union([core, *cogs]).difference(hole), hole
+
+
+def _off_radius(pairs):
+    """How far each cross's ring end stands off its outer end's radius, mm along the ring."""
+    out = []
+    for r, o in pairs:
+        if r is not None:
+            d = (math.atan2(r[1], r[0]) - math.atan2(o[1], o[0]) + math.pi) % (2 * math.pi) - math.pi
+            out.append(abs(d) * math.hypot(*r))
+    return out
+
+
+def test_a_coarse_ring_is_read_as_its_circle(monkeypatch):
+    """A 20-sided hole: 18 degrees a vertex, facets 1.1 mm. The nearest ring
+    point is square to each facet, so a tooth 2.4 mm out stands 0.2 mm off its
+    radius and every sample outside a vertex piles on it (Ahora's gear at 100
+    and 160 mm: bare wedges through the band). Read off a chord as long as the
+    stitch, every cross is on its radius."""
+    from digitizer_core import shaped_band
+
+    band, hole = _coarse_gear(20)
+    assert max(_off_radius(layout(band, hole))) < 0.02
+    monkeypatch.setattr(shaped_band, "_ring_partners", lambda inner, P, nearest, total: nearest)
+    assert max(_off_radius(layout(band, hole))) > 0.2
+
+
+def test_a_corner_of_the_body_is_still_a_corner():
+    """A rectangular hole is four corners and nothing else: no chord reaches
+    across one, and each sample's partner is its nearest ring point, exactly
+    as it was (the fan round a square corner)."""
+    import numpy as np
+    import shapely
+
+    from digitizer_core.shaped_band import _FACET_DEG, _ccw, _read_edge, _ring_partners
+
+    assert _FACET_DEG == 30.0
+    band, body = _frame()
+    inner = _ccw(body.exterior.coords)
+    ring = LineString(inner + inner[:1])
+    P, _arc, _corner, _length = _read_edge(_ccw(band.exterior.coords))
+    nearest = shapely.line_locate_point(ring, shapely.points(P))
+    got = _ring_partners(inner, P, nearest, ring.length)
+    step = np.abs((got - nearest + ring.length / 2.0) % ring.length - ring.length / 2.0)
+    assert float(step.max()) < 1e-3                      # a micron: the root is interpolated
+
+
+def test_a_wall_that_leans_keeps_both_its_crosses():
+    """Square teeth: a wall's two ends stand on one radius, the second cross
+    would be the first laid again, and it is sewn once (2 walls a tooth).
+    Teeth that narrow by 0.5 mm a side lean 27 degrees off it: the two crosses
+    stand more than half the density apart, and dropping one left that strip
+    to two lines 0.45 mm apart (the gap beside every tooth at 160 mm)."""
+    band, hole = _coarse_gear(192)
+    assert sum(1 for r, _o in layout(band, hole) if r is None) == 2 * TEETH
+    band, hole = _coarse_gear(192, taper=0.5, r_hole=5.8, r_root=8.0, r_tip=9.7, teeth=17)
+    assert sum(1 for r, _o in layout(band, hole) if r is None) == 0
+

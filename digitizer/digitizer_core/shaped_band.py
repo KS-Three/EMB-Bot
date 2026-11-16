@@ -34,15 +34,20 @@ satin is digitized by hand:
     that end on it. A tooth's side wall runs along its cross and has none of
     it, so it gets its two corners and nothing between; a tooth's tip and a
     root get the satin's density, on the edge that shows;
-  * each hole's PARTNER on the hole's ring is the ring point nearest it,
-    never stepping backwards. Round a square corner of the hole the partners
-    all stand on that corner -- the fan a hand digitizer pivots there -- and
+  * each hole's PARTNER on the hole's ring is the ring point it stands
+    square to, never stepping backwards -- the ring read off a chord as long
+    as the stitch, so a ring of coarse facets reads as its curve
+    (`_ring_partners`, 2026-11-16; it was the nearest ring point, which on a
+    faceted ring piles the crosses on its vertices). Round a square corner
+    of the hole the partners all stand on that corner -- the fan a hand
+    digitizer pivots there -- and
     on a small ring they bunch: one nearer than
     `machine.SATIN_SHORT_STITCH_AT_MM` to the two before it is pulled back
     off the ring by the least that clears them, the satin's own short
     stitch, on the ring rail (the rail that does not carry the shape);
-  * a side wall is sewn ONCE: its second end is reached along the wall,
-    outer hole to outer hole;
+  * a side wall is sewn ONCE where its two crosses would be one line (within
+    half the density of each other): its second end is reached along the
+    wall, outer hole to outer hole. A wall that leans keeps both;
   * NO line on top. The outer edge is drawn the way every satin edge is, by
     its needle holes, and they are on the art.
 
@@ -77,6 +82,10 @@ _SLACK_MM = 0.02
 _PULL_STEP_MM = 0.05
 #: more of the stitches than this lost to pinches or cut short: not laid out
 _MAX_LOST_FRAC = 0.2
+#: a vertex of the HOLE's ring turning less than this is a facet of a curve,
+#: not a corner of the body (`_ring_partners`). Half the outer edge's corner
+#: angle, and the 30 degrees a side wall is read by: no number of its own.
+_FACET_DEG = CORNER_DEG / 2.0
 
 
 def _ccw(coords) -> list[tuple[float, float]]:
@@ -130,6 +139,97 @@ def _read_edge(outer: list[tuple[float, float]]):
     return P, arc, np.asarray(corner, bool), float(seg.sum())
 
 
+def _ring_partners(inner: list[tuple[float, float]], P: np.ndarray, nearest: np.ndarray,
+                   total: float) -> np.ndarray:
+    """Each outer sample's partner on the hole's ring, as a distance round it:
+    the ring point the sample stands SQUARE to, the ring read at the scale of
+    the stitch it carries.
+
+    The nearest ring point is that on a finely traced ring and was the rule
+    until 2026-11-16. Since `outline_redraw_k` the ring arrives as lines and
+    arcs: Ahora's disc at 160 mm is 59 vertices, facets up to 1.3 mm, joined
+    by kinks a tenth of a millimetre long. Nearest-point is square to each
+    FACET: every sample in the wedge outside a vertex lands on that vertex,
+    and at a vertex that dents the other way the partner jumps (0.5 mm on
+    that ring). A tooth tip 3.9 mm out stood 0.45 mm off its radius, three
+    crosses piled on one vertex, the stretch after it got none, and the band
+    showed bare wedges at 12 and 9 o'clock (rendered 2026-11-16).
+
+    A cross w long cannot follow ring detail finer than itself, so the ring's
+    direction under a sample is read off a CHORD: from the ring point w back
+    to the ring point w on, w the sample's distance from the ring. The
+    partner is where the sample stands square to that chord. A polygon of
+    any coarseness then reads as its circle, a kink shorter than the cross
+    turns it by (kink height / w) and no more, and a straight side reads as
+    itself.
+
+    A vertex turning `_FACET_DEG` or more is a corner of the BODY and no
+    chord reaches across it: either side of it the ring is read on its own,
+    every sample in the corner's wedge lands on the corner (the fan), and a
+    ring made only of corners is read exactly as it was. `nearest` is each
+    sample's nearest ring distance: where to look, and the answer where
+    nothing stands square."""
+    m = len(inner)
+    A = np.asarray(inner, float)
+    seg = np.roll(A, -1, axis=0) - A
+    Ls = np.hypot(*seg.T)
+    ok = Ls > 1e-9
+    if int(ok.sum()) < 3:
+        return nearest
+    start = np.concatenate([[0.0], np.cumsum(Ls)[:-1]])
+    live = [j for j in range(m) if ok[j]]
+    unit = seg[live] / Ls[live, None]
+    # corners of the body, as distances round the ring (vertex j opens segment j)
+    turn = np.degrees(np.arccos(np.clip((np.roll(unit, 1, axis=0) * unit).sum(axis=1), -1.0, 1.0)))
+    corners = np.sort(np.asarray([start[j] for j, t in zip(live, turn) if t >= _FACET_DEG], float))
+    S, R, LO, HI = [], [], [], []
+    for j in live:
+        k = max(1, int(math.ceil(Ls[j] / _READ_MM)))
+        t = np.linspace(0.0, 1.0, k + 1)
+        S.append(start[j] + t * Ls[j])
+        R.append(A[j] + t[:, None] * seg[j])
+        if len(corners):
+            # the corner at or before this segment's start, at or after its end
+            before = corners[np.searchsorted(corners, start[j] + 1e-9) - 1]
+            after_i = int(np.searchsorted(corners, start[j] + Ls[j] - 1e-9))
+            after = corners[after_i] if after_i < len(corners) else corners[0] + total
+            if before > start[j] + 1e-9:
+                before -= total
+            lo, hi = float(before), float(after)
+        else:
+            lo, hi = -math.inf, math.inf
+        LO.append(np.full(k + 1, lo))
+        HI.append(np.full(k + 1, hi))
+    S1, R1, LO1, HI1 = np.concatenate(S), np.concatenate(R), np.concatenate(LO), np.concatenate(HI)
+    S3 = np.concatenate([S1 - total, S1, S1 + total])                         # three laps: no seam
+    R3 = np.tile(R1, (3, 1))
+    LO3 = np.concatenate([LO1 - total, LO1, LO1 + total])
+    HI3 = np.concatenate([HI1 - total, HI1, HI1 + total])
+    longest = float(Ls.max())
+    out = np.array(nearest, float)
+    for i in range(len(P)):
+        if i % 256 == 0:
+            deadline.check("keyline")
+        s0 = float(nearest[i])
+        w = float(np.hypot(*(P[i] - R3[np.searchsorted(S3, s0)])))
+        half = longest / 2.0 + w + 2.0 * _READ_MM
+        lo, hi = int(np.searchsorted(S3, s0 - half)), int(np.searchsorted(S3, s0 + half, side="right"))
+        s = S3[lo:hi]
+        back = np.maximum(s - w, LO3[lo:hi])
+        on = np.minimum(s + w, HI3[lo:hi])
+        cx = np.interp(on, S3, R3[:, 0]) - np.interp(back, S3, R3[:, 0])
+        cy = np.interp(on, S3, R3[:, 1]) - np.interp(back, S3, R3[:, 1])
+        dx, dy = P[i, 0] - R3[lo:hi, 0], P[i, 1] - R3[lo:hi, 1]
+        f = cx * dx + cy * dy                       # 0 where the sample stands square to the chord
+        out_side = cy * dx - cx * dy > 0.0          # ... and on the band's side of it (the ring CCW)
+        hit = np.flatnonzero((f[:-1] > 0.0) & (f[1:] <= 0.0) & out_side[:-1] & out_side[1:])
+        if not len(hit):
+            continue
+        at = s[hit] + (s[hit + 1] - s[hit]) * f[hit] / (f[hit] - f[hit + 1])
+        out[i] = float(at[np.argmin(np.abs(at - s0))]) % total
+    return out
+
+
 def _read_band(band, hole: Polygon):
     """The band read from its outer edge, or None when it cannot be (module
     notes). -> (P, corner, n, ring, total, lap, u, reach, lat, L, walls,
@@ -154,9 +254,9 @@ def _read_band(band, hole: Polygon):
     if n < 8:
         return None
 
-    # each sample's partner on the ring: the nearest ring point, unwrapped
-    # round the ring and never stepping backwards
-    at = shapely.line_locate_point(ring, shapely.points(P))
+    # each sample's partner on the ring: the ring point it stands square to
+    # (`_ring_partners`), unwrapped round the ring and never stepping backwards
+    at = _ring_partners(inner, P, shapely.line_locate_point(ring, shapely.points(P)), total)
     step = (np.diff(at, append=at[:1]) + total / 2.0) % total - total / 2.0
     lap = float(step.sum())
     if not 0.9 * total <= lap <= 1.1 * total:
@@ -339,16 +439,26 @@ def layout(band, hole: Polygon, density_mm: float | None = None):
     # ring. Both corners keep their needle hole, and the stitch after still
     # leaves from the right one -- from the root corner into a root, so no
     # thread crosses the gap between two teeth.
+    #
+    # "One line" is read against the satin's own spacing: a zigzag lays a
+    # line every half density, so the second cross is spare only when it lies
+    # within that of the first cross and the wall, at the ring AND at the
+    # wall's far end. It was the short-stitch line at the ring and half the
+    # wall's length across it, which also dropped the cross of a wall that
+    # LEANS (a real gear's tooth tapers: 11 degrees off its radius at
+    # 160 mm, ring ends 0.24 mm apart, 0.27 across) and left that strip to
+    # two lines 0.45 mm apart.
     real = [r for r, _o in out]
+    spare = density / 2.0
     for i in range(len(out)):
         (_r0, o0), (r1, o1) = out[i - 1], out[i]
         r0 = real[i - 1]
         chord = math.dist(o0, o1)
         w = math.dist(r1, o1)
-        if chord < 1e-6 or math.dist(r0, r1) >= near:
+        if chord < 1e-6 or math.dist(r0, r1) >= spare:
             continue
         across = abs((o1[0] - o0[0]) * (o1[1] - r1[1]) - (o1[1] - o0[1]) * (o1[0] - r1[0])) / w
-        if across < 0.5 * chord:
+        if across < min(0.5 * chord, spare):
             out[i] = (None, o1)
             real[i] = r0                    # a third end on the same wall chains on
     if sum(1 for r, _o in out if r is not None) < 8:
