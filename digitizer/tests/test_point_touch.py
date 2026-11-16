@@ -84,9 +84,12 @@ def test_off_never_calls_it(monkeypatch):
 
 
 def test_the_photo_lanes_never_call_it(monkeypatch):
-    """Logos only (2026-11-15): MFab hat is classed `photo_scene`, and there
-    the cut broke WELDING's W into a "~"; every corpus photo it ran on moved.
-    The pipeline calls it on a flat design and never on a photo class."""
+    """Flat logos only (2026-11-15): MFab hat is classed `photo_scene`, and
+    there the cut broke WELDING's W into a "~"; every corpus photo it ran on
+    moved. On `drone_render` (gradient) it cut a shading blend that then read
+    as a fourth blocking THREAD_MATCH_POOR (`test_thread_match_area_in_message`).
+    The pipeline calls it on a flat design and never on a photo or gradient
+    class."""
     from pathlib import Path
 
     from digitizer_core import point_touch
@@ -96,7 +99,7 @@ def test_the_photo_lanes_never_call_it(monkeypatch):
     monkeypatch.setattr(point_touch, "apply_point_touch_split",
                         lambda regions: calls.append(len(regions)) or [])
     art = Path(__file__).resolve().parent.parent / "testdata" / "logo_whitebg.png"
-    for forced, expect in (("photo_scene", 0), ("photo_subject", 0), ("flat", 1)):
+    for forced, expect in (("photo_scene", 0), ("photo_subject", 0), ("gradient", 0), ("flat", 1)):
         calls.clear()
         build_generation(art, PipelineConfig(target_width_mm=60.0, forced_class=forced,
                                              point_touch_split=True))

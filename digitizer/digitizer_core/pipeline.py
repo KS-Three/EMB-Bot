@@ -1130,11 +1130,14 @@ def build_generation(
     # column build fanned into spikes): a body pinched under
     # `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
     # tagger, so each is sewn (and tagged) on its own. False: never loads.
-    # Logos only (2026-11-15): on a photo class every quantised blob pinches
-    # somewhere -- MFab hat (photo_scene) lost WELDING's W to a cut, and the
-    # three corpus photos moved -- so the photo lanes never call it, as
-    # `sliver_prune` and `bevel_ring_fold` above.
-    if cfg.point_touch_split and classification.class_ not in PHOTO_CLASSES:
+    # Flat logos only (2026-11-15): on a photo class every quantised blob
+    # pinches somewhere -- MFab hat (photo_scene) lost WELDING's W to a cut,
+    # and the three corpus photos moved -- and a tonal render is the same:
+    # `drone_render` (gradient) lost an 8.47 mm2 shading blend off a 0111
+    # field, which then stood alone as a fourth blocking THREAD_MATCH_POOR.
+    # Every cut that read better (NSYNC, the QR, low_poly, the pixel sprite)
+    # was on a flat design, so only "flat" calls it.
+    if cfg.point_touch_split and classification.class_ == "flat":
         from .point_touch import apply_point_touch_split
         apply_point_touch_split(regions)
 
