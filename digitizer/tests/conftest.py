@@ -1027,6 +1027,9 @@ PRE_FLIP.update(BRIDGE_2026_11_15_OFF)
 # `outline_frame_guard` (Kent 2026-11-15, ticked ON): `tests/test_outline_frame_guard.py`.
 FRAME_GUARD_2026_11_15_OFF = {"outline_frame_guard": False}
 PRE_FLIP.update(FRAME_GUARD_2026_11_15_OFF)
+# `point_touch_split` (Kent 2026-11-15, ticked ON; promoted from cfg.extra): `tests/test_point_touch.py`.
+POINT_TOUCH_2026_11_15_OFF = {"point_touch_split": False}
+PRE_FLIP.update(POINT_TOUCH_2026_11_15_OFF)
 # Kent's flips 2026-11-15, from the review sheets (art | OFF | ON | pro).
 # `fine_bar_survive` ("Flip both ON", with `small_text_handover`):
 # `tests/test_fine_bar.py`.
