@@ -57,7 +57,7 @@ import math
 from dataclasses import dataclass
 
 import numpy as np
-from shapely.geometry import LineString, Polygon
+from shapely.geometry import LineString, Point, Polygon
 
 from .columns import Column
 
@@ -140,9 +140,12 @@ def lean_stations(piece: Polygon, axis, c, pitch_mm: float):
 
 # `lean_flat_ends` (`cfg.extra["lettering_columns_lean_flat_ends"]`,
 # 2026-11-14, built OFF): a leaned column's end on a FLAT face of the letter
-# (its top, its baseline, a slanted cut-off) is mitred to that face, as the
-# cut mitres a square column's end (`outline_cut._mitre_ends`) -- measured
-# against the house cross, not the column's own normal. Re-stationed under
+# (its top, its baseline, a slanted cut-off) turns its crosses to that face
+# over its last stroke width and a half, the last cross the face itself
+# (`_flat_ends`; until 2026-11-16 `outline_cut._mitre_ends`, which moved
+# slanted arms' level tops and Drone's N foot away from the pro, see
+# `FLAT_END_SPAN`) -- measured against the house cross, not the column's
+# own normal. Re-stationed under
 # the house cross, a stroke's last cross no longer lay on its face: Becker
 # MARINE's N at 101.9 mm (Kent's #10 at its top, #11 at its foot, "The
 # letters should be flat") ended in crosses 10-12 deg off its top line and
@@ -167,15 +170,142 @@ def lean_flat_ends_scope(on: bool):
         _LEAN_FLAT_ENDS.reset(token)
 
 
+# The face a leaned end turns to (2026-11-16, the fix behind the 11-15 STOP:
+# as first built, `outline_cut._mitre_ends` on the leaned stations, the flag
+# moved letters FURTHER from the pro -- `tools/apex_pro.py` on the lane
+# inputs of 46 letters it moved, Gaulke, ProSeal, Drone, Becker, N SYNC):
+# - it must span `FLAT_END_SPAN` of the column's median cross, measured
+#   across the column. A slanted arm whose top is LEVEL has a 0.3-0.4 mm
+#   chamfer at its inner corner, 35 deg off the house cross, and the mitre
+#   took it for the face: Gaulke's V/W top 8.4 -> 18.5, ProSeal's Y 12.2 ->
+#   17.2, where the pro sews level crosses to the top. The small-bold
+#   mitre's own guard (`outline_cut.SMALL_BOLD_MITRE_SPAN`), the same 0.6.
+FLAT_END_SPAN = 0.6
+# - the crosses turn to it over `FLAT_END_TURN_W` stroke widths before it,
+#   each a little more, the last one the face. The mitre turned them only
+#   inside the face's own wedge, a few crosses through up to 30 deg: Gaulke's
+#   N fanned (13.7 -> 17.9 against the pro's level crosses) and Drone's N
+#   foot, 22 deg, stepped its needles back up the stem (the "upright
+#   stub"). Turned gradually: Gaulke's N 12.1, Becker's N foot 10.6 -> 2.3
+#   (the mitre 8.1), the pro's "crosses parallel to the baseline, the last
+#   one lying ON it" (`docs/flat-ends-pro-2026-11-14.md`, #11).
+FLAT_END_TURN_W = 1.5
+
+
+def _end_face(st, piece: Polygon, u, n, cut_lines, W: float, end: int, med: float):
+    """The flat face at this end of leaned stations `st` (`end` 1: the last,
+    -1: the first): the longest outline edge within 1.6 W of the end, beyond
+    its last cross, `MITRE_MIN_DEG`..`MITRE_MAX_DEG` off the cross `n`,
+    spanning `FLAT_END_SPAN` of `med` across the column, and not on a cut.
+    -> (p, q, f) or None."""
+    from .outline_cut import CAP_CUT_CLEAR_MM, MITRE_MAX_DEG, MITRE_MIN_DEG
+
+    def proj(p):
+        return p[0] * u[0] + p[1] * u[1]
+
+    def projn(p):
+        return p[0] * n[0] + p[1] * n[1]
+    last = (st if end > 0 else st[::-1])[-1]
+    t_last = end * proj(((last[0][0] + last[1][0]) / 2, (last[0][1] + last[1][1]) / 2))
+    cs = list(piece.exterior.coords)
+    face = None
+    for p, q in zip(cs[:-1], cs[1:]):
+        L = math.dist(p, q)
+        if L < 0.25 * W:
+            continue
+        m = Point((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+        if any(c.distance(m) < CAP_CUT_CLEAR_MM for c in cut_lines):
+            continue                                    # a cut or a counter, not an end
+        if end * proj((m.x, m.y)) < t_last - 1.6 * W:
+            continue                                    # not at this end
+        f = ((q[0] - p[0]) / L, (q[1] - p[1]) / L)
+        off = math.degrees(math.acos(min(1.0, abs(f[0] * n[0] + f[1] * n[1]))))
+        if not (MITRE_MIN_DEG <= off <= MITRE_MAX_DEG):
+            continue
+        if min(end * proj(p), end * proj(q)) < t_last - 0.5 * W:
+            continue                                    # not beyond the last cross
+        if abs(projn(q) - projn(p)) < FLAT_END_SPAN * med:
+            continue                                    # a corner chamfer, not the end
+        if face is None or L > face[2]:
+            face = (p, q, L, f)
+    return None if face is None else (face[0], face[1], face[3])
+
+
 def _flat_ends(st, col: Column, c, cut_lines, pitch_mm: float):
-    """`lean_flat_ends`: `outline_cut._mitre_ends` on leaned stations, its
-    axis the normal of the house cross `c` (so the crosses read square to
-    it and a face `MITRE_MIN_DEG`..`MITRE_MAX_DEG` off the CROSS is mitred)."""
-    from .outline_cut import _mitre_ends
+    """`lean_flat_ends`: at an end of leaned stations on a flat face
+    (`_end_face`), every station within `FLAT_END_TURN_W` widths of the
+    face keeps its centre and turns its cross from the house cross `c`
+    toward the face, in proportion to how near it stands; the stations
+    within half a pitch of the face give way to the face itself, a
+    `CAP_INSET_MM` inside it. An end is left as it was when a turned cross
+    falls off the piece, a rail would step back, or the new crosses leave
+    the piece."""
+    from .outline_cut import CAP_INSET_MM
+    if len(st) < 4:
+        return st
+    piece, W = col.piece, col.width_mm
     u = (c[1], -c[0])
     if u[0] * col.axis[0] + u[1] * col.axis[1] < 0:
         u = (-u[0], -u[1])
-    return _mitre_ends(st, col.piece, u, cut_lines, pitch_mm, col.width_mm)
+    n = (-u[1], u[0])
+    lengths = sorted(math.dist(a, b) for a, b in st)
+    med = lengths[len(lengths) // 2]
+
+    def proj(p):
+        return p[0] * u[0] + p[1] * u[1]
+
+    def projn(p):
+        return p[0] * n[0] + p[1] * n[1]
+    cover = piece.buffer(0.05)
+    flip = projn(st[0][0]) > projn(st[0][1])           # the a end lies on +n
+    for end in (1, -1):
+        order = st if end > 0 else st[::-1]
+        if set(order[-1]) & set(order[-2]):
+            continue                                    # a fan already ends on its slant
+        face = _end_face(st, piece, u, n, cut_lines, W, end, med)
+        if face is None:
+            continue
+        p, q, f = face
+        if f[0] * n[0] + f[1] * n[1] < 0:
+            f = (-f[0], -f[1])
+        ca, cb = (p, q) if projn(p) < projn(q) else (q, p)
+        fn = (-f[1], f[0])
+        mid = ((p[0] + q[0]) / 2, (p[1] + q[1]) / 2)
+        if not piece.covers(Point(mid[0] + fn[0] * 0.02, mid[1] + fn[1] * 0.02)):
+            fn = (-fn[0], -fn[1])
+        ca_in = (float(ca[0] + fn[0] * CAP_INSET_MM), float(ca[1] + fn[1] * CAP_INSET_MM))
+        cb_in = (float(cb[0] + fn[0] * CAP_INSET_MM), float(cb[1] + fn[1] * CAP_INSET_MM))
+        t_face = end * proj(((ca_in[0] + cb_in[0]) / 2, (ca_in[1] + cb_in[1]) / 2))
+        zone = FLAT_END_TURN_W * W
+        new = []
+        for a, b in order:
+            m = ((a[0] + b[0]) / 2, (a[1] + b[1]) / 2)
+            tm = end * proj(m)
+            if tm >= t_face - 0.5 * pitch_mm:
+                break                                   # the face takes its place
+            s = (tm - (t_face - zone)) / zone
+            if s <= 0:
+                new.append((a, b))
+                continue
+            d = ((1 - s) * n[0] + s * f[0], (1 - s) * n[1] + s * f[1])
+            dl = math.hypot(*d)
+            hit = _cross_along(piece, m, (d[0] / dl, d[1] / dl), n)
+            if hit is None:
+                new = None
+                break
+            x, y = hit[0]                               # ordered along n
+            new.append((y, x) if flip else (x, y))
+        if new is None or len(new) < 2:
+            continue
+        new.append((cb_in, ca_in) if flip else (ca_in, cb_in))
+        if any(end * proj(a1) < end * proj(a0) - 0.02 or end * proj(b1) < end * proj(b0) - 0.02
+               for (a0, b0), (a1, b1) in zip(new[:-1], new[1:])):
+            continue                                    # a rail would step back
+        if not all(cover.covers(LineString([a, b])) for a, b in new[-6:]):
+            continue
+        new = [(tuple(map(float, a)), tuple(map(float, b))) for a, b in new]
+        st = new if end > 0 else new[::-1]
+    return st
 
 
 def lean_column(col: Column, house_deg: float, pitch_mm: float, cut_lines=()) -> Column:
@@ -200,14 +330,22 @@ def lean_column(col: Column, house_deg: float, pitch_mm: float, cut_lines=()) ->
                   dropped_mm=dropped)
 
 
-def lean_columns(columns: list[Column], house_deg: float | None, pitch_mm: float) -> list[Column]:
+def lean_columns(columns: list[Column], house_deg: float | None, pitch_mm: float,
+                 letter: Polygon | None = None) -> list[Column]:
     """Every column of a letter through `lean_column`; `house_deg` None is
     the lane as it was (the same list object). Inside `italic_lean`, a bar
-    of an italic word is crossed along the word's stems instead."""
+    of an italic word is crossed along the word's stems instead. `letter`
+    (read by `lean_flat_ends` only): the polygon the columns were cut from,
+    for its counters."""
     if house_deg is None:
         return columns
     words = _ITALIC.get()
     word = _word_of(columns, words) if words else None
+    # `lean_flat_ends`: an edge of a counter is the inside of a bowl, never
+    # an end -- the R's leg met its counter's floor and turned to it, 21 deg
+    # the wrong way (Drone, 35.7 -> 38.5 against the pro there)
+    counters = ([LineString(r.coords) for r in letter.interiors]
+                if letter is not None and _LEAN_FLAT_ENDS.get() else [])
 
     def cuts(i):
         # `lean_flat_ends`: a face that lies on another piece of the letter
@@ -215,7 +353,7 @@ def lean_columns(columns: list[Column], house_deg: float | None, pitch_mm: float
         if not _LEAN_FLAT_ENDS.get():
             return ()
         return [LineString(o.piece.exterior.coords) for j, o in enumerate(columns)
-                if j != i and o.piece is not None and not o.piece.is_empty]
+                if j != i and o.piece is not None and not o.piece.is_empty] + counters
     if word is None:
         return [lean_column(c, float(house_deg), pitch_mm, cuts(i)) for i, c in enumerate(columns)]
     return [italic_bar(c, word, pitch_mm) or lean_column(c, float(house_deg), pitch_mm, cuts(i))
