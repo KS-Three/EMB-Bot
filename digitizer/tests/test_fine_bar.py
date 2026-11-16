@@ -47,8 +47,10 @@ def _regions(cfg, pieces, *, ink=(0, 0, 0)):
     return out
 
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().fine_bar_survive is False
+def test_flag_is_on_by_default_and_pinned_off_before_the_flip():
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().fine_bar_survive is True          # Kent, 2026-11-15: "Flip both ON"
+    assert PRE_FLIP["fine_bar_survive"] is False
 
 
 def test_a_split_bar_becomes_one_straight_bar():
@@ -143,7 +145,7 @@ def _field_over_bar(cfg, tagged: bool):
 
 
 def test_stage5_keeps_a_redrawn_bar_the_field_grew_over():
-    off = PipelineConfig()
+    off = PipelineConfig(fine_bar_survive=False)
     planned, warns = _resolve(_field_over_bar(off, tagged=True), off)
     lost = [i for w in warns if w.get("code") == "SHAPE_NOT_STITCHED" for i in w.get("ids") or ()]
     assert "SB" in lost, "the fixture must lose the bar today, or the test proves nothing"
@@ -169,7 +171,7 @@ def test_off_never_loads_the_module(monkeypatch):
     from pathlib import Path
     from digitizer_core.pipeline import build_generation
     art = Path(__file__).resolve().parents[1] / "testdata" / "logo_whitebg.png"
-    build_generation(str(art), PipelineConfig(target_width_mm=30.0))
+    build_generation(str(art), PipelineConfig(target_width_mm=30.0, fine_bar_survive=False))
     assert called == []
     build_generation(str(art), PipelineConfig(target_width_mm=30.0, fine_bar_survive=True))
     assert called == [1]

@@ -84,7 +84,7 @@ MIN_SCALE = 1.15
 # Stage 5 grows both by the fabric's pull (0.3 mm by default), so 0.4 here
 # rendered the date's T and 1 touching the emblem between them.
 CLEAR_MM = 0.8
-# `_is_ground` under `cfg.extra["small_text_reset_ground_ring"]` (built OFF
+# `_is_ground` under `cfg.small_text_reset_ground_ring` (ON since 2026-11-15, Kent; built OFF
 # 2026-11-14): a region round the line covering this share of a ring this
 # wide round its hull, and this much of the hull itself, is the line's ground.
 GROUND_RING_MM = 0.3
@@ -648,7 +648,7 @@ def _traced_stroke(shapes) -> float:
 def _is_ground(poly, hull, ring: bool = False) -> bool:
     """Is `poly` the ground a line of lettering sits on (not in its way)?
     As always: it covers half the line's hull. `ring`
-    (`cfg.extra["small_text_reset_ground_ring"]`, built OFF 2026-11-14): also
+    (`cfg.small_text_reset_ground_ring`, ON since 2026-11-15, Kent: "Flip both ON"): also
     when it SURROUNDS the line -- `GROUND_RING_SHARE` of a `GROUND_RING_MM`
     ring round the hull -- and still covers `GROUND_MIN_IN` of the hull.
     Fremont's "1895" sits in a hole of the design-wide white field, which
@@ -1878,7 +1878,8 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
             r.meta[WIDENED_LETTERING_KEY] = round(max(widen, 1e-4), 4)
             spines = r.meta.get("bean_letter_spines") if bean_follows else None
             if spines:
-                # `cfg.extra["small_text_reset_bean_follows"]` (built OFF
+                # `cfg.small_text_reset_bean_follows` (ON since 2026-11-15, Kent:
+                # "Flip both ON"; built OFF
                 # 2026-11-14): a dark-ink stroke got its bean spines from its
                 # DRAWN polygon (`thin_ink.bean_dark_ink`, earlier in stage
                 # 4), and stage 7 sews the spines, so the grown letter sewed
@@ -2019,7 +2020,8 @@ def passes_counter_guard(members: list[Region], p: Prep, floor_base_mm: float | 
     return narrow is None or narrow >= counter_floor_mm(floor_base_mm, wt)
 
 
-# `cfg.extra["small_text_handover"]` (built OFF 2026-11-14): a second
+# `cfg.small_text_handover` (ON since 2026-11-15, Kent: "Flip both ON"; built OFF
+# 2026-11-14): a second
 # true-size pass, after the re-set, for the lines it leaves as tall enough --
 # from 0.9 of `small_text_cap_mm` up to this many caps -- so no size of a line
 # gets neither repair. ProSeal's tagline at the Studio's hat auto-fit (109.6

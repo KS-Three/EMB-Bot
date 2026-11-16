@@ -1,4 +1,4 @@
-"""`cfg.extra["small_text_reset_ground_ring"]` (built OFF 2026-11-14): the
+"""`cfg.small_text_reset_ground_ring` (ON since 2026-11-15, Kent; built OFF 2026-11-14): the
 ground a re-set line sits IN is its ground, not an obstacle.
 
 Fremont's "1895" sits in a hole of the design-wide white field. The field
@@ -64,11 +64,12 @@ def test_fremont_est_1895_is_raised_and_sews_as_grown_only_on():
         date = [r for r in gen.regions if r.thread_number == "0862" and -15.5 < r.polygon.centroid.y < -9.5
                 and abs(r.polygon.centroid.x) < 14 and r.meta.get("small_text_enlarged")]
         return rows, date
-    rows, date = date_rows(None)
+    rows, date = date_rows({"small_text_reset_ground_ring": False,
+                            "small_text_reset_bean_follows": False})
     assert len(rows) == 2 and all(r.get("skipped") == "no_room" for r in rows), rows
     assert date == []
-    rows, date = date_rows({"extra.small_text_reset_ground_ring": True,
-                            "extra.small_text_reset_bean_follows": True})
+    rows, date = date_rows({"small_text_reset_ground_ring": True,
+                            "small_text_reset_bean_follows": True})
     assert len(rows) == 2 and all(r.get("scale", 0) > 1.5 for r in rows), rows
     assert len(date) == 7
     assert min(r.polygon.bounds[3] - r.polygon.bounds[1] for r in date) > 3.5   # was 1.9 mm

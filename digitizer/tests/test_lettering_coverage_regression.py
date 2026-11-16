@@ -400,6 +400,32 @@ def test_the_overshoot_half_does_not_grow():
         f"one kernel — do not read the delta as mm2 of thread.")
 
 
+@functools.lru_cache(maxsize=1)
+def _measured_push_keep():
+    """The same run with `satin_push_keeps_gaps` at Kent's 0.5 (2026-11-15)."""
+    cfg = base_cfg(WIDTH_MM, GARMENT, **SMALL_TEXT_PRE_FLIP, satin_push_keeps_gaps=0.5)
+    gen, result, plan, design = digitize_once(FIXTURE, cfg)
+    return features_full(FIXTURE, cfg, gen, result, plan, design)
+
+
+def test_the_gap_keep_costs_no_element_and_holds_the_bar():
+    """`satin_push_keeps_gaps` 0.5 under this file's own coverage bar.
+
+    The Director held its flip on this (2026-11-15): at 0.5 the push held out
+    of the tagline's 2.4 mm letters' gaps took 150 crosses under
+    `SATIN_MIN_CROSS_MM`, the drop check removed them -- the E's upper arms
+    and INC's N stem -- and uncovered ink read 0.0232 against the 0.02 bar
+    (sheet `eye_pairs_out/flips-1115/text-gaps/enthusiast_uncovered.png`).
+    The hold now yields at `stage6_satin.PUSH_KEEP_MIN_CROSS_MM`: 0.0182, the
+    tagline reading as OFF. The bar is the one above, not moved."""
+    row = _measured_push_keep()
+    assert row["uncovered_elements"] == 0
+    assert row["uncovered_ink_frac"] <= UNCOVERED_FRAC_BAR, (
+        f"with satin_push_keeps_gaps 0.5, {FIXTURE.name} leaves "
+        f"{row['uncovered_ink_frac']:.4f} of its ink unthreaded against the "
+        f"{UNCOVERED_FRAC_BAR} bar: is the keep taking crosses under the drop line again?")
+
+
 def test_no_element_of_the_wordmark_goes_unsewn():
     """Colour-free coverage: artwork ink with no thread on it.
 

@@ -29,6 +29,7 @@ the OLDEST lines whole to the archive.
 - [Compare ends on regenerate](compare-ends-on-regenerate-2026-11-08.md) — Kent 11-08 "Keep as is": Compare view (#1345) is an Original sub-mode, a regeneration ends it; don't build survival
 - [Connector edge-walk](connector-edge-walk-2026-11-14.md) — `connectors_edge_walk` ON 11-14 (Kent "Flip ON"): the walk ordered so the next stroke covers each join; 28 designs 268/44/32 mm, trims 589/639/596
 - [Connectors on top](connectors-on-top-2026-11-14.md) — Becker #14/#15 = Column-lane hops across finished satin; `lettering_columns_connectors_buried` OFF: 268 -> 44 mm, +50 trims; MFab #2 = photo border lightened to a bean loop
+- [Corner-fold kappa](corner-fold-kappa-2026-11-15.md) — Becker hat kappa drop 0.337->0.289 = scorecard REGISTRATION (0.1 mm moves the 2 mm grid), not the fold: one frame +0.006/-0.008; tripwire frame pin ON 11-15 (Kent "Flip ON now")
 - [Corner turn](corner-turn-2026-11-14.md) — `corner_fold_apex_side` ON 11-14 (Kent "Flip ON"): the fold takes a pointed-slot E, one column round both corners; only the 5 Becker jobs move, trims 589->584
 - [Counter fan](counter-fan-2026-11-14.md) — MFab's A counter as one fanned satin, 29.9 -> 7.1 deg off the pro at 90 mm; 5.0 mm cap refuses it from ~94 mm; Kent 11-15 "Both ON, keep 5.0", flip pending
 - [Curve facets](curve-facets-2026-11-14.md) — lettering chords = the Column lane's W/16 simplify, not stage 4; `curve_chord_mm` + `curve_chord_stage4` OFF; Tires #0 cured (stage 4), lettering pins not measurable; next = satin end jitter
@@ -102,7 +103,7 @@ the OLDEST lines whole to the archive.
 - [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball flat + monarch borders_last off SHIPPED 11-12; "drift" was a width slip: re-digitize at the original target, not manifest width_mm
 
 - [Stroke bridge keep](stroke-bridge-keep-2026-11-14.md) — arabic stems = stage-3 absorb of same-ink crumbs; keep a chain bridging two hosts; pin 2 cured, pin 3 not; ticked ON 11-15, pending
-- [Subject loss](subject-loss-2026-11-14.md) — toadstool B 76: "lettering" note now keyed on text tags; `subject_edge_recall` metric-only, D +0.88 vs Kent but "not flat" alone +0.77, toadstool barely below Good; no threshold
+- [Subject loss](subject-loss-2026-11-14.md) — toadstool B 76: "lettering" note now keyed on text tags; `subject_edge_recall` metric-only; photo sitting 11-15: 14/14 LOST, 0 Good = no verdict; Kent "Park it, metric only"
 - [Thread guard](thread-guard-2026-11-14.md) — group_consistent_thread (ON 11-14): a lone letter takes its word's thread only if it matches its own art no worse; Drone refused 7.27 -> 13.17 (grade kept D), Bridge U moves 15.29 -> 14.11
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha

@@ -1,0 +1,109 @@
+{
+ "marine96_A": {
+  "exterior": [
+   [
+    -11.8828,
+    29.6633
+   ],
+   [
+    -15.9257,
+    13.6298
+   ],
+   [
+    -24.8628,
+    13.6109
+   ],
+   [
+    -25.3847,
+    21.7075
+   ],
+   [
+    -27.6417,
+    29.6299
+   ],
+   [
+    -22.8879,
+    29.64
+   ],
+   [
+    -21.3752,
+    27.8267
+   ],
+   [
+    -17.7864,
+    27.8343
+   ],
+   [
+    -16.7025,
+    29.6531
+   ],
+   [
+    -11.8828,
+    29.6633
+   ]
+  ],
+  "holes": [
+   [
+    [
+     -20.967,
+     22.8745
+    ],
+    [
+     -20.0347,
+     18.8125
+    ],
+    [
+     -18.665,
+     19.9323
+    ],
+    [
+     -18.2364,
+     23.7947
+    ],
+    [
+     -20.476,
+     23.7899
+    ],
+    [
+     -20.967,
+     22.8745
+    ]
+   ]
+  ],
+  "label": "marine96_A",
+  "slug": "becker_lc_large",
+  "shape_id": "Sbf7cf86a",
+  "kw": {
+   "trim_at_mm": 3.0,
+   "spacing_mm": 0.4,
+   "split_above_mm": null,
+   "pull_mm": 0.3,
+   "pull_floor_mm": 1.5,
+   "underlay_style": "center_run",
+   "start_near": [
+    -8.695349333605371,
+    29.650210553812922
+   ],
+   "end_near": [
+    -29.14308954173212,
+    29.62605921520468
+   ],
+   "counter_clear_mm": 0.0,
+   "fold_cuts": true,
+   "square_ends": true,
+   "short_columns": true,
+   "inside_connectors": true,
+   "counter_holes": null,
+   "rail_axis": true,
+   "small_bold": false,
+   "pull_by_stroke": false,
+   "corner_fold": true,
+   "text_lean_deg": 4.6629367034256575e-15,
+   "inside_stagger": true,
+   "connectors_buried": false,
+   "edge_walk": true,
+   "corner_fold_apex_side": false,
+   "pull_keep": null
+  }
+ }
+}

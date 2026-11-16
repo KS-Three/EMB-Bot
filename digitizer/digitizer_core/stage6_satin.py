@@ -3696,7 +3696,7 @@ def _tip_corner_angle(spine: list, poly, half_sewn: float,
 # stroke-2026-10-22`), while a thin column still needs all of it (+0.42 at 2.6 mm).
 _SEAM_HOLD_MIN_CROSS_MM = 3.0
 
-# `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14; Kent's merged-
+# `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14; Kent's merged-
 # letter pins, `docs/closed-counters-traced-2026-11-14.md`). The rail push
 # below holds back from a COUNTER (a hole of the shape) so it stays
 # `floor_mm` wide, but sews the full pull into every other gap the art keeps:
@@ -3713,6 +3713,34 @@ _SEAM_HOLD_MIN_CROSS_MM = 3.0
 PUSH_KEEP_MARGIN_MM = 0.25
 #: rays per numpy block in `_kept_limits` (bounds the rays x edges arrays)
 _KEEP_RAY_BLOCK = 256
+#: The narrowest cross the gap keep may leave: a hairline column
+#: (`_HAIRLINE_COLUMN_MM`, the minimum cross plus the 20% the rails lose).
+#: The keep only ever takes push away, and on small lettering the push is
+#: what makes a stroke sewable: enthusiast's 2.4 mm tagline (art strokes
+#: 0.07-0.23 mm) at 0.5 had 150 crosses held from ~0.76 mm to under
+#: `SATIN_MIN_CROSS_MM`, which the drop check removes -- the E's upper arms
+#: and INC's N stem went (Director's hold of the flip, 2026-11-15). A cross
+#: the hold would leave under this gets back what it needs, never more than
+#: its unheld push, so the keep can narrow a stroke but never lose one.
+PUSH_KEEP_MIN_CROSS_MM = _HAIRLINE_COLUMN_MM
+
+
+def _keep_yields(d: float, ua: float, ub: float, ka: float, kb: float,
+                 sewable: float = PUSH_KEEP_MIN_CROSS_MM) -> tuple[float, float]:
+    """The two pushes of a cross `d` mm wide after the gap keep, given back
+    where the hold leaves the cross under `sewable`: `ua`/`ub` the pushes
+    before the keep, `ka`/`kb` after it (each <= its unheld push). What is
+    short is returned evenly across the two sides, a side never past its
+    unheld push; a cross whose unheld push cannot reach `sewable` either
+    gets its whole push back, as it had before the keep."""
+    short = sewable - (d + ka + kb)
+    if short <= 0.0:
+        return ka, kb
+    room_a, room_b = max(0.0, ua - ka), max(0.0, ub - kb)
+    ga = min(room_a, short / 2.0)
+    gb = min(room_b, short - ga)
+    ga = min(room_a, short - gb)
+    return ka + ga, kb + gb
 
 
 def _ring_segments(geom) -> np.ndarray:
@@ -3752,6 +3780,20 @@ def _ray_hits(starts: np.ndarray, dirs: np.ndarray, segs: np.ndarray, reach: flo
         s = (wx * dirs[:, None, 1] - wy * dirs[:, None, 0]) / den
     ok = (np.abs(den) > 1e-12) & (s >= -1e-9) & (s <= 1.0 + 1e-9) & (t >= -1e-9) & (t <= reach)
     return np.where(ok, np.clip(t, 0.0, reach), np.nan)
+
+
+def _clip_rect(geom, x0: float, y0: float, x1: float, y1: float):
+    """`shapely.clip_by_rect`, or a plain intersection with the box where GEOS
+    refuses the fast clip's three-point ring (`stage6_fill.SewnCover.clipped`
+    met the same refusal). Found when `satin_push_keeps_gaps` 0.5 was flipped
+    (2026-11-15): `test_preflight`'s full-bleed design raised in `_push_rails`
+    on CI. A clip GEOS accepts is returned untouched."""
+    import shapely
+    from shapely.geometry import box
+    try:
+        return shapely.clip_by_rect(geom, x0, y0, x1, y1)
+    except shapely.errors.GEOSException:
+        return geom.intersection(box(x0, y0, x1, y1))
 
 
 def _kept_limits(rail_a: list, rail_b: list, poly: Polygon, other, reach: float,
@@ -3857,7 +3899,7 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
     holes = [Polygon(ring) for ring in poly.interiors]
     holes = [h for h in holes if not h.is_empty]
     reach = 2.0 * pull_mm + floor_mm + 0.5
-    # `keep` (`cfg.extra["satin_push_keeps_gaps"]`, built OFF; None is the
+    # `keep` (`cfg.satin_push_keeps_gaps`, built OFF; None is the
     # engine as it was): the counter rule above for the gaps a counter test
     # cannot see -- comment at `PUSH_KEEP_MARGIN_MM`
     kept_a = kept_b = None
@@ -3869,12 +3911,11 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         other = None
         if not keep.is_empty and rail_a:
             # only the ink within the column's reach: clip before the overlay
-            import shapely
             xy = np.asarray(list(rail_a) + list(rail_b), float)
             (x0, y0), (x1, y1) = xy.min(axis=0) - reach - 1.0, xy.max(axis=0) + reach + 1.0
-            near_ink = shapely.clip_by_rect(keep, x0, y0, x1, y1)
+            near_ink = _clip_rect(keep, x0, y0, x1, y1)
             if not near_ink.is_empty:
-                own = shapely.clip_by_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
+                own = _clip_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
                 o = near_ink.difference(own.buffer(PUSH_KEEP_MARGIN_MM))
                 other = None if o.is_empty else o
         kept_a, kept_b = _kept_limits(rail_a, rail_b, poly, other, reach, pull_mm, keep_floor)
@@ -3915,7 +3956,9 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         ka = room(pa, ux, uy)
         kb = room(pb, -ux, -uy)
         if kept_a is not None:
+            ua, ub = ka, kb
             ka, kb = min(ka, float(kept_a[i])), min(kb, float(kept_b[i]))
+            ka, kb = _keep_yields(d, ua, ub, ka, kb)     # never a stroke for a gap
         if held is not None and d >= _SEAM_HOLD_MIN_CROSS_MM:
             ka = held_push(pa, ux, uy, ka)
             kb = held_push(pb, -ux, -uy, kb)

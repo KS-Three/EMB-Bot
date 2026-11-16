@@ -29,6 +29,7 @@ from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig, digitize, machine
 from tests.conftest import FLIP_2026_10_23, FLIP_2026_10_30  # the 2026-10-23 flips, pinned off: this file prices another flag
+from tests.conftest import TEXT_GAPS_2026_11_15_OFF  # the six 2026-11-15 text/gap flips move Fremont (14824 -> 14822 on CI); this prices the spokes
 from tests.conftest import EDGE_WALK_2026_11_14_OFF  # edge-walk (ON 2026-11-14, Kent) re-orders the Column-lane walk; this was priced without it
 from digitizer_core.detail_spokes import MIN_TIPS, TIP_DEPTH, find_tips, spoke_runs
 from digitizer_core.regions import Region
@@ -476,7 +477,8 @@ def fremont_off():
                       overrides={"detail_spokes": False, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
                                  **WAVE3_2026_10_26_OFF,    # fine bars moves Fremont's separators
                                  **RECIPE_2026_10_27,        # the recipe sews its ground under them
-                                 **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF})
+                                 **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
+                                 **TEXT_GAPS_2026_11_15_OFF})
 
 
 @pytest.fixture(scope="module")
@@ -486,7 +488,8 @@ def fremont_on():
                       overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
                                  **WAVE3_2026_10_26_OFF,
                                  **RECIPE_2026_10_27,      # as the OFF arm: this prices the spokes
-                                 **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF})
+                                 **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
+                                 **TEXT_GAPS_2026_11_15_OFF})
 
 
 def test_test_environment_caps_ipp_at_avx2():

@@ -114,7 +114,10 @@ def test_stage0_routes_each_job_flat_on_and_gradient_off(slug):
 #: Rows a later, named change re-seeded: key -> (today's ledger baseline, the
 #: change). The doc says so at its head; its attribution is of the old value.
 RESEEDED = {
-    ("mfab_lc", "needle_up_mm"): (441.9, "outline_redraw_k 0.75, 2026-11-14 (#1515)"),
+    ("mfab_lc", "needle_up_mm"): (441.0, "outline_redraw_k 0.75, 2026-11-14 (#1515); re-captured 2026-11-15 "
+                                         "after #1533 (CI 43754823644: 441.9 -> 441.0, inside its 1.7 mm five-pass spread)"),
+    ("hotel_fremont_patch", "trims"): (28, "#1565 Flip PR 2 (Kent 2026-11-15), the small-text re-set flags; "
+                                           "re-captured pinned 2026-11-15 (CI 43772829964: 20 -> 28)"),
 }
 
 
