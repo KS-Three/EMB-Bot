@@ -225,6 +225,13 @@ class PlannedRegion:
     # the two cannot disagree. Recorded rather than re-derived because the
     # compensation already committed to it.
     satin_tier: bool = False
+    # `stitch_angle_deg` is `_off_angles`' pin: the angle this fill sewed at
+    # with the geometry flags off, read off its own shape. Stage 7's like-shape
+    # groups (`cfg.group_consistent_fill_angle`) still count it as free and
+    # vote it, so a pinned shape keeps its group's angle as it did OFF
+    # (2026-11-16: the mascot's right foot sewed 45 deg alone against the
+    # pair's 140 with `outline_inlets_kept`).
+    angle_pinned: bool = False
 
     @property
     def visible_geom(self):
@@ -1485,7 +1492,8 @@ def resolve_overlaps(
                                                covered_by=later[L],
                                                stitch_angle_deg=(axis if axis is not None
                                                                  else pinned.get(r.shape_id)),
-                                               satin_tier=satin_by_id[r.shape_id]))
+                                               satin_tier=satin_by_id[r.shape_id],
+                                               angle_pinned=axis is None and r.shape_id in pinned))
                 left = _largest_polygon(art_left)
                 if extra and left is not None:
                     parent = replace(r, polygon=left, area_mm2=float(left.area))
@@ -1495,7 +1503,8 @@ def resolve_overlaps(
                                          covered_by=later[L],
                                          stitch_angle_deg=(axis if axis is not None
                                                            else pinned.get(r.shape_id)),
-                                         satin_tier=satin_by_id[r.shape_id]))
+                                         satin_tier=satin_by_id[r.shape_id],
+                                         angle_pinned=axis is None and r.shape_id in pinned))
             planned.extend(extra)
 
     if fusing_pairs:

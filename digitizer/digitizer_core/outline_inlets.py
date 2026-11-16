@@ -227,6 +227,16 @@ NOTCH_MAX = 2
 #: (2026-11-15, the crest's lobes; Director's pick: teeth only)
 TEETH_AREA_CV_MAX = 0.35
 
+#: a TOOTH is short against the body it stands on: how far it reaches out
+#: from the body, at most this many times the body's inscribed width. A gear's
+#: teeth are stubs on a ring; Bridge's eight handles (10.9 mm on a 2.65 mm
+#: ring, 4.1x by their boxes) are spokes, and cut as teeth they lost their
+#: taper to straight blocks (2026-11-16, the inlets flip's STOP). Ahora's
+#: gear reads 0.82x by the same boxes. Set from the only two toothed shapes in
+#: the 67 designs of the combined check: a shape reading, not a stitch value
+#: (gate 1 does not apply).
+TOOTH_LEN_OVER_BODY_MAX = 1.5
+
 
 def toothed_satins(regions, cfg, design_class: str = "flat") -> set[str]:
     """Ids of the shapes `outline_inlets_kept` re-tiers before the plan: an
@@ -308,7 +318,8 @@ def _teeth_geometry(poly):
 
 def regular_teeth(poly) -> bool:
     """`poly`'s outer edge is a REGULAR row of teeth: `_teeth_geometry`
-    splits it and its pieces' areas are alike (`TEETH_AREA_CV_MAX`)."""
+    splits it, its pieces' areas are alike (`TEETH_AREA_CV_MAX`), and they
+    are short against the body (`TOOTH_LEN_OVER_BODY_MAX`)."""
     import statistics
     try:
         g = _teeth_geometry(poly)
@@ -316,8 +327,18 @@ def regular_teeth(poly) -> bool:
         return False
     if g is None:
         return False
-    areas = [t.area for t in g[1]]
-    return statistics.pstdev(areas) <= TEETH_AREA_CV_MAX * statistics.mean(areas)
+    body, teeth = g
+    areas = [t.area for t in teeth]
+    if statistics.pstdev(areas) > TEETH_AREA_CV_MAX * statistics.mean(areas):
+        return False
+    return tooth_length(teeth) <= TOOTH_LEN_OVER_BODY_MAX * inscribed_width(body)
+
+
+def tooth_length(teeth) -> float:
+    """The mean long side of the teeth's boxes (mm): how long a tooth is,
+    the way `TOOTH_LEN_OVER_BODY_MAX` was measured."""
+    import statistics
+    return statistics.mean(max(t.bounds[2] - t.bounds[0], t.bounds[3] - t.bounds[1]) for t in teeth)
 
 
 def tooth_split(region):

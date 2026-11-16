@@ -73,6 +73,7 @@ from .columns import (HANDBACK_COVER_MIN, handback_wins, is_fine_bar, is_letteri
                       lettering_columns_shape, satin_cover,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
+from .reading_order import reading_ranks
 from .words import is_text, word_key
 from .monoline import bury_hops, clear_finished_underlay, monoline_stroke
 from .script_strokes import script_strokes_shape, script_word
@@ -2677,8 +2678,12 @@ def _fill_angle_for(p, cfg: PipelineConfig, group: dict | None = None) -> float 
     pro = pro_offset_fill_angle(cfg, p.region.shape_id, poly=p.polygon, base_deg=off)
     if pro is not None:
         return pro
-    if off is None and group:
-        return group.get(p.region.shape_id)
+    if group and (off is None or (getattr(p, "angle_pinned", False)
+                                  and off == p.stitch_angle_deg)):
+        # a pinned fill (stage 5's `_off_angles`) takes its group's angle as
+        # it did with the flags off, else keeps its pin
+        g = group.get(p.region.shape_id)
+        return g if g is not None else off
     return off
 
 
@@ -2934,6 +2939,18 @@ def sequence(
             if _is:
                 off_span[_sid] = _span
             _prev = _is
+    # `cfg.extra["lettering_columns_reading_order"]` (built OFF 2026-11-16):
+    # a span's letters in reading order (`reading_order.reading_ranks`), not
+    # nearest-neighbour from the needle, so no letter's exit can turn the
+    # word round. Off, empty, and the picks below are today's.
+    read_rank: dict[str, int] = {}
+    if off_rank is not None and cfg.extra.get("lettering_columns_reading_order"):
+        _by_span: dict[int, dict] = {}
+        for _p in planned:
+            if _p.shape_id in off_span:
+                _by_span.setdefault(off_span[_p.shape_id], {})[_p.shape_id] = _p.region.polygon
+        for _polys in _by_span.values():
+            read_rank.update(reading_ranks(_polys))
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
     # already has — the browser engine's own digitize.js already multiplies
@@ -3590,9 +3607,13 @@ def sequence(
                  if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
                  and not is_lettering(_pr.region, cfg) and not is_text(_pr.region, cfg)]
         _by_id = {_pr.shape_id: _pr for _pr in _auto}
+        # a fill stage 5 pinned (`PlannedRegion.angle_pinned`) is free here
+        # and votes its pin: the angle its own shape read with the flags off
         group_fill = shared_angles(
-            [_pr.region for _pr in _auto if _fill_angle_for(_pr, cfg) is None],
-            lambda r: best_fill_angle_deg(_fill_poly(_by_id[r.shape_id]), row_mm))
+            [_pr.region for _pr in _auto
+             if _fill_angle_for(_pr, cfg) is None or getattr(_pr, "angle_pinned", False)],
+            lambda r: (_by_id[r.shape_id].stitch_angle_deg if getattr(_by_id[r.shape_id], "angle_pinned", False)
+                       else best_fill_angle_deg(_fill_poly(_by_id[r.shape_id]), row_mm)))
         if cfg.satin_angle_deg is None:
             group_satin = shared_angles(
                 [_pr.region for _pr in _auto
@@ -4988,14 +5009,18 @@ def sequence(
                 # or cap order is in force, whose order the OFF rank IS.
                 pick = min(ranked, key=lambda i: off_rank[group[i].shape_id])
                 span = off_span.get(group[pick].shape_id)
-                if span is not None and cursor is not None and not cap_order:
+                if span is not None and (cursor is not None or read_rank) and not cap_order:
                     same = [i for i in ranked
                             if off_span.get(group[i].shape_id) == span]
                     if not any(i in sew_order for i in same):
-                        here = Point(cursor)
-                        pick = min(same, key=lambda i: (
-                            round(group[i].polygon.distance(here), 6),
-                            off_rank[group[i].shape_id]))
+                        if read_rank:
+                            pick = min(same, key=lambda i: (read_rank.get(group[i].shape_id, len(read_rank)),
+                                                            off_rank[group[i].shape_id]))
+                        else:
+                            here = Point(cursor)
+                            pick = min(same, key=lambda i: (
+                                round(group[i].polygon.distance(here), 6),
+                                off_rank[group[i].shape_id]))
             elif due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
             elif cap_order:
@@ -5037,8 +5062,9 @@ def sequence(
                             if off_span.get(group[i].shape_id) == span]
                     if not any(i in sew_order for i in same):
                         nxt = min(same, key=lambda i: (
-                            round(group[i].polygon.distance(p.polygon), 6),
-                            off_rank[group[i].shape_id]))
+                            (read_rank.get(group[i].shape_id, len(read_rank)),) if read_rank else
+                            (round(group[i].polygon.distance(p.polygon), 6),))
+                            + (off_rank[group[i].shape_id],))
                 q = nearest_points(p.polygon, group[nxt].polygon)[1]
                 exit_near = (float(q.x), float(q.y))
             elif cfg.satin_exit_toward_next:

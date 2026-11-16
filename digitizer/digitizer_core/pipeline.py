@@ -2196,6 +2196,14 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \
             seam_aware_scope(cfg.fill_seam_aware_sections), \
             chord_aim_scope(cfg.satin_free_end_chord_aim):
+        # `outline_inlets_kept` / `_teeth`: logos only, never a photo class
+        # (2026-11-16, as `point_touch_split` and `lone_glyph_keep`): a
+        # photograph's quantised blobs have inlets everywhere, and none of the
+        # flip's combined-check photo moves was read by eye. MFab hat is classed
+        # photo_scene, and is left as it was.
+        if (getattr(result, "design_class", "flat") in PHOTO_CLASSES
+                and any((cfg.extra or {}).get(k) for k in _INLET_FLAGS)):
+            cfg = replace(cfg, extra={k: v for k, v in cfg.extra.items() if k not in _INLET_FLAGS})
         # the result the plan in hand is sewn from: the guard below replans
         # THIS one, so a re-tier here survives its replan (review 2026-11-14:
         # it replanned `result`, and a gear the inlet rule had moved to fill
@@ -2248,6 +2256,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
                 return p
             plan = guard_clipped(planned, cfg, plan, replan)
         return plan
+
+
+#: `outline_inlets`'s two flags, off on a photo class (`plan_stitches`)
+_INLET_FLAGS = ("outline_inlets_kept", "outline_inlets_teeth")
 
 
 def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
