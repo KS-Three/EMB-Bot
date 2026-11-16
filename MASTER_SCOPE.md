@@ -556,7 +556,8 @@ core of Python and GEOS, spread over many passes, no stage the hog. Eight
 exact cuts took 14% off the nine (stitches md5-identical). More cores for the
 letter cuts measured a 7% ceiling and is not built. Three of the four still
 over 25 s spend half their time in generation. Fewer passes is a quality
-trade, Kent's call. Time trees back to back on an idle laptop, by md5.
+trade, Kent's call. **Parked by Kent 2026-11-16 ("Park speed").** Time trees
+back to back on an idle laptop, by md5.
 *(measured 2026-11-16 — `docs/speed-pass-2026-11-16.md`, `tests/test_speed_exact_1116.py`)*
 
 ### CI feedback speed

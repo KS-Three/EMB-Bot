@@ -39,6 +39,11 @@ at most 0.9 / 1.8 s (7%). It also needs `lettering_columns_judge_entry_free`,
 which #1603 left OFF. Fewer passes (a cheaper judge, a candidate cap) is a
 quality trade, Kent's call.
 
+**Parked.** Kent, 2026-11-16, after the idle-laptop and Studio numbers: "Park
+speed". Do not propose speed work (the four jobs over 25 s, fewer passes)
+until he reopens it. He then asked whether hosting in the cloud would be
+faster; not measured.
+
 **Why:** he read over a minute as a reason customers leave.
 
 **How to apply:** before quoting digitize seconds, read
