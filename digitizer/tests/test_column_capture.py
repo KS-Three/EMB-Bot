@@ -208,6 +208,10 @@ def _case_regions(case, rescued_link=True, pre_flip_route=False):
     `dissolve_phantom_blends` is held OFF (ON since Kent's 2026-10-20 flip,
     item 46): the hand labels are shape ids read on the engine without it,
     and on the screenshot the dissolve re-cuts the regions they name.
+    `speck_prune` is held OFF for the same reason (ON since Kent's tick,
+    2026-11-16): a pruned speck's pixels join the shape round it, which
+    moves Golden Tee's S643e40d2 and the screenshot's captures off the ids
+    and sizes the census was read on.
     `pre_flip_route`: the stage-0 flip and the flat soft-edge cure held OFF
     (`PRE_FLIP`), scored against the labels as read on that route
     (`lines_pre_flip_route` where the ids moved with the flip)."""
@@ -221,7 +225,8 @@ def _case_regions(case, rescued_link=True, pre_flip_route=False):
                                               "flat_page_fringe_soft_ramp", "flat_ramp_blend_dissolve")})
     res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True,
                                                     text_cluster_rescued_ink_link=rescued_link,
-                                                    dissolve_phantom_blends=False))
+                                                    dissolve_phantom_blends=False,
+                                                    speck_prune=False))
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
     letters = None
