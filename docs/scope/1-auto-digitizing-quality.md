@@ -5482,7 +5482,11 @@ ground): over the 77 images ON now differs from OFF on 5 (MFab, kanji_brush,
 summit_badge, vintage_engraved_badge, watercolor); kanji_brush matches OFF
 to 38 stitches, vintage with the cutout sews 7.5 % over OFF, and watercolor
 without the cutout still grades D against B (two trims and one thread stack
-over their lines).
+over their lines). **The white loops have a fix behind its own key**
+(`cfg.extra["keyline_loop_fit"]`, built OFF): a keyline whose loop would
+leave its letters a face narrower than the loop sews as the bean, which on
+MFab is 38 to 60 mm; 70 mm and up keep their loops. Measured without the
+cutout only: [`docs/keyline-loop-fit-2026-11-15.md`](../keyline-loop-fit-2026-11-15.md).
 *(measured 2026-11-15 — [`docs/photo-enclosed-rim-2026-11-06.md`](../photo-enclosed-rim-2026-11-06.md), addendum 2026-11-14)*
 
 ## Twenty-fifth pass: overflow moved from MASTER_SCOPE (2026-11-14)

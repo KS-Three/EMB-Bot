@@ -1,6 +1,6 @@
-# Tripwire frame pin (built OFF)
+# Tripwire frame pin (ON since 2026-11-15)
 
-*(built 2026-11-15 on Kent's ruling "Pin tripwire frame (Recommended)", the same day; measured on Kent's laptop for design and tests only. The pins themselves are a CI capture, not made here.)*
+*(built 2026-11-15 on Kent's ruling "Pin tripwire frame (Recommended)" (#1572, OFF); flipped ON the same day on his ruling "Flip ON now (Recommended)": the scheduled nightly passes `--pin-frame`, and the ledger's `frames` come from a five-pass CI capture with `pin_frame` ticked (see "Flipped" at the end). Laptop measurements here are for design and tests only.)*
 
 ## Why
 
@@ -66,12 +66,12 @@ The two arms are #1533's two flags OFF (`all_off`) and ON (`main`), from the 11-
 | becker_lc_large | (0.35, −0.05) -> (0.35, 0.15) | 0.306 -> 0.337 (+0.031) | 0.306 -> 0.301 (−0.005) | +0.012 / −0.001 |
 | becker_chest_small | (0.15, 0.45) -> (0.15, 0.40) | +0.010 | +0.000 | −0.007 / +0.003 |
 | becker_beanie | unchanged | +0.005 | +0.005 | 0 / 0 |
-| precision_drone | unchanged | −0.001 | **−0.015** | −0.002 / 0.000 |
+| precision_drone | unchanged | −0.001 | −0.001 (first published as −0.015: the float bug below) | −0.002 / −0.002 |
 | gaulke x3, fremont x2, goldentee, mfab x2, toat x3, tires | unchanged | same as pinned (−0.008 to +0.011) | same as fresh | same |
 
 - Every ON arm was read **pinned**: the largest IoU gap to a fresh climb was 0.003, under the 0.01 margin.
 - The largest stitch-type move falls from 0.048 fresh to 0.018 pinned.
-- **The pin does not make a single reading more accurate; it makes two readings comparable.** On precision_drone the shift did not move, but our extents moved the fresh grid's origin. Pinned, the edge-walk change is read at one grid phase: −0.015 where the fresh pair, cut on two phases, happened to read −0.001.
+- **Corrected 2026-11-15.** This section first read precision_drone as −0.015 pinned and called it single-phase aliasing. It was the float bug (see "The float bug" below). With the fix, pinned equals fresh on every job whose registration did not move.
 - With the pin ON, a kappa row still carries a single-phase reading, so the grid's aliasing (SD 0.02-0.04 over origins) remains in what a real change reads. What goes is the jump from a re-registration.
 
 ## What it does not do (Kent's accepted catch)
@@ -86,4 +86,45 @@ A design that really moves less than ~0.5 mm is read at its old pin until the ne
 2. Commit that ledger.
 3. Make the schedule pass the flag (`pin_frame` default true, or the expression replaced by `--pin-frame`).
 
-Nothing of this is done here.
+## Flipped, 2026-11-15
+
+Kent's ruling: **"Flip ON now (Recommended)"**.
+
+- **Capture.** CI run 43772829964, `capture` mode with `pin_frame` ticked, five passes on `main` at `f095e1ab`.
+  - The ledger artifact's sha256 is `ccac1b90…dc4007b070`, the same as printed in the capture log.
+  - The committed ledger is those bytes plus `hand_edits`.
+  - Frames for all 18 jobs, every one `passes_agree`.
+- **Schedule.** The expression is `(github.event_name == 'schedule' || inputs.pin_frame) && '--pin-frame'`, and `pin_frame` defaults to true on a dispatch. Unticking it reads fresh again.
+- **No baseline moved because of the pin.** The capture records each job's freshly registered frame, so each baseline is what the old reading gives on that tree.
+  - The rows that did move are #1565's (Flip PR 2, Kent 2026-11-15), the only engine change since the last ledger besides #1571 (built OFF). They are listed in the flip PR.
+  - Kent was asked about the ones he had not seen: Fremont patch trims 20 -> 28, Fremont hat 25 -> 28, patch +256 stitches, and patch stitch-type kappa 0.521 -> 0.505.
+  - His answer, 2026-11-15: **"Bake it in (Recommended)"**.
+  - That kappa move was read at fresh registration, and Kent was told it might be registration again. A one-frame check afterwards says it is not: locally, with #1565's five flags OFF against ON, Fremont patch's registration is unchanged at (0.0, 0.5), and pinned reads exactly as fresh, −0.016 (hat −0.004). Stitch counts match CI's exactly.
+  - So the drop is a real one-frame reading, not a registration jump. It is still a single grid phase, inside the 0.02-0.04 SD the grid alone moves a kappa by, so it is not shown to be a loss in agreement either.
+- **The #1505 trap, again.** Five passes agreed on 12 rows that earlier five-pass captures measured moving between runners. Their tolerances are restored and recorded in the ledger's `hand_edits`, each with the run it was measured on (43754823644, or 43147117899 for three rows last seen moving there).
+  - Evidence that 0 is false: check 43764055621, on an unchanged engine tree, read these rows 2-4 stitches and 0.004 stitch-type kappa off.
+  - Left at 0: rows that moved only in the oldest 3-pass capture (42250031793) and never since.
+- **Accepted catches, stated plainly.**
+  - Baselines are now pinned readings, and each later engine PR is read in this frozen frame.
+  - Single-phase grid aliasing (SD 0.02-0.04) remains in what a real change reads.
+  - The corpus scorecard and flip-PR kappas still re-register per arm.
+  - (An earlier catch here, "precision_drone showed a pinned read larger than the fresh one", was the float bug; withdrawn.)
+
+## The float bug, 2026-11-15
+
+**What happened.** The first pinned check after #1575 went red: run 43777340840, `1 wrong-way past tolerance … -> FAIL`, precision_drone stitch-type kappa 0.373 -> 0.359.
+- The drone's DST was byte-identical to the capture's (md5 `fda567df`), and so was its frame.
+- The ledger stores a frame rounded to 3 decimals. Read back, the pinned path shifted ours by `-0.45` where the climb had found `-0.45000000000000007`, and anchored the grid at `-39.7` where the bounds came out a hair off it.
+- Stitch coordinates are 0.01 mm values and shifts are multiples of 0.05 mm, so many points sit exactly on 2 mm cell edges, and a 1e-16 difference moves them across.
+
+**The fix** (`scorecard.SAME_MM`, 1e-6 mm). A stored shift or origin within that of the fresh one is the fresh one, and its exact float is used. Only the pinned path changed; `frame=None` and `{}` are untouched.
+
+**Why nothing caught it before the nightly.**
+- The capture only RECORDS frames (`frame={}`) at full precision, then rounds them into the ledger; no pass ever reads them back.
+- My local evidence pinned one arm's frame onto the other arm, never a design onto its own frame. So the drone's flip read as a design effect, and I published it as one.
+- The real-data test checked OFF/ON within 0.015, not self-identity.
+
+**The tests that would have caught it, now in place.**
+- `test_an_unchanged_design_reads_byte_identically_at_its_own_pin`: record, take the frame as the ledger stores it (rounded), read pinned, and require identical parts on both arms of becker_hat_small.
+- A `pinned_bounds` case for an origin a hair off its rounded pin.
+- Run locally across all 18 jobs with the frame round-tripped through JSON, as the ledger stores it: every job reads identically, precision_drone included.

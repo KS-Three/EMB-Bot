@@ -321,6 +321,19 @@ The pre-change tree (`origin/main` at 0f996dd8, `git archive`) reproduced both
 old entries on this Windows machine before the capture
 (`tools/recapture_flat_lane_key.py --pre-change-tree`).
 `photo/enthusiast_logo.png` stays un-re-pinned for the standing platform reason.
+
+**Exception TAKEN 2026-11-16, `satin_push_keeps_gaps` 0.5 (Kent 2026-11-15,
+"Flip both, value 0.5"; held until #1577 made the push never cost a stroke):**
+the `logo_whitebg.png` and `logo_alpha.png` entries were re-captured after the
+satin rail push started holding back from a bay or a same-thread gap as it
+holds back from a counter. On each fixture ONE satin cross narrows 0.6 mm (both
+of its stitches move 0.3 mm in y, the pull now held); 5513 and 6188 stitch
+coords unchanged; region ids, areas and warnings unmoved (a stage-6/7 flag).
+`ribbon_curve.png` is byte-identical. The pre-change tree (`origin/main` at
+82209276, `git archive`) reproduced all three old entries on this Windows
+machine before the capture (`tools/recapture_flat_lane_key.py
+--pre-change-tree`). `photo/enthusiast_logo.png` stays un-re-pinned for the
+standing platform reason.
 """
 
 from __future__ import annotations

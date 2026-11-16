@@ -42,7 +42,11 @@ dispatch input `pin_frame`:
 - `scorecard.score_design(frame=...)` reads at the pin and re-registers only past
   `PIN_MARGIN` 0.01 IoU (plateau <= 0.006, a real 0.5 mm move 0.014-0.044).
 
-Flipping it is Kent's: a capture with pins, then the schedule passes the flag
-(docs/tripwire-frame-pin-2026-11-15.md). His accepted catch: the corpus
-scorecard and flip-PR kappas still re-register per arm, so quote their deltas
-from one frame.
+**Flipped ON 2026-11-15, Kent: "Flip ON now (Recommended)".**
+- Pinned capture CI 43772829964; the scheduled nightly passes `--pin-frame`.
+- 12 zero tolerances were restored #1505-style (`hand_edits`).
+- His accepted catch: the corpus scorecard and flip-PR kappas still re-register
+  per arm, so quote their deltas from one frame.
+- To read fresh again, untick `pin_frame` on a dispatch.
+
+Docs: docs/tripwire-frame-pin-2026-11-15.md.

@@ -85,6 +85,18 @@ def test_with_no_frame_the_score_is_the_original_path(arms):
     assert recorded == plain
 
 
+@pytest.mark.parametrize("arm", ["off", "on"])
+def test_an_unchanged_design_reads_byte_identically_at_its_own_pin(arms, arm):
+    """The pin is stored rounded (3 decimals). Read back on the same design it must give
+    exactly what the capture read, not a re-cut by float noise: precision_drone read 0.373
+    recorded and 0.359 pinned on one DST and one frame before `SAME_MM` (2026-11-15)."""
+    rec = _score(arms[arm], frame={})
+    pinned = _score(arms[arm], frame=_pin(rec))
+    assert pinned["detail"]["frame"]["source"] == "pinned"
+    assert pinned["parts"] == rec["parts"]
+    assert pinned["detail"]["chance_floor"] == rec["detail"]["chance_floor"]
+
+
 def test_pinned_the_fold_reads_on_the_one_frame_scale(arms):
     off = _score(arms["off"], frame={})
     on_fresh = _score(arms["on"])
@@ -130,3 +142,6 @@ def test_pinned_bounds_steps_out_by_whole_cells_and_never_clips():
     assert pinned_bounds((-40.0, -30.0, 40.0, 30.0), -41.0, -31.0) == (-41.0, -31.0, 40.0, 30.0)
     x0, y0, _x1, _y1 = pinned_bounds((-45.3, -30.0, 40.0, 30.0), -41.0, -31.0)
     assert x0 <= -45.3 and ((-41.0 - x0) / CELL).is_integer() and y0 == -31.0
+    # a pin stored rounded is the natural origin, kept as its exact float, never stepped out
+    nat = -39.7 - 1e-12
+    assert pinned_bounds((nat, -41.05, 40.0, 30.0), -39.7, -41.05)[:2] == (nat, -41.05)

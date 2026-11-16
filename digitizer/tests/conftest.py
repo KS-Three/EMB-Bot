@@ -1021,6 +1021,12 @@ PRE_FLIP.update(EDGE_WALK_2026_11_14_OFF)
 # flips): `tests/test_column_corner_fold_apex_side.py`.
 CORNER_APEX_2026_11_14_OFF = {"lettering_columns_corner_fold_apex_side": False}
 PRE_FLIP.update(CORNER_APEX_2026_11_14_OFF)
+# `stroke_bridge_keep` (Kent 2026-11-15, ticked ON): `tests/test_stroke_bridge_keep.py`.
+BRIDGE_2026_11_15_OFF = {"stroke_bridge_keep": False}
+PRE_FLIP.update(BRIDGE_2026_11_15_OFF)
+# `outline_frame_guard` (Kent 2026-11-15, ticked ON): `tests/test_outline_frame_guard.py`.
+FRAME_GUARD_2026_11_15_OFF = {"outline_frame_guard": False}
+PRE_FLIP.update(FRAME_GUARD_2026_11_15_OFF)
 # Kent's flips 2026-11-15, from the review sheets (art | OFF | ON | pro).
 # `fine_bar_survive` ("Flip both ON", with `small_text_handover`):
 # `tests/test_fine_bar.py`.
@@ -1040,8 +1046,8 @@ PRE_FLIP.update(HANDOVER_2026_11_15_OFF)
 # `satin_push_keeps_gaps` ("Flip both, value 0.5", with
 # `compact_satin_keeps_gaps`; the counters worker's #1529), a field since
 # (`cfg.extra` was its only door): `tests/test_satin_push_keeps_gaps.py`.
-# Its flip is HELD (Director 2026-11-15; the default is still None), so this
-# pin is the default today and keeps the set whole for the flip to come.
+# Held until the push never cost a stroke (#1577's `_keep_yields`); 0.5
+# since 2026-11-16, so this pin is the OFF arm.
 PUSH_KEEPS_GAPS_2026_11_15_OFF = {"satin_push_keeps_gaps": None}
 PRE_FLIP.update(PUSH_KEEPS_GAPS_2026_11_15_OFF)
 # `compact_satin_keeps_gaps` (same ruling; the counters worker's #1557), a

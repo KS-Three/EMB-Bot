@@ -41,6 +41,10 @@ from digitizer_core.keyline_bean import keyline_width_mm
 from digitizer_core.shaped_band import layout, sews_shaped, stepped_share
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
+# Priced before the frame guard (ON 2026-11-15): a gear's band is bigger than
+# its hole (Ahora's 1.37, this file's GEAR the same way), so under the guard
+# it is a field round a knockout and never reaches this flag's outline path.
+from tests.conftest import FRAME_GUARD_2026_11_15_OFF
 
 FLAG = "border_from_outline_follow_shape"
 
@@ -79,7 +83,7 @@ def _plan(band, body=DISC, **cfg_kw):
     b, o = _region("Sbody", body, 0, 0), _region("Souter", band, 1, 1)
     planned = [PlannedRegion(region=b, polygon=body, sew_index=0),
                PlannedRegion(region=o, polygon=band, sew_index=1)]
-    cfg = PipelineConfig(underlay=False, **cfg_kw)
+    cfg = PipelineConfig(underlay=False, **{**FRAME_GUARD_2026_11_15_OFF, **cfg_kw})
     outlines = _art_outlines([b, o], cfg)
     assert outlines and "Souter" in outlines, "the fixture must read as an art outline"
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg, art_outlines=outlines)
@@ -337,7 +341,8 @@ def test_the_real_gear_at_40_mm_is_a_satin_not_a_thin_line():
 
     art = Path(__file__).resolve().parents[1] / "testdata" / "art" / "commons_lettering" / "logo_ahora.png"
     _result, plan = digitize(art.read_bytes(),
-                             replace(PipelineConfig(), target_width_mm=40.0, **{FLAG: True}))
+                             replace(PipelineConfig(), target_width_mm=40.0,
+                                     **{**FRAME_GUARD_2026_11_15_OFF, FLAG: True}))
     kinds = {r.kind for b in plan.blocks if min(b.rgb) > 235 for r in b.runs}
     assert stitches.SATIN in kinds and stitches.RUN not in kinds
 

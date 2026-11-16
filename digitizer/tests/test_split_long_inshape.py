@@ -31,7 +31,7 @@ from digitizer_core import machine, stage7_sequence, stitches
 from digitizer_core.stage7_sequence import join_piece, split_long_inshape
 from digitizer_core.stitches import StitchRun
 
-from .conftest import PIECE_LIFT_2026_11_14_OFF
+from .conftest import PIECE_LIFT_2026_11_14_OFF, FRAME_GUARD_2026_11_15_OFF
 from .test_border_from_outline import FACE, FAT, KEY, THICK, _md5, _plan
 
 FLAG = "split_long_inshape_stitches"
@@ -157,8 +157,11 @@ def _check_split(off, on, sid):
 # (`conftest.PIECE_LIFT_2026_11_14_OFF`).
 @pytest.mark.parametrize("ring", [THICK, FAT], ids=["thick", "fat"])
 def test_border_from_outline_pieces_are_joined_under_the_ceiling(two_pieces, ring):
-    off = _plan(ring, FACE, border_from_outline=True, **PIECE_LIFT_2026_11_14_OFF)
-    on = _on(ring, FACE, **PIECE_LIFT_2026_11_14_OFF)
+    # priced before `outline_frame_guard` (ON 2026-11-15): FAT reads as a
+    # field under it, so both arms keep the guard off
+    off = _plan(ring, FACE, border_from_outline=True, **PIECE_LIFT_2026_11_14_OFF,
+                **FRAME_GUARD_2026_11_15_OFF)
+    on = _on(ring, FACE, **PIECE_LIFT_2026_11_14_OFF, **FRAME_GUARD_2026_11_15_OFF)
     long_off = _check_split(off, on, "Souter")
     assert [round(d) for d, _i in long_off] == [24]
 

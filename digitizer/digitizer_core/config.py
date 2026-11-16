@@ -1360,7 +1360,11 @@ class PipelineConfig:
     # shape read, not a stitch value: gate 1 does not apply. False is the
     # engine before the flag, byte for byte.
     # Tests: `tests/test_outline_frame_guard.py`.
-    outline_frame_guard: bool = False
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON; Kent was shown Ahora's gear
+    # ring turning to a rough fill as the catch). False is the engine as it
+    # was; `tests/conftest.py` PRE_FLIP (FRAME_GUARD_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    outline_frame_guard: bool = True
     # Tiny details kept whole (built OFF 2026-11-14, Kent's heraldic crest,
     # 2 pins "Missing the eye"). Each eagle eye is about 12 x 6 source pixels:
     # two white specks either side of a black pupil in a navy head. Stage 2's
@@ -1390,7 +1394,10 @@ class PipelineConfig:
     # stroke. Shape and colour reads, no stitch value: gate 1 does not apply.
     # False is the engine before the flag, byte for byte. Tests:
     # `tests/test_stroke_bridge_keep.py`.
-    stroke_bridge_keep: bool = False
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (BRIDGE_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    stroke_bridge_keep: bool = True
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
@@ -1454,22 +1461,23 @@ class PipelineConfig:
     # Kent's merged-letter pins: Gaulke's E and S kept their gaps through
     # stage 5 and lost them to the rail push). True holds a gap as a counter
     # is held (`cfg.min_detail_mm`); a number is the floor in mm a gap keeps.
-    # Kent ruled it 0.5 on 2026-11-15 ("Flip both, value 0.5", with
-    # `compact_satin_keeps_gaps`); the flip is HELD (Director, 2026-11-15)
-    # until the push never costs a stroke: at 0.5, in
-    # `tests/test_lettering_coverage_regression`'s config, enthusiast's
-    # 2.4 mm tagline lost the E's upper arms and INC's N stem. A field now
-    # (`cfg.extra` was its only door); None is the push as it was, byte for
-    # byte. Tests: `tests/test_satin_push_keeps_gaps.py`.
-    satin_push_keeps_gaps: bool | float | None = None
+    # **0.5 since 2026-11-16, Kent's flip** ("Flip both, value 0.5", ruled
+    # 2026-11-15 with `compact_satin_keeps_gaps`). The flip was held until
+    # the push never costs a stroke (at 0.5, in
+    # `tests/test_lettering_coverage_regression`'s config, enthusiast's 2.4
+    # mm tagline lost the E's upper arms and INC's N stem); since #1577 the
+    # hold yields up to a hairline column (`stage6_satin._keep_yields`).
+    # None is the push as it was, byte for byte; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it None. Tests:
+    # `tests/test_satin_push_keeps_gaps.py`.
+    satin_push_keeps_gaps: bool | float | None = 0.5
     # A compact solid sewn as satin keeps the gaps the art keeps (stage 7's
     # `compact_solids_satin` path, built OFF 2026-11-14 as
     # `cfg.extra["compact_satin_keeps_gaps"]`, Gaulke's window: its 0.7-0.85
     # mm pane dividers sewed shut). The growth stays out of those gaps by
     # stage 5's own `growth_keeps_gaps` rule, on these shapes only.
     # **ON since 2026-11-15, Kent's flip** ("Flip both, value 0.5", with
-    # `satin_push_keeps_gaps`, whose flip is held). False is the engine as it
-    # was, byte for byte;
+    # `satin_push_keeps_gaps`). False is the engine as it was, byte for byte;
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_text_gap_flips_2026_11_15.py`.
     compact_satin_keeps_gaps: bool = True
