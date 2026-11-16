@@ -122,6 +122,16 @@ def stroke_floor_scope(on: bool):
     finally:
         _STROKE_FLOOR.reset(token)
 
+
+@contextlib.contextmanager
+def floor_scopes(ring: bool, stroke: bool):
+    """`ring_floor_scope` and `stroke_floor_scope` as ONE context manager.
+    `pipeline.plan_stitches` opens every plan-wide scope in a single `with`,
+    and CPython allows 20 statically nested blocks -- each manager is one;
+    the 21st is a SyntaxError at import (hit 2026-11-16 adding this flag)."""
+    with ring_floor_scope(ring), stroke_floor_scope(stroke):
+        yield
+
 # A column end within this many stroke widths (plus a constant for the pull)
 # of another column's centreline sits ON that column: the two meet there.
 # routeGlyph's `mergeR = max(2, 1.3 * medW)`; at 0.75 Becker's M left its
