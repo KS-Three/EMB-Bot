@@ -20,6 +20,10 @@ idle, 19.5 s with seven other cores busy two minutes, 37.4 s during the suite.
 Kent's laptop usually has sessions running, so over a minute is what he sees.
 A customer's machine is not measured.
 
+**The Studio adds nothing.** Click to stitches on screen is the service job
+plus 0.3-0.8 s (Becker 15.6 s, MFab 23.7, Golden Tee 38.4, upload defaults,
+idle laptop); the button is live 0.3 s after upload; a repeat click is cached.
+
 **Where the time goes.** One core of Python and GEOS (only OCR threads). No
 stage is the hog. Three of the four jobs over 25 s spend half their time in
 generation, before any stitch is planned.

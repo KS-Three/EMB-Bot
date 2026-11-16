@@ -549,7 +549,9 @@ will want to wait that long".** Nine hat jobs take 6-38 s with his laptop
 idle (one core at 3.7 GHz): five at or under 25 s, four over (MFab 28,
 Fremont 31, Drone 36, Golden Tee 38). The same jobs took 15-95 s, four over a
 minute, while a test suite and other sessions held the clock at 1.4 GHz: that
-is the over-a-minute he sees. A customer's machine is not measured. It is one
+is the over-a-minute he sees. A customer's machine is not measured. The Studio
+adds under a second to the service job (click to stitches: Becker 16 s, MFab
+24, Golden Tee 38). It is one
 core of Python and GEOS, spread over many passes, no stage the hog. Eight
 exact cuts took 14% off the nine (stitches md5-identical). More cores for the
 letter cuts measured a 7% ceiling and is not built. Three of the four still

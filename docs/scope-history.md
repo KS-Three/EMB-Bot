@@ -19,6 +19,7 @@ Snapshots, not live status:
 
 - **The entry below was timed at 1.4 GHz** (a suite and other sessions on all cores). **Laptop idle, one core at 3.7 GHz, main before #1604 -> with it, one run each:** Becker hat 19.1 -> 13.0, Gaulke 18.8 -> 15.0, MFab 35.1 -> 27.6, Hotel Fremont 34.1 -> 30.6, Golden Tee 42.0 -> 38.4, Bridge 12.6 -> 12.0, Tires 6.2 -> 6.2, To a T 19.1 -> 18.2, Precision drone 41.8 -> 35.6; total 228.8 -> 196.6. Plan md5 the same on all nine.
 - **Becker by laptop state, same code:** 13.0 s idle, 19.5 s with seven other cores busy two minutes, 19.9 s with three, 37.4 s during the long suite.
+- **Studio click to stitches on screen, upload defaults, laptop idle:** Becker 15.6 s (service job 15.2), MFab 23.7 (22.9), Golden Tee 38.4 (38.1); a second click at the same settings 0.6-0.7 s.
 - **Letter cuts on more cores, ceiling:** Becker cut 2.3 s of 13.0 (largest letter 1.4), MFab 6.3 of 27.7 (largest 4.5): at most 0.9 and 1.8 s saved. Not built.
 
 ---
