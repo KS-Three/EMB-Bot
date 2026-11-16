@@ -880,9 +880,10 @@ def resolve_small_regions(
                 or (tittle_on and tittle_of_word(i, box, halo, win)))
 
     # `cfg.lone_glyph_keep` (ON since 2026-11-15, Kent's tick): a tittle over a
-    # joined word (comment at `_TITTLE_GAP_DOTS`). The flat lane only
-    # (`chain_rescue`): a photo's specks sit inside big same-colour regions
-    # everywhere.
+    # joined word (comment at `_TITTLE_GAP_DOTS`). Logos only: the photo
+    # segmenters pass `chain_rescue=False`, and `pipeline` turns the flag off
+    # for a photo class quantised on the classical route -- a photo's specks
+    # sit inside big same-colour regions everywhere.
     tittle_on = bool(dot_scope and chain_rescue and getattr(cfg, "lone_glyph_keep", False))
 
     def ring_owner(i: int, halo, win) -> int | None:

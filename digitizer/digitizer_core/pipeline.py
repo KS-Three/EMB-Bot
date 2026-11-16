@@ -982,8 +982,15 @@ def build_generation(
     # sub-floor stroke is kept rather than absorbed into what it touches. The
     # photo segmenters make their own call without it, on purpose.
     counters_on = bool(cfg.keep_counters and classification.class_ not in PHOTO_CLASSES)
+    # `cfg.lone_glyph_keep` (ON since 2026-11-15): logos only. A photograph
+    # quantised on this route keeps specks inside big same-colour regions
+    # everywhere, and the tittle rule read them as i-dots (2026-11-16:
+    # dof_meadow sewed 365 more stitches of tacks); the photo segmenters
+    # already pass `chain_rescue=False`, which turns it off there.
+    small_cfg = (replace(cfg, lone_glyph_keep=False)
+                 if cfg.lone_glyph_keep and classification.class_ in PHOTO_CLASSES else cfg)
     masks, small_warnings = resolve_small_regions(
-        masks, cfg, p.px_per_mm, p.enclosed_mask,
+        masks, small_cfg, p.px_per_mm, p.enclosed_mask,
         layer_lab=rgb_to_lab(q.cluster_rgb) if (
             cfg.keep_thin_strokes or counters_on
             or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)

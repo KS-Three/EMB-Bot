@@ -2727,7 +2727,7 @@ class PipelineConfig:
     # its columns within six dot heights under it, and on the word's own ground
     # (#1569: Hotel Fremont's star in the black Wisconsin is not a tittle), and
     # not touching it (TOAT beanie's rim specks are not), is admitted by the
-    # rung as a printed i's dot is. Flat lane only. Shape
+    # rung as a printed i's dot is. Logos only: never a photo class. Shape
     # reads, no stitch value (gate 1 does not apply).
     # **ON since 2026-11-15, Kent's tick** (relayed by the director),
     # promoted from `cfg.extra` to a field. False is the engine as it was;
