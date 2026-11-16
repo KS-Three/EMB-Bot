@@ -73,6 +73,7 @@ from .columns import (HANDBACK_COVER_MIN, handback_wins, is_fine_bar, is_letteri
                       lettering_columns_shape, satin_cover,
                       small_print_clear,
                       small_print_counter_set, small_print_counters)
+from .reading_order import reading_ranks
 from .words import is_text, word_key
 from .monoline import bury_hops, clear_finished_underlay, monoline_stroke
 from .script_strokes import script_strokes_shape, script_word
@@ -2938,6 +2939,18 @@ def sequence(
             if _is:
                 off_span[_sid] = _span
             _prev = _is
+    # `cfg.extra["lettering_columns_reading_order"]` (built OFF 2026-11-16):
+    # a span's letters in reading order (`reading_order.reading_ranks`), not
+    # nearest-neighbour from the needle, so no letter's exit can turn the
+    # word round. Off, empty, and the picks below are today's.
+    read_rank: dict[str, int] = {}
+    if off_rank is not None and cfg.extra.get("lettering_columns_reading_order"):
+        _by_span: dict[int, dict] = {}
+        for _p in planned:
+            if _p.shape_id in off_span:
+                _by_span.setdefault(off_span[_p.shape_id], {})[_p.shape_id] = _p.region.polygon
+        for _polys in _by_span.values():
+            read_rank.update(reading_ranks(_polys))
     row_mm = (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)
     # Task A2: satin gets the same fabric-scaled density the fill row spacing
     # already has — the browser engine's own digitize.js already multiplies
@@ -4996,14 +5009,18 @@ def sequence(
                 # or cap order is in force, whose order the OFF rank IS.
                 pick = min(ranked, key=lambda i: off_rank[group[i].shape_id])
                 span = off_span.get(group[pick].shape_id)
-                if span is not None and cursor is not None and not cap_order:
+                if span is not None and (cursor is not None or read_rank) and not cap_order:
                     same = [i for i in ranked
                             if off_span.get(group[i].shape_id) == span]
                     if not any(i in sew_order for i in same):
-                        here = Point(cursor)
-                        pick = min(same, key=lambda i: (
-                            round(group[i].polygon.distance(here), 6),
-                            off_rank[group[i].shape_id]))
+                        if read_rank:
+                            pick = min(same, key=lambda i: (read_rank.get(group[i].shape_id, len(read_rank)),
+                                                            off_rank[group[i].shape_id]))
+                        else:
+                            here = Point(cursor)
+                            pick = min(same, key=lambda i: (
+                                round(group[i].polygon.distance(here), 6),
+                                off_rank[group[i].shape_id]))
             elif due is not None and (sew_order[due] <= next_slot or not unpinned):
                 pick = due
             elif cap_order:
@@ -5045,8 +5062,9 @@ def sequence(
                             if off_span.get(group[i].shape_id) == span]
                     if not any(i in sew_order for i in same):
                         nxt = min(same, key=lambda i: (
-                            round(group[i].polygon.distance(p.polygon), 6),
-                            off_rank[group[i].shape_id]))
+                            (read_rank.get(group[i].shape_id, len(read_rank)),) if read_rank else
+                            (round(group[i].polygon.distance(p.polygon), 6),))
+                            + (off_rank[group[i].shape_id],))
                 q = nearest_points(p.polygon, group[nxt].polygon)[1]
                 exit_near = (float(q.x), float(q.y))
             elif cfg.satin_exit_toward_next:
