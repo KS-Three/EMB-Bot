@@ -108,3 +108,47 @@ def test_limits_match_the_rule_on_a_column():
                                 2.0 * PULL + FLOOR + 0.5, PULL, FLOOR)
     assert all(v == 0.0 for v in lim_a)
     assert all(v == float("inf") for v in lim_b)
+
+
+# --- the keep never costs a stroke (the flip's hold, 2026-11-15) -----------
+# At 0.5, in `tests/test_lettering_coverage_regression`'s config, enthusiast's
+# 2.4 mm tagline (art strokes 0.07-0.23 mm) had 150 crosses held from about
+# 0.76 mm to under `SATIN_MIN_CROSS_MM`, and the drop check took the E's upper
+# arms and INC's N stem. A hold now yields where it would leave a cross under
+# `PUSH_KEEP_MIN_CROSS_MM` (a hairline column, 0.6 mm).
+
+def test_a_thin_stroke_between_held_gaps_keeps_a_sewable_cross():
+    from digitizer_core.machine import SATIN_MIN_CROSS_MM
+    from digitizer_core.stage6_satin import PUSH_KEEP_MIN_CROSS_MM
+    me = box(0.0, 0.0, 0.2, 10.0)                         # a 0.2 mm stroke
+    ink = unary_union([me, box(-2.3, 0.0, -0.3, 10.0), box(0.5, 0.0, 2.5, 10.0)])
+    a, b = [(0.2, 5.0)], [(0.0, 5.0)]
+    # both gaps 0.3 mm, under the 0.5 floor: the keep holds both pushes to 0
+    out_a, out_b = _push_rails(a, b, me, PULL, FLOOR, keep=(ink, 0.5))
+    width = out_a[0][0] - out_b[0][0]
+    assert width > SATIN_MIN_CROSS_MM                    # sewn, not dropped
+    assert abs(width - PUSH_KEEP_MIN_CROSS_MM) < 1e-9    # given back only what it needs
+    assert abs((out_a[0][0] - 0.2) - (0.0 - out_b[0][0])) < 1e-9   # evenly
+    # never more than the push it had before the keep
+    full_a, full_b = _push_rails(a, b, me, PULL, FLOOR)
+    assert out_a[0][0] <= full_a[0][0] + 1e-9 and out_b[0][0] >= full_b[0][0] - 1e-9
+
+
+def test_a_wide_stroke_still_keeps_its_gap():
+    """Gaulke's E is well over the line: the yield does not touch it."""
+    me = box(0.0, 0.0, 2.0, 10.0)
+    nb = box(2.8, 0.0, 4.8, 10.0)
+    out_a, _ = _push_rails([(2.0, 5.0)], [(0.0, 5.0)], me, PULL, FLOOR,
+                           keep=(unary_union([me, nb]), 0.5))
+    assert abs(out_a[0][0] - 2.15) < 1e-9                # (0.8 - 0.5) / 2, as before
+
+
+def test_keep_yields_evenly_then_from_the_side_with_room():
+    from digitizer_core.stage6_satin import _keep_yields
+    assert _keep_yields(1.0, 0.3, 0.3, 0.0, 0.0, sewable=0.6) == (0.0, 0.0)   # not short
+    ka, kb = _keep_yields(0.2, 0.3, 0.3, 0.0, 0.0, sewable=0.6)
+    assert abs(ka - 0.2) < 1e-12 and abs(kb - 0.2) < 1e-12
+    ka, kb = _keep_yields(0.2, 0.05, 0.3, 0.0, 0.0, sewable=0.6)       # side a has 0.05 to give
+    assert abs(ka - 0.05) < 1e-12 and abs(kb - 0.3) < 1e-12           # b gives the rest, capped
+    ka, kb = _keep_yields(0.1, 0.1, 0.1, 0.0, 0.0, sewable=0.6)       # the unheld push cannot reach
+    assert (ka, kb) == (0.1, 0.1)                                      # it all comes back
