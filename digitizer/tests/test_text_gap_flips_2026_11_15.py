@@ -4,10 +4,11 @@ from digitizer_core.config import PipelineConfig
 from tests.conftest import PRE_FLIP
 
 
-def test_satin_push_keeps_gaps_flip_is_held():
-    """Kent ruled 0.5; the Director held the flip (2026-11-15) until the push
-    never costs a stroke (enthusiast's tagline lost E arms and an N stem)."""
-    assert PipelineConfig().satin_push_keeps_gaps is None
+def test_satin_push_keeps_gaps_is_half_a_millimetre_and_pinned_off():
+    """Kent ruled 0.5 (2026-11-15). The flip was held until the push never
+    cost a stroke (enthusiast's tagline lost E arms and an N stem); #1577's
+    `_keep_yields` fixed that, so it flipped 2026-11-16."""
+    assert PipelineConfig().satin_push_keeps_gaps == 0.5
     assert PRE_FLIP["satin_push_keeps_gaps"] is None
 
 
