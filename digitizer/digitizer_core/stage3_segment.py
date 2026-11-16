@@ -252,7 +252,7 @@ _STEM_MAX_WIDTH_DOTS = 2.0
 _STEM_MAX_ROW_DOTS = 1.5
 _STEM_MIN_ROW_FILL = 0.75
 
-# `cfg.extra["lone_glyph_keep"]` (built OFF 2026-11-14, the eye sweep's
+# `cfg.lone_glyph_keep` (built OFF 2026-11-14 in `cfg.extra`, ON since 2026-11-15; the eye sweep's
 # "Seriously" -> "Senaudy" at 70.9 and 80.2 mm): a TITTLE over a joined
 # (cursive) word. Its i has no stem of its own -- the stroke under the dot is
 # one connected region with the whole word -- so `has_stem_below` finds
@@ -262,7 +262,8 @@ _STEM_MIN_ROW_FILL = 0.75
 # word spans it -- the dot inside that region's box, the region at least
 # `_STEM_MIN_DOTS` dot heights deeper than the dot and `_TITTLE_MIN_AREA_DOTS`
 # times its area, its ink in the dot's own columns within `_TITTLE_GAP_DOTS`
-# dot heights under it -- is admitted by the dot rung as a printed i's dot is.
+# dot heights under it, the dot not touching it (2026-11-16) -- is admitted by
+# the dot rung as a printed i's dot is.
 # Read off the letter's shape like the stem constants above, not a stitch
 # value. "Seriously": ink 4.85 dot heights under the dot, the word 17 tall.
 _TITTLE_GAP_DOTS = 6.0
@@ -878,10 +879,12 @@ def resolve_small_regions(
         return (not dot_scope or has_stem_below(i, box)
                 or (tittle_on and tittle_of_word(i, box, halo, win)))
 
-    # `cfg.extra["lone_glyph_keep"]` (built OFF): a tittle over a joined word
-    # (comment at `_TITTLE_GAP_DOTS`). The flat lane only (`chain_rescue`):
-    # a photo's specks sit inside big same-colour regions everywhere.
-    tittle_on = bool(dot_scope and chain_rescue and (getattr(cfg, "extra", None) or {}).get("lone_glyph_keep"))
+    # `cfg.lone_glyph_keep` (ON since 2026-11-15, Kent's tick): a tittle over a
+    # joined word (comment at `_TITTLE_GAP_DOTS`). Logos only: the photo
+    # segmenters pass `chain_rescue=False`, and `pipeline` turns the flag off
+    # for a photo class quantised on the classical route -- a photo's specks
+    # sit inside big same-colour regions everywhere.
+    tittle_on = bool(dot_scope and chain_rescue and getattr(cfg, "lone_glyph_keep", False))
 
     def ring_owner(i: int, halo, win) -> int | None:
         """The one full-size region of ANOTHER colour holding nine tenths of
@@ -936,6 +939,13 @@ def resolve_small_regions(
             if theirs is None or float(np.linalg.norm(mine - theirs)) > cfg.merge_delta_e:
                 continue
             if owner is not None and not rings(owner, j):
+                continue
+            # A tittle stands apart from its word: ground all round it. A
+            # speck touching the region it is read against is a scrap of that
+            # region's own edge (2026-11-16: TOAT beanie's five white specks
+            # on the black letters' rims, each touching the white field, sewn
+            # as five tacks for three more trims and nothing to see).
+            if halo is not None and win is not None and (halo & rj.window(*win)).any():
                 continue
             return True
         return False

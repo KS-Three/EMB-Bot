@@ -1083,6 +1083,9 @@ PRE_FLIP.update(CAP_FLARED_2026_11_15_OFF)
 # `lettering_columns_ring_floor` (ticked ON, Kent 2026-11-15): `tests/test_ring_floor.py`.
 RING_FLOOR_2026_11_15_OFF = {"lettering_columns_ring_floor": False}
 PRE_FLIP.update(RING_FLOOR_2026_11_15_OFF)
+# `lone_glyph_keep` (Kent's tick 2026-11-15): `tests/test_lone_glyph_keep.py`.
+LONE_GLYPH_2026_11_15_OFF = {"lone_glyph_keep": False}
+PRE_FLIP.update(LONE_GLYPH_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

@@ -291,6 +291,7 @@
  "sliver_prune": false,
  "small_dot_rung": true,
  "small_dot_rung_lettering": true,
+ "lone_glyph_keep": false,
  "small_glyph_keep": true,
  "small_letter_ties": false,
  "small_lettering_skeleton": false,
