@@ -1,5 +1,5 @@
 """`cfg.speck_prune` (built OFF 2026-11-14): a kept sub-floor speck no thread
-can draw goes to the masks round it (`sliver_prune.prune_specks`).
+can draw goes to the mask it lies in (`sliver_prune.prune_specks`).
 
 Kent's `low_poly` at 80 mm left chest is the measurement (Commons art, kept in
 the gitignored corpus): the art's polygon edges are one-pixel black lines, the
@@ -106,10 +106,9 @@ def test_default_is_off():
     assert PipelineConfig().speck_prune is False
 
 
-def test_a_black_crossing_on_the_facets_goes_to_the_facets_round_it():
+def test_a_black_crossing_on_the_facets_goes_to_the_one_it_lies_in():
     """low_poly's crossing: a 2 x 10 px black mark across the facet seam where
-    two one-pixel art lines cross, the lines themselves left to the facets.
-    Each pixel goes to the facet it lies nearest: the seam stays where it was."""
+    two one-pixel art lines cross, the lines themselves left to the facets."""
     s = Scene()
     k = s.add(BLACK, (50, 79, 60, 81))
     s.cross(BLACK, 55, 80)
@@ -117,8 +116,7 @@ def test_a_black_crossing_on_the_facets_goes_to_the_facets_round_it():
     assert stats == {"specks": 1}
     assert len(out) == 2
     assert sum(m.area for m in out) == sum(m.area for m in masks)
-    assert out[s.light].area == masks[s.light].area + 10
-    assert out[s.dark].area == masks[s.dark].area + 10
+    assert out[s.light].area + out[s.dark].area == masks[s.light].area + masks[s.dark].area + 20
     rec = _recs(s)[k]
     assert rec["speck"] and rec["fragment"] and rec["arms_lost"] == 4
     assert rec["mean_width_src_px"] < sliver_prune.SPECK_WIDTH_SRC_PX
@@ -291,8 +289,8 @@ def test_a_white_quill_inside_one_body_stays():
 def test_a_quill_with_a_speck_on_its_rim_still_stays():
     """The crest's long quill touches five antialias scraps besides the wing.
     A speck beside it leaves anyway, so the quill still lies in one body; the
-    grey speck goes to the quill and the navy, by nearness. (The white
-    quill is no ink of the grey's kind: its arms are its own grey line.)"""
+    grey speck goes to the navy it lies in. (The white quill is no ink of
+    the grey's kind: its arms are its own grey line.)"""
     s = Wing()
     q = s.add(WHITE, (50, 49, 60, 51))
     g = s.add(MID_GREY, (50, 51, 60, 53))
@@ -303,7 +301,7 @@ def test_a_quill_with_a_speck_on_its_rim_still_stays():
     masks, out, stats = _run(s)
     assert stats == {"specks": 1} and len(out) == len(masks) - 1
     assert sum(m.area for m in out) == sum(m.area for m in masks)
-    assert any(m.layer == masks[q].layer and m.area >= masks[q].area for m in out)
+    assert any(m.area == masks[q].area and m.layer == masks[q].layer for m in out)
 
 
 def test_a_white_mark_across_a_seam_is_still_a_speck():

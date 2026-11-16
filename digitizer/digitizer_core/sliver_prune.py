@@ -81,10 +81,15 @@ called on its own) is a mask that
     speed-line pieces, which `fine_bar_survive` redraws at stage 4) stay
     (2026-11-16: with no such test To a T lost five of its six speed lines and
     the period).
-Each of its pixels goes to the nearest mask that stays (not a speck leaving,
-not a scrap under the run tier's floors): handing a whole keyline piece to the
-one body with the most rim shrank the crest crown's navy gaps under the hole
-floor and filled them yellow. Kent's `low_poly` at 80 mm
+    NOT ENOUGH TO FLIP (2026-11-16 scoped check): the heraldic crest's crown
+    is drawn with keylines too, and its pieces between the yellow band and
+    the yellow pearls are fragments like low_poly's. Handed on, the pearls
+    touch the band, the band's hole joins the crown (four holes to three at
+    stage 4), and the crown's column satin then runs over the navy gaps
+    between its scrolls, which it still holds as holes. No test on the speck
+    alone tells those pieces from low_poly's: low_poly's crossings separate
+    same-thread facets of the same sizes (54-93 px against 1,000-2,500).
+Its pixels go to the mask it has the most rim on. Kent's `low_poly` at 80 mm
 (sitting 2026-11-11, "Random Black Spot", 7 pins): the art's polygon edges
 are one-pixel black lines; quantisation labels only their crossings black,
 and each crossing kept as a 0.13-0.30 mm2 black run loop. This half runs at
@@ -159,13 +164,14 @@ SPECK_SLIT_MIN_DL = 40.0
 # to `SPECK_ARM_REACH_SRC_PX`; an arm is LOST when at least
 # `SPECK_ARM_LOST_MIN` of it lies on masks sewn at least `SPECK_MIN_DE00` from
 # the speck's thread (or on no mask). Measured 2026-11-16, 80 mm left chest:
-# low_poly 103 of its 110 specks are fragments, every one of Kent's seven
-# "Random Black Spot" pins among them, and every dark dot the speck pass took
-# with no such test (4,558 render px) is still taken; To a T hat, beanie and
-# machine beanie give 0, 1 and 1 of 95, 79 and 79, and none is a dark mark
-# main sews. The top-hat at 8-20 L and rings to 3-6 source pixels give the
-# same To a T verdicts and 92-103 on low_poly; at a lost share of 0.5, 537 px
-# of low_poly's dots come back. Candidates read off those, not measured edges.
+# low_poly 81 of its 110 specks are fragments, every one of Kent's seven
+# "Random Black Spot" pins among them and 42 of its 43 dark ones (the 43rd has
+# one arm); To a T hat, beanie and machine beanie give 0, 1 and 1 of 95, 79
+# and 79, none a dark mark main sews; Golden Tee 1 of 6. Before the lightness
+# bound below, the top-hat at 8-20 L and rings of 3-6 source pixels gave the
+# same To a T verdicts and 92-103 on low_poly, and at a lost share of 0.5,
+# 537 render px of low_poly's dots came back. Candidates read off those, not
+# measured edges.
 SPECK_INK_KERNEL_SRC_PX = 5.0
 SPECK_INK_MIN_DL = 12.0
 SPECK_ARM_REACH_SRC_PX = 4.0
@@ -462,54 +468,33 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
     return out
 
 
-def _tight(piece: np.ndarray, oy: int, ox: int) -> tuple[np.ndarray, tuple[int, int]]:
-    ys, xs = np.nonzero(piece)
-    return (np.ascontiguousarray(piece[ys.min():ys.max() + 1, xs.min():xs.max() + 1]),
-            (oy + int(ys.min()), ox + int(xs.min())))
-
-
 def prune_specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float,
                  thread_px: float) -> tuple[list[RegionMask], dict]:
-    """`cfg.speck_prune`: each speck's pixels given to the nearest mask that
-    stays. -> (masks, {"specks": n}); the list as given when there is none."""
+    """`cfg.speck_prune`: each speck's pixels given to the mask it lies in.
+    -> (masks, {"specks": n}); the list as given when there is none."""
     if not masks:
         return masks, {"specks": 0}
-    owner = _owner(masks, p.bg_mask.shape)
-    found = [rec["index"] for rec in specks(masks, thread_indices, p, chart, floor_px, thread_px, owner)
+    found = [rec for rec in specks(masks, thread_indices, p, chart, floor_px, thread_px)
              if rec["speck"]]
     if not found:
         return masks, {"specks": 0}
-    from scipy import ndimage
-
-    # Pixels go to masks that stay and that stage 4 sews: not to another speck
-    # leaving, and not to a scrap, which they could lift over the run floors.
-    _scrap = _scrap_test(p)
-    out_of = np.array(sorted(set(found) | {k for k, m in enumerate(masks) if _scrap(m)}))
-    given = masks
     masks = list(masks)
-    copied: set[int] = set()
     gone: set[int] = set()
-    pad = int(np.ceil(SPECK_ARM_REACH_SRC_PX * _src_px(p))) + 1
-    for i in found:
-        wy0, wx0, wy1, wx1 = _window(given[i], pad)
-        own = owner[wy0:wy1, wx0:wx1]
-        seed = (own >= 0) & ~np.isin(own, out_of)
-        if not seed.any():
-            continue                                   # nothing to hand it to: it stays
-        mine = given[i].window(wy0, wx0, wy1, wx1)
-        _, (iy, ix) = ndimage.distance_transform_edt(~seed, return_indices=True)
-        to = own[iy, ix]
-        for j in np.unique(to[mine]):
-            j = int(j)
-            if j not in copied:                        # the caller's mask is not ours
-                masks[j] = replace(masks[j], crop=masks[j].crop.copy())
-                copied.add(j)
-            crop, origin = _tight(mine & (to == j), wy0, wx0)
-            masks[j].union_from(RegionMask(crop=crop, origin=origin,
-                                           frame_shape=masks[j].frame_shape, layer=masks[j].layer))
+    for rec in found:
+        i, j = rec["index"], rec["neighbour"]
+        # A speck whose host was itself a speck, handed on already: the host's
+        # pixels now live in ITS host, so follow them there. Two specks that
+        # host each other lead back here: this one stays as it was.
+        seen = {i}
+        while j in gone and j not in seen:
+            seen.add(j)
+            j = next(r["neighbour"] for r in found if r["index"] == j)
+        if j in seen:
+            continue
+        masks[j] = replace(masks[j], crop=masks[j].crop.copy())     # the caller's mask is not ours
+        masks[j].union_from(RegionMask(crop=masks[i].crop, origin=masks[i].origin,
+                                       frame_shape=masks[j].frame_shape, layer=masks[j].layer))
         gone.add(i)
-    if not gone:
-        return given, {"specks": 0}
     kept = [m for i, m in enumerate(masks) if i not in gone]
     return kept, {"specks": len(gone)}
 
