@@ -1,4 +1,5 @@
-"""`cfg.extra["lettering_columns_ring_floor"]` (built OFF 2026-11-14): a small
+"""`cfg.lettering_columns_ring_floor` (built OFF 2026-11-14 as a `cfg.extra` key; ON since
+2026-11-15, Kent's flip): a small
 letter's closed bowl keeps its thin crosses, widened to the floor, instead of
 dropping them and opening the ring.
 
