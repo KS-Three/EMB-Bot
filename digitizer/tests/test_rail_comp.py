@@ -31,7 +31,7 @@ from digitizer_core import stage7_sequence as s7
 from digitizer_core.pipeline import digitize, fabric_for
 from digitizer_core.stage5_overlap import widened_lettering
 from digitizer_core.stitches import strip_ties
-from tests.conftest import PRE_FLIP, TESTDATA
+from tests.conftest import PRE_FLIP, TESTDATA, TEXT_GAPS_2026_11_15_OFF
 from tests.conftest import own_thread_only
 
 PULL = fabric_for(PipelineConfig(garment_id="left_chest")).pull_comp_mm
@@ -293,6 +293,11 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
         # below would move for its sake and not rail comp's -- the same thing
         # tip caps did, told above. Its own price is `tests/test_crown_cover.py`'s.
         kw.setdefault("satin_crown_cover", False)
+        # ...and the six 2026-11-15 text/gap flips, the same way: with them ON
+        # MARINE reads 10 trims against the 9 ceiling (CI, 2026-11-15), and
+        # their price is their own tests'
+        for k, v in TEXT_GAPS_2026_11_15_OFF.items():
+            kw.setdefault(k, v)
         c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
         gen = build_generation(str(FIXTURE), c)
         return plan_stitches(finish_generation(gen.fork(), c), c)

@@ -3696,7 +3696,7 @@ def _tip_corner_angle(spine: list, poly, half_sewn: float,
 # stroke-2026-10-22`), while a thin column still needs all of it (+0.42 at 2.6 mm).
 _SEAM_HOLD_MIN_CROSS_MM = 3.0
 
-# `cfg.extra["satin_push_keeps_gaps"]` (built OFF 2026-11-14; Kent's merged-
+# `cfg.satin_push_keeps_gaps` (built OFF 2026-11-14; Kent's merged-
 # letter pins, `docs/closed-counters-traced-2026-11-14.md`). The rail push
 # below holds back from a COUNTER (a hole of the shape) so it stays
 # `floor_mm` wide, but sews the full pull into every other gap the art keeps:
@@ -3752,6 +3752,20 @@ def _ray_hits(starts: np.ndarray, dirs: np.ndarray, segs: np.ndarray, reach: flo
         s = (wx * dirs[:, None, 1] - wy * dirs[:, None, 0]) / den
     ok = (np.abs(den) > 1e-12) & (s >= -1e-9) & (s <= 1.0 + 1e-9) & (t >= -1e-9) & (t <= reach)
     return np.where(ok, np.clip(t, 0.0, reach), np.nan)
+
+
+def _clip_rect(geom, x0: float, y0: float, x1: float, y1: float):
+    """`shapely.clip_by_rect`, or a plain intersection with the box where GEOS
+    refuses the fast clip's three-point ring (`stage6_fill.SewnCover.clipped`
+    met the same refusal). Found when `satin_push_keeps_gaps` 0.5 was flipped
+    (2026-11-15): `test_preflight`'s full-bleed design raised in `_push_rails`
+    on CI. A clip GEOS accepts is returned untouched."""
+    import shapely
+    from shapely.geometry import box
+    try:
+        return shapely.clip_by_rect(geom, x0, y0, x1, y1)
+    except shapely.errors.GEOSException:
+        return geom.intersection(box(x0, y0, x1, y1))
 
 
 def _kept_limits(rail_a: list, rail_b: list, poly: Polygon, other, reach: float,
@@ -3857,7 +3871,7 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
     holes = [Polygon(ring) for ring in poly.interiors]
     holes = [h for h in holes if not h.is_empty]
     reach = 2.0 * pull_mm + floor_mm + 0.5
-    # `keep` (`cfg.extra["satin_push_keeps_gaps"]`, built OFF; None is the
+    # `keep` (`cfg.satin_push_keeps_gaps`, built OFF; None is the
     # engine as it was): the counter rule above for the gaps a counter test
     # cannot see -- comment at `PUSH_KEEP_MARGIN_MM`
     kept_a = kept_b = None
@@ -3869,12 +3883,11 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         other = None
         if not keep.is_empty and rail_a:
             # only the ink within the column's reach: clip before the overlay
-            import shapely
             xy = np.asarray(list(rail_a) + list(rail_b), float)
             (x0, y0), (x1, y1) = xy.min(axis=0) - reach - 1.0, xy.max(axis=0) + reach + 1.0
-            near_ink = shapely.clip_by_rect(keep, x0, y0, x1, y1)
+            near_ink = _clip_rect(keep, x0, y0, x1, y1)
             if not near_ink.is_empty:
-                own = shapely.clip_by_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
+                own = _clip_rect(poly, x0 - 1.0, y0 - 1.0, x1 + 1.0, y1 + 1.0)
                 o = near_ink.difference(own.buffer(PUSH_KEEP_MARGIN_MM))
                 other = None if o.is_empty else o
         kept_a, kept_b = _kept_limits(rail_a, rail_b, poly, other, reach, pull_mm, keep_floor)

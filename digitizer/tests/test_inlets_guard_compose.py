@@ -2,12 +2,12 @@
 OFF; review 2026-11-14): the guard replans the result the plan in hand was
 sewn from.
 
-`pipeline.plan_stitches` re-planned a satin that covered its own inlets as a
-fill on a copy of the regions, then handed the guard a `replan` that planned
-the ORIGINAL regions: whenever the guard kept its replan, the gear the inlet
-rule had moved to fill sewed as a satin again, and nothing said so. Stages
-5-7 are stood in for here; what is pinned is which regions each plan is
-asked to sew.
+`pipeline.plan_stitches` re-tiers a toothed satin as a fill on a copy of the
+regions (since 2026-11-15 BEFORE the one plan, from geometry:
+`outline_inlets.toothed_satins`), and the guard's `replan` must plan that
+copy, not the ORIGINAL regions: once it planned the originals, and whenever
+the guard kept its replan the gear sewed as a satin again. Stages 5-7 are
+stood in for here; what is pinned is which regions each plan is asked to sew.
 """
 from __future__ import annotations
 
@@ -42,7 +42,7 @@ def _stand_ins(monkeypatch, guard_keeps_replan: bool):
         return plan2 if guard_keeps_replan else plan
 
     monkeypatch.setattr(pipeline, "_plan_stitches", fake_plan)
-    monkeypatch.setattr(outline_inlets, "satin_over_inlets", lambda regions, plan: {"gear": 0.1})
+    monkeypatch.setattr(outline_inlets, "toothed_satins", lambda regions, cfg, design_class="flat": {"gear"})
     monkeypatch.setattr(proofread_guard, "guard_clipped", fake_guard)
     return asked
 
@@ -54,7 +54,7 @@ def _cfg(**kw):
 def test_the_guards_replan_keeps_the_inlet_rules_fill(monkeypatch):
     asked = _stand_ins(monkeypatch, guard_keeps_replan=True)
     plan = pipeline.plan_stitches(_result(), _cfg(proofread_guard_clipped=True))
-    assert [a["gear"] for a in asked] == ["auto", "fill", "fill"]   # first plan, inlet re-plan, guard replan
+    assert [a["gear"] for a in asked] == ["fill", "fill"]   # the one plan, the guard replan
     assert plan.tiers["gear"] == "fill"
 
 
@@ -67,7 +67,7 @@ def test_a_refused_replan_keeps_the_inlet_plan(monkeypatch):
 def test_either_flag_alone_is_the_plan_as_it_was(monkeypatch):
     asked = _stand_ins(monkeypatch, guard_keeps_replan=True)
     plan = pipeline.plan_stitches(_result(), _cfg())                 # inlets alone
-    assert [a["gear"] for a in asked] == ["auto", "fill"] and plan.tiers["gear"] == "fill"
+    assert [a["gear"] for a in asked] == ["fill"] and plan.tiers["gear"] == "fill"   # planned once
     asked.clear()
     plan = pipeline.plan_stitches(_result(), PipelineConfig(proofread_guard_clipped=True))   # guard alone
     assert [a["gear"] for a in asked] == ["auto", "auto"] and plan.tiers["gear"] == "auto"

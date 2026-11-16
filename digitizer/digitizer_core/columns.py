@@ -782,7 +782,7 @@ def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float,
     rails inset, pushed by the pull, a fanned straight end's face given the
     rails' reach -- and, with `hold` (`end_face_hold`, under
     `cfg.lettering_columns_square_ends`), every end-face penetration held on
-    its face. `keep` (`cfg.extra["satin_push_keeps_gaps"]`, None: off): the
+    its face. `keep` (`cfg.satin_push_keeps_gaps`, None: off): the
     push held out of the letter's bays and its gaps to same-thread ink, as
     from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`).
     -> (a_pts, b_pts). `tools/column_ends.py` reads it too."""
@@ -3149,7 +3149,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"connectors_buried": True} if connectors_buried else {}),
                   # `cfg.lettering_columns_connectors_edge_walk`: the walk that buries its hops
                   **({"edge_walk": True} if edge_walk else {}),
-                  # `cfg.extra["satin_push_keeps_gaps"]`: the push kept out of bays and gaps
+                  # `cfg.satin_push_keeps_gaps`: the push kept out of bays and gaps
                   **({"pull_keep": pull_keep} if pull_keep is not None else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 

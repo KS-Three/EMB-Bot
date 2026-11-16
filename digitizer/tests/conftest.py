@@ -1021,6 +1021,39 @@ PRE_FLIP.update(EDGE_WALK_2026_11_14_OFF)
 # flips): `tests/test_column_corner_fold_apex_side.py`.
 CORNER_APEX_2026_11_14_OFF = {"lettering_columns_corner_fold_apex_side": False}
 PRE_FLIP.update(CORNER_APEX_2026_11_14_OFF)
+# Kent's flips 2026-11-15, from the review sheets (art | OFF | ON | pro).
+# `fine_bar_survive` ("Flip both ON", with `small_text_handover`):
+# `tests/test_fine_bar.py`.
+FINE_BAR_2026_11_15_OFF = {"fine_bar_survive": False}
+PRE_FLIP.update(FINE_BAR_2026_11_15_OFF)
+# `small_text_reset_ground_ring` + `_bean_follows` ("Flip both ON"), fields
+# since (`cfg.extra` was their only door, unset = off):
+# `tests/test_small_text_ground_ring.py`.
+GROUND_RING_2026_11_15_OFF = {"small_text_reset_ground_ring": False}
+PRE_FLIP.update(GROUND_RING_2026_11_15_OFF)
+BEAN_FOLLOWS_2026_11_15_OFF = {"small_text_reset_bean_follows": False}
+PRE_FLIP.update(BEAN_FOLLOWS_2026_11_15_OFF)
+# `small_text_handover` ("Flip both ON", with `fine_bar_survive`), a field
+# since: `tests/test_small_text_handover.py`.
+HANDOVER_2026_11_15_OFF = {"small_text_handover": False}
+PRE_FLIP.update(HANDOVER_2026_11_15_OFF)
+# `satin_push_keeps_gaps` ("Flip both, value 0.5", with
+# `compact_satin_keeps_gaps`; the counters worker's #1529), a field since
+# (`cfg.extra` was its only door): `tests/test_satin_push_keeps_gaps.py`.
+# Its flip is HELD (Director 2026-11-15; the default is still None), so this
+# pin is the default today and keeps the set whole for the flip to come.
+PUSH_KEEPS_GAPS_2026_11_15_OFF = {"satin_push_keeps_gaps": None}
+PRE_FLIP.update(PUSH_KEEPS_GAPS_2026_11_15_OFF)
+# `compact_satin_keeps_gaps` (same ruling; the counters worker's #1557), a
+# field since: `tests/test_text_gap_flips_2026_11_15.py`.
+COMPACT_KEEPS_GAPS_2026_11_15_OFF = {"compact_satin_keeps_gaps": False}
+PRE_FLIP.update(COMPACT_KEEPS_GAPS_2026_11_15_OFF)
+#: The six above, OFF as one set: for a test that pins a number this flip
+#: moved but that prices ANOTHER flag (spread into a PipelineConfig), so it
+#: keeps reading the engine its pin was taken on.
+TEXT_GAPS_2026_11_15_OFF = {**FINE_BAR_2026_11_15_OFF, **GROUND_RING_2026_11_15_OFF,
+                            **BEAN_FOLLOWS_2026_11_15_OFF, **HANDOVER_2026_11_15_OFF,
+                            **PUSH_KEEPS_GAPS_2026_11_15_OFF, **COMPACT_KEEPS_GAPS_2026_11_15_OFF}
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

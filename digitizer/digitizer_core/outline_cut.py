@@ -1374,6 +1374,37 @@ def _top_run(poly: Polygon, top: float, W: float) -> float | None:
     return best or None
 
 
+# `apex_pro_band_knots` (`cfg.extra["lettering_columns_apex_pro_band_knots"]`,
+# 2026-11-15, built OFF): a gate on `apex_pro_joints`' flat A. The fold look's
+# sewn judge (`_judged_overlong`, `_fold_refine`) refuses a cut that sews more
+# SHORT legs, or more CROSSED legs, than the cut it is measured against, each
+# count on its own. The band moves where a leg's knots fall: at Becker LC
+# large (95.7 mm) it took two short legs off the level cut across the A's
+# left leg (folds / short / crossed 4/6/6 -> 4/4/6), and the diagonal cut
+# main takes there (2/6/0) was refused for its two short legs although it
+# sews two fewer folds and six fewer crossed legs. The leg below the crossbar
+# then sewed as one curved column with the bar, at a steep slant where the
+# pro and main sew it level. Reading the band as sewn (upright) does not
+# cure it (5/6/4 against 3/8/0, the same refusal). ON, in a letter that
+# carries a band the judge counts short and crossed legs as ONE knot count.
+# Layout, not a cloth number (gate 1).
+_APEX_BAND_KNOTS: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_pro_band_knots", default=False)
+
+
+@contextlib.contextmanager
+def apex_band_knots_scope(on: bool):
+    """`cfg.extra["lettering_columns_apex_pro_band_knots"]` for one plan.
+    False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _APEX_BAND_KNOTS.set(True)
+    try:
+        yield
+    finally:
+        _APEX_BAND_KNOTS.reset(token)
+
+
 def _apex_pro_cap_column(pc: Polygon, caps, cut_lines, pitch_mm: float, W: float) -> Column | None:
     """`apex_pro_joints`: the band above a flat A's cap cut, crossed upright
     (stationed along the line of text). None for any other piece."""
@@ -2470,6 +2501,15 @@ def _fold_pair(A: Column, B: Column, p, q, poly: Polygon, W: float, pitch_mm: fl
     wb = sorted(math.dist(a, b) for a, b in sb)[len(sb) // 2]
     if max(wa, wb) > FOLD_WIDTH_RATIO * min(wa, wb):
         return _refused('width_ratio')
+    return _fold_join(A, B, sa, ia, sb, ib, p, q, poly, W, pitch_mm, wa, wb)
+
+
+def _fold_join(A: Column, B: Column, sa, ia: int, sb, ib: int, p, q, poly: Polygon, W: float,
+               pitch_mm: float, wa: float, wb: float) -> Column | None:
+    """`_fold_pair`'s fold, once its two legs are read: `sa` and `sb` each
+    end at the corner, `ia`/`ib` the index of each cross's end on the inside
+    corner `p`'s side, `wa`/`wb` the legs' median cross lengths. A's legs, the
+    fan from `p` round the apex `q`, B's legs -> the folded Column, or None."""
     # the outline round the apex: the ring the apex sits on, which must
     # hold both legs' outer ends (the corner itself may sit on a counter's
     # ring -- a P's stem meeting its bowl); of the two arcs between the
@@ -2507,6 +2547,130 @@ def _fold_pair(A: Column, B: Column, p, q, poly: Polygon, W: float, pitch_mm: fl
         return _refused('piece')
     return Column(stations=list(sa) + fan + tail, piece=piece, kind="folded", axis=None,
                   width_mm=W, dropped_mm=A.dropped_mm + B.dropped_mm)
+
+
+# `flare_top_fold` (`cfg.extra["lettering_columns_flare_top_fold"]`,
+# 2026-11-15, built OFF). MARINE's I carries the wedge its E and R carry at
+# the top-left (a bulge stepping out past the stem's edge and back), with no
+# arm for `fold_cap_flared`'s cap to run along, so the cut leaves it one
+# straight stem crossed level to the top. The pro (all five Becker files)
+# FOLDS it: upright crosses over the wedge above its tip, a fan pivoting on
+# the stem's edge at the tip's height round the top-right corner, and the
+# stem's level crosses below -- a corner fold whose arm is the wedge. ON, a
+# letter's top-left wedge (`_top_wedge`) on a straight stem that no other
+# column shares is cut level at the tip and folded so (`_fold_join`). Layout,
+# not a cloth number (gate 1).
+_FLARE_TOP_FOLD: contextvars.ContextVar[bool] = contextvars.ContextVar("flare_top_fold", default=False)
+FLARE_WALK_W = 2.5             # the wedge is read within this much outline (in W) below the top corner
+FLARE_TIP_W = (0.5, 2.0)       # its tip lies this far below the top (MARINE's I: 1.16-1.17 W at all five sizes)
+
+
+@contextlib.contextmanager
+def flare_top_fold_scope(on: bool):
+    """`cfg.extra["lettering_columns_flare_top_fold"]` for one plan. False
+    sets nothing."""
+    if not on:
+        yield
+        return
+    token = _FLARE_TOP_FOLD.set(True)
+    try:
+        yield
+    finally:
+        _FLARE_TOP_FOLD.reset(token)
+
+
+def _top_wedge(poly: Polygon, W: float):
+    """`flare_top_fold`: the wedge on the letter's top-left -- walking down
+    the stem from the top-left corner, the outline steps out to a tip at
+    least FLARE_W W left of the corner, `FLARE_TIP_W` below the top, and
+    comes back by FLARE_W W at the next vertex. -> (corner, tip, notch, p)
+    with p the stem's edge below the notch carried up to the tip's height,
+    or None."""
+    x0, top, x1, _base = poly.bounds
+    cs = list(poly.exterior.coords)[:-1]
+    n = len(cs)
+    tops = [i for i, c in enumerate(cs) if abs(c[1] - top) < 0.1 * W]
+    if not tops:
+        return None
+    i0 = min(tops, key=lambda i: cs[i][0])
+    q = cs[i0]
+    if q[0] > (x0 + x1) / 2:
+        return None
+    step = None
+    for s in (1, -1):              # the side that runs DOWN the stem
+        nx = cs[(i0 + s) % n]
+        if nx[1] > q[1] + 0.1 * W and abs(nx[1] - q[1]) >= abs(nx[0] - q[0]):
+            step = s
+    if step is None:
+        return None
+    seq, run, prev, k = [], 0.0, q, i0
+    while True:
+        k = (k + step) % n
+        if k == i0:
+            break
+        seq.append(cs[k])
+        run += math.dist(prev, cs[k])
+        prev = cs[k]
+        if run > FLARE_WALK_W * W:
+            break
+    if len(seq) < 3:
+        return None
+    t = min(range(len(seq) - 2), key=lambda j: seq[j][0])
+    tip, notch, after = seq[t], seq[t + 1], seq[t + 2]
+    if q[0] - tip[0] < FLARE_W * W or not FLARE_TIP_W[0] * W <= tip[1] - top <= FLARE_TIP_W[1] * W:
+        return None
+    if notch[0] - tip[0] < FLARE_W * W or notch[1] - tip[1] < 0.3 * W or abs(after[1] - notch[1]) < 1e-9:
+        return None
+    f = (tip[1] - notch[1]) / (after[1] - notch[1])
+    return q, tip, notch, (notch[0] + f * (after[0] - notch[0]), tip[1])
+
+
+def _flare_top_folds(columns: list, cuts: list, poly: Polygon, W: float, pitch_mm: float) -> list:
+    """`flare_top_fold`: the stem under a top-left wedge (`_top_wedge`),
+    folded round the wedge (module comment above); `columns` as they were
+    where there is no wedge, or another column shares the stem's top."""
+    w = _top_wedge(poly, W)
+    if w is None:
+        return columns
+    q0, tip, _notch, p = w
+    x0, top, x1, _base = poly.bounds
+    h = _ray_hit(poly, (tip[0] + 1e-3, tip[1]), (1.0, 0.0), x1 - x0 + 1.0)
+    if h is None:
+        return columns
+    seg = LineString([tip, h])
+    owners = [i for i, c in enumerate(columns) if c.piece.buffer(1e-6).covers(seg)]
+    if len(owners) != 1:
+        return columns
+    i = owners[0]
+    col = columns[i]
+    if col.kind != "straight" or col.piece.distance(Point(q0[0] + 0.1 * W, q0[1] + 0.1 * W)) > 1e-6:
+        return columns             # an arm or a fold already holds the top
+    parts = split(col.piece, [(tuple(tip), tuple(h), "flare_fold", math.dist(tip, h))])
+    if len(parts) != 2:
+        return columns
+    band = min(parts, key=lambda g: g.bounds[1])
+    stem = max(parts, key=lambda g: g.bounds[1])
+    lines = [LineString([c[0], c[1]]) for c in cuts] + [seg]
+    A = _apex_column(band, ((0.0, 0.0), (0.0, 1.0)), lines, pitch_mm, W)     # crossed upright
+    B = build_column(stem, lines, W, pitch_mm)
+    if A is None or B is None:
+        return columns
+    # the wedge's upright crosses, left of the pivot, ending at it; the
+    # stem's level crosses, bottom to top, ending at the cut
+    sa = sorted((s for s in A.stations if max(s[0][0], s[1][0]) < p[0] - 1e-6),
+                key=lambda s: s[0][0] + s[1][0])
+    if not sa:
+        return columns
+    sb = sorted(B.stations, key=lambda s: -(s[0][1] + s[1][1]))
+    ia = 0 if sa[-1][0][1] > sa[-1][1][1] else 1
+    ib = 0 if math.dist(sb[-1][0], p) <= math.dist(sb[-1][1], p) else 1
+    wa = sorted(math.dist(a, b) for a, b in sa)[len(sa) // 2]
+    wb = sorted(math.dist(a, b) for a, b in sb)[len(sb) // 2]
+    q = min(list(poly.exterior.coords)[:-1], key=lambda c: math.dist(c, (h[0], top)))
+    fold = _fold_join(A, B, sa, ia, sb, ib, p, q, poly, W, pitch_mm, wa, wb)
+    if fold is None:
+        return columns
+    return columns[:i] + [fold] + columns[i + 1:]
 
 
 def _fold_corners(columns: list, cuts: list, poly: Polygon, W: float, pitch_mm: float) -> tuple[list, list]:
@@ -3408,6 +3572,9 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         # candidate columns sewn beside the rest of the letter as the
         # shipped look builds it (a junction knots with its neighbour).
         rest = []
+        # `apex_pro_band_knots` (built OFF): under a flat A's band the
+        # judge's knots are one count, short and crossed legs together
+        knots_one = _APEX_BAND_KNOTS.get() and any(c[2] == "apex_pro_cap" for c in cuts)
         for pc in pieces:
             for sub, lines, _extra in _refine(pc, cut_lines, W, pitch_mm, 0):
                 col = build_column(sub, lines, W, pitch_mm, mitre_ends=mitre_ends)
@@ -3426,7 +3593,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
                     put = True
             if not put:
                 out += [k for k in cols if k is not None]
-            return judge(out, poly)
+            k = judge(out, poly)
+            return (k[0], k[1] + k[2], 0) if knots_one else k
     columns, unsewn = [], []
     apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"] if apex else []
     apro = [(c[0], c[1]) for c in cuts if c[2] == "apex_pro"]   # `apex_pro` (built OFF): none without it
@@ -3466,4 +3634,6 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         columns, cuts = _absorb_serifs(columns, cuts, W, pitch_mm, mitre_ends)
     if _CORNER_FOLD.get():
         columns, cuts = _fold_corners(columns, cuts, poly, W, pitch_mm)
+    if _FLARE_TOP_FOLD.get():      # `flare_top_fold` (built OFF): an I's wedge folded
+        columns = _flare_top_folds(columns, cuts, poly, W, pitch_mm)
     return LetterCut(poly, W, cuts, columns, unsewn)

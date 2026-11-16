@@ -37,6 +37,17 @@ on:
         type: choice
         options: [check, capture]
         default: check
+      # The frame pin, ON since Kent's 2026-11-15 ruling "Flip ON now (Recommended)".
+      # The scheduled nightly always passes it (a `schedule` event has no inputs);
+      # a dispatch passes it unless this box is unticked, which is the escape hatch
+      # back to the old fresh-registration reading. On, `measure` records each job's
+      # registration + grid origin (capture writes the ledger's `frames`) and `check`
+      # reads both kappas at the ledger's pins. tools/tripwire.py `--pin-frame`;
+      # docs/tripwire-frame-pin-2026-11-15.md.
+      pin_frame:
+        description: 'read the two kappas in a pinned frame (ON since 2026-11-15; untick to read fresh)'
+        type: boolean
+        default: true
 
 permissions:
   contents: read
@@ -115,6 +126,7 @@ jobs:
           --ledger testdata/tripwire_ledger.json
           --runs tripwire-runs --figures tripwire-runs/figures.json
           --table tripwire-check.md --json tripwire-check.json
+          ${{ (github.event_name == 'schedule' || inputs.pin_frame) && '--pin-frame' || '' }}
       # Two kinds of red, told apart here: a table means the pairs were read
       # (its "RED, n row(s): ..." line names the rows that failed); no table
       # means a step before the reading failed, and the summary says which.
@@ -207,7 +219,7 @@ jobs:
           grep -m1 'model name' /proc/cpuinfo || true
       - name: Measure every committed pair (pass ${{ matrix.pass }})
         working-directory: digitizer
-        run: python -m tools.tripwire measure --runs tripwire-runs --figures tripwire-pass-${{ matrix.pass }}.json
+        run: python -m tools.tripwire measure --runs tripwire-runs --figures tripwire-pass-${{ matrix.pass }}.json ${{ (github.event_name == 'schedule' || inputs.pin_frame) && '--pin-frame' || '' }}
       - uses: actions/upload-artifact@v4
         if: always()
         with:
