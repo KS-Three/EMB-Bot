@@ -1,4 +1,5 @@
-"""`cfg.extra["lettering_columns_apex_pro_joints"]` (2026-11-14, built OFF):
+"""`cfg.lettering_columns_apex_pro_joints` (2026-11-14, built OFF as a `cfg.extra` key; ON since
+2026-11-15, Kent's flip):
 the joints `apex_pro` read but did not build, cut the way the pro's Becker
 MARINE files cut them (`docs/apex-pro-construction-2026-11-14.md`, section 5;
 `outline_cut._APEX_PRO_JOINTS`):
@@ -43,11 +44,12 @@ def test_the_scope_is_off_by_default_and_puts_itself_back():
     assert oc._APEX_PRO_JOINTS.get() is False
 
 
-def test_plan_stitches_sets_it_from_the_extra_key_for_its_own_plan_only(monkeypatch):
+def test_plan_stitches_sets_it_from_the_field_for_its_own_plan_only(monkeypatch):
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: oc._APEX_PRO_JOINTS.get())
-    on = replace(PipelineConfig(), extra={"lettering_columns_apex_pro_joints": True})
-    assert pipeline.plan_stitches(None, on) is True
-    assert pipeline.plan_stitches(None, PipelineConfig()) is False
+    assert pipeline.plan_stitches(None, PipelineConfig()) is True      # ON since 2026-11-15
+    off = replace(PipelineConfig(), lettering_columns_apex_pro_joints=False)
+    assert pipeline.plan_stitches(None, off) is False
+    assert oc._APEX_PRO_JOINTS.get() is False
 
 
 def test_off_is_the_lane_as_it_was():

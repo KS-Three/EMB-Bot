@@ -1027,6 +1027,9 @@ PRE_FLIP.update(BRIDGE_2026_11_15_OFF)
 # `outline_frame_guard` (Kent 2026-11-15, ticked ON): `tests/test_outline_frame_guard.py`.
 FRAME_GUARD_2026_11_15_OFF = {"outline_frame_guard": False}
 PRE_FLIP.update(FRAME_GUARD_2026_11_15_OFF)
+# `point_touch_split` (Kent 2026-11-15, ticked ON; promoted from cfg.extra): `tests/test_point_touch.py`.
+POINT_TOUCH_2026_11_15_OFF = {"point_touch_split": False}
+PRE_FLIP.update(POINT_TOUCH_2026_11_15_OFF)
 # Kent's flips 2026-11-15, from the review sheets (art | OFF | ON | pro).
 # `fine_bar_survive` ("Flip both ON", with `small_text_handover`):
 # `tests/test_fine_bar.py`.
@@ -1060,6 +1063,18 @@ PRE_FLIP.update(COMPACT_KEEPS_GAPS_2026_11_15_OFF)
 TEXT_GAPS_2026_11_15_OFF = {**FINE_BAR_2026_11_15_OFF, **GROUND_RING_2026_11_15_OFF,
                             **BEAN_FOLLOWS_2026_11_15_OFF, **HANDOVER_2026_11_15_OFF,
                             **PUSH_KEEPS_GAPS_2026_11_15_OFF, **COMPACT_KEEPS_GAPS_2026_11_15_OFF}
+# `lettering_columns_apex_pro` ("Flip all three ON", Kent 2026-11-15, the apex_pro family): `tests/test_column_apex_pro.py`.
+APEX_PRO_2026_11_15_OFF = {"lettering_columns_apex_pro": False}
+PRE_FLIP.update(APEX_PRO_2026_11_15_OFF)
+# `lettering_columns_apex_pro_joints` ("Flip all three ON", Kent 2026-11-15, the apex_pro family): `tests/test_column_apex_pro_joints.py`.
+APEX_JOINTS_2026_11_15_OFF = {"lettering_columns_apex_pro_joints": False}
+PRE_FLIP.update(APEX_JOINTS_2026_11_15_OFF)
+# `lettering_columns_corner_fold_cap_flared` ("Flip all three ON", Kent 2026-11-15, the apex_pro family): `tests/test_column_fold_cap_flared.py`.
+CAP_FLARED_2026_11_15_OFF = {"lettering_columns_corner_fold_cap_flared": False}
+PRE_FLIP.update(CAP_FLARED_2026_11_15_OFF)
+# `lettering_columns_ring_floor` (ticked ON, Kent 2026-11-15): `tests/test_ring_floor.py`.
+RING_FLOOR_2026_11_15_OFF = {"lettering_columns_ring_floor": False}
+PRE_FLIP.update(RING_FLOOR_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
