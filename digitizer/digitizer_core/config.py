@@ -1398,6 +1398,20 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP (BRIDGE_2026_11_15_OFF) and
     # `tests/engine_2026_10_27.json` pin it False.
     stroke_bridge_keep: bool = True
+    # Two shapes of one ink touching at a point are two shapes
+    # (`point_touch.apply_point_touch_split`; built OFF 2026-11-14 as
+    # `cfg.extra["point_touch_split"]`, #1544, eye sweep fault 11: NSYNC's
+    # star touches its N at one point, the two traced as one region and the
+    # column build fanned the N's top-left into spikes). ON, a body pinched
+    # under `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
+    # tagger, so each is sewn (and tagged) on its own. Logos only: the photo
+    # classes never call it (MFab hat, `photo_scene`, lost WELDING's W to a
+    # cut). Promoted to a field so the default can be ON.
+    # **ON since 2026-11-15** (Kent 2026-11-15, review pack (review-1115): ticked ON). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (POINT_TOUCH_2026_11_15_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_point_touch.py`.
+    point_touch_split: bool = True
     # What the art repeats sews as ONE shape repeated (built OFF 2026-11-13,
     # Kent on Bridge's wheel: "All of the wheel handles look different from
     # eachother, this would be better if they all looked the same")
@@ -3951,6 +3965,58 @@ class PipelineConfig:
     # `pipeline.plan_stitches` (`outline_cut.apex_cut_scope`).
     # Tests: `tests/test_column_apex_cut.py`.
     lettering_columns_apex_cut: bool = False
+    # The M's V sewn as the pro sews it (`outline_cut._APEX_PRO`, 2026-11-14,
+    # #1526; built OFF as `cfg.extra["lettering_columns_apex_pro"]`). At a
+    # down-pointing V the right-hand leg owns the point -- level crosses from
+    # the point up the V and on up that leg -- and the other leg stops on a
+    # split continuing that leg's inner edge, its fan covering its stem's top
+    # (`docs/apex-pro-construction-2026-11-14.md`). **ON since 2026-11-15,
+    # Kent's flip** ("Flip all three ON", with `lettering_columns_apex_pro_joints`
+    # and `lettering_columns_corner_fold_cap_flared`; told: the E's bottom-left
+    # a little further from the pro at the two large Becker sizes, LC large's A
+    # left leg re-slants, his I's flared top is not capped), promoted from
+    # `cfg.extra` to a field so the default can be ON. False is the cut as it
+    # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin
+    # it False. Tests: `tests/test_column_apex_pro.py`.
+    lettering_columns_apex_pro: bool = True
+    # The N's two joints and a flat A's top band sewn as the pro sews them
+    # (`outline_cut._APEX_PRO_JOINTS`, 2026-11-14, #1550; built OFF as
+    # `cfg.extra["lettering_columns_apex_pro_joints"]`): the right-hand stroke
+    # owns each joint and the other ends on a level line -- the N's stem stops
+    # 0.95 W below its top under the diagonal's fan, its diagonal ends level
+    # 0.70 W above the baseline into the stem, and a flat A's top is a band of
+    # upright crosses 0.65 W deep (`docs/apex-pro-construction-2026-11-14.md`,
+    # section 5). **ON since 2026-11-15, Kent's flip** ("Flip all three ON",
+    # with `lettering_columns_apex_pro` and `lettering_columns_corner_fold_cap_flared`),
+    # promoted from `cfg.extra` to a field so the default can be ON. False is
+    # the cut as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_column_apex_pro_joints.py`.
+    lettering_columns_apex_pro_joints: bool = True
+    # A gate on `lettering_columns_corner_fold_apex_side` (`outline_cut._FOLD_CAP_FLARED`,
+    # 2026-11-14, #1550; built OFF as
+    # `cfg.extra["lettering_columns_corner_fold_cap_flared"]`): the pro CAPS an
+    # L corner whose outline carries a wedge flare (MARINE's E and R at the
+    # top-left: the arm's upright crosses run over the stem's top) and FANS a
+    # plain one (8 of 8 corners read, `docs/apex-pro-construction-2026-11-14.md`
+    # section 6); ON, a flared top corner is cut level at the arm's lower edge
+    # and the fold leaves it. **ON since 2026-11-15, Kent's flip** ("Flip all
+    # three ON", with `lettering_columns_apex_pro` and
+    # `lettering_columns_apex_pro_joints`), promoted from `cfg.extra` to a field
+    # so the default can be ON. False is the cut as it was; `tests/conftest.py`
+    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_column_fold_cap_flared.py`.
+    lettering_columns_corner_fold_cap_flared: bool = True
+    # Under `lettering_columns_small_bold`'s thin floor, a RING column (a closed
+    # bowl) has its crosses under the floor widened to it instead of dropped
+    # (`columns._RING_FLOOR`, 2026-11-14, #1558; built OFF as
+    # `cfg.extra["lettering_columns_ring_floor"]`), so Bukit Asam's "beyond
+    # coal" sews its o's closed at 85.1 and 80.4 mm. **ON since 2026-11-15,
+    # Kent's flip** (ticked ON at the 2026-11-15 review, relayed by the
+    # director), promoted from `cfg.extra` to a field so the default can be ON.
+    # False is the lane as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_ring_floor.py`.
+    lettering_columns_ring_floor: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

@@ -1,4 +1,5 @@
-"""`cfg.extra["lettering_columns_apex_pro"]` (2026-11-14, built OFF): a
+"""`cfg.lettering_columns_apex_pro` (2026-11-14, built OFF as a `cfg.extra` key; ON since
+2026-11-15, Kent's flip): a
 down-pointing V tip is cut the way the pro's Becker MARINE files cut it
 (`docs/apex-pro-construction-2026-11-14.md`, `outline_cut._APEX_PRO`):
 
@@ -42,11 +43,11 @@ def test_the_scope_is_off_by_default_and_puts_itself_back():
     assert oc._APEX_PRO.get() is False
 
 
-def test_plan_stitches_sets_it_from_the_extra_key_for_its_own_plan_only(monkeypatch):
+def test_plan_stitches_sets_it_from_the_field_for_its_own_plan_only(monkeypatch):
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: oc._APEX_PRO.get())
-    on = replace(PipelineConfig(), extra={"lettering_columns_apex_pro": True})
-    assert pipeline.plan_stitches(None, on) is True
-    assert pipeline.plan_stitches(None, PipelineConfig()) is False
+    assert pipeline.plan_stitches(None, PipelineConfig()) is True      # ON since 2026-11-15
+    off = replace(PipelineConfig(), lettering_columns_apex_pro=False)
+    assert pipeline.plan_stitches(None, off) is False
     assert oc._APEX_PRO.get() is False
 
 

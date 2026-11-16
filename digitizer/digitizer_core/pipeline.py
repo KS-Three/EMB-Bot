@@ -1123,12 +1123,21 @@ def build_generation(
         from .bevel_fold import apply_bevel_fold
         apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices))
 
-    # `cfg.extra["point_touch_split"]` (built OFF 2026-11-14, eye sweep fault
-    # 11: NSYNC's star touches its N at one point and the two traced as one
-    # region, which the column build fanned into spikes): a body pinched
-    # under `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
-    # tagger, so each is sewn (and tagged) on its own. Absent: never loads.
-    if cfg.extra.get("point_touch_split"):
+    # `cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review
+    # pack (review-1115): ticked ON; built OFF 2026-11-14 as
+    # `cfg.extra["point_touch_split"]`, eye sweep fault 11: NSYNC's star
+    # touches its N at one point and the two traced as one region, which the
+    # column build fanned into spikes): a body pinched under
+    # `textcluster.TOUCH_MAX_MM` is cut into its pieces before the text
+    # tagger, so each is sewn (and tagged) on its own. False: never loads.
+    # Flat logos only (2026-11-15): on a photo class every quantised blob
+    # pinches somewhere -- MFab hat (photo_scene) lost WELDING's W to a cut,
+    # and the three corpus photos moved -- and a tonal render is the same:
+    # `drone_render` (gradient) lost an 8.47 mm2 shading blend off a 0111
+    # field, which then stood alone as a fourth blocking THREAD_MATCH_POOR.
+    # Every cut that read better (NSYNC, the QR, low_poly, the pixel sprite)
+    # was on a flat design, so only "flat" calls it.
+    if cfg.point_touch_split and classification.class_ == "flat":
         from .point_touch import apply_point_touch_split
         apply_point_touch_split(regions)
 
@@ -2136,10 +2145,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import apex_guard_scope    # `cfg.extra["lettering_columns_apex_guard"]` (built OFF), the same way
     from .column_lean import lean_flat_ends_scope   # `cfg.extra["lettering_columns_lean_flat_ends"]` (built OFF), the same way
     from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
-    from .outline_cut import apex_pro_scope      # `cfg.extra["lettering_columns_apex_pro"]` (built OFF), the same way
-    from .columns import ring_floor_scope        # `cfg.extra["lettering_columns_ring_floor"]` (built OFF), the same way
-    from .outline_cut import apex_pro_joints_scope   # `cfg.extra["lettering_columns_apex_pro_joints"]` (built OFF), the same way
-    from .outline_cut import fold_cap_flared_scope   # `cfg.extra["lettering_columns_corner_fold_cap_flared"]` (built OFF), the same way
+    from .outline_cut import apex_pro_scope      # `cfg.lettering_columns_apex_pro` (ON since 2026-11-15, Kent's flip), the same way
+    from .columns import ring_floor_scope        # `cfg.lettering_columns_ring_floor` (ON since 2026-11-15, Kent's flip), the same way
+    from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
+    from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
@@ -2160,10 +2169,10 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
             apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
             lean_flat_ends_scope(bool((cfg.extra or {}).get("lettering_columns_lean_flat_ends"))), \
             rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
-            apex_pro_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro"))), \
-            ring_floor_scope(bool((cfg.extra or {}).get("lettering_columns_ring_floor"))), \
-            apex_pro_joints_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_joints"))), \
-            fold_cap_flared_scope(bool((cfg.extra or {}).get("lettering_columns_corner_fold_cap_flared"))), \
+            apex_pro_scope(cfg.lettering_columns_apex_pro), \
+            ring_floor_scope(cfg.lettering_columns_ring_floor), \
+            apex_pro_joints_scope(cfg.lettering_columns_apex_pro_joints), \
+            fold_cap_flared_scope(cfg.lettering_columns_corner_fold_cap_flared), \
             apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))), \
             flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))), \
             absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))), \
