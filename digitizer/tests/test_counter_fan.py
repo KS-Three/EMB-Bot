@@ -1,4 +1,5 @@
-"""`cfg.extra["counter_fan_satin"]` (2026-11-14, built OFF): a small three-sided
+"""`cfg.counter_fan_satin` (2026-11-14; ON since Kent's 2026-11-15 flip, "Both
+ON, keep 5.0"; PRE_FLIP pins it OFF): a small three-sided
 counter sews as ONE fanned satin, the pro's way (`stage6_counter_fan`).
 
 Kent's MFab pin "random stitch in the middle", and "I want it exactly like the
@@ -18,7 +19,9 @@ from shapely.geometry import Point, Polygon, box
 
 from digitizer_core import machine, stitches
 from digitizer_core import stage7_sequence as s7
+from digitizer_core.config import PipelineConfig
 from digitizer_core.stage6_counter_fan import counter_fan_runs, fan_crosses, wedge
+from tests.conftest import PRE_FLIP
 
 #: an MFab-like counter: base 4.5 mm, a narrow arm up the right side to the tip
 WEDGE = Polygon([(0, 0), (4.5, 0), (4.5, 6.5)])
@@ -119,7 +122,16 @@ def test_refuses_what_is_not_a_three_sided_counter():
 
 def test_hook_is_behind_the_flag_and_auto_only():
     src = inspect.getsource(s7)
-    assert 'get("counter_fan_satin")' in src
+    assert "counter_fan = bool(cfg.counter_fan_satin)" in src
     assert src.count("counter_fan_runs(") == 1
     # the shape's own tier, not the white-field rung's forced "fill"
     assert 'if (counter_fan and own_tier == "auto" and p.region.meta.get("enclosed_background")' in src
+
+
+def test_flag_is_on_and_pinned_off():
+    """Kent's flip 2026-11-15 ("Both ON, keep 5.0"): the default is ON, the
+    ceiling stays the machine constant; the OFF arm, the ladder as it was, is
+    pinned in `tests/conftest.py`."""
+    assert PipelineConfig().counter_fan_satin is True
+    assert PRE_FLIP["counter_fan_satin"] is False
+    assert machine.SATIN_MAX_WIDTH_MM == 5.0

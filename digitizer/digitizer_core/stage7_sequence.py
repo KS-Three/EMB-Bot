@@ -3124,9 +3124,10 @@ def sequence(
     # ON since 2026-11-15, Kent: "Both ON, keep 5.0"
     ring_room = (border_style == "significant"
                  and bool(cfg.border_significant_ring_room))
-    # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14): a small
-    # three-sided counter as one fanned satin (`stitch_one`, `stage6_counter_fan`)
-    counter_fan = bool((getattr(cfg, "extra", None) or {}).get("counter_fan_satin"))
+    # `cfg.counter_fan_satin` (built OFF 2026-11-14): a small three-sided
+    # counter as one fanned satin (`stitch_one`, `stage6_counter_fan`).
+    # ON since 2026-11-15, Kent: "Both ON, keep 5.0"
+    counter_fan = bool(cfg.counter_fan_satin)
     # The significance denominator: the design's own stitched area, so the
     # gate is a SHARE and moves with the design instead of being a mm floor
     # (which would be a physical constant, and gate 1 territory).
@@ -3665,8 +3666,8 @@ def sequence(
             shape_underlay = p.region.meta.get("underlay_style")
             eff_underlay_style = (shape_underlay if shape_underlay is not None
                                   else underlay_style)
-            # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14,
-            # `stage6_counter_fan`): a small three-sided counter sews as ONE
+            # `cfg.counter_fan_satin` (built OFF 2026-11-14, ON since
+            # Kent's 2026-11-15 flip; `stage6_counter_fan`): a small three-sided counter sews as ONE
             # fanned satin, the pro's way, where every cross fits under the
             # satin ceiling (`machine.SATIN_MAX_WIDTH_MM`, gate 1). The
             # shape's OWN tier must be "auto": a review-screen choice wins,

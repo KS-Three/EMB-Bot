@@ -1473,6 +1473,22 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_text_gap_flips_2026_11_15.py`.
     compact_satin_keeps_gaps: bool = True
+    # A small three-sided counter sews as ONE fanned satin, the pro's way
+    # (`stage6_counter_fan`, `stage7_sequence.stitch_one`; built OFF
+    # 2026-11-14 as `cfg.extra["counter_fan_satin"]`, #1559, #1563). Kent's
+    # MFab pin "random stitch in the middle", and "I want it exactly like the
+    # pros": the pro sews the A's white counter as an underlay zigzag and one
+    # satin base to tip whose crosses turn along the narrow arm; ours sewed a
+    # fill. Only a shape whose OWN tier is "auto", that is an enclosed
+    # background and not lettering; refused wherever a cross would pass the
+    # satin ceiling (`machine.SATIN_MAX_WIDTH_MM`, gate 1: MFab at its own
+    # 104.9 mm refuses, the 5.7 mm arm waits on a sew-out). **ON since
+    # 2026-11-15, Kent's flip** ("Both ON, keep 5.0", with
+    # `border_significant_ring_room`), promoted from `cfg.extra` to a field so
+    # the default can be ON. False is the ladder as it was, byte for byte;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_counter_fan.py`.
+    counter_fan_satin: bool = True
     # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
     # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
     # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
