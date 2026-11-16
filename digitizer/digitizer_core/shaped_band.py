@@ -1,5 +1,6 @@
 """A shaped outline band sewn from its OUTER edge
-(`cfg.border_from_outline_follow_shape`, built OFF 2026-11-13).
+(`cfg.border_from_outline_follow_shape`, built OFF 2026-11-13, ON since
+2026-11-16).
 
 The first build of that flag (#1455) kept `stage6_border._satin_loop`: needle
 stations on the HOLE's ring, each cross cast out along the ring's normal and

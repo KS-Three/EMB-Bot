@@ -1027,6 +1027,12 @@ PRE_FLIP.update(BRIDGE_2026_11_15_OFF)
 # `outline_frame_guard` (Kent 2026-11-15, ticked ON): `tests/test_outline_frame_guard.py`.
 FRAME_GUARD_2026_11_15_OFF = {"outline_frame_guard": False}
 PRE_FLIP.update(FRAME_GUARD_2026_11_15_OFF)
+# `border_from_outline_follow_shape` (Kent 2026-11-16, "Flip ON"; built OFF
+# 2026-11-13): a band with teeth sews to its own outer edge, and is not a
+# framed field. Of the repo's logos only Commons "Ahora"'s gear is taken.
+# `tests/test_outline_follow_shape.py` names the flag itself.
+FOLLOW_SHAPE_2026_11_16_OFF = {"border_from_outline_follow_shape": False}
+PRE_FLIP.update(FOLLOW_SHAPE_2026_11_16_OFF)
 # `point_touch_split` (Kent 2026-11-15, ticked ON; promoted from cfg.extra): `tests/test_point_touch.py`.
 POINT_TOUCH_2026_11_15_OFF = {"point_touch_split": False}
 PRE_FLIP.update(POINT_TOUCH_2026_11_15_OFF)

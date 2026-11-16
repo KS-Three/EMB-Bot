@@ -91,6 +91,18 @@ def outline_measures(holder, body, hole: Polygon) -> tuple[float, float]:
     return band, stroke
 
 
+def _sews_shaped(poly: Polygon, found, cfg) -> bool:
+    """`cfg.border_from_outline_follow_shape`: the outline `poly` round the
+    bodies in `found` is one `shaped_band` sews (round one body, thin enough
+    for one satin everywhere, its thickness stepped)."""
+    if not (getattr(cfg, "border_from_outline_follow_shape", False)
+            and getattr(cfg, "border_from_outline", False)):
+        return False
+    from .shaped_band import sews_shaped
+
+    return sews_shaped(poly, [hole for _b, hole in found])
+
+
 def _looped(poly: Polygon) -> list[Polygon]:
     return [Polygon(r) for r in poly.interiors
             if LineString(r.coords).length >= machine.BORDER_MIN_LOOP_MM]
@@ -233,9 +245,17 @@ def find_art_outlines(regions, cfg=None, *,
         # bigger than what it holds: a FIELD round a knockout. It stays in
         # the result, so its bodies still sew as plain fills, and is tagged;
         # stage 7 gives it no loop and sews it on the fill tier.
+        #
+        # Not a band with teeth (`cfg.border_from_outline_follow_shape`, ON
+        # since 2026-11-16). The ratio reads AREA, and teeth are area: Ahora's
+        # gear ring is 1.37 and no thicker than 2.3 mm anywhere at 100 mm. A
+        # band `shaped_band` lays out fits one satin at every point of its
+        # ring (`machine.SATIN_MAX_WIDTH_MM`), so it is the thin band the
+        # guard's own first sentence asks for; the k_line box and Ahora's
+        # pink ground are thicker than a satin and stay fields.
         if found and frame_guard:
             ratio = poly.area / max(sum(h.area for h in holes), 1e-9)
-            if ratio >= FRAME_AREA_RATIO:
+            if ratio >= FRAME_AREA_RATIO and not _sews_shaped(poly, found, cfg):
                 o.meta["framed_field"] = round(ratio, 2)
         for b, hole in found:
             out.setdefault(o.shape_id, []).append((b.shape_id, hole))

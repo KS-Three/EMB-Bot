@@ -1,5 +1,6 @@
 """`cfg.border_from_outline_follow_shape` (built OFF 2026-11-13, Kent on
-Commons "Ahora": "now fix the Ahora gear so it sews as a gear").
+Commons "Ahora": "now fix the Ahora gear so it sews as a gear"; ON since
+2026-11-16, Kent: "Flip ON").
 
 `border_from_outline` sews an art outline as a satin loop of ONE width on the
 body's edge. Ahora's white gear is a ring round a yellow disc with 17 teeth on
@@ -20,6 +21,10 @@ thickness swings by at least the shortest stitch keeps the loop, but:
 
 A band of one width (To-a-T's frame, which the pro widens) and a band too
 thick to be a satin (Becker's drop shadow) are left exactly as they were.
+
+With the flip, a band the layout takes is also not `outline_frame_guard`'s
+framed field: that guard reads area, teeth are area, and with it ON (since
+2026-11-15) the gear sewed as a fill whatever this flag said.
 """
 from __future__ import annotations
 
@@ -41,9 +46,11 @@ from digitizer_core.keyline_bean import keyline_width_mm
 from digitizer_core.shaped_band import layout, sews_shaped, stepped_share
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
-# Priced before the frame guard (ON 2026-11-15): a gear's band is bigger than
-# its hole (Ahora's 1.37, this file's GEAR the same way), so under the guard
-# it is a field round a knockout and never reaches this flag's outline path.
+# The OFF arms are priced before the frame guard (ON 2026-11-15): a gear's
+# band is bigger than its hole (Ahora's 1.37, this file's GEAR 1.32), so with
+# the guard on and this flag off it is a field round a knockout and sews as
+# a fill. `_plan` pins the guard off so OFF is the loop this flag replaces;
+# the guard-on arms at the foot of the file name it.
 from tests.conftest import FRAME_GUARD_2026_11_15_OFF
 
 FLAG = "border_from_outline_follow_shape"
@@ -83,7 +90,7 @@ def _plan(band, body=DISC, **cfg_kw):
     b, o = _region("Sbody", body, 0, 0), _region("Souter", band, 1, 1)
     planned = [PlannedRegion(region=b, polygon=body, sew_index=0),
                PlannedRegion(region=o, polygon=band, sew_index=1)]
-    cfg = PipelineConfig(underlay=False, **{**FRAME_GUARD_2026_11_15_OFF, **cfg_kw})
+    cfg = PipelineConfig(underlay=False, **{**FRAME_GUARD_2026_11_15_OFF, FLAG: False, **cfg_kw})
     outlines = _art_outlines([b, o], cfg)
     assert outlines and "Souter" in outlines, "the fixture must read as an art outline"
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg, art_outlines=outlines)
@@ -109,8 +116,11 @@ def _far_radii(runs):
 
 # --- the flag and what it leans on -------------------------------------------
 
-def test_built_off():
-    assert getattr(PipelineConfig(), FLAG) is False
+def test_on_by_default_and_off_in_the_pre_flip_pins():
+    from tests.conftest import FOLLOW_SHAPE_2026_11_16_OFF, PRE_FLIP
+
+    assert getattr(PipelineConfig(), FLAG) is True
+    assert FOLLOW_SHAPE_2026_11_16_OFF == {FLAG: False} and PRE_FLIP[FLAG] is False
 
 
 def test_the_numbers_this_leans_on():
@@ -332,19 +342,19 @@ def test_on_the_notched_frame_keeps_its_notches_and_its_corners():
 def test_the_real_gear_at_40_mm_is_a_satin_not_a_thin_line():
     """Commons "Ahora" at 40 mm: the gear is 4.8 mm across, its band 0.57 to
     0.93 mm thick. The hairline gate reads 2 x area / perimeter, teeth are
-    perimeter, and it sewed as a bean inside its own outline. ON it is a band
-    with teeth: one white satin, no white run."""
+    perimeter, and it sewed as a bean inside its own outline; the frame guard
+    reads area, teeth are area, and it sewed as a fill. On the engine as
+    shipped (every default) it is a band with teeth: white satin, no white
+    run, no white fill."""
     from dataclasses import replace
     from pathlib import Path
 
     from digitizer_core.pipeline import digitize
 
     art = Path(__file__).resolve().parents[1] / "testdata" / "art" / "commons_lettering" / "logo_ahora.png"
-    _result, plan = digitize(art.read_bytes(),
-                             replace(PipelineConfig(), target_width_mm=40.0,
-                                     **{**FRAME_GUARD_2026_11_15_OFF, FLAG: True}))
+    _result, plan = digitize(art.read_bytes(), replace(PipelineConfig(), target_width_mm=40.0))
     kinds = {r.kind for b in plan.blocks if min(b.rgb) > 235 for r in b.runs}
-    assert stitches.SATIN in kinds and stitches.RUN not in kinds
+    assert stitches.SATIN in kinds and not kinds & {stitches.RUN, stitches.FILL}
 
 
 def test_on_the_body_and_a_band_of_one_width_are_byte_identical():
@@ -364,4 +374,43 @@ def test_on_without_border_from_outline_does_nothing():
                              art_outlines=_art_outlines([b, o], cfg))
         return [r for blk in blocks for r in blk.runs]
 
-    assert _md5(plan(**{FLAG: True})) == _md5(plan())
+    assert _md5(plan(**{FLAG: True})) == _md5(plan(**{FLAG: False}))
+
+
+# --- the frame guard (ON since 2026-11-15) -----------------------------------
+
+def _guarded(band, body=DISC, **cfg_kw):
+    """`_plan` on the shipped guard. -> (the band's runs, its `framed_field` tag)."""
+    b, o = _region("Sbody", body, 0, 0), _region("Souter", band, 1, 1)
+    planned = [PlannedRegion(region=b, polygon=body, sew_index=0),
+               PlannedRegion(region=o, polygon=band, sew_index=1)]
+    cfg = PipelineConfig(underlay=False, outline_frame_guard=True, **cfg_kw)
+    blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
+                         art_outlines=_art_outlines([b, o], cfg))
+    return [r for blk in blocks for r in blk.runs if r.shape_id == "Souter"], o.meta.get("framed_field")
+
+
+def test_under_the_frame_guard_a_gear_is_a_band_with_teeth_not_a_field():
+    """GEAR is 1.32 x its hole by area and 2.4 mm thick at a tooth. Flag off,
+    the guard reads it as a field round a knockout and it sews as a fill, the
+    teeth left to the fill's row ends. Flag on, it is the outline it was."""
+    assert round(GEAR.area / DISC.area, 2) == 1.32
+    off, tag = _guarded(GEAR, **{FLAG: False})
+    assert tag == 1.32 and stitches.FILL in {r.kind for r in off} and not _satin(off)
+    on, tag = _guarded(GEAR)
+    assert tag is None
+    assert _md5(on) == _md5([r for r in _plan(GEAR, **{FLAG: True}) if r.shape_id == "Souter"])
+
+
+def test_under_the_frame_guard_a_field_with_no_teeth_stays_a_field():
+    """The guard's own fixture (`tests/test_outline_frame_guard.py`, the
+    k_line box in rectangles): a box 4 mm deep round a face, 1.11 x it by
+    area, one width all the way round. Nothing is stepped, no layout takes
+    it, and the flag moves neither the tag nor a stitch."""
+    from tests.test_outline_frame_guard import FACE, FIELD
+
+    assert not sews_shaped(FIELD, [FACE])
+    on, tag_on = _guarded(FIELD, FACE)
+    off, tag_off = _guarded(FIELD, FACE, **{FLAG: False})
+    assert tag_on == tag_off == 1.11
+    assert _md5(on) == _md5(off)

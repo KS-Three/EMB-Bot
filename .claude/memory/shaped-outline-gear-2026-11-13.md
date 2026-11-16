@@ -87,5 +87,21 @@ loop. A band with a FEW notches (under 10% of its ring) is not shaped by the
 p90 - p10 rule. A star round a disc is not read as an outline at all. The
 flip is Kent's.
 
+**Flip attempt 2026-11-16 (Kent: "Flip ON"), parked as a draft PR.** Two
+things changed on main between the build and the flip:
+- `outline_frame_guard` went ON 11-15. Its ratio reads area, teeth are area
+  (gear 1.37), so the gear sews as a FILL and this flag reaches nothing:
+  identical stitches flag ON or OFF. A bare flip is a no-op. The branch adds
+  `art_outline._sews_shaped`: a band the layout takes is not a framed field.
+- Rendered on that main at 40 / 60 / 100 / 160 mm
+  (`docs/renders/shaped-outline-flip-2026-11-16/`): the fill is now a clean
+  square-toothed gear at 100 and 160 mm, and the flipped satin shows two
+  bare wedges through the band at both sizes (12 and 9 o'clock) that the
+  11-13 renders did not have. At 40 and 60 mm the satin is truer than the
+  fill's blob. Not a flip until the wedges are traced (suspect: the traced
+  ring changed under `outline_redraw_k` 0.75, ON since 11-14).
+The logo scan was stopped after Ahora 60 and To-a-T 40 (none taken but the
+gear); rerun `scan2`-style before any flip.
+
 Related: [[hairline-keyline-bean-2026-11-13]], [[eye-first-diagnosis-2026-11-13]],
 [[border-from-outline-line-art-guard-2026-10-25]].

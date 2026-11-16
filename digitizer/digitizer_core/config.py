@@ -1364,6 +1364,9 @@ class PipelineConfig:
     # ring turning to a rough fill as the catch). False is the engine as it
     # was; `tests/conftest.py` PRE_FLIP (FRAME_GUARD_2026_11_15_OFF) and
     # `tests/engine_2026_10_27.json` pin it False.
+    # Since 2026-11-16 a band with teeth is not a field
+    # (`border_from_outline_follow_shape`, `art_outline._sews_shaped`): the
+    # gear ring is a satin again, laid out from its outer edge.
     outline_frame_guard: bool = True
     # Tiny details kept whole (built OFF 2026-11-14, Kent's heraldic crest,
     # 2 pins "Missing the eye"). Each eagle eye is about 12 x 6 source pixels:
@@ -2373,7 +2376,15 @@ class PipelineConfig:
     # a 0.6 mm tooth is a sew-out question (gate 1). Acts only with
     # `border_from_outline`. Off, byte-identical.
     # Tests: `tests/test_outline_follow_shape.py`.
-    border_from_outline_follow_shape: bool = False
+    # **ON since 2026-11-16** (Kent 2026-11-16: "Flip ON"). With it, a band
+    # the layout takes is also kept out of `outline_frame_guard` (ON since
+    # 2026-11-15), whose ratio reads area and so read the gear's teeth as a
+    # field round a knockout (1.37) and sewed it as a fill: with the guard on
+    # and nothing else, this flag reached no gear at all
+    # (`art_outline._sews_shaped`). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (FOLLOW_SHAPE_2026_11_16_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    border_from_outline_follow_shape: bool = True
     # `inshape_piece_lift` (2026-11-14, built OFF, ON since): where stage 7 sews ONE
     # shape as several `stitch_shape` pieces and concatenates them
     # (`border_from_outline`'s body pieces, `enclosed_white_keyline`'s, both
