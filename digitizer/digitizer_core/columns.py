@@ -3059,6 +3059,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             edge_walk: bool = False,
                             corner_fold_apex_side: bool = False,
                             pull_keep=None,
+                            edge_walk_judge_off: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3101,7 +3102,11 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     -- see `column_runs`.
     `corner_fold_apex_side`: `cfg.lettering_columns_corner_fold_apex_side`
     (2026-11-14) -- under `corner_fold`, a corner's fold counts only the
-    pieces on its apex side (`outline_cut._FOLD_APEX_SIDE`)."""
+    pieces on its apex side (`outline_cut._FOLD_APEX_SIDE`).
+    `edge_walk_judge_off`: `cfg.extra["edge_walk_judge_off_walk"]` (built OFF
+    2026-11-16) -- under `edge_walk`, `fold_cuts`' judge reads each cut
+    candidate on the walk OFF sews instead of `connectors_buried`'s; off,
+    today's judge."""
     _args = dict(locals())
     from .outline_cut import fold_apex_side_scope, letter_columns, stroke_width
 
@@ -3162,14 +3167,20 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         # this letter will be, and read for folds and knots
         # (`outline_cut._fold_refine`, `outline_cut.sewn_knots`)
         from .outline_cut import sewn_knots
-        # `edge_walk` orders the walk, not the cut: the judge reads every
-        # candidate on the walk the lane sews with `edge_walk` OFF, so the cut
-        # is the one OFF takes and each candidate is sewn once, not once per
-        # walk tried. (Until 2026-11-15 it read them on `connectors_buried`'s
-        # walk, whose rerouted hops move `sewn_knots`' reading: and_pizza's p
-        # took a 4-column cut where OFF takes 2, a slit opened at the bowl's
-        # top right and its top-left shoulder was cut flat.)
+        # `edge_walk` orders the walk, not the cut: the judge reads the cut
+        # on `connectors_buried`'s walk, so the cut is the one that arm takes
+        # and each candidate is sewn once, not once per walk tried.
+        # `edge_walk_judge_off` (`cfg.extra["edge_walk_judge_off_walk"]`,
+        # built OFF 2026-11-16): the judge reads OFF's walk instead. The walk
+        # sets each column's sewing direction and `sewn_knots` reads the
+        # zigzag's station legs, so the walk moves the reading and the cut:
+        # on buried's walk and_pizza's p takes a 4-column cut where OFF takes
+        # 2 (a slit at the bowl's top right, the top-left shoulder flat); on
+        # OFF's walk Gaulke's hat "&" takes a cut with a hairline slit at its
+        # waist that buried's avoids. Kent rules it from the sheet.
         judge_kw = {k: v for k, v in run_kw.items() if k != "edge_walk"}
+        if edge_walk and not edge_walk_judge_off:
+            judge_kw = {**judge_kw, "connectors_buried": True}
 
         def judge(cols, cpoly):
             return sewn_knots(column_runs(leaned(cols), recorded(cpoly), shape_id, **judge_kw)[0])
