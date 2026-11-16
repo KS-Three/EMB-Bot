@@ -6,7 +6,8 @@ The eye sweep's "Seriously" read "Senaudy" at 70.9 and 80.2 mm: its i-dot
 dot rung's lettering scope finds no stem under it, because a cursive i's
 stroke is one region with its whole word. ON, a dot inside its own colour's
 word, with that word's ink in the dot's columns under it, is kept; a speck
-is not, nor a dot over another colour, nor anything on the photo lane.
+is not, nor a dot over another colour, nor a speck touching the region it
+is read against, nor anything on the photo lane.
 Absent or false: the engine as it was.
 """
 from __future__ import annotations
@@ -103,3 +104,21 @@ def _tagged(regions, *, on):
 def test_an_enclosed_mark_in_another_colour_is_not_a_tittle():
     assert _tagged(_star_scene(), on=True) == _tagged(_star_scene(), on=False)
     assert not _tagged(_star_scene(), on=True)[2][1]          # never sewn as the rung's tack
+
+
+def _rim_scene():
+    """TOAT beanie's rim specks (2026-11-16): a white speck on the top rim of
+    a black letter, half on the letter and half out on the white field it
+    touches. The field spans the speck's box and has ink under it within six
+    dot heights (below the letter), so it reads as the speck's word, but a
+    tittle never touches its word: this is a scrap of the field's own edge."""
+    speck = _disc(40, 70)
+    letter = _rect(40, 30, 100, 110) & ~speck
+    field = _rect(5, 5, 195, 255) & ~letter & ~speck
+    return [RegionMask.from_full(field, 0), RegionMask.from_full(letter, 1),
+            RegionMask.from_full(speck, 0)]
+
+
+def test_a_speck_touching_its_word_is_not_a_tittle():
+    assert _tagged(_rim_scene(), on=True) == _tagged(_rim_scene(), on=False)
+    assert not _tagged(_rim_scene(), on=True)[2][1]           # never sewn as the rung's tack

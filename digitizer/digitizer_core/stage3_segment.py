@@ -262,7 +262,8 @@ _STEM_MIN_ROW_FILL = 0.75
 # word spans it -- the dot inside that region's box, the region at least
 # `_STEM_MIN_DOTS` dot heights deeper than the dot and `_TITTLE_MIN_AREA_DOTS`
 # times its area, its ink in the dot's own columns within `_TITTLE_GAP_DOTS`
-# dot heights under it -- is admitted by the dot rung as a printed i's dot is.
+# dot heights under it, the dot not touching it (2026-11-16) -- is admitted by
+# the dot rung as a printed i's dot is.
 # Read off the letter's shape like the stem constants above, not a stitch
 # value. "Seriously": ink 4.85 dot heights under the dot, the word 17 tall.
 _TITTLE_GAP_DOTS = 6.0
@@ -936,6 +937,13 @@ def resolve_small_regions(
             if theirs is None or float(np.linalg.norm(mine - theirs)) > cfg.merge_delta_e:
                 continue
             if owner is not None and not rings(owner, j):
+                continue
+            # A tittle stands apart from its word: ground all round it. A
+            # speck touching the region it is read against is a scrap of that
+            # region's own edge (2026-11-16: TOAT beanie's five white specks
+            # on the black letters' rims, each touching the white field, sewn
+            # as five tacks for three more trims and nothing to see).
+            if halo is not None and win is not None and (halo & rj.window(*win)).any():
                 continue
             return True
         return False
