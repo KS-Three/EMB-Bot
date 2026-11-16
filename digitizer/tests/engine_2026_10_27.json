@@ -50,6 +50,7 @@
  "inshape_piece_lift": false,
  "border_from_outline_line_art_guard": true,
  "border_significant_area_share": null,
+ "border_significant_ring_room": false,
  "border_width_mm": null,
  "borders_last": true,
  "cap_center_out": false,

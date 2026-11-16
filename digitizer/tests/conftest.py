@@ -1054,6 +1054,11 @@ PRE_FLIP.update(COMPACT_KEEPS_GAPS_2026_11_15_OFF)
 TEXT_GAPS_2026_11_15_OFF = {**FINE_BAR_2026_11_15_OFF, **GROUND_RING_2026_11_15_OFF,
                             **BEAN_FOLLOWS_2026_11_15_OFF, **HANDOVER_2026_11_15_OFF,
                             **PUSH_KEEPS_GAPS_2026_11_15_OFF, **COMPACT_KEEPS_GAPS_2026_11_15_OFF}
+# `border_significant_ring_room` ("Both ON, keep 5.0", with
+# `counter_fan_satin`), a field since (`cfg.extra` was its only door):
+# `tests/test_border_ring_room.py`.
+RING_ROOM_2026_11_15_OFF = {"border_significant_ring_room": False}
+PRE_FLIP.update(RING_ROOM_2026_11_15_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

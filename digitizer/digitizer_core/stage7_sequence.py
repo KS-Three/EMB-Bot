@@ -2091,8 +2091,8 @@ def _border_wanted(region, border_style: str, total_area: float,
     seam-ownership prediction ahead of it, so the two cannot disagree about
     which shapes are the bordered ones.
 
-    `room` (`cfg.extra["border_significant_ring_room"]`, built OFF
-    2026-11-14): a callable, the shape's `stage6_border.ring_has_room`.
+    `room` (`cfg.border_significant_ring_room`, built OFF 2026-11-14, ON
+    since Kent's 2026-11-15 flip): a callable, the shape's `stage6_border.ring_has_room`.
     "significant" earns no border where the ring has no room for a column,
     only for a bean loop inside the fill. Per-shape intent still beats it.
     None: as before.
@@ -3118,11 +3118,12 @@ def sequence(
     # a photograph stage 0 routes to gradient does not get borders
     # automatically. That is a stage-0 routing question, not a border one.
     border_style = (cfg.border or ("significant" if photo else "off")).lower()
-    # `cfg.extra["border_significant_ring_room"]` (built OFF 2026-11-14):
-    # "significant" earns no ring where it would only lighten to a bean loop
-    # inside the shape's fill (`stage6_border.ring_has_room`, MFab's A counter)
+    # `cfg.border_significant_ring_room` (built OFF 2026-11-14): "significant"
+    # earns no ring where it would only lighten to a bean loop inside the
+    # shape's fill (`stage6_border.ring_has_room`, MFab's A counter).
+    # ON since 2026-11-15, Kent: "Both ON, keep 5.0"
     ring_room = (border_style == "significant"
-                 and bool((getattr(cfg, "extra", None) or {}).get("border_significant_ring_room")))
+                 and bool(cfg.border_significant_ring_room))
     # `cfg.extra["counter_fan_satin"]` (built OFF 2026-11-14): a small
     # three-sided counter as one fanned satin (`stitch_one`, `stage6_counter_fan`)
     counter_fan = bool((getattr(cfg, "extra", None) or {}).get("counter_fan_satin"))

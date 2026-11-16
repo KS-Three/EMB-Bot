@@ -6539,6 +6539,20 @@ class PipelineConfig:
     # ruling: expect to move them once real portraits are on screen.
     border_significant_area_share: float | None = None
     border_abrupt_raggedness: float | None = None
+    # "significant" earns no ring where the ring has no room for a column
+    # (`stage6_border.ring_has_room`, `stage7_sequence._border_wanted`'s
+    # `room`; built OFF 2026-11-14 as `cfg.extra["border_significant_ring_
+    # room"]`, #1519). A shape too narrow for the border column lightened its
+    # ring to a three-pass bean loop 0.85 mm inside its own fill, on top of
+    # it, covering no edge: MFab's A counter, a 3.35 mm white triangle on the
+    # photo lane, Kent's pin "random stitch in the middle". The pro sews the
+    # counter as one piece. Per-shape intent still beats it; the other border
+    # modes never read it. **ON since 2026-11-15, Kent's flip** ("Both ON,
+    # keep 5.0", with `counter_fan_satin`), promoted from `cfg.extra` to a
+    # field so the default can be ON. False is the border as it was, byte for
+    # byte; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False. Tests: `tests/test_border_ring_room.py`.
+    border_significant_ring_room: bool = True
 
     # Stage 6 — the appliqué tier (docs/specialty-techniques-2026-08-01.md §2).
     #
