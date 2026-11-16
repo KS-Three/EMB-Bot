@@ -69,8 +69,11 @@ called on its own) is a mask that
     than its host, lying in that host alone (every other mask on its rim is a
     speck itself or under the run tier's floors, scraps that leave anyway).
     That is a highlight the art cut into a body, and it stays (2026-11-15:
-    with no such exemption the heraldic crest lost three of a wing's five
-    white feather quills, which main sews).
+    with no such exemption the heraldic crest lost three of the left wing's
+    five white feather quills and four of the right's, which main sews).
+    NOT ENOUGH TO FLIP (2026-11-16 combined check): a DARK mark the art
+    draws is still taken -- To a T's speed-line pieces (`fine_bar_survive`'s
+    bars, pruned here before it can redraw them) and the period in "LLC.".
 Its pixels go to the mask it has the most rim on. Kent's `low_poly` at 80 mm
 (sitting 2026-11-11, "Random Black Spot", 7 pins): the art's polygon edges
 are one-pixel black lines; quantisation labels only their crossings black,
@@ -134,9 +137,9 @@ SPECK_MIN_DE00 = TENDRIL_MIN_DE00
 # the threads, 0-100) and in that host alone. Measured 2026-11-15, 80 mm left
 # chest: the heraldic crest's white quills read L 100 on the navy wing's 34.0
 # (66). low_poly's grey specks the rule is there to take read 11.9-19.2 over
-# their facets and 26.1 (dark grey on black); its two white gaps between black
-# lines that lie in one host (45-100) stay, as main sews them. A candidate in
-# the 26-45 gap, not a measured edge.
+# their facets and 26.1 (dark grey on black); three light marks on black or
+# dark grey that lie in one host stay (112 specks -> 109 pruned), as main
+# sews them. A candidate in the 26-45 gap, not a measured edge.
 SPECK_SLIT_MIN_DL = 40.0
 
 _K3 = np.ones((3, 3), np.uint8)
