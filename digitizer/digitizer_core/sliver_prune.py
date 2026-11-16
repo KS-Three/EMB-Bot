@@ -337,9 +337,12 @@ def _scrap_test(p):
     return lambda m: m.area < run_area_px or 2 * max(m.crop.shape) < run_loop_px
 
 
-def _arms(m: RegionMask, i: int, p, owner: np.ndarray, dark: bool, de_to) -> tuple[int, int]:
+def _arms(m: RegionMask, i: int, p, owner: np.ndarray, l_me: float, l_host: float,
+          de_to) -> tuple[int, int]:
     """(arms, lost arms) of the art's ink leaving speck `i` (module note,
-    FRAGMENT); `de_to(k)` is CIEDE2000 from its thread to mask k's."""
+    FRAGMENT); `l_me`/`l_host` are the CIELAB L of its thread and its
+    host's, `de_to(k)` CIEDE2000 from its thread to mask k's."""
+    dark = l_me < l_host
     s = _src_px(p)
     k = int(np.ceil(SPECK_INK_KERNEL_SRC_PX * s))
     k += 1 - (k % 2)
@@ -351,7 +354,12 @@ def _arms(m: RegionMask, i: int, p, owner: np.ndarray, dark: bool, de_to) -> tup
     ker = cv2.getStructuringElement(cv2.MORPH_ELLIPSE, (k, k))
     hat = (cv2.morphologyEx(L, cv2.MORPH_CLOSE, ker) - L) if dark else (L - cv2.morphologyEx(L, cv2.MORPH_OPEN, ker))
     d = cv2.distanceTransform((~mine).astype(np.uint8), cv2.DIST_L2, 5)
-    reach = (((hat >= SPECK_INK_MIN_DL) | mine) & (d <= r2)).astype(np.uint8)
+    # Ink of the speck's OWN kind: also no further from its lightness than
+    # its host is. A light body's convex corners read in a light top-hat too;
+    # Golden Tee's dark-teal ramp along the T's top (L 21 on black, beside
+    # the white fill) read two arms there and went, and the T sewed a cream run.
+    ink = (hat >= SPECK_INK_MIN_DL) & (np.abs(L - l_me) <= abs(l_me - l_host))
+    reach = ((ink | mine) & (d <= r2)).astype(np.uint8)
     _, lbl = cv2.connectedComponents(reach, connectivity=8)
     ring = (np.isin(lbl, np.unique(lbl[mine])) & (d > r1) & (d <= r2)).astype(np.uint8)
     na, arm, stats, _ = cv2.connectedComponentsWithStats(ring, connectivity=8)
@@ -423,6 +431,7 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
             "mean_width_px": round(mean_w, 3), "inscribed_px": round(inscribed, 3),
             "page": round(page, 3), "figure": round(figure, 3), "neighbour": j,
             "de_neighbour": None if de is None else round(de, 2),
+            "l": round(float(lab[0]), 2), "l_neighbour": None if host is None else round(float(host[0]), 2),
             "dl_neighbour": None if host is None else round(float(lab[0] - host[0]), 2),
             "speck": bool(j >= 0 and figure >= SPECK_FIGURE_CONTACT_MIN
                           and page <= SPECK_PAGE_CONTACT_MAX and de >= SPECK_MIN_DE00),
@@ -445,7 +454,7 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
         if rec["speck"] and not rec["slit"]:
             me = masks[rec["index"]].layer
             rec["arms"], rec["arms_lost"] = _arms(masks[rec["index"]], rec["index"], p, owner,
-                                                  rec["dl_neighbour"] < 0,
+                                                  rec["l"], rec["l_neighbour"],
                                                   lambda k: _de(me, masks[k].layer))
         rec["fragment"] = bool(rec["arms_lost"] is not None
                                and rec["arms_lost"] >= SPECK_FRAGMENT_MIN_ARMS)

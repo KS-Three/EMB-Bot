@@ -235,6 +235,33 @@ def test_a_piece_of_a_line_sewn_on_in_its_own_colour_stays():
     assert stats == {"specks": 0} and out is masks
 
 
+TEAL = (12, 56, 68)
+
+
+class Outline(Scene):
+    """Golden Tee's T: the black outline."""
+
+    def bodies(self):
+        self.black = self.add(BLACK, (20, 20, 100, 140))
+
+
+def test_an_edge_ramp_beside_light_corners_is_not_a_fragment():
+    """Golden Tee (2026-11-16): the T's top edge, black to white, quantised a
+    one-pixel dark-teal ramp line (L 21 over the black). At each end the
+    white fill's and the cream bevel's corners poke into a light top-hat
+    (art L up to 99 measured there), here 3 x 3 px white tips. They are no
+    ink of the teal's kind: no arms, and the line stays as main has it
+    (handed on, the T sewed a cream run along its top)."""
+    s = Outline()
+    k = s.add(TEAL, (60, 60, 61, 90))
+    s.add(WHITE, (59, 57, 62, 60))
+    s.add(WHITE, (59, 90, 62, 93))
+    rec = _recs(s)[k]
+    assert rec["dl_neighbour"] > 0 and rec["arms"] == 0 and not rec["speck"]
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 0} and out is masks
+
+
 NAVY = (40, 50, 90)
 MID_GREY = (110, 110, 120)
 
@@ -264,11 +291,12 @@ def test_a_white_quill_inside_one_body_stays():
 def test_a_quill_with_a_speck_on_its_rim_still_stays():
     """The crest's long quill touches five antialias scraps besides the wing.
     A speck beside it leaves anyway, so the quill still lies in one body; the
-    grey speck goes to the quill and the navy, by nearness."""
+    grey speck goes to the quill and the navy, by nearness. (The white
+    quill is no ink of the grey's kind: its arms are its own grey line.)"""
     s = Wing()
     q = s.add(WHITE, (50, 49, 60, 51))
     g = s.add(MID_GREY, (50, 51, 60, 53))
-    s.ink(MID_GREY, (55, 53, 56, 75))
+    s.ink(MID_GREY, (30, 51, 80, 53))
     recs = _recs(s)
     assert recs[g]["speck"] and recs[g]["dl_neighbour"] < sliver_prune.SPECK_SLIT_MIN_DL
     assert recs[q]["slit"] and not recs[q]["speck"]
