@@ -148,3 +148,71 @@ def test_two_touching_specks_both_go_and_no_pixel_is_lost():
     assert stats == {"specks": 2} and len(out) == 2
     assert out[s.light].area == masks[s.light].area + 40
     assert sum(m.area for m in out) == sum(m.area for m in masks)
+
+
+NAVY = (40, 50, 90)
+WHITE = (250, 250, 250)
+MID_GREY = (110, 110, 120)
+
+
+class Wing(Scene):
+    """A navy body (a feather, as the crest's wing) left, the dark facet right."""
+
+    def __init__(self):
+        self.masks, self.threads = [], []
+        self.navy = self.add(NAVY, (20, 20, 100, 80))
+        self.dark = self.add(DARK, (20, 80, 100, 140))
+
+
+def _recs(scene):
+    masks, threads, p = scene.build()
+    return {r["index"]: r for r in sliver_prune.specks(masks, threads, p, CHART, FLOOR_PX, THREAD_PX)}
+
+
+def test_a_white_quill_inside_one_body_stays():
+    """The crest's quill (2026-11-15): a white slit the art cuts into a navy
+    feather is a slit, not a speck; main sews it, and so does ON."""
+    s = Wing()
+    q = s.add(WHITE, (50, 49, 60, 51))
+    rec = _recs(s)[q]
+    assert rec["dl_neighbour"] >= sliver_prune.SPECK_SLIT_MIN_DL
+    assert rec["slit"] and not rec["speck"]
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 0} and out is masks
+
+
+def test_a_quill_with_a_speck_on_its_rim_still_stays():
+    """The crest's long quill touches five antialias scraps besides the wing.
+    A speck beside it leaves anyway, so the quill still lies in one body; the
+    grey speck goes to the navy it lies in."""
+    s = Wing()
+    q = s.add(WHITE, (50, 49, 60, 51))
+    g = s.add(MID_GREY, (50, 51, 60, 53))
+    recs = _recs(s)
+    assert recs[g]["speck"] and recs[g]["dl_neighbour"] < sliver_prune.SPECK_SLIT_MIN_DL
+    assert recs[q]["slit"] and not recs[q]["speck"]
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 1} and len(out) == len(masks) - 1
+    assert any(m.area == masks[q].area and m.layer == masks[q].layer for m in out)
+
+
+def test_a_white_mark_across_a_seam_is_still_a_speck():
+    """On low_poly the crossings sit on facet seams: rim on two bodies, so
+    however light the mark, it is not a slit in one of them."""
+    s = Wing()
+    w = s.add(WHITE, (50, 79, 60, 81))          # on the navy / dark seam
+    rec = _recs(s)[w]
+    assert rec["dl_neighbour"] >= sliver_prune.SPECK_SLIT_MIN_DL
+    assert rec["speck"] and not rec["slit"]
+    masks, out, stats = _run(s)
+    assert stats == {"specks": 1}
+
+
+def test_a_mark_only_a_little_lighter_is_still_a_speck():
+    """low_poly's grey slivers read 11.9-19.2 L over their facets: under the
+    slit's contrast, so they still go."""
+    s = Scene()
+    m = s.add(LIGHT, (50, 109, 60, 111))         # light grey in the dark facet
+    rec = _recs(s)[m]
+    assert 0 < rec["dl_neighbour"] < sliver_prune.SPECK_SLIT_MIN_DL
+    assert rec["speck"] and not rec["slit"]

@@ -64,7 +64,13 @@ called on its own) is a mask that
     than the mark,
   * is wedged in the figure, as a tendril is (rim on other masks, none to
     speak of on the page),
-  * and is another colour than the mask it lies in (CIEDE2000 of the threads).
+  * and is another colour than the mask it lies in (CIEDE2000 of the threads),
+  * and is not a SLIT: a mark at least `SPECK_SLIT_MIN_DL` lighter (CIELAB L)
+    than its host, lying in that host alone (every other mask on its rim is a
+    speck itself or under the run tier's floors, scraps that leave anyway).
+    That is a highlight the art cut into a body, and it stays (2026-11-15:
+    with no such exemption the heraldic crest lost three of a wing's five
+    white feather quills, which main sews).
 Its pixels go to the mask it has the most rim on. Kent's `low_poly` at 80 mm
 (sitting 2026-11-11, "Random Black Spot", 7 pins): the art's polygon edges
 are one-pixel black lines; quantisation labels only their crossings black,
@@ -124,6 +130,14 @@ SPECK_WIDTH_SRC_PX = TENDRIL_WIDTH_SRC_PX
 SPECK_FIGURE_CONTACT_MIN = TENDRIL_FIGURE_CONTACT_MIN
 SPECK_PAGE_CONTACT_MAX = TENDRIL_PAGE_CONTACT_MAX
 SPECK_MIN_DE00 = TENDRIL_MIN_DE00
+# A SLIT, not a speck: at least this much lighter than its host (CIELAB L of
+# the threads, 0-100) and in that host alone. Measured 2026-11-15, 80 mm left
+# chest: the heraldic crest's white quills read L 100 on the navy wing's 34.0
+# (66). low_poly's grey specks the rule is there to take read 11.9-19.2 over
+# their facets and 26.1 (dark grey on black); its two white gaps between black
+# lines that lie in one host (45-100) stay, as main sews them. A candidate in
+# the 26-45 gap, not a measured edge.
+SPECK_SLIT_MIN_DL = 40.0
 
 _K3 = np.ones((3, 3), np.uint8)
 
@@ -297,12 +311,17 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
     # outlines of the shapes round them (low_poly: 3,400 such masks).
     run_area_px = machine.RUN_MIN_AREA_MM2 * float(p.px_per_mm) ** 2
     run_loop_px = machine.RUN_MIN_LOOP_MM * float(p.px_per_mm)
+
+    def _scrap(m: RegionMask) -> bool:
+        return m.area < run_area_px or 2 * max(m.crop.shape) < run_loop_px
+
     out: list[dict] = []
+    others: list[set[int]] = []
     for i, m in enumerate(masks):
         area = m.area
         if not area or area >= floor_px or _held(m) or m.source == "counter":
             continue
-        if area < run_area_px or 2 * max(m.crop.shape) < run_loop_px:
+        if _scrap(m):
             continue
         wy0, wx0, wy1, wx1 = _window(m, 1)
         mine = m.window(wy0, wx0, wy1, wx1)
@@ -326,18 +345,28 @@ def specks(masks: list[RegionMask], thread_indices, p, chart, floor_px: float, t
         nb = own[ring & (own >= 0) & (own != i)]
         figure = nb.size / n
         j = int(np.bincount(nb).argmax()) if nb.size else -1
-        de = (float(deltaE_ciede2000(_thread_lab(chart, thread_indices, m.layer),
-                                     _thread_lab(chart, thread_indices, masks[j].layer)))
-              if j >= 0 else None)
+        lab = _thread_lab(chart, thread_indices, m.layer)
+        host = _thread_lab(chart, thread_indices, masks[j].layer) if j >= 0 else None
+        de = float(deltaE_ciede2000(lab, host)) if j >= 0 else None
+        others.append({int(k) for k in np.unique(nb)} - {j})
         out.append({
             "index": i, "layer": m.layer, "area_px": area,
             "mean_width_src_px": round(mean_w / _src_px(p), 3),
             "mean_width_px": round(mean_w, 3), "inscribed_px": round(inscribed, 3),
             "page": round(page, 3), "figure": round(figure, 3), "neighbour": j,
             "de_neighbour": None if de is None else round(de, 2),
+            "dl_neighbour": None if host is None else round(float(lab[0] - host[0]), 2),
             "speck": bool(j >= 0 and figure >= SPECK_FIGURE_CONTACT_MIN
                           and page <= SPECK_PAGE_CONTACT_MAX and de >= SPECK_MIN_DE00),
         })
+    # A slit (module note) is read against the first verdicts: what else is on
+    # its rim must be a speck leaving or a scrap stage 4 drops.
+    first = {rec["index"] for rec in out if rec["speck"]}
+    for rec, rest in zip(out, others):
+        rec["slit"] = bool(rec["speck"] and rec["dl_neighbour"] >= SPECK_SLIT_MIN_DL
+                           and all(k in first or _scrap(masks[k]) for k in rest))
+        if rec["slit"]:
+            rec["speck"] = False
     return out
 
 
