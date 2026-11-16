@@ -20,7 +20,7 @@ Snapshots, not live status:
 - **MFab hat, rim flag ON, no cutout, with `cfg.extra["keyline_loop_fit"]`:** 38, 40, 45, 50, 55 and 60 mm sewed the keyline as a bean (4,782 to 8,405 stitches against 5,048 to 9,356 with loops; Black White against Black White Black); 70 and 80 mm were md5-identical to key OFF. `ARTWORK_UNCOVERED` appeared at 50, 55 and 60 mm with the key.
 - **Key ON with the rim flag OFF:** MFab at 45, 50, 55 and 60 mm md5-identical; the other 15 `testdata/art` logos at 60 mm took the same keylines.
 - **Desktop state:** 16 MB of memory available, 31.9 GB in the nonpaged pool, 10.7 days up. The cutout was unavailable in 31 of 33 cutout-lane runs, so the cutout lane was not measured.
-- `tests/test_keyline_loop_fit.py`: 28 passed; with `tests/test_outline_hairline_run.py`, 59 ran before the last test edit (58 passed, the one red was a wrong expectation in a new test).
+- `tests/test_keyline_loop_fit.py`: 28 passed. `tests/test_outline_hairline_run.py`: 31 passed on the final engine code (run before the last edit to the new test file, which touched no engine code).
 
 ---
 

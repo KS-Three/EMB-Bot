@@ -21,6 +21,7 @@ from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine, stitches
 from tests.conftest import FLIP_2026_10_23  # the OFF md5 predates the 2026-10-23 flips
+from tests.conftest import FRAME_GUARD_2026_11_15_OFF  # priced before the frame guard
 from digitizer_core.art_outline import find_art_outlines, outline_width_mm
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.pipeline import _art_outlines
@@ -222,9 +223,12 @@ def test_on_the_body_is_a_fill_with_no_ring_of_its_own():
 
 def test_on_a_thicker_outline_keeps_the_pros_width_and_fills_the_rest_under():
     # his border is one width all round, 2.5 at most; the art's thicker
-    # keyline (BECKER's drop shadow) is filled under the loop, not spanned
+    # keyline (BECKER's drop shadow) is filled under the loop, not spanned.
+    # Priced before `outline_frame_guard` (ON 2026-11-15): FAT (400 mm2 of
+    # keyline round a 360 mm2 face, 1.11) reads as a field under it, so the
+    # arm keeps the guard off, as every flip's OFF dict is spread.
     for ring in (THICK, FAT):
-        on = _plan(ring, FACE, border_from_outline=True)
+        on = _plan(ring, FACE, border_from_outline=True, **FRAME_GUARD_2026_11_15_OFF)
         widths = sorted(math.dist(a, b) for a, b in _crosses(on, "Souter"))
         assert abs(widths[len(widths) // 2] - 2.5) < 0.05
         assert max(widths) < 2.5 * 1.1          # one width (a zigzag diagonal), no fringe

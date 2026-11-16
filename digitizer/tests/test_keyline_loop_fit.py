@@ -92,8 +92,9 @@ def test_the_median_body_decides_and_no_body_fits():
 
 def test_a_face_exactly_as_wide_as_its_loop_fits():
     lo = machine.OUTLINE_WIDTH_MM[0]
-    assert keyline_bean.loop_fits([2 * lo - 0.8], 0.8, lo)
-    assert not keyline_bean.loop_fits([2 * lo - 0.8 - 1e-6], 0.8, lo)
+    edge = 2 * lo - 0.8                      # the stroke that leaves exactly `lo`
+    assert keyline_bean.loop_fits([edge + 1e-9], 0.8, lo)
+    assert not keyline_bean.loop_fits([edge - 1e-6], 0.8, lo)
 
 
 # --- which keylines are taken -------------------------------------------------

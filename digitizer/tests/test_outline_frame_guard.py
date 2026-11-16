@@ -24,14 +24,15 @@ from tests.test_border_from_outline import FACE, KEY, _md5, _plan, _region
 FIELD = Polygon(box(-19, -10, 19, 10).exterior, [FACE.exterior])
 
 
-def test_default_is_off_and_the_line_is_one():
-    assert PipelineConfig().outline_frame_guard is False
+def test_default_is_on_and_the_line_is_one():
+    # Kent 2026-11-15, review pack (review-1115): ticked ON
+    assert PipelineConfig().outline_frame_guard is True
     assert FRAME_AREA_RATIO == 1.0
 
 
 def test_a_field_round_a_knockout_is_tagged_and_keeps_its_body():
     b, o = _region("Sbody", FACE, 0, 0), _region("Souter", FIELD, 1, 1)
-    off = find_art_outlines([b, o], PipelineConfig())
+    off = find_art_outlines([b, o], PipelineConfig(outline_frame_guard=False))
     assert list(off) == ["Souter"] and "framed_field" not in o.meta
     on = find_art_outlines([b, o], PipelineConfig(outline_frame_guard=True))
     assert on == off                                     # its body is still its body
@@ -45,7 +46,7 @@ def test_a_keyline_is_not_a_field():
 
 
 def test_a_field_gets_no_loop_and_sews_as_a_fill():
-    off = _plan(FIELD, FACE, border_from_outline=True)
+    off = _plan(FIELD, FACE, border_from_outline=True, outline_frame_guard=False)
     on = _plan(FIELD, FACE, border_from_outline=True, outline_frame_guard=True)
     loops_off = [r for r in off if r.shape_id == "Souter" and r.kind == stitches.SATIN]
     assert loops_off                                     # the loop hugging the knockout
@@ -57,5 +58,5 @@ def test_a_field_gets_no_loop_and_sews_as_a_fill():
 
 
 def test_a_keyline_plan_is_byte_identical_on():
-    assert (_md5(_plan(KEY, FACE, border_from_outline=True))
+    assert (_md5(_plan(KEY, FACE, border_from_outline=True, outline_frame_guard=False))
             == _md5(_plan(KEY, FACE, border_from_outline=True, outline_frame_guard=True)))
