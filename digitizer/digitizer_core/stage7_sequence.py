@@ -2678,8 +2678,12 @@ def _fill_angle_for(p, cfg: PipelineConfig, group: dict | None = None) -> float 
     pro = pro_offset_fill_angle(cfg, p.region.shape_id, poly=p.polygon, base_deg=off)
     if pro is not None:
         return pro
-    if off is None and group:
-        return group.get(p.region.shape_id)
+    if group and (off is None or (getattr(p, "angle_pinned", False)
+                                  and off == p.stitch_angle_deg)):
+        # a pinned fill (stage 5's `_off_angles`) takes its group's angle as
+        # it did with the flags off, else keeps its pin
+        g = group.get(p.region.shape_id)
+        return g if g is not None else off
     return off
 
 
@@ -3603,9 +3607,13 @@ def sequence(
                  if str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
                  and not is_lettering(_pr.region, cfg) and not is_text(_pr.region, cfg)]
         _by_id = {_pr.shape_id: _pr for _pr in _auto}
+        # a fill stage 5 pinned (`PlannedRegion.angle_pinned`) is free here
+        # and votes its pin: the angle its own shape read with the flags off
         group_fill = shared_angles(
-            [_pr.region for _pr in _auto if _fill_angle_for(_pr, cfg) is None],
-            lambda r: best_fill_angle_deg(_fill_poly(_by_id[r.shape_id]), row_mm))
+            [_pr.region for _pr in _auto
+             if _fill_angle_for(_pr, cfg) is None or getattr(_pr, "angle_pinned", False)],
+            lambda r: (_by_id[r.shape_id].stitch_angle_deg if getattr(_by_id[r.shape_id], "angle_pinned", False)
+                       else best_fill_angle_deg(_fill_poly(_by_id[r.shape_id]), row_mm)))
         if cfg.satin_angle_deg is None:
             group_satin = shared_angles(
                 [_pr.region for _pr in _auto

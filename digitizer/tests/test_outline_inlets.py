@@ -276,3 +276,37 @@ def test_a_feathered_fill_grows_as_before_and_a_toothed_fill_keeps_its_gaps():
     on = _plan([_r(gear, "G", tier="fill", fill_angle_deg=0.0)], outline_inlets_kept=True)["G"]
     gaps = unary_union(oi.inlets(gear))
     assert on.intersection(gaps).area < 0.5 * off.intersection(gaps).area
+
+
+def test_long_teeth_are_spokes_and_are_left_a_satin():
+    """2026-11-16 (the inlets flip's STOP): Bridge's eight handles passed the
+    regular-teeth test (16 pieces, alike in area) and, cut as teeth, lost their
+    taper to straight blocks. A tooth is short against the body it stands on
+    (`TOOTH_LEN_OVER_BODY_MAX`): Ahora's gear 0.82x, Bridge's handles 4.1x."""
+    import statistics
+    gear, spokes = _gear(), _gear(teeth=16, r_tip=6.0)
+    for poly in (gear, spokes):                       # both split into equal pieces...
+        body, teeth = oi._teeth_geometry(poly)
+        areas = [t.area for t in teeth]
+        assert statistics.pstdev(areas) <= oi.TEETH_AREA_CV_MAX * statistics.mean(areas)
+    body, teeth = oi._teeth_geometry(spokes)          # ...but a spoke is long against its ring
+    assert oi.tooth_length(teeth) > oi.TOOTH_LEN_OVER_BODY_MAX * oi.inscribed_width(body)
+    assert oi.regular_teeth(gear) and not oi.regular_teeth(spokes)
+    assert oi.toothed_satins([_r(spokes, "S")], PipelineConfig()) == set()
+
+
+def test_a_pinned_fill_still_takes_its_groups_angle():
+    """2026-11-16: `_off_angles` pins a free fill's angle while a geometry flag
+    is on; stage 7's like-shape group must still count it free, or it sews alone
+    (the mascot's right foot: 45 deg against the pair's 140)."""
+    from digitizer_core.stage5_overlap import PlannedRegion
+    from digitizer_core.stage7_sequence import _fill_angle_for
+    foot = box(0, 0, 4, 2)
+
+    def planned(pinned):
+        return PlannedRegion(region=_r(foot, "F"), polygon=foot, sew_index=0,
+                             stitch_angle_deg=45.0, angle_pinned=pinned)
+    cfg = PipelineConfig()
+    assert _fill_angle_for(planned(True), cfg, {"F": 140.0}) == 140.0   # the group's, as OFF
+    assert _fill_angle_for(planned(True), cfg, {}) == 45.0              # no group: the pin
+    assert _fill_angle_for(planned(False), cfg, {"F": 140.0}) == 45.0   # a compensation axis outranks it
