@@ -31,7 +31,7 @@ of the fault than the two or three he pinned. Three things blur the
 comparison and none of them is measured here:
 
 1. His marks were made on tree `950855bf` (2026-11-10); these renders are six
-   days and some twenty flag flips newer, so a fault he pinned may be gone.
+   days and a run of flag flips newer, so a fault he pinned may be gone.
 2. He pins the worst two or three of a repeat; a reader that pins a different
    instance scores as a miss.
 3. MFab and Tires ran without `rembg_isolated` here.
