@@ -1112,6 +1112,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
         cid = r.meta.get("text_cluster_id")
         if cid:
             clusters.setdefault(cid, []).append(r)
+    clusters = _drawn_size_only(clusters)
     if not clusters:
         return report
     xs0, ys0, xs1, ys1 = zip(*(r.polygon.bounds for r in regions))
@@ -1992,6 +1993,22 @@ def _fill_old_holes(regions: list[Region], ids: set[int], old_union) -> None:
 _CLUSTER_TAGS = ("text_candidate", "text_cluster_id", "text_cluster_stroke_mm", "text_cluster_all_rescued")
 
 
+MIXED_CAPS_KEY = "text_cluster_mixed_caps"
+
+
+def _drawn_size_only(clusters: dict[str, list[Region]]) -> dict[str, list[Region]]:
+    """`clusters` without the lines that tagged only through
+    `cfg.text_cluster_mixed_caps` (`textcluster._mixed_caps`, 2026-11-17): a
+    line set in two cap heights goes to the column lane at its DRAWN size and
+    keeps its baseline -- the re-set read it as a single-size line and grew a
+    phone screenshot's "Photo" to twice its size. No such tag, nothing
+    removed: the argument comes back unchanged, byte for byte."""
+    if not any(r.meta.get(MIXED_CAPS_KEY) for rs in clusters.values() for r in rs):
+        return clusters
+    return {cid: rs for cid, rs in clusters.items()
+            if not any(r.meta.get(MIXED_CAPS_KEY) for r in rs)}
+
+
 GUARD_KEY = "small_text_true_size_guarded"
 COUNTER_KEY = "small_text_min_counter_mm"
 
@@ -2167,6 +2184,7 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
         cid = r.meta.get("text_cluster_id")
         if cid:
             clusters.setdefault(cid, []).append(r)
+    clusters = _drawn_size_only(clusters)
     claimed: set[int] = set()
     order = sorted(clusters)
     at = 0
