@@ -1228,6 +1228,10 @@ def build_generation(
                            # ON"): False, as it was
                            **({"bean_follows": True}
                               if cfg.small_text_reset_bean_follows else {}),
+                           # a word space read at 0.35 of the cap, not 0.5 (built OFF
+                           # 2026-11-16): False, the call as it was
+                           **({"tight_word_space": True}
+                              if cfg.small_text_reset_tight_word_space else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))

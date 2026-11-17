@@ -4616,6 +4616,16 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_small_text_ground_ring.py`.
     small_text_reset_bean_follows: bool = True
+    # A word space read at 0.35 of the cap, not 0.5
+    # (`small_text.WORD_SPACE_CAP_TIGHT`, built OFF 2026-11-16): the re-set
+    # rebuilds every unflagged gap at one letter gap, and a gap is a word space
+    # at 2x the line's median AND half the cap. The USAID tagline "FROM THE
+    # AMERICAN PEOPLE" (cap 3.23 mm, median 0.417 mm) has THE | AMERICAN at
+    # 0.484 of the cap (3.75x the median), 0.053 mm under the floor, and sewed
+    # "THEAMERICAN". A printed word space is ~0.35 of the cap. False is the
+    # re-set as it was, byte for byte. Tests:
+    # `tests/test_small_text_tight_word_space.py`.
+    small_text_reset_tight_word_space: bool = False
     # The hand-over (`small_text.HANDOVER_RATIO`, built OFF 2026-11-14 as
     # `cfg.extra["small_text_handover"]`): a line just over the re-set's
     # cutoff (0.9 to 1.15 caps) gets the true-size retrace too, and its own
