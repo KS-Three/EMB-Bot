@@ -1120,7 +1120,8 @@ def build_generation(
         resnap_warnings = list(resnap_warnings) + enforce_color_cap(
             regions, chart_for(cfg), cfg.max_colors,
             count_enclosed=(garment_sews_enclosed(p, cfg)[0]
-                            or bool(cfg.sew_enclosed_white)))
+                            or bool(cfg.sew_enclosed_white)),
+            least_loss=cfg.color_cap_least_loss)
 
     # `cfg.bevel_ring_fold` (built OFF 2026-11-13, Kent's Golden Tee "too
     # busy"): shading the pro flattens -- a drop shadow on the page, a ramp
@@ -1595,7 +1596,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
                            or r.meta.get("enclosed_colour_unknown"))}
         late_cap_warnings = enforce_color_cap(
             regions, chart_for(cfg), cfg.max_colors,
-            protected=protected, stitched_only=True)
+            protected=protected, stitched_only=True,
+            least_loss=cfg.color_cap_least_loss)
     # One sentence per design: the second pass supersedes the first's count.
     resnap_warnings = ([w for w in gen.resnap_warnings if w.get("code") != COLOR_CAP_APPLIED]
                        + late_cap_warnings) if late_cap_warnings else list(gen.resnap_warnings)

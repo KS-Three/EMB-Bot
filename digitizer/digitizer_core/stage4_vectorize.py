@@ -1259,11 +1259,63 @@ def revalidate_threads(regions: list[Region], p: Prep,
     )]
 
 
+def _least_loss_keep(ranked: list[int], n: int, pinned: list[int],
+                     sewn_area: dict[int, float], chart) -> list[int]:
+    """`n` of `ranked` (largest sewn area first) to keep so that the dropped
+    threads' sewn area x CIEDE2000 SQUARED to their nearest kept thread is
+    least (the k-medoids objective: one colour moved 20 dE00 is seen, four
+    shades moved 5 each are not; unsquared, the Drone's 34 mm2 of blue still
+    lost to an 83 mm2 fourth grey).
+    Starts from the first `n` (the area ranking) and swaps one kept, unpinned
+    thread for one dropped thread while the total falls; the first best swap
+    in `ranked` order wins a tie, so the answer does not depend on set order.
+    Returned in `ranked` order."""
+    lab = np.array([chart.lab[t] for t in ranked])
+    dist = deltaE_ciede2000(lab[:, None, :], lab[None, :, :])
+    w = np.array([sewn_area.get(t, 0.0) for t in ranked])
+    keep = list(range(n))
+    fixed = {i for i, t in enumerate(ranked) if t in set(pinned)}
+
+    def loss(idx: list[int]) -> float:
+        return float((w * dist[:, idx].min(axis=1) ** 2).sum())
+
+    best = loss(keep)
+    for _ in range(4 * len(ranked)):
+        move = None
+        for ki, k in enumerate(keep):
+            if k in fixed:
+                continue
+            for d in range(len(ranked)):
+                if d in keep:
+                    continue
+                trial = keep[:ki] + [d] + keep[ki + 1:]
+                v = loss(trial)
+                if v < best - 1e-9:
+                    best, move = v, trial
+        if move is None:
+            break
+        keep = move
+    return [ranked[i] for i in sorted(keep)]
+
+
 def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
                       count_enclosed: bool = False,
                       protected: Iterable[int] = (),
-                      stitched_only: bool = False) -> list[dict]:
+                      stitched_only: bool = False,
+                      least_loss: bool = False) -> list[dict]:
     """Make "Colors (max N)" true on every lane, not just the flat one.
+
+    `least_loss` (`cfg.color_cap_least_loss`, built OFF 2026-11-17): which
+    threads are KEPT. The default keeps the N largest by sewn area, so a
+    design with four greys and one small blue keeps the four greys and sews
+    the blue in grey (Precision Drone: the water, 2026-11-17 prime-grader
+    scorecard, "no blue thread anywhere"). With the flag the kept set is the
+    one that changes the artwork least: the sum over dropped threads of sewn
+    area x CIEDE2000 squared to the thread each lands on, found by swapping one kept
+    thread for one dropped while that sum falls (`_least_loss_keep`).
+    Near-duplicate shades give way to a colour nothing else is near. Still
+    exactly N threads, protected threads still pinned. False is the cap
+    byte for byte.
 
     `stage2_quantize` already caps hard: past `cfg.max_colors` it keeps the
     largest populations, merges the rest into their closest kept match, and
@@ -1356,6 +1408,9 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
     ranked = pinned + sorted((t for t in present if t not in pinned),
                              key=lambda t: (-sewn_area.get(t, 0.0), t))
     kept, dropped = ranked[:max(max_colors, len(pinned))], ranked[max(max_colors, len(pinned)):]
+    if least_loss and dropped:
+        kept = _least_loss_keep(ranked, len(kept), pinned, sewn_area, chart)
+        dropped = [t for t in ranked if t not in kept]
 
     kept_lab = np.array([chart.lab[t] for t in kept])
     remap: dict[int, int] = {}
