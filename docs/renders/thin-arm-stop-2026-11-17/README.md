@@ -30,3 +30,29 @@ Also found: the existing OFF flags `satin_tip_corner_gate` ON +
 but `satin_junction_stack` is the ON default Kent flipped 2026-09-19 for
 MARINE's junctions, so turning it off moves every logo; the new flag is the
 narrow version.
+
+## The 26 corpus fixtures (director's request)
+
+`tools.corpus_scorecard.FIXTURES` (TESTDATA), Studio request at 80 mm,
+`left_chest`, flag OFF vs ON, compared by md5 of `design["stitches"]`:
+**10 of 26 moved, 16 byte-identical. 8 are pictured** (`fx_<name>.png` =
+ORIGINAL | BEFORE | AFTER, `fx_<name>_closeup.png` = the three largest changed
+spots); the other 2 moved by 4 and 32 stitches, too small to show at any
+render scale (no close-up is produced), and have the full picture only.
+All movers are photo-folder fixtures; none of the four logo fixtures at the
+top of the list move.
+
+By eye, worse first:
+
+| fixture | stitches / trims OFF -> ON | by eye |
+|---|---|---|
+| scene_stub | 23327/75 -> 22780/78 | **slightly worse at one spot**: the top-right patch gains a small cluster of crossing blocks; the other two spots re-lay, no clear change; -547 stitches |
+| phone_ui_golke | 10864/125 -> 10803/123 | **trivially worse**: a small pale sliver patch appears inside black; the rest unchanged |
+| golden_tee (logo) | 14360/54 -> 13940/54 | better: cleaner outer ring, a stray crossing patch gone |
+| repro_gradient_white_icon | 22911/12 -> 22672/12 | better: the fanned block at the top-left becomes one short tuck |
+| photo_owl_pale | 24873/9 -> 24840/9 | slightly better: the eye ring has fewer wedge fans |
+| drone_render | 18337/114 -> 18273/114 | no visible change |
+| logo_bridge_bar | 10827/17 -> 10811/17 | no visible change |
+| photo_grass_macro | 3952/13 -> 3924/13 | no visible change |
+| photo_chrome_specular | 36052/85 -> 36048/85 | no visible change |
+| photo_dof_meadow | 20873/66 -> 20841/66 | no visible change |
