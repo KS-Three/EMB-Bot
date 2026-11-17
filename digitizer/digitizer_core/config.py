@@ -4622,10 +4622,13 @@ class PipelineConfig:
     # at 2x the line's median AND half the cap. The USAID tagline "FROM THE
     # AMERICAN PEOPLE" (cap 3.23 mm, median 0.417 mm) has THE | AMERICAN at
     # 0.484 of the cap (3.75x the median), 0.053 mm under the floor, and sewed
-    # "THEAMERICAN". A printed word space is ~0.35 of the cap. False is the
-    # re-set as it was, byte for byte. Tests:
+    # "THEAMERICAN". A printed word space is ~0.35 of the cap. **ON since
+    # 2026-11-16 (Kent, from the USAID art | before | after sheets: "Flip
+    # ON")**, promoted from a built-OFF default. False is the re-set as it
+    # was, byte for byte; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_small_text_tight_word_space.py`.
-    small_text_reset_tight_word_space: bool = False
+    small_text_reset_tight_word_space: bool = True
     # The hand-over (`small_text.HANDOVER_RATIO`, built OFF 2026-11-14 as
     # `cfg.extra["small_text_handover"]`): a line just over the re-set's
     # cutoff (0.9 to 1.15 caps) gets the true-size retrace too, and its own
