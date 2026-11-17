@@ -51,11 +51,3 @@ def test_off_is_the_walk_as_it_was():
     from digitizer_core import script_strokes
     assert columns.column_runs.__kwdefaults__["cover_hops"] is False
     assert script_strokes.script_strokes_shape.__kwdefaults__["cover_hops"] is False
-
-
-def test_no_tolerance_any_sliver_off_the_art_is_cut():
-    ground = [Polygon([(0, 0), (10, 0), (10, 2), (0, 2)])]
-    r = _travel([(1, 1), (5, 1.999), (9, 2.01), (9.5, 1)])      # 0.01 mm over the edge
-    rep: dict = {}
-    out = columns._cut_bare_travel([r], ground, rep)
-    assert rep["bare_hops_cut"] >= 1 and len(out) >= 1

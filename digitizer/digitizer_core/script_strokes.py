@@ -1193,7 +1193,9 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     if cover_hops:
         # `cfg.lettering_columns_cover_hops`: a travel on none of the word's satin is cut
         from .columns import _cut_bare_travel
-        runs = _cut_bare_travel(runs, [poly], report)
+        grounds = [LineString(r.points) for r in runs if r.kind == stitches.SATIN and len(r.points) > 1]
+        if grounds:
+            runs = _cut_bare_travel(runs, grounds, report, ground_mm=0.2)
     report["jumps"] = sum(1 for r in runs[1:] if r.jump)
     return runs, report
 

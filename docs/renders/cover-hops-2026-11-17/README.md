@@ -14,7 +14,7 @@ of the stitch stream (17 stitches) has two segments, (39.5,35.0)->(37.6,36.6) an
 (39.2,31.7)->(38.2,31.0) is the other.
 
 **Flag.** `lettering_columns_cover_hops` (default False; `tests/engine_2026_10_27.json`
-has it false). A travel segment, any of it off the artwork and the sewn satin, of every
+has it false). A travel segment with more than 0.3 mm off the ground of every
 satin leg of the word is dropped; the piece after it begins with a jump and a trim.
 The entry walk is kept. OFF is byte-identical (the kwarg defaults False in both
 emitters). Tests: `tests/test_column_cover_hops.py`.
