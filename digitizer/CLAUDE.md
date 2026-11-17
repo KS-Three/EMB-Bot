@@ -3,6 +3,17 @@
 Moved here from the root `CLAUDE.md` (2026-10-26) so it loads when a session works
 in `digitizer/`. The root file keeps the one-line warning.
 
+- **A cloud container's `/usr/bin/python3.12` is 3.12.3, and 3.12.3 cannot
+import `digitizer_core`.** `pipeline.py`'s `plan_stitches` holds a 20-item
+`with`, and 3.12.3 refuses it: *"SyntaxError: too many statically nested
+blocks"* at collection (`tests/conftest.py`), so every test and every tool
+fails in 0.2 s. 3.12.13 and 3.13 compile the same file, and CI's
+`python-version: '3.12'` resolves to a late patch, which is why CI is green.
+**Fix:** `uv python install 3.12`, then build the venv with
+`$(uv python find 3.12.13)`. The lasting fix is fewer nested scopes in that
+`with`; until then do not add a 21st item.
+*(hit 2026-11-17 on main `3608ef63`; measured on 3.12.3, 3.12.13, 3.13.18)*
+
 - **Build that venv with `python3.12` explicitly, NOT the bare `python3`.**
 `digitizer/pyproject.toml` sets `requires-python = ">=3.12"` and cloud
 containers default `python3` to 3.11. `.claude/skills/run-emb-bot/SKILL.md`

@@ -54,6 +54,7 @@ DOC_READERS = {"scope_budget", "memory_budget", "doc_claims",
 #: (2026-10-13) the same: WRITES `table.md`, names #876's doc in its
 #: docstring, prints JSON rows and an ASCII table, reads no doc.
 NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (2026-10-23)
+              "prime_grader",   # WRITES scorecard-<date>.md; hashes its rubric .md, prints no doc text (2026-11-17)
               "proofread",   # `census` WRITES census/tables.md beside census.json, reads none (2026-11-14)
               "bean_census",     # WRITES docs/bean-census-reference-2026-10-27.md, reads none (2026-10-27)
               "lettering_board",   # WRITES docs/scoreboards/lettering-board-<date>.md, reads none (2026-10-25)
