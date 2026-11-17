@@ -38,10 +38,11 @@ def _span(cross):
     return abs(cross[0][1] - cross[1][1])
 
 
-def test_defaults_pin_both_flags():
+def test_both_flags_ship_on():
+    # Kent's flip, 2026-11-17; conftest's PRE_FLIP holds the OFF arm.
     cfg = PipelineConfig()
-    assert cfg.satin_seam_hold is False
-    assert cfg.satin_cap_skew_inset is False
+    assert cfg.satin_seam_hold is True
+    assert cfg.satin_cap_skew_inset is True
 
 
 def test_a_leaning_cap_loses_half_its_end_cross_without_the_inset():
@@ -145,6 +146,7 @@ def _last_colour_height(plan) -> float:
 def test_equal_stripes_sew_equal(stripes):
     """Off, the last colour sews a pull wider on each seam. On, it sews its art."""
     art_mm = 100.0 * ROW_PX / 1200
-    assert _last_colour_height(_sew(stripes)) > art_mm + 0.35
+    off = _sew(stripes, satin_seam_hold=False, satin_cap_skew_inset=False)
+    assert _last_colour_height(off) > art_mm + 0.35
     held = _sew(stripes, satin_seam_hold=True, satin_cap_skew_inset=True)
     assert _last_colour_height(held) == pytest.approx(art_mm, abs=0.1)

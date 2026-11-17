@@ -28,8 +28,9 @@ def _cap(spine, **kw):
     return _extend_to_cap(spine, BAR, HALF, at_start=True, **kw)[0]
 
 
-def test_default_is_off():
-    assert PipelineConfig().satin_free_end_chord_aim is False
+def test_it_ships_on():
+    # Kent's flip, 2026-11-17; conftest's PRE_FLIP holds the OFF arm.
+    assert PipelineConfig().satin_free_end_chord_aim is True
 
 
 def test_the_hook_aims_the_extension_off_true():

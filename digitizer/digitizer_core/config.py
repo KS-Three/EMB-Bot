@@ -3832,7 +3832,11 @@ class PipelineConfig:
     # traced a hair off true keeps its whole final cross. `_extend_to_cap`
     # steps the end station back by the lean; False loses half the cross and
     # one corner of the stripe. `tests/test_satin_flag_stripes.py`.
-    satin_cap_skew_inset: bool = False
+    # **ON since 2026-11-17** (Kent, shown the before | after page for his
+    # flag and 12 logos with the three flag flags together: "Flip all three
+    # ON"). False is the engine as it was; PRE_FLIP
+    # (FLAG_ENDS_SEAM_2026_11_17_OFF) pins it False.
+    satin_cap_skew_inset: bool = True
     # `satin_seam_hold` (2026-10-30): under `satin_rail_comp` the pull lands
     # after stage 5's clip, so a satin sewn later pushed over the colour already
     # down. On equal 4.05 mm flag stripes white sewed 4.53 and left red 3.57.
@@ -3842,7 +3846,11 @@ class PipelineConfig:
     # the pull (`_SEAM_HOLD_MIN_CROSS_MM`) and lettering is exempt: it sews over
     # its ground by design. Over 14 logos: Golden Tee -11.4% stitches, Gaulke
     # -3.2%, same sewn footprint; the rest within 1.3%.
-    satin_seam_hold: bool = False
+    # **ON since 2026-11-17** (Kent, the same ruling as `satin_cap_skew_inset`
+    # above). Whether a held rail draws back off the seam on fabric is a
+    # sew-out question (gate 1); no constant changed. False is the engine as
+    # it was; PRE_FLIP (FLAG_ENDS_SEAM_2026_11_17_OFF) pins it False.
+    satin_seam_hold: bool = True
     # `stripe_underfill` (2026-11-12, built OFF, Kent: "Build it, OFF"): a
     # field of parallel bands alternating between two threads (a flag's
     # stripes) sews the LIGHTER thread once as a fill of the whole field and
@@ -3863,7 +3871,10 @@ class PipelineConfig:
     # by that chord, as a corner end already is. Ends that agree keep their
     # aim. Layout, judged in the preview. OFF: never read.
     # Tests: `tests/test_satin_free_end_chord_aim.py`.
-    satin_free_end_chord_aim: bool = False
+    # **ON since 2026-11-17** (Kent, the same ruling as `satin_cap_skew_inset`
+    # above). False is the engine as it was; PRE_FLIP
+    # (FLAG_ENDS_SEAM_2026_11_17_OFF) pins it False.
+    satin_free_end_chord_aim: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
