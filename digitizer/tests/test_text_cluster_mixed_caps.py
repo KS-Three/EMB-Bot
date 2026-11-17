@@ -118,3 +118,23 @@ def test_the_small_text_steps_leave_a_marked_line_at_its_drawn_size():
         r.meta["text_cluster_id"] = "c"
     clusters = {"c": plain}
     assert st._drawn_size_only(clusters) is clusters         # unmarked: the same object back
+
+
+def test_a_pile_of_shapes_with_no_two_alike_never_starts_a_row():
+    """The gradient icon's bands (0 of 11 candidates pair at 0.8 on
+    `repro_gradient_white_icon`): heights 12.0 / 9.3 / 7.2 chain at 0.6 (0.78,
+    0.77) but no two are within 0.8 of each other, so no row is a line."""
+    shapes = [_t(0.0, h=12.0), _t(10.0, h=9.3), _t(20.0, h=7.2)]
+    regions = [Region(f"S{i}", p, 3, "3", p.area) for i, p in enumerate(shapes)]
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    assert not any(_tags(regions).values()), _tags(regions)
+    assert not any(r.meta.get("text_cluster_mixed_caps") for r in regions)
+
+
+def test_a_row_with_one_pair_still_tags_and_the_pair_helper_reads_the_normal_link():
+    regions = _row()
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    assert all(_tags(regions).values())
+    cands = [c for c in tc._letter_candidates(_row())]
+    assert tc._has_letter_pair(cands, tc.threads.CHART)
+    assert not tc._has_letter_pair(cands[:1], tc.threads.CHART)

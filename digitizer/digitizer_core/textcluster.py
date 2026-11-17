@@ -1555,17 +1555,29 @@ def _adopt_band(groups: list[list[_Candidate]], cands: list[_Candidate],
     return out
 
 
+def _has_letter_pair(group: list[_Candidate], chart) -> bool:
+    """Does `group` hold two glyphs the NORMAL pass links (`_linked` at
+    `LETTER_HEIGHT_RATIO`, one ink, stroke, reach)? A line set in two cap
+    heights is built from lines of one height: TOAT's T and T (or its o and
+    A) are such a pair. A pile of shapes of every height with no two alike --
+    a gradient icon's bands, 0 of 11 candidates pair on `repro_gradient_white_
+    icon` -- holds none, and never starts a row (2026-11-17, `_mixed_caps`)."""
+    return any(_linked(a, b, LETTER_HEIGHT_RATIO, chart)
+               for i, a in enumerate(group) for b in group[i + 1:])
+
+
 def _mixed_caps(groups: list[list[_Candidate]], cands: list[_Candidate], chart,
                 blobs) -> list[list[_Candidate]]:
     """`groups` plus every group of `MIN_CLUSTER_MEMBERS` or more the
     candidates NO group took form at `HEIGHT_BAND_MIN` (every other `_linked`
-    term as it is: one ink, stroke, reach). A line set in two cap heights
+    term as it is: one ink, stroke, reach) and that hold a pair the normal
+    pass would link (`_has_letter_pair`). A line set in two cap heights
     splits into pairs at `LETTER_HEIGHT_RATIO` and tags nothing; the pairs
     are the leftovers here. A tagged group is never touched."""
     taken = {c.region.shape_id for g in groups for c in g}
     left = [c for c in cands if c.region.shape_id not in taken]
     extra = [g for g in _cluster(left, HEIGHT_BAND_MIN, chart)
-             if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
+             if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g) and _has_letter_pair(g, chart)]
     for g in extra:
         for c in g:                 # read by `small_text._drawn_size_only`: drawn size, no re-set
             c.region.meta["text_cluster_mixed_caps"] = True
