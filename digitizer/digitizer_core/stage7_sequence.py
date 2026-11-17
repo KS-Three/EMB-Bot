@@ -83,7 +83,7 @@ from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
                             outline_holes, ring_has_room, run_outline, silhouette_cap,
-                            underfill_rim_after)
+                            underfill_rim_after, UNDERFILL_RIM_WIDTH_MM)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 # Imported under another name: `hairline_runs` is already this module's count
@@ -356,6 +356,64 @@ def _text_lean_house(region, cfg: PipelineConfig) -> float | None:
     return None if angle is None else float(angle)
 
 
+#: meta key (`cfg.group_consistent_border_by_size`): the size ring decided for
+#: this shape by its line of like shapes -- True: ringed, False: not.
+BORDER_GROUP_KEY = "border_by_size_group"
+
+
+def _by_size_reach_ok(poly, width: float) -> bool:
+    """`_border_by_size_width`'s own last test: the shape is mostly a fill
+    with a border round it at this width."""
+    grow = width + machine.BORDER_HOST_MARGIN_MM
+    core = poly.buffer(-grow)
+    if core.is_empty:
+        return False
+    return (core.buffer(grow).intersection(poly).area
+            >= machine.BORDER_BY_SIZE_REACH_FRAC * poly.area)
+
+
+def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
+    """`cfg.group_consistent_border_by_size`: decide the size ring once per
+    line of like shapes. -> how many shapes the group moved.
+
+    `border_by_size` reads each shape alone against
+    `machine.BORDER_BY_SIZE_MIN_DIM_MM`, so like shapes that straddle it come
+    out unlike: the NASA worm at 100 mm is three shapes of one 5.4 mm stroke
+    whose smallest dimensions read 6.19, 6.26 and 5.92, and two sewed as a
+    fill under a satin ring and the third as a bare fill. Here a line
+    (`group_consistency.like_lines`: one thread, like heights, one row, three
+    or more) of shapes the rule could read takes the group's side
+    (`group_consistency.follow`: the decided members' when they agree, else
+    the median's), and each undecided member on the other side is stamped
+    `BORDER_GROUP_KEY`. A member moved ONTO the ring must pass the rule's
+    reach test at the ring's width; one moved off it always can. Lettering,
+    review tiers and per-shape border intent are not read, as in the rule."""
+    from .group_consistency import follow, like_lines
+    floor = machine.BORDER_BY_SIZE_MIN_DIM_MM
+    width = machine.border_by_size_width_mm(floor)
+
+    def readable(r) -> bool:
+        meta = r.meta or {}
+        return (meta.get("stitched", True)
+                and str(meta.get("tier", "auto")).lower() == "auto"
+                and meta.get("border") is None and not is_lettering(r, cfg)
+                and r.polygon is not None and not r.polygon.is_empty
+                and r.polygon.geom_type == "Polygon")
+
+    for r in regions:                   # a verdict never outlives the read that made it
+        if r.meta:
+            r.meta.pop(BORDER_GROUP_KEY, None)
+    moved = 0
+    for group in like_lines([r for r in regions if readable(r)]):
+        sides = follow(group, lambda r: _min_dim_mm(r.polygon), floor,
+                       can_take=lambda r, over: (not over) or _by_size_reach_ok(r.polygon, width))
+        for r in group:
+            if r.shape_id in sides:
+                r.meta[BORDER_GROUP_KEY] = bool(sides[r.shape_id])
+                moved += 1
+    return moved
+
+
 def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
     """`cfg.border_by_size` (2026-10-23): the pro's border width for this
     shape, or None when the rule does not read it. -> width in mm.
@@ -377,8 +435,16 @@ def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
         return None
     if is_lettering(region, cfg):
         return None
+    # `cfg.group_consistent_border_by_size`: its line's verdict, when the
+    # line moved it (`tag_border_by_size_groups`)
+    grouped = (meta.get(BORDER_GROUP_KEY)
+               if getattr(cfg, "group_consistent_border_by_size", False) else None)
+    if grouped is False:
+        return None
     poly = region.polygon
     min_dim = _min_dim_mm(poly)
+    if grouped is True:
+        min_dim = max(min_dim, machine.BORDER_BY_SIZE_MIN_DIM_MM)
     if min_dim < machine.BORDER_BY_SIZE_MIN_DIM_MM:
         return None
     width = machine.border_by_size_width_mm(min_dim)
@@ -3647,7 +3713,8 @@ def sequence(
             border_later[_p.shape_id] = _p.visible_geom
     # Every region's edge, for `cfg.border_by_size_fabric_edges`'s seam test
     sewn_geoms = ({_p.shape_id: _p.visible_geom for _p in planned}
-                  if cfg.border_by_size_fabric_edges else {})
+                  if (cfg.border_by_size_fabric_edges
+                      or cfg.silhouette_underfill_rim_fabric_edges) else {})
     # `_owned_by_later`'s buffered edges, built once per shape for this call
     # (`_edge_band`; speed only -- the owl asked 157 seams of 26 shapes)
     seam_bands: dict = {}
@@ -5080,8 +5147,25 @@ def sequence(
             # A stripe field's fill gets no rim: its bands cover the long
             # edges and its ends are cut, as the bands' are (`STRIPE_HOST_KEY`).
             if cfg.silhouette_underfill_rim and not p.region.meta.get(STRIPE_HOST_KEY):
+                # `cfg.silhouette_underfill_rim_fabric_edges`: the rim skips
+                # every stretch of the host's visible outline that another
+                # sewn shape shares, earlier or later, by the size ring's
+                # seam band and threshold (`border_by_size_fabric_edges`)
+                rim_omit = rim_outline = None
+                if (cfg.silhouette_underfill_rim_fabric_edges and runs
+                        and p.region.meta.get(UNDERFILL_KEY) is not None):
+                    _vis = p.visible_geom
+                    _parts = [Polygon(g.exterior) for g in getattr(_vis, "geoms", [_vis])
+                              if g.geom_type == "Polygon" and not g.is_empty]
+                    if _parts:
+                        rim_outline = unary_union(_parts)
+                        rim_omit, _ = _owned_by_later(
+                            rim_outline,
+                            {k: g for k, g in sewn_geoms.items() if k != p.shape_id},
+                            2.0 * UNDERFILL_RIM_WIDTH_MM, eps_mm=2.0 * cfg.simplify_tol_mm)
                 runs, report = underfill_rim_after(p, runs, report, trim_at_mm=trim_at,
-                                                   underlay=satin_underlay != "none")
+                                                   underlay=satin_underlay != "none",
+                                                   omit=rim_omit, outline=rim_outline)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)

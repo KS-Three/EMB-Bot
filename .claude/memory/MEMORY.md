@@ -39,8 +39,6 @@ the OLDEST lines whole to the archive.
 - [Digitized image study](digitized-image-study-2026-11-13.md) — Kent 11-13: 108 pro pictures read by eye, 18 rules; rules 7, 12 MEASURED: pro stacks under ~5.2 mm, adds no outline the art lacks, same as us; no gap found
 - [Director night 11-13](director-night-2026-11-13.md) — no single switch; eye-first gave 11 PRs; agent eye PARTIAL (0.35), now gross-fault judge (Kent 11-14); repeats/fatter disproved; Kent 11-14: 5 flips, edge-walk, apex_cut guard
 - [Edge-fault reader](edge-fault-reader-2026-11-10.md) — edge_wobble flag locations vs Kent's 20 smooth-edge pins: 0.60 vs chance 0.49 at 3 mm, CI crosses 0 = not shown; harness `fault_reader_harness.py` reusable; next reader closed/merged letters
-- [Export read-back](export-readback-2026-11-05.md) — every export re-read, download BLOCKED on mismatch (Kent 11-05): service pystitch 500 + headers, browser DST/EXP/PES; skipped checks per format; 20k stitches +7-13 ms browser
-- [Download all zip](export-zip-2026-11-05.md) — Kent 11-05 zip only: 7 formats + PDF + PNG + threads.txt via the verified path; any one fails = nothing saved; no PEC/U01; 24k stitches 2.2-2.6 s, 1.08 MB
 - [External sourcing 11-06](external-repo-sourcing-2026-11-06.md) — tesserocr 251 -> 5 ms per OCR read, ADOPTED 11-06 (board geometry identical, cc <4 -0.08 = one drone word; 5.5.3 vs CI 5.3.4 open); clipper2-ts on offsetRing trigger; bench filum DST only
 - [Eye-first diagnosis](eye-first-diagnosis-2026-11-13.md) — Kent 11-13: trace a bad render by eye beside the ORIGINAL first
 - [Fat-ink ledger](fat-ink-ledger-2026-11-14.md) — width ledger, 7 designs: our thread area = the pro's on Becker/Bridge; width enters at stage-5 fill/column pull + stage-6 satin rails; `pull_comp_along_stitch_only`, `growth_keeps_gaps` built OFF
@@ -58,7 +56,6 @@ the OLDEST lines whole to the archive.
 - [Fremont room](fremont-room-2026-11-14.md) — EST 1895 `no_room`: its own white field (0.48 of hull) read as obstacle; `small_text_reset_ground_ring` + `_bean_follows` (spines read at drawn size) OFF: date reads clean at 2x; pro 2.4x
 - [Group consistency](group-consistency-2026-11-13.md) — "like things differ" pins: 2 tier straddles, 2 thread, 2 fill angle, 2 fixed; all 4 ON 11-14, body+thread with guards (Kent); decide by ink; tone = row order
 - [Hairline keyline bean](hairline-keyline-bean-2026-11-13.md) — `border_from_outline_hairline_run` OFF: 0.4 mm keyline sewed 1.5 mm satin; ON = corner-exact bean
-- [heatstitch floor row](heatstitch-floor-row-2026-11-05.md) — `tripwire floor`: ours' sttype kappa beside heatstitch's untuned rule per job, margin, flag < 0.05 (never fails); laptop-only, n/a without scratch_bench files
 - [Inconsistency reader](inconsistency-fault-reader-2026-11-12.md) — unlike siblings: -0.04 vs pick, CI [-0.42,+0.42] = not shown; "colour" feet = fill direction lit
 - [In-fill fault reader](infill-fault-reader-2026-11-11.md) — thread in art-empty spaces (sew_enclosed_white) vs Kent's 36 in-fill pins: per note 0.29 vs candidate-pick null 0.27, CI [-0.31,+0.28] = not shown; finds the region, not which spaces
 - [Jag source](jag-source-2026-11-13.md) — 49 smooth pins by stage: chord facets 18, source px 10, satin construction 21 (ends 14); `outline_redraw_k` 0.75 (Kent 11-14 "Set 0.75", upscaled only)
@@ -69,6 +66,7 @@ the OLDEST lines whole to the archive.
 - [Letter-reader replication](letter-reader-replication-2026-11-12.md) — #1389 reader pre-registered; Kent sat 9 logos 11-13: letter pins on 2 items (needs 5) = no verdict, not replicated
 - [Line chain, one thread](line-chain-one-thread-2026-11-11.md) — fix B `line_chain_one_thread`: Kent 11-11 "Keep off, very little improvements were made, if any"; stays OFF, no flip, no retune; 4 of 21 rows move
 - [Local lanes fill the disk](local-lanes-fill-disk-2026-11-08.md) — ~25 local lanes (900 MB node_modules each) took C: to 143 MB; remove a lane on merge, stop under 10 GB free
+- [Logo batch 11-16](logo-batch-2026-11-16.md) — 10 Commons logos, final before/after only (Kent); rim fabric-edges + group size-ring flags OFF; arc text, AA-blend thread NOT fixed
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [MFab AND re-check](mfab-and-recheck-2026-11-06.md) — 10-25 brief stale: on main 7ee2d98a the hollow A is gone (0 bean tags, A/N/D satin 126/110/120) since bean_ink_outlined_letters + bean_only_lines ON 10-27; no flag built; keyline art = MFab only
 - [MFab counter ring room](mfab-counter-ring-room-2026-11-14.md) — "random stitch" = photo-lane significant border on the A's 3.35 mm counter lightened to a bean loop inside its fill; `border_significant_ring_room` OFF drops it; our satin tier there was worse
@@ -108,6 +106,7 @@ the OLDEST lines whole to the archive.
 - [Thread guard](thread-guard-2026-11-14.md) — group_consistent_thread (ON 11-14): a lone letter takes its word's thread only if it matches its own art no worse; Drone refused 7.27 -> 13.17 (grade kept D), Bridge U moves 15.29 -> 14.11
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha
+- [Under-fill ground guard](underfill-ground-guard-2026-11-16.md) — ON (Kent 11-16): a ring on the ground it would jump reads no ring; NASA orbit + stars back; rim fabric-edges flag OFF
 - [Eye, 100 pairs](vlm-judge-100-2026-11-06.md) — Opus session, 99 pairs: kappa +0.34 [+0.17, +0.49] above chance; sides +0.65 n 22; proposal only
 - [Vision pre-screen](vlm-prescreen-2026-11-06.md) — threshold 4: settled kappa +0.39 (39/54), +0.29 (67/99), both above chance; row PROPOSAL only; tie label holds 13/29, 18/40 side picks
 - [DreamSim yardstick](yardstick-dreamsim-2026-11-08.md) — 11-08: +0.197 on 100 pooled pro pairs, NOT replicated on fresh sitting (+0.099, CI crosses 0) or 1102 hold-out (-0.127); no stand-in for Kent
