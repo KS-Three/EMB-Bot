@@ -111,7 +111,7 @@ from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, satin_shape,
+from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, is_straight_slot, satin_shape,
                            small_solid_satin)
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
@@ -4559,6 +4559,32 @@ def sequence(
                 # `cfg.open_cored_counters`: this shape's cored counters, held
                 # at half the block's laid width (`satin_shape`). Off, no
                 # `counter_holes`, and the call is today's.
+                # `cfg.extra["satin_straight_slots"]` (built OFF 2026-11-17): a
+                # short straight slot the classifier sent to satin sews as
+                # ONE column with level crosses, by the Column lane's emitter
+                # (`columns.lettering_columns_shape`: its straight axis, the
+                # fabric's pull on the rails, the same underlay), not the
+                # skeleton tier, whose rails wrap a round end and fan
+                # (`stage6_satin.is_straight_slot`). Not lettering, not a
+                # forced tier, no house angle to honour. A slot the lane does
+                # not build as exactly one whole column takes the tier below.
+                if ((cfg.extra or {}).get("satin_straight_slots") and tier == "auto"
+                        and not is_lettering(p.region, cfg) and satin_angle_deg is None
+                        and is_straight_slot(p.polygon, shape_max)):
+                    s_runs, s_report = lettering_columns_shape(
+                        p.polygon, p.shape_id, trim_at_mm=trim_at,
+                        spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
+                        pull_mm=rail_comp_mm, pull_floor_mm=cfg.min_detail_mm,
+                        underlay_style=("none" if small and not cfg.satin_underlay_short_columns
+                                        else satin_underlay),
+                        start_near=entry,
+                        end_near=exit_near if cfg.satin_exit_toward_next else None,
+                        rail_axis=True,
+                        **({"short_columns": True} if cfg.satin_underlay_short_columns else {}))
+                    if (not s_report["empty"] and s_report.get("columns") == 1
+                            and not s_report.get("columns_unsewn") and not s_report.get("cuts")):
+                        s_report["straight_slot"] = 1
+                        return s_runs, s_report, False
                 _cored_s = cored_holes_of(p.polygon)
                 runs, report = satin_shape(
                     p.polygon,
