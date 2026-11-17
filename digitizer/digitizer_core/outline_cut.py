@@ -1170,6 +1170,30 @@ APEX_PRO_FOOT_W = 0.70         # an N's foot band: his level line this far above
 APEX_PRO_CAP_RUN_W = 1.5       # a top this flat (in W) is a band, not a point (Becker's A 1.8, ProSeal's 1.1)
 APEX_PRO_JOINT_CASES = ("n_top", "n_foot", "a_cap")
 
+# `a_cap_centered` (`cfg.extra["lettering_columns_a_cap_centered"]`, 2026-11-17,
+# built OFF): a gate on `apex_pro_joints`' flat A. The A's band reads "a counter
+# pointed on top under a straight top run", and Becker MARINE's R passes it: its
+# counter is a pentagon whose top vertex sits at the counter's LEFT edge, so the
+# R is cut by the A's full-width level band, slab apart from bowl, where the
+# pro sews slab + bowl as ONE piece (`docs/big-letter-construction-2026-10-24.md`,
+# R row). ON, the band needs the counter's top vertex in the middle third of
+# the counter's width (an A's apex is central; an R's is at the edge). Layout,
+# not a cloth number (gate 1). False is the cut as it was, byte for byte.
+_A_CAP_CENTERED: contextvars.ContextVar[bool] = contextvars.ContextVar("a_cap_centered", default=False)
+
+
+@contextlib.contextmanager
+def a_cap_centered_scope(on: bool):
+    """`cfg.extra["lettering_columns_a_cap_centered"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _A_CAP_CENTERED.set(True)
+    try:
+        yield
+    finally:
+        _A_CAP_CENTERED.reset(token)
+
 
 @contextlib.contextmanager
 def apex_pro_joints_scope(on: bool):
@@ -1286,6 +1310,10 @@ def _apex_pro_joint_cuts(poly: Polygon, W: float, cuts: list, reflex) -> list:
                 continue
             apex = min(cs, key=lambda q: q[1])
             hole = Polygon(ring)
+            if _A_CAP_CENTERED.get():
+                hx0, _hy0, hx1, _hy1 = hole.bounds
+                if not hx0 + (hx1 - hx0) / 3.0 <= apex[0] <= hx1 - (hx1 - hx0) / 3.0:
+                    continue    # the apex is at the counter's edge (an R's), not central (an A's)
             probe = LineString([(x0 - 1.0, apex[1] + 0.25 * W), (x1 + 1.0, apex[1] + 0.25 * W)]).intersection(hole)
             if probe.is_empty or probe.length > 0.6 * W:
                 continue        # the counter is flat or round on top (an O), not pointed (an A)

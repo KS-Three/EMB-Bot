@@ -1,0 +1,65 @@
+{
+ "bg_uncertain.png": {
+  "moved": false,
+  "stitches_off": 11249,
+  "stitches_on": 11249,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "ribbon_curve.png": {
+  "moved": false,
+  "stitches_off": 1007,
+  "stitches_on": 1007,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/fur_ramp.png": {
+  "moved": false,
+  "stitches_off": 6985,
+  "stitches_on": 6985,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/photo_chrome_specular.png": {
+  "moved": false,
+  "stitches_off": 36259,
+  "stitches_on": 36259,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/photo_owl_pale.png": {
+  "moved": false,
+  "stitches_off": 24893,
+  "stitches_on": 24893,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/photo_sunset_backlit.png": {
+  "moved": false,
+  "stitches_off": 26910,
+  "stitches_on": 26910,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/summit_badge.png": {
+  "moved": false,
+  "stitches_off": 28513,
+  "stitches_on": 28513,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/logo_bridge_bar.jpg": {
+  "moved": false,
+  "stitches_off": 10872,
+  "stitches_on": 10872,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/logo_hotel_fremont.webp": {
+  "moved": true,
+  "stitches_off": 12893,
+  "stitches_on": 11902,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ }
+}
