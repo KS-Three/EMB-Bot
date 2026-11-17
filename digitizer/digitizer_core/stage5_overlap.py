@@ -1278,6 +1278,23 @@ def resolve_overlaps(
                     grown = grown.union(reach)
 
             under = ground_under.get(r.shape_id)
+            if (under is not None and (cfg.extra or {}).get("dark_ink_ground_innermost")
+                    and r.shape_id not in pinned and axis_by_id.get(r.shape_id) is None
+                    and _angle_is_free(r, cfg)):
+                # built OFF 2026-11-17: a ground sewn THROUGH under its bean
+                # letters keeps the row angle of the shape it had before the
+                # letters' holes were closed. Stage 6 picks a free fill's angle
+                # on the shape it is handed, and closing the holes tips it: the
+                # Labor seal's lower shield panel went from rows at 10 deg to 55
+                # beside a sibling panel at 175, and one thread read as two.
+                # The pin `_off_angles` uses, for the same reason.
+                try:
+                    _g = _largest_polygon(grown) if grown.geom_type != "Polygon" else grown
+                    if _g is not None and not _g.is_empty:
+                        pinned[r.shape_id] = float(best_fill_angle_deg(
+                            _g, (cfg.fill_row_mm or FILL_ROW_MM) * max(0.1, fabric.density_adjust)))
+                except Exception:  # noqa: BLE001 -- unreadable: stage 6 picks as before
+                    pass
             if under is not None:
                 # `cfg.stripe_underfill`: a stripe field's fill keeps to the
                 # field (`STRIPE_HOST_KEY`); the bands on it end at their art.
