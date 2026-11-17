@@ -84,7 +84,7 @@ from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
                               depth_sort_layers, sequence, cut_every_jump_step_mm,
-                              tag_border_by_size_groups)
+                              stamp_ribbon_outliers, tag_border_by_size_groups)
 from .stitches import StitchPlan
 from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean
 from .threads import chart_for, rgb_to_lab
@@ -1690,6 +1690,10 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # stage 5 and stage 7 all read one answer (`_border_by_size_width`).
     if cfg.border_by_size and cfg.group_consistent_border_by_size:
         tag_border_by_size_groups(regions, cfg)
+    # `cfg.lettering_columns_ribbon_handback`: cluster outliers stamped here so
+    # the borders-last prediction below and stage 5 read them (stage 7 stamps
+    # again on the final polygons); off, nothing is read
+    stamp_ribbon_outliers(regions, cfg)
     if cfg.borders_last and not (
             is_photographic(cfg, gen.classification_class)
             or bool(cfg.extra.get("photo_sequencing"))):

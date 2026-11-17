@@ -51,6 +51,7 @@ from __future__ import annotations
 import functools
 import heapq
 import math
+import statistics
 from dataclasses import replace
 
 import numpy as np
@@ -110,7 +111,8 @@ from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import classify_ribbon, is_small_solid, satin_shape, small_solid_satin
+from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, satin_shape,
+                           small_solid_satin)
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .detail_spokes import spoke_runs
@@ -284,19 +286,63 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
     return [thread_indices[L] for L in order]
 
 
+# `cfg.lettering_columns_ribbon_handback`'s outlier test (2026-11-16, CANDIDATES
+# resting on one logo). Measured on 14 jobs / 178 Column-lane members: a real
+# bold letter reaches at most 1.30 of its text cluster's median dt_p90 (Becker),
+# the Adidas bar reads 2.01; 1.6 is the geometric middle. Texaco's disc wedges
+# (1.43-1.53) deliberately stay in the lane. A cluster with fewer than
+# `RIBBON_HANDBACK_MIN_CLUSTER` lane members has no median worth the name.
+RIBBON_HANDBACK_OUTLIER = 1.6
+RIBBON_HANDBACK_MIN_CLUSTER = 3
+RIBBON_OUTLIER_KEY = "ribbon_handback_outlier"
+
+
+def stamp_ribbon_outliers(regions, cfg: PipelineConfig) -> None:
+    """Once per design: stamp `RIBBON_OUTLIER_KEY` on each Column-lane member
+    (`is_lettering`, tier auto) whose dt_p90 (`_dt_stats`, the number
+    `classify_ribbon` gates on) is at least `RIBBON_HANDBACK_OUTLIER` times
+    the median of its text cluster's lane members. Off, or the lane off:
+    nothing is read or written."""
+    if not (cfg.lettering_columns_ribbon_handback and cfg.lettering_columns and cfg.satin):
+        return
+    clusters: dict = {}
+    for r in regions:
+        meta = r.meta
+        if meta is None or str(meta.get("tier", "auto")).lower() != "auto" or not is_lettering(r, cfg):
+            continue
+        key = word_key(r, cfg)
+        if key is None or r.polygon is None or r.polygon.geom_type != "Polygon":
+            continue
+        meta.pop(RIBBON_OUTLIER_KEY, None)
+        stats = _dt_stats(r.polygon)
+        if stats is not None:
+            clusters.setdefault(key, []).append((r, stats.p90_mm))
+    for members in clusters.values():
+        if len(members) < RIBBON_HANDBACK_MIN_CLUSTER:
+            continue
+        med = statistics.median(p for _r, p in members)
+        for r, p in members:
+            if med > 0 and p >= RIBBON_HANDBACK_OUTLIER * med:
+                r.meta[RIBBON_OUTLIER_KEY] = True
+
+
 def _ribbon_handback(region, cfg: PipelineConfig, satin_max_mm: float,
                      design_class: str) -> bool:
     """`cfg.lettering_columns_ribbon_handback` (2026-11-16, built OFF): is this
-    Column-lane member a SOLID, not a ribbon? True when the lane would take it
-    (`is_lettering`, tier auto) and `classify_ribbon`, asked as for any
-    untagged shape (the design's ceiling, `cfg.satin_per_stroke`, none of the
-    lettering split's open ceiling), says fill. Such a shape sews down the
-    ladder as if never a cluster member; its tags stay. `photo_width_floor`
-    (a ribbon that earned satin but is too thin) is not a solid and stays.
-    Off, False without reading anything else."""
+    Column-lane member a SOLID OUTLIER of its cluster, not a ribbon? True when
+    the lane would take it (`is_lettering`, tier auto), it was stamped an
+    outlier (`stamp_ribbon_outliers`: dt_p90 at least 1.6x its cluster's
+    median) AND `classify_ribbon`, asked as for any untagged shape (the
+    design's ceiling, `cfg.satin_per_stroke`, none of the lettering split's
+    open ceiling), says fill. Such a shape sews down the ladder as if never a
+    cluster member; its tags stay. `photo_width_floor` (a ribbon that earned
+    satin but is too thin) is not a solid and stays. Off, False without
+    reading anything else."""
     if not (cfg.lettering_columns_ribbon_handback and cfg.lettering_columns and cfg.satin):
         return False
     if str((region.meta or {}).get("tier", "auto")).lower() != "auto" or not is_lettering(region, cfg):
+        return False
+    if not region.meta.get(RIBBON_OUTLIER_KEY):
         return False
     v = classify_ribbon(region.polygon, satin_max_mm,
                         design_class=design_class,
@@ -3221,6 +3267,9 @@ def sequence(
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
                       if cfg.underlay else "none")
     satin_max = satin_ceiling_mm(cfg)
+    # `cfg.lettering_columns_ribbon_handback`: each cluster's outliers, once
+    # for the design (off: nothing is read)
+    stamp_ribbon_outliers([_pr.region for _pr in planned], cfg)
     trim_at = fabric.trim_at_mm
     # Cap sew order (cfg.cap_center_out, default OFF — config.py's block has
     # the craft argument and the lane-split history). Resolved once per call:
