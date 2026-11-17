@@ -42,7 +42,6 @@ the OLDEST lines whole to the archive.
 - [Digitized image study](digitized-image-study-2026-11-13.md) — Kent 11-13: 108 pro pictures read by eye, 18 rules; rules 7, 12 MEASURED: pro stacks under ~5.2 mm, adds no outline the art lacks, same as us; no gap found
 - [Director night 11-13](director-night-2026-11-13.md) — no single switch; eye-first gave 11 PRs; agent eye PARTIAL (0.35), now gross-fault judge (Kent 11-14); repeats/fatter disproved; Kent 11-14: 5 flips, edge-walk, apex_cut guard
 - [Edge-fault reader](edge-fault-reader-2026-11-10.md) — edge_wobble flag locations vs Kent's 20 smooth-edge pins: 0.60 vs chance 0.49 at 3 mm, CI crosses 0 = not shown; harness `fault_reader_harness.py` reusable; next reader closed/merged letters
-- [External sourcing 11-06](external-repo-sourcing-2026-11-06.md) — tesserocr 251 -> 5 ms per OCR read, ADOPTED 11-06 (board geometry identical, cc <4 -0.08 = one drone word; 5.5.3 vs CI 5.3.4 open); clipper2-ts on offsetRing trigger; bench filum DST only
 - [Eye-first diagnosis](eye-first-diagnosis-2026-11-13.md) — Kent 11-13: trace a bad render by eye beside the ORIGINAL first
 - [Fat-ink ledger](fat-ink-ledger-2026-11-14.md) — width ledger, 7 designs: our thread area = the pro's on Becker/Bridge; width enters at stage-5 fill/column pull + stage-6 satin rails; `pull_comp_along_stitch_only`, `growth_keeps_gaps` built OFF
 - [Fill-slant sitting](fill-slant-sitting-2026-11-09.md) — Kent blind, 16 live pro pairs: slant ON 0, OFF 7, tie 9 = favours OFF (4 designs, Becker 4 of 7); "Keep OFF, record"; pro-direction kappa gain did not read better
@@ -61,6 +60,7 @@ the OLDEST lines whole to the archive.
 - [Inconsistency reader](inconsistency-fault-reader-2026-11-12.md) — unlike siblings: -0.04 vs pick, CI [-0.42,+0.42] = not shown; "colour" feet = fill direction lit
 - [In-fill fault reader](infill-fault-reader-2026-11-11.md) — thread in art-empty spaces (sew_enclosed_white) vs Kent's 36 in-fill pins: per note 0.29 vs candidate-pick null 0.27, CI [-0.31,+0.28] = not shown; finds the region, not which spaces
 - [Jag source](jag-source-2026-11-13.md) — 49 smooth pins by stage: chord facets 18, source px 10, satin construction 21 (ends 14); `outline_redraw_k` 0.75 (Kent 11-14 "Set 0.75", upscaled only)
+- [K3 logo trial](k3-logo-trial-2026-11-16.md) — 30 Commons logos, Sonnet workers + foreman's eye; parked with numbers: dark-ink carve (#1610), Texaco star (one-spine satin, cover check blind), (R) blobs, USAID FROH
 - [Kent's judging rubric](kent-judging-rubric-2026-11-07.md) — his 22 reasons: lettering follows pen strokes, smooth curves, straight uprights, no blobs; first picks noisy; phase B judge FAILED (#1363)
 - [Lagging areas top 3](lagging-areas-2026-11-06.md) — Kent 11-06: yardstick / satin-fill 0.387 / trims; 3 Sonnet notes in docs/lagging-areas-2026-11-06: no external repo fixes any, instruments + oracles first; polygon_axis.py already exists
 - [Launch not near](launch-not-near-rulings-2026-11-12.md) — Kent 11-12 "not ready for going live": no billing/licence/signing/hosting/legal until he says; show him the build first; "Decide later" on installer name; defect 28 close it
