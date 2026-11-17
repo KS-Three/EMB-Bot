@@ -3,11 +3,12 @@
 **Prime-grader pin:** (40.0, 37.0) mm and (53, 37), "fat black block about 1.5 mm wide where the art has a hairline rule".
 **Verdict:** the professional's file sews the same thing. No fix built; nothing in the engine changed.
 
-Picture: `docs/renders/fremont-dividers-2026-11-17/dividers_original_ours_pro.png`
-(top ORIGINAL, middle OURS, bottom PROFESSIONAL, same scale, 12 px/mm).
-The professional's panel is a hat render with its own placement, so the crops are
-by eye, not by fit. The art's divider is a thin black rule; both sewn files turn
-it into a fat black block.
+Picture: an ORIGINAL | OURS | PROFESSIONAL crop at 12 px/mm was made and looked at
+(the art's divider is a thin black rule; both sewn files turn it into a fat black block,
+the professional's no thinner). It is NOT committed: it holds a render of the
+professional's file, and Kent's 2026-10-27 ruling ("Stop new ones, keep old",
+`tests/test_no_new_pro_renders.py`) bars a new one under docs/. The measured table
+below is the evidence; the crop was by eye, not by fit.
 
 ## Measured (needle points, design mm; capture of `hotel_fremont_hat`, 2026-11-17)
 
