@@ -1536,6 +1536,18 @@ class PipelineConfig:
     # (`docs/renders/merge-chroma-guard-2026-11-17/`). False is the merge as
     # it was; PRE_FLIP (MERGE_CHROMA_GUARD_2026_11_17_OFF) pins it False.
     merge_chroma_guard: bool = True
+    # `keyline_fragment_drop` (built OFF 2026-11-17; Kent on the Drone render:
+    # "The P,R & C should not have the dark stitch lines on them"). The art's
+    # chrome letters carry a hairline dark edge; a few mm of it survive stage
+    # 2 as their own dark regions on the P, R and C of PRECISION and each sews
+    # as a short dark satin bar on a light letter. ON, a dark band (two laid
+    # threads wide at most) lying along under a quarter of ONE lighter
+    # shape's outline goes to the page (`keyline_fragment.py`). A whole
+    # keyline, a drop shadow and a line between two shapes stay. Ratios only,
+    # no fabric constant: gate 1 does not apply. A DESIGN CHANGE: the default
+    # is Kent's, with pictures. False never loads the module. Tests:
+    # `tests/test_keyline_fragment.py`.
+    keyline_fragment_drop: bool = False
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
     # line") (`fine_bar.apply_fine_bar_survive`). A straight dark bar the art

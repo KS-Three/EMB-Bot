@@ -1136,6 +1136,16 @@ def build_generation(
         from .bevel_fold import apply_bevel_fold
         apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices))
 
+    # `cfg.keyline_fragment_drop` (built OFF 2026-11-17, Kent on the Drone
+    # render: "The P,R & C should not have the dark stitch lines on them"): a
+    # dark sliver left along a small part of ONE lighter shape's edge is a
+    # tracing remnant of a hairline keyline, and goes to the page. Logos and
+    # tonal renders, never a photo class (as the bevel fold). Off, the module
+    # never loads.
+    if cfg.keyline_fragment_drop and classification.class_ not in PHOTO_CLASSES:
+        from .keyline_fragment import drop_keyline_fragments
+        drop_keyline_fragments(regions, chart_for(cfg))
+
     # `cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review
     # pack (review-1115): ticked ON; built OFF 2026-11-14 as
     # `cfg.extra["point_touch_split"]`, eye sweep fault 11: NSYNC's star
