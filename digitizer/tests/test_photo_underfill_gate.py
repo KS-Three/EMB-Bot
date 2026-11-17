@@ -32,7 +32,8 @@ from .conftest import LOGO_BATCH_2026_11_16_OFF, TESTDATA
 #: before the gate on origin/main 13c0eb85: (md5, stitch count).
 LOGO_PINS = {
     # whitebg re-pinned 2026-11-16: `satin_push_keeps_gaps` 0.5 (Kent's flip) narrows one satin cross 0.6 mm
-    "logo_whitebg.png": ("flat", "23ebf33d1a87551508d0330526629092", 6711),
+    # and again 2026-11-17: the flag ends/seam trio (Kent's flip) insets every free satin end
+    "logo_whitebg.png": ("flat", "9a3b9133bdd8797ce54a5d33f15851be", 6707),
     "photo/gradient_ramp_linear.png": ("gradient", "06bad7d0e0d1c4acd342b87fa28169ff", 10938),
 }
 

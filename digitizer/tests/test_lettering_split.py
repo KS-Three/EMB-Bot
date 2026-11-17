@@ -78,6 +78,12 @@ def _plan(art: Path, **kw):
     kw.setdefault("lettering_columns", False)
     kw.setdefault("bean_only_lines", False)   # the split's numbers predate the bean rule (ON 2026-10-27)
     kw.setdefault("edge_cap", "bean")         # ...and the "none" default (2026-10-29)
+    # ...and the flag ends/seam trio (ON 2026-11-17, Kent). With it ON the strict
+    # xfail below (`..._goes_bare_where_the_fill_lane_did_not`) XPASSes: the
+    # bare-crown defect it tracks is measured on the engine before the trio.
+    from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF
+    for name, value in FLAG_ENDS_SEAM_2026_11_17_OFF.items():
+        kw.setdefault(name, value)
     cfg =PipelineConfig(target_width_mm=127.4, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)

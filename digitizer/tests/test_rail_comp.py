@@ -409,8 +409,13 @@ def test_the_flips_bare_artwork_is_hairlines_on_the_sides_and_a_hole_at_a_tapere
     # read 66%, CI 2026-10-26). This test is about the rails, so it holds the
     # letters as they were. The flip's own tests are
     # `tests/test_small_text_grow_away.py`.
+    # ...and before the flag ends/seam trio (ON since 2026-11-17, Kent): with
+    # it the hairline share reads 67% (CI run 44158966435), a different
+    # population again, while the design's unsewn share FELL (0.454 -> 0.391).
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6,
-                         lettering_columns=False, small_text_reset_grow_away=False)
+                         lettering_columns=False, small_text_reset_grow_away=False,
+                         **{k: PRE_FLIP[k] for k in ("satin_cap_skew_inset", "satin_seam_hold",
+                                                     "satin_free_end_chord_aim")})
     gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
