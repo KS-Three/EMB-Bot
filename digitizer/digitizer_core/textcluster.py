@@ -1085,7 +1085,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                          nest_guard: bool = False,
                          nest_guard_rotated: bool = False,
                          nest_door_aspect: bool = False,
-                         solid_guard: bool = False) -> None:
+                         solid_guard: bool = False,
+                         mixed_caps: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -1169,6 +1170,12 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
        more) is not tagged, in either round: a row of a logo's solid squares
        is not a word. False: byte for byte.
 
+    `mixed_caps` (`cfg.text_cluster_mixed_caps`, 2026-11-17, built OFF): the
+       glyphs the letter door admitted but no cluster took are clustered once
+       more at `HEIGHT_BAND_MIN` instead of `LETTER_HEIGHT_RATIO`
+       (`_mixed_caps`): a line set in two cap heights (TOAT's "To A T")
+       tags. False: byte for byte.
+
     `chart` is the thread chart the regions' `thread_index` values name --
     `threads.chart_for(cfg)` from the pipeline; the default chart when not
     given, the same precedent `threads.nearest_thread_index` sets. Used only
@@ -1223,15 +1230,19 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
     letters = _letter_candidates(regions, chart=chart, counters_as_drawn=counters_as_drawn)
     if not (wide_letters or part_touching):
         if not nest_door_aspect:
-            for group in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
-                                  LETTER_HEIGHT_RATIO, chart):
-                if len(group) < MIN_CLUSTER_MEMBERS or blobs(group):
-                    continue
+            kept_cands = _drop_nested(pool + letters, nest_guard, nest_guard_rotated)
+            groups = [g for g in _cluster(kept_cands, LETTER_HEIGHT_RATIO, chart)
+                      if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
+            if mixed_caps:
+                groups = _mixed_caps(groups, kept_cands, chart, blobs)
+            for group in groups:
                 tag(group)
             return
-        groups = [g for g in _cluster(_drop_nested(pool + letters, nest_guard, nest_guard_rotated),
-                                      LETTER_HEIGHT_RATIO, chart)
+        kept_cands = _drop_nested(pool + letters, nest_guard, nest_guard_rotated)
+        groups = [g for g in _cluster(kept_cands, LETTER_HEIGHT_RATIO, chart)
                   if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
+        if mixed_caps:
+            groups = _mixed_caps(groups, kept_cands, chart, blobs)
         for group in _adopt_turned(groups, _turned_regions(regions, chart, counters_as_drawn), chart):
             tag(group)
         return
@@ -1258,6 +1269,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
             wide = _letter_candidates(trial, chart=chart, counters_as_drawn=counters_as_drawn,
                                       aspect=(ASPECT_RATIO_MAX, WIDE_LETTER_ASPECT_MAX))
             groups = _adopt_wide(groups, wide, chart)
+        if mixed_caps:
+            groups = _mixed_caps(groups, kept_cands, chart, blobs)
         if part_touching:
             groups = _adopt_band(groups, kept_cands, chart)
         if nest_door_aspect:
@@ -1538,6 +1551,20 @@ def _adopt_band(groups: list[list[_Candidate]], cands: list[_Candidate],
         if best is not None:
             out[best[1]].append(c)
     return out
+
+
+def _mixed_caps(groups: list[list[_Candidate]], cands: list[_Candidate], chart,
+                blobs) -> list[list[_Candidate]]:
+    """`groups` plus every group of `MIN_CLUSTER_MEMBERS` or more the
+    candidates NO group took form at `HEIGHT_BAND_MIN` (every other `_linked`
+    term as it is: one ink, stroke, reach). A line set in two cap heights
+    splits into pairs at `LETTER_HEIGHT_RATIO` and tags nothing; the pairs
+    are the leftovers here. A tagged group is never touched."""
+    taken = {c.region.shape_id for g in groups for c in g}
+    left = [c for c in cands if c.region.shape_id not in taken]
+    extra = [g for g in _cluster(left, HEIGHT_BAND_MIN, chart)
+             if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
+    return groups + extra
 
 
 # --- Turned letters (`cfg.text_cluster_nest_door_aspect`, ON since 2026-11-08; 2026-11-07,
