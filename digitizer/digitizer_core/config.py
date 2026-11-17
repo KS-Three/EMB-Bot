@@ -4229,6 +4229,17 @@ class PipelineConfig:
     # the walk as it was; `tests/conftest.py` PRE_FLIP and
     # `tests/engine_2026_10_27.json` pin it False.
     lettering_columns_connectors_edge_walk: bool = True
+    # Under `lettering_columns`, a needle-down travel (a hop between strokes,
+    # an underpath) never crosses fabric that none of the letter's satin
+    # covers (2026-11-17, built OFF; `columns._cut_bare_travel`). The link
+    # rule calls a hop "inside the letter" by the outline grown by the pull,
+    # which also closes a notch the satin leaves open: the prime grader's
+    # Toat beanie scorecard (pins near 38.5, 31.5 and 37, 36 mm) shows a bare
+    # run across the c of Machine's mouth. ON: such a segment breaks the run
+    # and the needle jumps with a trim over it. False is the walk as it was,
+    # byte for byte. Layout, not a physical constant. Tests:
+    # `tests/test_column_cover_hops.py`.
+    lettering_columns_cover_hops: bool = False
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2

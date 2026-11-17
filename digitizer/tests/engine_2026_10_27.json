@@ -172,6 +172,7 @@
  "lettering_columns_apex_cut": false,
  "lettering_columns_connectors_buried": false,
  "lettering_columns_connectors_edge_walk": false,
+ "lettering_columns_cover_hops": false,
  "lettering_columns_corner_fold": true,
  "lettering_columns_corner_fold_apex_side": false,
  "lettering_columns_cover_handback": false,

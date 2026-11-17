@@ -4275,7 +4275,8 @@ def sequence(
                     end_near=exit_near if cfg.satin_exit_toward_next else None,
                     inside_connectors=cfg.lettering_columns_inside_connectors,
                     inside_stagger=cfg.lettering_columns_inside_stagger,
-                    ink=ink_source, drawn_width=cfg.script_strokes_drawn_width)
+                    ink=ink_source, drawn_width=cfg.script_strokes_drawn_width,
+                    cover_hops=cfg.lettering_columns_cover_hops)
                 if not report["empty"]:
                     return runs, report, False
             # Lettering as Columns (`cfg.lettering_columns`, 2026-10-07): a
@@ -4378,6 +4379,9 @@ def sequence(
                     # the walk whose hops lie under satin still to come; off, today's call
                     **({"edge_walk": True}
                        if cfg.lettering_columns_connectors_edge_walk else {}),
+                    # `cfg.lettering_columns_cover_hops` (built OFF 2026-11-17): a
+                    # travel on none of the letter's satin is cut; off, today's call
+                    **({"cover_hops": True} if cfg.lettering_columns_cover_hops else {}),
                     # `cfg.extra["edge_walk_judge_off_walk"]` (built OFF 2026-11-16):
                     # under the edge walk, the fold-cut judge reads OFF's walk;
                     # off, today's call
