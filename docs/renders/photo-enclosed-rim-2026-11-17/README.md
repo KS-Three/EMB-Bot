@@ -66,3 +66,44 @@ still sews as a ragged blob (separate faults on the scorecard).
   folder is the 105 mm job only. At 105 mm the loop fits
   (`docs/keyline-loop-fit-2026-11-15.md`: fits from 70 mm).
 - Stitch counts and trims are context, not a quality claim.
+cat: /tmp/claude-0/-home-user-EMB-Bot/3d687838-2dd9-5938-bac4-c030d4c2d355/scratchpad/readme_add.md: No such file or directory
+
+## Added 2026-11-17 for the director: other widths and the 26 fixtures
+
+**This container has no `rembg_isolated`, so Kent's machine renders MFab with a
+background cutout that none of these pictures have.**
+
+### MFab at the widths the 2026-11-14 record flagged (flag OFF | ON, hat_front, Studio request)
+
+ORIGINAL | BEFORE | AFTER, one picture per width. The pictures are small, so the
+calls are of whole faces and loops, not single stitches.
+
+| width | picture | stitches OFF -> ON | trims | by eye, ON |
+|---|---|---|---|---|
+| 45 mm | [`mfab_hat_45mm.png`](mfab_hat_45mm.png) | 4,958 -> 6,404 | 9 -> 13 | **Still wrong.** White loops are fat and the M-FAB faces are narrow slivers between them; the small line is a smear. OFF is also rough, but its faces are fuller. I call ON worse here. |
+| 50 mm | [`mfab_hat_50mm.png`](mfab_hat_50mm.png) | 5,586 -> 7,174 | 9 -> 14 | **Still wrong.** Same: heavy white loops, thin faces, WELDING mangled. ON worse. |
+| 60 mm | [`mfab_hat_60mm.png`](mfab_hat_60mm.png) | 7,861 -> 9,277 | 8 -> 15 | **Better.** The small line reads and its white backing is back; OFF mushes W-E-L. Loops still a little heavy, faces hold. |
+| 80 mm | [`mfab_hat_80mm.png`](mfab_hat_80mm.png) | 13,637 -> 14,034 | 22 -> 20 | **Better.** OFF has a grey scribble where W and E should be; ON sews the small line cleanly with its white outline. |
+| 105 mm | [`mfab_hat_whole.png`](mfab_hat_whole.png) and zooms | 20,846 -> 20,990 | 26 -> 18 | **Better** (above). |
+| `mfab_lc` 96.7 mm, left_chest | none: ON is byte-identical to OFF | 17,906 = 17,906 | 23 = 23 | no change. |
+
+So the 45-50 mm white-loop problem is **not** fixed by `photo_enclosed_rim` alone;
+the record puts its fix behind `cfg.extra["keyline_loop_fit"]`, not run here.
+Nothing was flipped.
+
+### The 26 corpus fixtures (`tools.corpus_scorecard.FIXTURES`), 80 mm, left_chest
+
+Studio request at 80 mm (`tools.fremont_triage.studio_request(80.0)`) with
+`garment_id` left_chest, compared by md5 of `design["stitches"]`: **1 of 26 moves,
+1 of 1 pictured, 25 byte-identical**; none worse.
+
+| fixture | stitches OFF -> ON | trims | by eye, ON |
+|---|---|---|---|
+| `photo/summit_badge.png` ([`summit_badge_80mm.png`](summit_badge_80mm.png)) | 28,384 -> 26,960 | 41 = 41 | No visible change: ring, halves, spokes and both text lines read the same at this size. About 5% fewer stitches from a small difference in the lettering fill that I cannot see in the picture. |
+
+Unmoved: bg_uncertain, logo_alpha, logo_whitebg, ribbon_curve, becker_marine_logo,
+logo_script_tires, drone_render, enthusiast_logo, fur_ramp, gradient_ramp_linear,
+gradient_ramp_radial, photo_chrome_specular, photo_dof_meadow, photo_grass_macro,
+photo_owl_pale, photo_scene_stub, photo_subject_stub, photo_sunset_backlit,
+region_blobs, repro_gradient_white_icon, logo_bridge_bar, logo_gaulke_roofing,
+logo_golden_tee, logo_hotel_fremont, screenshot_phone_ui_golke.
