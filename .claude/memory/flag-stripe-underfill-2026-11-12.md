@@ -31,3 +31,16 @@ kept 2.6 of a 3.9 mm final cross). With `satin_cap_skew_inset` too, every end re
 
 **Open:** pull on a satin sewn over a fill is a sew-out question (gate 1). Corpus effect of
 each flag measured in the PR body.
+
+**2026-11-17: the ends/seam trio is ON; `stripe_underfill` stays OFF.** Kent sent the flag
+from the Studio again: "This is the 3rd or fourth time i requested corrections on the
+American flag." Cause: `satin_seam_hold` + `satin_cap_skew_inset` (10-30) and
+`satin_free_end_chord_aim` (11-12) were each built OFF and nobody came back with a flip
+question, so the Studio never changed. Shown the labelled before | after page (his flag + 12
+logos, sitting `flag-trio-1117`), he picked "Flip all three ON (Recommended)". Flag 96 mm
+left chest: 15,564 -> 15,450 stitches, ends square, stripes even. All 12 logos move a
+little; Golden Tee 14,501 -> 11,446 stitches, +6 trims, same by eye. Under-fill on the same
+flag read worse (red edges ragged over the fill, 21,195 stitches). PRE_FLIP
+`FLAG_ENDS_SEAM_2026_11_17_OFF`.
+**How to apply (my reading):** a fix built OFF at Kent's request is not delivered. In the
+same piece of work, put its before | after in front of him and ask the flip.
