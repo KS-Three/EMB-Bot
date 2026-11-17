@@ -1152,6 +1152,10 @@ PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
 # ON (Recommended)"): `tests/test_satin_thin_arm_stop.py`.
 THIN_ARM_STOP_2026_11_17_OFF = {"satin_thin_arm_stop": False}
 PRE_FLIP.update(THIN_ARM_STOP_2026_11_17_OFF)
+# `rope_band` (Kent 2026-11-17, shown the Hotel Fremont ORIGINAL | BEFORE | AFTER
+# picture: "Flip ON (Recommended)"): `tests/test_rope_band.py`.
+ROPE_BAND_2026_11_17_OFF = {"rope_band": False}
+PRE_FLIP.update(ROPE_BAND_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

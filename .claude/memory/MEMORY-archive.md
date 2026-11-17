@@ -27,10 +27,13 @@ live index; new archive lines go at the bottom.
 - [Fill density convention](fill-density-convention.md) — Law 19 SETTLED: pro density is between same-direction rows; 0.40 tatami sewed half coverage; satin correct
 - [DST codec axis discrepancy](dst-codec-axis-discrepancy.md) — RESOLVED 2026-09-08 with no sew-out: JS DST nibble table was transposed; pre-fix `.dst` re-imports mirrored
 - [Ink/Stitch research](inkstitch-research.md) — GPL-3.0: port Ink/Stitch concepts clean-room, never code; `pystitch` (MIT) is copy-safe; read the doc first
+- [Lagging areas top 3](lagging-areas-2026-11-06.md) — Kent 11-06: yardstick / satin-fill 0.387 / trims; 3 Sonnet notes in docs/lagging-areas-2026-11-06: no external repo fixes any, instruments + oracles first; polygon_axis.py already exists
 - [Letterform priors lane](letterform-priors-lane-2026-10-06.md) — "something new" on lettering was yesterday's lane (outline-cut); check sibling lanes before proposing new
 - [Fremont letters are not thicker than the pro's](lettering-thickness-fremont-2026-10-06.md) — file width = pro's (1.23 vs 1.40 scaled)
+- [Outline fonts on demand](outline-fonts-on-demand-2026-11-06.md) — Kent 11-06: TTF/OTF fonts sewn by the service via the Column lane (POST /lettering), 21 OFL families, `outline:<key>`; 07-24 ruling = browser trace
 - [Pro trim threshold](pro-trim-threshold.md) — CORRECTED 10-21: the "16.1 mm floats" were needle-DOWN hops; the pro cuts every jump, we leave 1-3 mm ones
 - [Real-artwork parity](real-artwork-parity.md) — honest baseline 42.5; a pro scores only 75-84 vs a pro, so 95 is above the ceiling; synthetic refs flatter
+- [Satin/fill oracle split](satin-fill-oracle-2026-11-06.md) — C3 bound: cutting our grounds along the pro's 10+ cell blobs lifts mean kappa 0.381 -> 0.482 (5 cells 0.561, 20 cells 0.427): no verdict; reads the pro, a max
 - [Satin gate attribution](satin-gate-attribution.md) — DT regularity loses pro satin ground; `explained` promotion 45.8 → 48.1; flat-art sub-1mm floor DISPROVED
 - [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
 - [Excess on gradient](thread-match-excess-gradient-2026-10-29.md) — defect 28 ON 10-30: F-with-block 14 -> 4, md5s same

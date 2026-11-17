@@ -1,0 +1,56 @@
+{
+ "becker_hat_large": {
+  "moved": false,
+  "stitches_off": 16287,
+  "stitches_on": 16287,
+  "width_mm": 101.9
+ },
+ "gaulke_roofing_hat": {
+  "moved": false,
+  "stitches_off": 7475,
+  "stitches_on": 7475,
+  "width_mm": 114.2
+ },
+ "hotel_fremont_hat": {
+  "moved": true,
+  "stitches_off": 16270,
+  "stitches_on": 15268,
+  "width_mm": 92.6
+ },
+ "mfab_hat": {
+  "moved": false,
+  "stitches_off": 20911,
+  "stitches_on": 20911,
+  "width_mm": 104.9
+ },
+ "precision_drone": {
+  "moved": false,
+  "stitches_off": 14423,
+  "stitches_on": 14423,
+  "width_mm": 62.6
+ },
+ "tires_hat_3d": {
+  "moved": false,
+  "stitches_off": 4552,
+  "stitches_on": 4552,
+  "width_mm": 114.3
+ },
+ "goldentee_hat": {
+  "moved": false,
+  "stitches_off": 13742,
+  "stitches_on": 13742,
+  "width_mm": 74.9
+ },
+ "toat_machine_hat": {
+  "moved": false,
+  "stitches_off": 17484,
+  "stitches_on": 17484,
+  "width_mm": 89.5
+ },
+ "toat_beanie": {
+  "moved": false,
+  "stitches_off": 17415,
+  "stitches_on": 17415,
+  "width_mm": 82.3
+ }
+}

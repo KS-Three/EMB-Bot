@@ -1,0 +1,132 @@
+{
+ "bg_uncertain.png": {
+  "moved": true,
+  "off": 11245,
+  "on": 11220
+ },
+ "logo_alpha.png": {
+  "moved": true,
+  "off": 6190,
+  "on": 6180
+ },
+ "logo_whitebg.png": {
+  "moved": true,
+  "off": 6696,
+  "on": 6692
+ },
+ "ribbon_curve.png": {
+  "moved": false,
+  "off": 1005,
+  "on": 1005
+ },
+ "photo/drone_render.png": {
+  "moved": true,
+  "off": 18337,
+  "on": 18895
+ },
+ "photo/enthusiast_logo.png": {
+  "moved": true,
+  "off": 2302,
+  "on": 2304
+ },
+ "photo/fur_ramp.png": {
+  "moved": false,
+  "off": 6965,
+  "on": 6965
+ },
+ "photo/gradient_ramp_linear.png": {
+  "moved": false,
+  "off": 10924,
+  "on": 10924
+ },
+ "photo/gradient_ramp_radial.png": {
+  "moved": false,
+  "off": 18273,
+  "on": 18273
+ },
+ "photo/photo_chrome_specular.png": {
+  "moved": true,
+  "off": 36052,
+  "on": 36420
+ },
+ "photo/photo_dof_meadow.png": {
+  "moved": true,
+  "off": 20873,
+  "on": 21225
+ },
+ "photo/photo_grass_macro.png": {
+  "moved": false,
+  "off": 3952,
+  "on": 3952
+ },
+ "photo/photo_owl_pale.png": {
+  "moved": true,
+  "off": 24873,
+  "on": 25006
+ },
+ "photo/photo_scene_stub.png": {
+  "moved": true,
+  "off": 23327,
+  "on": 24654
+ },
+ "photo/photo_subject_stub.png": {
+  "moved": false,
+  "off": 3140,
+  "on": 3140
+ },
+ "photo/photo_sunset_backlit.png": {
+  "moved": true,
+  "off": 26451,
+  "on": 26423
+ },
+ "photo/region_blobs.png": {
+  "moved": true,
+  "off": 18954,
+  "on": 19042
+ },
+ "photo/repro_gradient_white_icon.png": {
+  "moved": false,
+  "off": 22911,
+  "on": 22911
+ },
+ "photo/summit_badge.png": {
+  "moved": true,
+  "off": 28384,
+  "on": 32292
+ },
+ "becker_marine_logo.png": {
+  "moved": false,
+  "off": 10754,
+  "on": 10754
+ },
+ "logo_script_tires.png": {
+  "moved": true,
+  "off": 2507,
+  "on": 2509
+ },
+ "photo/logo_bridge_bar.jpg": {
+  "moved": false,
+  "off": 10827,
+  "on": 10827
+ },
+ "photo/logo_gaulke_roofing.png": {
+  "moved": true,
+  "off": 5058,
+  "on": 5049
+ },
+ "photo/logo_golden_tee.jpg": {
+  "moved": true,
+  "off": 14360,
+  "on": 14655
+ },
+ "photo/logo_hotel_fremont.webp": {
+  "moved": true,
+  "off": 12648,
+  "on": 12648
+ },
+ "photo/screenshot_phone_ui_golke.jpg": {
+  "moved": true,
+  "off": 10864,
+  "on": 10790
+ }
+}
