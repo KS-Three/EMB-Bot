@@ -2374,8 +2374,12 @@ def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
     # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
     # the apex hole is the skeleton tier's; the Column lane builds the A from
     # its outline.
+    # ... and before the flag ends/seam trio (ON since 2026-11-17, Kent): with
+    # it the apex hole reads 1.1 mm2 against the 1.2 floor below (CI run
+    # 44158966435). This pins the CHECK, on the engine it was built on.
+    from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF
     c = cfg(target_width_mm=80.0, max_colors=6, satin_crown_cover=False,
-            lettering_columns=False)
+            lettering_columns=False, **FLAG_ENDS_SEAM_2026_11_17_OFF)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
     m = report["metrics"]
