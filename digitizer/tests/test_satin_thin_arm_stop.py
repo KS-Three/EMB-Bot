@@ -1,6 +1,7 @@
 """`cfg.satin_thin_arm_stop` -- a thin arm stops at a much wider node.
 
-Built OFF 2026-11-17 (prime grader, Toat Machine's M). The script M's
+Built OFF 2026-11-17 (prime grader, Toat Machine's M); ON by default since
+Kent's flip the same day. The script M's
 hairline joins each thick stem near its top. Two junction rules treat that
 arm like any other: `satin_junction_stack` runs it INTO the node by its own
 half-width, and `_is_tip_end` caps it (`_extend_to_cap`), so a fan of crosses
@@ -23,9 +24,12 @@ class _Field:
         return 0.8 if pt[1] < 6.0 else 2.4
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().satin_thin_arm_stop is False
-    assert PipelineConfig(satin_thin_arm_stop=True).satin_thin_arm_stop is True
+def test_flag_default_is_on():
+    """ON since Kent's flip, 2026-11-17 ("Flip ON (Recommended)"); the
+    pre-flip engine is `conftest.THIN_ARM_STOP_2026_11_17_OFF`."""
+    from .conftest import THIN_ARM_STOP_2026_11_17_OFF
+    assert PipelineConfig().satin_thin_arm_stop is True
+    assert PipelineConfig(**THIN_ARM_STOP_2026_11_17_OFF).satin_thin_arm_stop is False
 
 
 def test_a_thin_arm_into_a_wide_node_is_read():

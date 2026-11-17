@@ -54,3 +54,12 @@ By eye, worse first:
 | photo_grass_macro | 3952/13 -> 3924/13 | no visible change |
 | photo_chrome_specular | 36052/85 -> 36048/85 | no visible change |
 | photo_dof_meadow | 20873/66 -> 20841/66 | no visible change |
+
+## Flipped ON (Kent, 2026-11-17: "Flip ON (Recommended)")
+
+One pinned number moved and was NOT in the pictures Kent was shown:
+`tests/test_junction_stack.py::test_marine_80_keeps_its_cover_without_the_junction_cover`
+reads the MARINE 80 mm fixture's bare artwork (`ARTWORK_UNCOVERED`) at **3.9 ->
+6.8 mm2** with the flag ON (ceiling 5.0). That test is about the junction stack,
+so `_run` now pins `satin_thin_arm_stop=False` there; the 2.9 mm2 rise is
+reported to the director rather than hidden.

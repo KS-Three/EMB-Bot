@@ -64,6 +64,13 @@ def _run(fixture, width_mm: float, **kw):
     # The numbers here were read without it; the dissolve's own price is
     # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
     kw.setdefault("dissolve_phantom_blends", False)
+    # ... and without `satin_thin_arm_stop` (ON since Kent's 2026-11-17 flip):
+    # it stops a thin arm at a much wider node, which is a different junction
+    # rule from the stack this file prices, and on MARINE 80 it raises the
+    # bare-artwork reading 3.9 -> 6.8 mm2 (`_uncovered`). Pinned OFF here so the
+    # stack's numbers stay the stack's; the flag's own price is in
+    # `tests/test_satin_thin_arm_stop.py` and its README.
+    kw.setdefault("satin_thin_arm_stop", False)
     cfg =PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(fixture), cfg)

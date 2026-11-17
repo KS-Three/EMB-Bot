@@ -3446,8 +3446,17 @@ class PipelineConfig:
     # twice its own width stops at the blob's edge: it neither runs INTO the
     # node (`satin_junction_stack`, part B) nor takes a tip cap, so the thick
     # stem's crosses cover the joint alone instead of a fan piled over them.
-    # Built OFF. Off, byte-identical. Tests: `tests/test_satin_thin_arm_stop.py`.
-    satin_thin_arm_stop: bool = False
+    # Off, byte-identical. Tests: `tests/test_satin_thin_arm_stop.py`.
+    # **ON since 2026-11-17** (Kent, shown ORIGINAL | BEFORE | AFTER for the
+    # To a T hat, its close-up and the two slightly-worse fixtures: "Flip ON
+    # (Recommended)"). Moves 16 of 35 runs (6 of 9 pro jobs, 10 of 26
+    # fixtures): Toat Machine hat and beanie lose both M stem-top fans, Golden
+    # Tee, the white-icon fixture and the owl are cleaner; scene_stub (a small
+    # cluster of crossing blocks at one spot) and phone_ui_golke (a small pale
+    # sliver inside black) are SLIGHTLY WORSE
+    # (`docs/renders/thin-arm-stop-2026-11-17/`). False is the engine as it
+    # was; PRE_FLIP (THIN_ARM_STOP_2026_11_17_OFF) pins it False.
+    satin_thin_arm_stop: bool = True
     # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
     # the 2026-09-03 mechanism left open). A stroke that loses crosses to
     # `SATIN_MIN_CROSS_MM` and whose MEDIAN cross is under the hairline line
