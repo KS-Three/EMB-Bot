@@ -5003,6 +5003,21 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_text_cluster_solid_guard.py`.
     text_cluster_solid_guard: bool = True
+    # A line of mixed cap heights is still a word (2026-11-17, built OFF,
+    # prime grader scorecard: "To A T" on the TOAT hat and beanie). The letter
+    # door links two glyphs only within `LETTER_HEIGHT_RATIO` (0.8) of each
+    # other's height, so a line set in two sizes splits: TOAT's T and T (11.9
+    # mm) pair, its o and A (7.2 / 7.7 mm) pair, no pair reaches
+    # `MIN_CLUSTER_MEMBERS`, nothing tags, and the small A sews as the
+    # generic satin's three patches (a fan over the apex, a crossbar run into
+    # a leg) with its counter shut. ON, the glyphs no cluster took are
+    # clustered once more at `HEIGHT_BAND_MIN` (0.6), every other term of the
+    # link unchanged, and a group of three or more tags (`textcluster.
+    # _mixed_caps`); a group that tagged keeps its members. The lane then
+    # sews the A as the pro does: two level-crossed legs and a short crossbar
+    # between them. Layout, not a cloth constant (gate 1). False is the tagger
+    # as it was, byte for byte. Tests: `tests/test_text_cluster_mixed_caps.py`.
+    text_cluster_mixed_caps: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
