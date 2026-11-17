@@ -30,6 +30,9 @@ summit_badge worse (a grey took the lavender). Guarded: 2 of 35 runs move. Kent:
 Still open on the Drone: the navy sky is black from stage 2; "A" of AND a shade darker than "ND".
 
 **How to apply:**
+- The first run's nine readers were started with no `model`, so they ran on the session's own model: a
+  breach of [[agents-cheap-models-2026-11-02]] (that note had not been read). RUNBOOK A.3 now requires the
+  worker model on every reader. The 11-17 card and later cards are different instruments.
 - Kent heard "stop trying to make a formula imitate Claude" as mean. Lead with what he asked for; do not
   frame his ask as a mistake.
 - Golden Tee's scorecard faults are what `bevel_ring_fold` (his 11-14 tickbox, OFF) cures: not a new fault.
