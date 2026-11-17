@@ -6562,6 +6562,45 @@ def is_small_solid(poly: Polygon, laid_mm: float) -> bool:
     return poly.buffer(-laid_mm / 2.0).area >= machine.RUN_MIN_AREA_MM2
 
 
+#: `is_straight_slot` (`cfg.extra["satin_straight_slots"]`, built OFF
+#: 2026-11-17). A slot's round ends take half its width each, so they are
+#: `1 / elongation` of its length: past `SLOT_MAX_ELONGATION` they are under
+#: a quarter of the column and the skeleton tier's end fan is a detail; under
+#: `SLOT_MIN_ELONGATION` the shape is a blob (`small_solid_satin`'s). A
+#: slot fills its own minimum rectangle (a rounded bar 0.95, an ellipse
+#: 0.79, a triangle 0.5) and is convex. Candidates: layout, judged by eye.
+SLOT_MIN_ELONGATION = 1.5
+SLOT_MAX_ELONGATION = 4.0
+SLOT_MIN_RECT_SHARE = 0.85
+SLOT_MIN_HULL_SHARE = 0.97
+
+
+def is_straight_slot(poly: Polygon, max_width_mm: float) -> bool:
+    """`cfg.extra["satin_straight_slots"]`'s test: one short straight bar
+    with flat or round ends, no hole, no wider than the satin ceiling.
+
+    NOAA's wordmark at 90 mm: the O's counter is a 2.4 x 5.9 mm rounded slot
+    of the ground's thread. The skeleton tier's spine stops short of each
+    round end and its rails wrap the cap, so the crosses fan to 45 deg at
+    both ends and several stop mid-column. The two A counters beside it (2.3
+    mm square) take `small_solid_satin` and sew level."""
+    if poly.is_empty or poly.geom_type != "Polygon" or poly.interiors or poly.area <= 0:
+        return False
+    rect = poly.minimum_rotated_rectangle
+    corners = list(getattr(getattr(rect, "exterior", None), "coords", []))
+    if len(corners) < 4:
+        return False
+    s0, s1 = math.dist(corners[0], corners[1]), math.dist(corners[1], corners[2])
+    long_side, short_side = max(s0, s1), min(s0, s1)
+    if short_side <= 0 or short_side > max_width_mm:
+        return False
+    if not SLOT_MIN_ELONGATION <= long_side / short_side <= SLOT_MAX_ELONGATION:
+        return False
+    if poly.area < SLOT_MIN_RECT_SHARE * long_side * short_side:
+        return False
+    return poly.area >= SLOT_MIN_HULL_SHARE * poly.convex_hull.area
+
+
 def small_solid_satin(poly: Polygon, shape_id: str, *, spacing_mm: float,
                       max_width_mm: float,
                       start_near: tuple[float, float] | None

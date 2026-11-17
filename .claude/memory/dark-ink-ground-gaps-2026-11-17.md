@@ -101,9 +101,9 @@ until the pro-paired jobs are run with all three ON against OFF and he has
 seen art | before | after for every job that moves. It has to run on his
 machine (`scratch_kent/`; his EMB-Bot folder is not offered to cloud
 sessions): `python -m tools.pro_intake --list`, then `tools.pro_pair --job
-SLUG` twice per job, the ON arm with `--set extra.KEY=true` for each of
+SLUG` twice per job, the ON arm with `--set extra.KEY=true` for each of the four:
 `dark_ink_refuse_ground_gaps`, `group_consistent_fill_angle_split_ground`,
-`lettering_columns_neck_cuts`; a job that moves is re-run one flag at a
+`lettering_columns_neck_cuts`, `satin_straight_slots`; a job that moves is re-run one flag at a
 time to say which moved it. Look at the real Becker jobs for the bare A
 counter named above.
 
@@ -117,4 +117,30 @@ roughness is left is that construction at 6.5 mm, so a change needs his
 pins on a picture or the pro's file for lettering this size, not another
 rule from here.
 
-**Not fixed, seen again:** NOAA / EPA ring text.
+**NOAA wordmark counters (Kent 11-17: "do the NOAA wordmark counters
+next").** The counters are separate islands of the ground's thread inside
+the white letters. The two A counters (2.3 mm square) take
+`small_solid_satin` and sew level. The O's (a 2.4 x 5.9 mm rounded slot) is
+classified ribbon and takes the skeleton tier (`satin_shape`), whose rails
+wrap each round end: crosses fan to about 45 deg at both ends and several
+stop mid-column.
+
+**Built OFF: `cfg.extra["satin_straight_slots"]`**
+(`stage6_satin.is_straight_slot`, a rung in `stage7_sequence.stitch_one`
+just ahead of `satin_shape`; `tests/test_straight_slots.py`). A
+non-lettering satin shape with no hole that is convex (0.97 of its hull),
+fills 0.85 of its minimum rectangle, is no wider than the satin ceiling and
+is 1.5 to 4 times as long as wide sews as ONE column with level crosses by
+the Column lane's emitter (`lettering_columns_shape`, `rail_axis`, the
+fabric's pull, the tier's underlay); if the lane does not build exactly one
+whole uncut column the skeleton tier sews it as before. `square_ends` is
+NOT passed: on the slot it fanned the last crosses into one corner.
+26 designs: NOAA 33,137 -> 33,125 stitches, trims 49 both (the O counter
+reads as a clean slot); the Park Service logo 44,409 -> 44,396 (two 1-2 mm
+brick marks change direction, read the same); 24 byte-identical. The four
+thresholds are layout candidates set from this one slot. Joins the paired
+check with the other three flags.
+
+**Not fixed, seen again:** NOAA / EPA ring text reads since
+`dark_ink_bean_by_width`; NOAA's "U.S." periods are lost (dots under 0.9
+mm: Kent 11-15, a sew-out call).
