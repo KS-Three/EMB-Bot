@@ -4344,6 +4344,10 @@ def sequence(
                     # a letter under 5 mm only (`_small`); off, today's call
                     **({"small_bold": True}
                        if cfg.lettering_columns_small_bold and _small else {}),
+                    # `cfg.extra["small_bold_pull_reaches_floor"]` (built OFF 2026-11-17):
+                    # the small-bold pull cap never starves a stroke under one cross
+                    **({"small_bold_pull_floor": True}
+                       if (cfg.extra or {}).get("small_bold_pull_reaches_floor") else {}),
                     # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
                     **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),

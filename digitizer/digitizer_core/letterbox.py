@@ -302,6 +302,16 @@ def detect_edge_strips(band: np.ndarray, axis: int,
     return a, b
 
 
+def _bar_holds_art(alpha: np.ndarray, t: int, b: int, l: int, r: int) -> bool:
+    """Does any detected bar, read by its ALPHA, hold artwork: mostly
+    transparent (over half its pixels under half opacity) yet with opaque
+    pixels in it? An empty transparent bar is still a bar and still goes
+    (`test_alpha_is_cropped_with_the_image`). See `strip_letterbox`."""
+    h, w = alpha.shape[:2]
+    bars = [alpha[:t], alpha[h - b:] if b else alpha[:0], alpha[:, :l], alpha[:, w - r:] if r else alpha[:, :0]]
+    return any(bar.size and float((bar < 128).mean()) > 0.5 and bool((bar >= 128).any()) for bar in bars)
+
+
 def strip_letterbox(rgb: np.ndarray, alpha: np.ndarray | None = None,
                     ) -> tuple[np.ndarray, np.ndarray | None]:
     """Crop detected letterbox bars off `rgb`, and off `alpha` identically.
@@ -314,6 +324,16 @@ def strip_letterbox(rgb: np.ndarray, alpha: np.ndarray | None = None,
     if not (t or b or l or r):
         return rgb, alpha
     h, w = rgb.shape[:2]
+    if alpha is not None and _bar_holds_art(alpha, t, b, l, r):
+        # A transparent band with opaque pixels in it is the page under
+        # artwork, not a bar. What reads as the band's "colour" is whatever
+        # RGB the encoder left under alpha 0 -- usually black, so black
+        # lettering on it is invisible here and the band looks like a black
+        # bar. The CDC logo from Commons (2026-11-17): its tagline stands on
+        # a transparent strip under the blue panel, `detect_letterbox` read
+        # 147 uniform black rows, and the whole tagline was cropped off
+        # before stage 1 saw it.
+        return rgb, alpha
     # The band the bars leave behind can still carry the host app's CHROME on
     # its other two edges — see `detect_edge_strips`. Only ever asked once
     # bars were found, so a file that is not a screenshot never reaches it.
