@@ -1200,7 +1200,9 @@ def build_generation(
                            keep_stray_lines=bool(cfg.small_text_keep_stray_lines),
                            min_counter_mm=true_size_min_counter(cfg),
                            thread_wts=block_thread_wt(regions, cfg),
-                           default_wt=int(cfg.thread_wt))
+                           default_wt=int(cfg.thread_wt),
+                           # built OFF 2026-11-17: a line's capitals and ascenders keep their tags
+                           keep_tall_letters=bool((cfg.extra or {}).get("small_text_keep_tall_letters")))
     # The re-set's own record, one row per text cluster: what it grew, and
     # why it skipped a line (2026-11-14). Kept on the generation; preflight
     # reports it as metrics only under `cfg.extra["small_text_reset_report"]`.
@@ -1253,7 +1255,8 @@ def build_generation(
                            min_counter_mm=true_size_min_counter(cfg),
                            thread_wts=block_thread_wt(regions, cfg),
                            default_wt=int(cfg.thread_wt),
-                           min_cap_mm=0.9 * cfg.small_text_cap_mm, handover=True)
+                           min_cap_mm=0.9 * cfg.small_text_cap_mm, handover=True,
+                           keep_tall_letters=bool((cfg.extra or {}).get("small_text_keep_tall_letters")))
 
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
