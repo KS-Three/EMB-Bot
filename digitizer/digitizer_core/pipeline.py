@@ -1264,6 +1264,7 @@ def build_generation(
     # `cfg.lettering_min_column_mm` (plan §4d): the SEWN column floor, so the
     # artwork radius is the floor less the pull stage 5 will add back. None
     # is today's pass, byte for byte.
+    _restore_text_polygons(regions)
     regularize_text_clusters(regions, p, min_column_mm=cfg.lettering_min_column_mm,
                              pull_mm=fabric_for(cfg).pull_comp_mm)
 
@@ -1478,6 +1479,18 @@ def _with_garment_reading(prep_warnings: list[dict], cfg: PipelineConfig,
         w["sewn_by_garment"] = int(n_sewn)
         out.append(w)
     return out
+
+
+def _restore_text_polygons(regions) -> None:
+    """`cfg.curve_chord_stage4_spare_text`: a text-tagged shape gets the polygon
+    stage 4 traced before its curve densify; every other shape drops the
+    spare. No spare recorded (flag OFF): nothing happens."""
+    from shapely import wkb
+    for r in regions:
+        pre = r.meta.pop("pre_densify_wkb", None)
+        if pre is not None and r.meta.get("text_candidate"):
+            r.polygon = wkb.loads(pre)
+            r.area_mm2 = float(r.polygon.area)
 
 
 def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> PipelineResult:
@@ -2181,6 +2194,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
+    from .outline_cut import a_cap_centered_scope    # `cfg.extra["lettering_columns_a_cap_centered"]` (built OFF), the same way
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
     from .outline_cut import neck_cuts_scope
@@ -2217,6 +2231,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(apex_pro_joints_scope(cfg.lettering_columns_apex_pro_joints))
         _enter(fold_cap_flared_scope(cfg.lettering_columns_corner_fold_cap_flared))
         _enter(apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))))
+        _enter(a_cap_centered_scope(bool((cfg.extra or {}).get("lettering_columns_a_cap_centered"))))
         _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
         _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
