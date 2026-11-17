@@ -1529,7 +1529,28 @@ class PipelineConfig:
     # lane: the default is Kent's, with before | after pictures. No fabric
     # constant: gate 1 does not apply. False is the merge bit for bit. Tests:
     # `tests/test_merge_chroma_guard.py`.
+    # **Still OFF. A flip was approved and WITHDRAWN the same day (2026-11-17).**
+    # Kent said "Flip ON (Recommended)" on a sweep that showed 2 of 35 runs
+    # moving at the Studio request (both Drone runs, both better). The suite
+    # then showed the flag moves more than that under other configs: stage-2
+    # goldens for `photo_subject_stub` and `enthusiast_logo`, blocking
+    # THREAD_MATCH_POOR findings 1 -> 3 on `logo_golden_tee` and 3 -> 4 on
+    # `drone_render`, and a new forbid-gap finding on `drone_render`. That
+    # was not in front of him, so the default stays False until it is
+    # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
     merge_chroma_guard: bool = False
+    # `keyline_fragment_drop` (built OFF 2026-11-17; Kent on the Drone render:
+    # "The P,R & C should not have the dark stitch lines on them"). The art's
+    # chrome letters carry a hairline dark edge; a few mm of it survive stage
+    # 2 as their own dark regions on the P, R and C of PRECISION and each sews
+    # as a short dark satin bar on a light letter. ON, a dark band (two laid
+    # threads wide at most) lying along under a quarter of ONE lighter
+    # shape's outline goes to the page (`keyline_fragment.py`). A whole
+    # keyline, a drop shadow and a line between two shapes stay. Ratios only,
+    # no fabric constant: gate 1 does not apply. A DESIGN CHANGE: the default
+    # is Kent's, with pictures. False never loads the module. Tests:
+    # `tests/test_keyline_fragment.py`.
+    keyline_fragment_drop: bool = False
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
     # line") (`fine_bar.apply_fine_bar_survive`). A straight dark bar the art
