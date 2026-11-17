@@ -284,15 +284,44 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
     return [thread_indices[L] for L in order]
 
 
-def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
-                       ) -> tuple[float, bool, bool]:
+def _ribbon_handback(region, cfg: PipelineConfig, satin_max_mm: float,
+                     design_class: str) -> bool:
+    """`cfg.lettering_columns_ribbon_handback` (2026-11-16, built OFF): is this
+    Column-lane member a SOLID, not a ribbon? True when the lane would take it
+    (`is_lettering`, tier auto) and `classify_ribbon`, asked as for any
+    untagged shape (the design's ceiling, `cfg.satin_per_stroke`, none of the
+    lettering split's open ceiling), says fill. Such a shape sews down the
+    ladder as if never a cluster member; its tags stay. `photo_width_floor`
+    (a ribbon that earned satin but is too thin) is not a solid and stays.
+    Off, False without reading anything else."""
+    if not (cfg.lettering_columns_ribbon_handback and cfg.lettering_columns and cfg.satin):
+        return False
+    if str((region.meta or {}).get("tier", "auto")).lower() != "auto" or not is_lettering(region, cfg):
+        return False
+    v = classify_ribbon(region.polygon, satin_max_mm,
+                        design_class=design_class,
+                        per_stroke=cfg.satin_per_stroke,
+                        polygon_axis=cfg.satin_polygon_axis,
+                        area_weighted=cfg.classify_area_weighted,
+                        floor_applies=satin_floor_applies(cfg, design_class),
+                        vote=satin_fill_vote(cfg),
+                        hysteresis=satin_fill_hysteresis(cfg))
+    return not v.satin and v.reason != "photo_width_floor"
+
+
+def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float,
+                       design_class: str | None = None) -> tuple[float, bool, bool]:
     """-> (width ceiling, per-stroke rung, fold guard) for THIS region: the
     design's under `machine.satin_ceiling_mm` for every shape, and no
     ceiling at all -- the per-stroke rung on, the fold guard on -- for a
     text-cluster member under `cfg.satin_lettering_split` (plan step 4,
     2026-09-19: split, never fill, for lettering). One helper, so the
     borders-last predicate, the classifier call and the emitter agree on
-    what a letter is admitted at."""
+    what a letter is admitted at. `design_class` (given by the sites that
+    route on the verdict) lets `cfg.lettering_columns_ribbon_handback` hand a
+    solid member the ordinary ceiling; None, or the flag off, is as before."""
+    if design_class is not None and _ribbon_handback(region, cfg, satin_max_mm, design_class):
+        return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
     if cfg.satin_lettering_split and is_text(region, cfg):
         return math.inf, True, True
     if cfg.monoline_script_satin and monoline_stroke(region, cfg, satin_max_mm):
@@ -414,9 +443,11 @@ def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
     return moved
 
 
-def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
+def _border_by_size_width(region, cfg: PipelineConfig, untagged: bool = False) -> float | None:
     """`cfg.border_by_size` (2026-10-23): the pro's border width for this
     shape, or None when the rule does not read it. -> width in mm.
+    `untagged` (`cfg.lettering_columns_ribbon_handback`, 2026-11-16): the
+    shape is a handed-back solid and is read as no letter; False, as before.
 
     Reads a non-lettering shape on the auto tier with no per-shape `border`
     intent whose smallest dimension (`_min_dim_mm`) is at or over
@@ -433,7 +464,7 @@ def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
     meta = region.meta or {}
     if str(meta.get("tier", "auto")).lower() != "auto" or meta.get("border") is not None:
         return None
-    if is_lettering(region, cfg):
+    if is_lettering(region, cfg) and not untagged:
         return None
     # `cfg.group_consistent_border_by_size`: its line's verdict, when the
     # line moved it (`tag_border_by_size_groups`)
@@ -531,13 +562,15 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return False        # L3: the word sews on the run tier
     if tier == "auto" and wt in ("satin", "widened") and cfg.satin:
         return True         # L3: the word sews satin, every letter of it
-    if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
+    if (tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg)
+            and not _ribbon_handback(region, cfg, satin_max_mm, design_class)):
         return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
     if tier == "auto" and cfg.script_strokes and cfg.satin and script_word(region, cfg):
         return True         # a script word (`cfg.script_strokes`): pen-stroke columns
-    if tier == "auto" and _border_by_size_width(region, cfg) is not None:
+    if tier == "auto" and _border_by_size_width(
+            region, cfg, _ribbon_handback(region, cfg, satin_max_mm, design_class)) is not None:
         return False        # `cfg.border_by_size`: a big shape is a fill under a border, never whole satin
-    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
+    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm, design_class)
     return (tier == "auto" and cfg.satin
             and classify_ribbon(region.polygon, satin_max_mm,
                                 design_class=design_class,
@@ -3704,7 +3737,8 @@ def sequence(
                                                         cfg.border_width_mm)}
                              if ring_room else {}))[0]:
             border_later[_p.shape_id] = _p.visible_geom
-        elif (_border_by_size_width(_p.region, cfg) is not None
+        elif (_border_by_size_width(
+                _p.region, cfg, _ribbon_handback(_p.region, cfg, satin_max, design_class)) is not None
               and not cfg.border_by_size_fabric_edges):
             # A size ring owns its seams only with fabric-edges OFF. ON, it
             # skips every seam with another sewn region, so counting it as a
@@ -4155,7 +4189,8 @@ def sequence(
             # `cfg.lettering_columns_cover_handback`: True while this shape is
             # sewn down the ladder as the lane's trial alternative
             # (`handback_trying`); the ladder then reads it as untagged.
-            handed_back = p.shape_id in handback_trying
+            handed_back = (p.shape_id in handback_trying
+                           or _ribbon_handback(p.region, cfg, satin_max, design_class))
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
                     and not handed_back and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
@@ -4299,7 +4334,7 @@ def sequence(
             # Widened lettering is classified on the polygon it will sew —
             # `p.polygon`, the compensated column — see `widened_lettering`.
             classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
-            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max)
+            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max, design_class)
             ribbon = (classify_ribbon(classify_poly, shape_max,
                                       design_class=design_class,
                                       per_stroke=shape_per_stroke,
@@ -4384,7 +4419,8 @@ def sequence(
             # pro's border instead (the border block below adds the ring);
             # the prediction `_sews_satin` says the same, so seam ownership
             # and borders-last already treat it as a fill. None when off.
-            by_size_width = _border_by_size_width(p.region, cfg)
+            by_size_width = _border_by_size_width(
+                p.region, cfg, _ribbon_handback(p.region, cfg, satin_max, design_class))
             if tier == "satin" or word_satin or (ribbon is not None and ribbon.satin and not rides_ramp
                                                  and by_size_width is None):
                 # The house cross angle (2026-08-26). Per-shape intent beats
