@@ -85,8 +85,8 @@ def test_counters_and_enclosed_background_are_never_dropped():
     assert drop_keyline_fragments(regions, CHART) == []
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().keyline_fragment_drop is False
+def test_the_flag_is_on_by_default():
+    assert PipelineConfig().keyline_fragment_drop is True
 
 
 def test_a_thin_band_in_a_hole_of_its_host_is_drawn_art():

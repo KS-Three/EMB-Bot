@@ -43,8 +43,10 @@ guard ON the narrowed rule drops 4 (P twice, R, C); To a T hat 6 deleted -> 0; G
 The pro-job pictures of To a T and Golden Tee (before the narrowing) are not
 committed; they are pro renders.
 
-Not done, as ordered: the default is still OFF. See the PR body for the tests
-run with the flag ON.
+**Flipped ON the same day.** Kent, shown the Drone pair, its spot 1 close-up and
+the Bridge spot 1, and told the 3 px bound rests on three examples and the C's
+bar only goes with `merge_chroma_guard` ON: "Flip ON (Recommended)". See the PR
+body for the tests run with the flag ON.
 
 ## Tests with the flag ON (default set True locally, then put back)
 

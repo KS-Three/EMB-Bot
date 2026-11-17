@@ -1152,6 +1152,11 @@ PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
 # picture: "Flip ON (Recommended)"): `tests/test_rope_band.py`.
 ROPE_BAND_2026_11_17_OFF = {"rope_band": False}
 PRE_FLIP.update(ROPE_BAND_2026_11_17_OFF)
+# `keyline_fragment_drop` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER for
+# the Drone render and Bridge: "Flip ON (Recommended)"):
+# `tests/test_keyline_fragment.py`.
+KEYLINE_FRAGMENT_2026_11_17_OFF = {"keyline_fragment_drop": False}
+PRE_FLIP.update(KEYLINE_FRAGMENT_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
