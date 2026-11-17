@@ -3682,6 +3682,30 @@ def sequence(
              if _fill_angle_for(_pr, cfg) is None or getattr(_pr, "angle_pinned", False)],
             lambda r: (_by_id[r.shape_id].stitch_angle_deg if getattr(_by_id[r.shape_id], "angle_pinned", False)
                        else best_fill_angle_deg(_fill_poly(_by_id[r.shape_id]), row_mm)))
+        if (cfg.extra or {}).get("group_consistent_fill_angle_split_ground"):
+            # built OFF 2026-11-17: one ground cut into panels by a satin line
+            # (Energy Star's three blue panels) fills at the biggest panel's
+            # angle. Applied over the likeness groups: the line says more. A
+            # panel pinned to the fill tier is a panel too (two of Energy
+            # Star's three are); a panel some rule names an angle for votes
+            # that angle and keeps it (`_fill_angle_for` reads the group only
+            # where every rule left None, or for stage 5's pin).
+            from .group_consistency import split_ground_angles, split_grounds
+            _panels = {_pr.shape_id: _pr for _pr in planned
+                       if str(_pr.region.meta.get("tier", "auto")).lower() in ("auto", "none", "fill")
+                       and not is_lettering(_pr.region, cfg) and not is_text(_pr.region, cfg)
+                       and not _sews_satin(_pr.region, cfg, satin_max, design_class, outline_rings)}
+            _lines = [_pr.region for _pr in planned
+                      if _sews_satin(_pr.region, cfg, satin_max, design_class, outline_rings)]
+
+            def _panel_angle(r):
+                _pr = _panels[r.shape_id]
+                named = _fill_angle_for(_pr, cfg)
+                return named if named is not None else best_fill_angle_deg(_fill_poly(_pr), row_mm)
+
+            group_fill.update(split_ground_angles(
+                split_grounds([_pr.region for _pr in _panels.values()], _lines, cfg.overlap_mm),
+                _panel_angle))
         if cfg.satin_angle_deg is None:
             group_satin = shared_angles(
                 [_pr.region for _pr in _auto

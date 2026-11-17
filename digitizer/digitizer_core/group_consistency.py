@@ -418,6 +418,79 @@ def like_shapes(regions: Iterable, *, min_members: int = 2) -> list[list]:
     return [g for _k, g in sorted(by.items()) if len(g) >= min_members]
 
 
+#: `split_grounds`: the share of a panel's outline that must lie on the
+#: dividing line for the panel to be one of that line's panels -- a majority.
+SPLIT_GROUND_EDGE_SHARE = 0.5
+
+
+def split_grounds(fills: Iterable, lines: Iterable, tol_mm: float) -> list[list]:
+    """`cfg.extra["group_consistent_fill_angle_split_ground"]` (built OFF
+    2026-11-17): groups of fills that are ONE GROUND cut into panels by a
+    line. Energy Star at 85 mm: three blue panels of one thread inside one
+    white keyline frame filled at 0, 175 and 100 deg (55 with
+    `dark_ink_refuse_ground_gaps`), and the odd panel read as a darker blue.
+    `like_shapes` does not group them: the panels are 3,303 / 1,152 / 1,111
+    mm2 and of unlike elongation.
+
+    A panel of line `S` (a region of another thread that sews as a line: the
+    caller's `lines`) is a fill with at least `SPLIT_GROUND_EDGE_SHARE` of
+    its OUTER outline within `tol_mm` of `S`. Two or more panels of one line on
+    one thread are a group, in input order. No size or shape likeness is
+    asked: the line is what says they are one ground."""
+    fills = [r for r in fills if r.polygon is not None and not r.polygon.is_empty
+             and r.polygon.area > 0]
+    out: list[list] = []
+    seen: set = set()
+    for line in lines:
+        if line.polygon is None or line.polygon.is_empty:
+            continue
+        near = line.polygon.buffer(tol_mm)
+        lx0, ly0, lx1, ly1 = near.bounds
+        by_thread: dict = {}
+        for r in fills:
+            deadline.check("split grounds")
+            if r.thread_index == line.thread_index:
+                continue
+            x0, y0, x1, y1 = r.polygon.bounds
+            if x1 < lx0 or x0 > lx1 or y1 < ly0 or y0 > ly1:
+                continue
+            # the OUTER ring only: a panel's holes are the lettering it
+            # carries (Energy Star's wordmark panel is 0.31 line by its whole
+            # boundary, 1.0 by its outer ring)
+            edge = getattr(r.polygon, "exterior", None) or r.polygon.boundary
+            if edge.length <= 0:
+                continue
+            if edge.intersection(near).length / edge.length >= SPLIT_GROUND_EDGE_SHARE:
+                by_thread.setdefault(r.thread_index, []).append(r)
+        for _k, g in sorted(by_thread.items(), key=lambda kv: str(kv[0])):
+            key = tuple(sorted(r.shape_id for r in g))
+            if len(g) >= 2 and key not in seen:
+                seen.add(key)
+                out.append(g)
+    return out
+
+
+def split_ground_angles(groups: list[list], own_angle: Callable[[object], float | None]) -> dict[str, float]:
+    """-> {shape_id: angle deg mod 180}: every panel of a `split_grounds`
+    group at the biggest panel's `own_angle`. A group that already agrees
+    within `AGREE_DEG`, or whose biggest panel has no angle, is left alone."""
+    out: dict[str, float] = {}
+    for g in groups:
+        deadline.check("split grounds")
+        ref = max(g, key=lambda r: (r.polygon.area, r.shape_id))
+        base = own_angle(ref)
+        if base is None:
+            continue
+        owns = [base if r is ref else own_angle(r) for r in g]
+        if any(a is None for a in owns):
+            continue
+        if max(abs((float(a) - float(base) + 90.0) % 180.0 - 90.0) for a in owns) <= AGREE_DEG:
+            continue
+        for r in g:
+            out[r.shape_id] = float(base) % 180.0
+    return out
+
+
 def _congruent(r) -> dict | None:
     tag = (r.meta or {}).get("congruent_group")
     return tag if isinstance(tag, dict) and tag.get("id") is not None else None

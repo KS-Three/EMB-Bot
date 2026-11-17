@@ -43,13 +43,28 @@ constant.
 - Energy Star's top field changes fill angle (rows ~100 deg -> ~55 deg; its
   two sibling fields are at 0 and 175). It was already off from its siblings
   before; the flag hands it back two 1.8 mm2 corner slivers and the angle
-  picker lands elsewhere. A fill-angle fault of its own, not fixed.
+  picker lands elsewhere. Kent 11-17, shown the sheet: "Hold OFF, fix angle
+  first". Cured by the second flag below.
 - `testdata/reference/becker_*.jpg` (the pro's preview pictures, not customer
   art) do move: one thread fewer on each, trims 99 -> 95 and 49 -> 47, and
   the A of MARINE's counter shows bare where a bean loop sat. Not a job the
   product is asked for; look before a flip all the same.
 - The paired corpus in `scratch_kent/` is not in a cloud checkout: the 22-job
   combined check was NOT run.
+
+**Built OFF: `cfg.extra["group_consistent_fill_angle_split_ground"]`**
+(`group_consistency.split_grounds` / `split_ground_angles`, read in stage 7
+after the likeness groups; `tests/test_split_ground_angle.py`). Fills of one
+thread whose OUTER ring lies at least half on one satin line are panels of
+one ground and fill at the biggest panel's angle. `like_shapes` misses them
+(3,303 / 1,152 / 1,111 mm2, unlike elongation). The share is read on the
+outer ring because a panel's holes are its lettering (the wordmark panel is
+0.31 by its whole boundary). Two of the three panels are tier-pinned `fill`
+outline bodies, so the rule takes those tiers too. Energy Star, both flags
+ON: all three panels at 0 deg, 26,584 stitches, 13 trims. Alone it moves
+only Energy Star of the ten (27,218 -> 26,808, trims 14 -> 16); 16 repo logos
+at 80 mm (Becker art, Golke, Fremont patch, MFab x2, To a T x2, nine Commons
+lettering) are byte-identical. Not run: the `scratch_kent` paired corpus.
 
 **Also this session:** `plan_stitches` held 21 managers in one `with`;
 Python 3.12.3 (every cloud container) allows 20 nested blocks, so the engine
