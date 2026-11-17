@@ -1208,6 +1208,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
         # construction; it is computed rather than assumed so the meta says
         # why a cluster was or was not redrawn.
         all_rescued = all(c.region.meta.get("rescued_small_shape") for c in group)
+        if any(c.region.meta.get("text_cluster_mixed_caps") for c in group):
+            all_rescued = False     # drawn size: `regularize_text_clusters` never redraws it
         for c in group:
             c.region.meta["text_candidate"] = True
             c.region.meta["text_cluster_id"] = cluster_id
@@ -1564,6 +1566,9 @@ def _mixed_caps(groups: list[list[_Candidate]], cands: list[_Candidate], chart,
     left = [c for c in cands if c.region.shape_id not in taken]
     extra = [g for g in _cluster(left, HEIGHT_BAND_MIN, chart)
              if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
+    for g in extra:
+        for c in g:                 # read by `small_text._drawn_size_only`: drawn size, no re-set
+            c.region.meta["text_cluster_mixed_caps"] = True
     return groups + extra
 
 

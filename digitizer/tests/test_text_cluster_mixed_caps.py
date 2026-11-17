@@ -90,3 +90,31 @@ def test_the_config_field_defaults_off_and_the_frozen_engine_pins_it():
     assert PipelineConfig().text_cluster_mixed_caps is False
     pinned = json.loads((Path(__file__).parent / "engine_2026_10_27.json").read_text(encoding="utf-8"))
     assert pinned["text_cluster_mixed_caps"] is False
+
+
+def test_a_mixed_caps_line_is_marked_and_never_redrawn():
+    regions = _row()
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    assert all(r.meta.get("text_cluster_mixed_caps") for r in regions)
+    assert not any(r.meta.get("text_cluster_all_rescued") for r in regions)
+
+
+def test_a_line_that_tags_without_the_pass_is_not_marked():
+    shapes = [_t(0.0), _t(10.0), _t(20.0)]
+    regions = [Region(f"S{i}", p, 3, "3", p.area) for i, p in enumerate(shapes)]
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    assert all(r.meta.get("text_cluster_id") for r in regions)
+    assert not any(r.meta.get("text_cluster_mixed_caps") for r in regions)
+
+
+def test_the_small_text_steps_leave_a_marked_line_at_its_drawn_size():
+    from digitizer_core import small_text as st
+    marked = _row()
+    tc.detect_text_clusters(marked, None, part_touching=True, mixed_caps=True)
+    clusters = {"c": marked}
+    assert st._drawn_size_only(clusters) == {}
+    plain = _row()
+    for r in plain:
+        r.meta["text_cluster_id"] = "c"
+    clusters = {"c": plain}
+    assert st._drawn_size_only(clusters) is clusters         # unmarked: the same object back
