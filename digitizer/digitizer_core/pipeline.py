@@ -2498,6 +2498,9 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     planned = absorb(planned, cfg, hairline)
     merged_into.update({f: p.shape_id for p in planned
                         for f in p.region.meta.get("absorbed_fragments", ())})
+    from .rope_band import join as join_rope   # `cfg.rope_band` (built OFF 2026-11-17)
+    planned, _rope = join_rope(planned, cfg)
+    merged_into.update(_rope)
     if marks:
         sew_of = {p.layer: p.sew_index for p in planned}
         last = max(sew_of.values(), default=0)

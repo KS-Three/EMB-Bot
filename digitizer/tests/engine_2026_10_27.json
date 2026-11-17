@@ -3,6 +3,7 @@
  "aa_iterations": 2,
  "aa_phantom_edge_frac": 0.9,
  "absorb_fragments": false,
+ "rope_band": false,
  "alpha_edge_extend": true,
  "alpha_edge_extend_px": 0,
  "alpha_edge_extend_stage0_whole": true,
