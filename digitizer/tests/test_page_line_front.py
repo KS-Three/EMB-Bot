@@ -95,3 +95,48 @@ def test_gaulke_off_is_the_default_and_on_moves_the_white_first(gaulke):
     assert top < min(others)
     # and OFF has no such tag at all
     assert not any(r.meta.get("page_line") for r in off.result.regions)
+
+
+# --- `cfg.page_line_open` (built OFF 2026-11-17): the line stays bare fabric ---
+
+def test_open_default_is_off():
+    assert PipelineConfig().page_line_open is False
+
+
+@pytest.fixture(scope="module")
+def gaulke_open():
+    from tools import pro_baseline as pb, pro_pair
+    slug = "gaulke_roofing_hat"
+    garment, width, art = pb.JOBS[slug][0], float(pb.JOBS[slug][1]), pb.resolve(pb.JOBS[slug][2])
+    if not art.exists():
+        pytest.skip("gaulke art not in this checkout")
+    return pro_pair.digitize(art, width, garment, {"page_line_open": True})
+
+
+def test_gaulke_open_leaves_the_roof_gap_unsewn(gaulke, gaulke_open):
+    off, _ = gaulke
+    tagged = [r for r in gaulke_open.result.regions if r.meta.get("page_line_open")]
+    assert tagged, "the inner roof's white gap should be read as a page line"
+    assert all(r.meta["stitched"] is False for r in tagged)
+    # the black either side still sews
+    black = [r for r in gaulke_open.result.regions
+             if not r.meta.get("page_line_open") and r.meta.get("stitched")]
+    assert black
+    assert _md5(off) != _md5(gaulke_open)
+    assert not any(r.meta.get("page_line_open") for r in off.result.regions)
+
+
+def test_a_review_stitched_override_still_wins():
+    from tools import pro_baseline as pb, pro_pair
+    slug = "gaulke_roofing_hat"
+    garment, width, art = pb.JOBS[slug][0], float(pb.JOBS[slug][1]), pb.resolve(pb.JOBS[slug][2])
+    if not art.exists():
+        pytest.skip("gaulke art not in this checkout")
+    first = pro_pair.digitize(art, width, garment, {"page_line_open": True})
+    sid = next(r.shape_id for r in first.result.regions if r.meta.get("page_line_open"))
+    cfg = pro_pair.config(width, garment, {"page_line_open": True})
+    import dataclasses
+    cfg = dataclasses.replace(cfg, shape_overrides={sid: {"stitched": True}})
+    from digitizer_core.pipeline import finish_generation
+    res = finish_generation(first.gen.fork(), cfg)
+    assert next(r for r in res.regions if r.shape_id == sid).meta["stitched"] is True
