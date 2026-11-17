@@ -83,3 +83,39 @@ def test_the_flag_reaches_the_emitter():
     assert counts[False][0] == 0
     assert counts[True][0] > 0
     assert counts[True][1] != counts[False][1]
+
+
+def _judged(monkeypatch, on_runs, off_runs, on_bare, off_bare):
+    """`satin_shape_judged` with `satin_shape` and the bare-area reading
+    stubbed: the sewn runs are labels, the bare areas are the numbers."""
+    seen = []
+
+    def fake(poly, shape_id, **kw):
+        seen.append(kw.get("thin_arm_stop"))
+        return (on_runs if kw.get("thin_arm_stop") else off_runs), {}
+
+    monkeypatch.setattr(s6, "satin_shape", fake)
+    monkeypatch.setattr(s6, "_bare_mm2", lambda poly, runs: on_bare if runs is on_runs else off_bare)
+    return s6.satin_shape_judged(None, "S1", thin_arm_stop=True), seen
+
+
+def test_the_judge_keeps_the_flag_where_nothing_goes_bare(monkeypatch):
+    on, off = ["on"], ["off"]
+    (runs, _), seen = _judged(monkeypatch, on, off, on_bare=2.8, off_bare=2.8)
+    assert runs is on and seen == [True, False]
+    (runs, _), _ = _judged(monkeypatch, on, off, on_bare=3.0, off_bare=2.8)    # within the slack
+    assert runs is on
+
+
+def test_the_judge_refuses_the_flag_where_artwork_goes_bare(monkeypatch):
+    """MARINE 80 under the first build: 2.8 -> 6.8 mm2 of bare artwork."""
+    on, off = ["on"], ["off"]
+    (runs, _), _ = _judged(monkeypatch, on, off, on_bare=6.8, off_bare=2.8)
+    assert runs is off
+
+
+def test_the_judge_is_satin_shape_when_the_flag_is_off(monkeypatch):
+    calls = []
+    monkeypatch.setattr(s6, "satin_shape", lambda poly, sid, **kw: (calls.append(kw), ([], {}))[1])
+    s6.satin_shape_judged(None, "S1", thin_arm_stop=False)
+    assert len(calls) == 1

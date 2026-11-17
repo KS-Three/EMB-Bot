@@ -1,6 +1,6 @@
 ---
 name: thin-arm-stop-2026-11-17
-description: Toat Machine's script M sewed a fan of crossing stitches over each thick stem top where the hairline joins; satin_thin_arm_stop stops a thin arm at a node >= 2x its width; ON 11-17 (Kent "Flip ON"); 16 of 35 runs move, 2 slightly worse
+description: Toat Machine's script M sewed a fan of crossing stitches over each thick stem top where the hairline joins; satin_thin_arm_stop stops a thin arm at a node >= 2x its width; ON 11-17 (Kent "Flip ON"); 15 of 35 runs move, 2 slightly worse
 metadata:
   type: project
 ---
@@ -21,4 +21,8 @@ PR #1635, lane `claude/prime-fix-toat-m-stem-tops`.
 - **Movers:** 6 of 9 pro jobs, 10 of 26 fixtures. Better: Toat hat and beanie,
   Golden Tee, white-icon, owl. Slightly worse: scene_stub, phone_ui_golke.
   Pictures: `docs/renders/thin-arm-stop-2026-11-17/`.
+- **MARINE trap:** the first build raised Becker MARINE 80's bare artwork 2.8 -> 6.8
+  mm2 (thin arms at feet/slabs stop short). No ratio/angle/ribbon guard separates
+  them from the Toat M; `satin_shape_judged` sews the shape both ways and keeps ON
+  only if bare artwork rises <= 0.3 mm2. MARINE 2.8, Toat gain whole.
 - **Not fixed:** the lumpy head of the M's first stem (separate cause).

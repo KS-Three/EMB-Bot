@@ -7606,3 +7606,35 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         report["jumps"] += 1
     return runs, report
 
+# `cfg.satin_thin_arm_stop`'s judge: a shape sewn with the flag keeps it only
+# where it leaves no more bare artwork than the same shape sewn without. A
+# thin arm that stops at the blob's edge is right where the stem's own crosses
+# cover its footprint (Toat Machine's M) and wrong where nothing does (MARINE
+# 80's feet: 2.8 -> 6.8 mm2 of bare artwork, ROADMAP gate 3's failure mode).
+# The same patch finder and floors the crown cover and `ARTWORK_UNCOVERED` use.
+_THIN_ARM_JUDGE_SLACK_MM2 = 0.3
+
+
+def _bare_mm2(poly: Polygon, runs: list[StitchRun]) -> float:
+    return sum(p.area for p in _uncovered_patches(
+        poly, runs, _CROWN_MIN_MM2, _CROWN_MIN_HALF_MM, _CROWN_MIN_FILL))
+
+
+def satin_shape_judged(poly: Polygon, shape_id: str, *, _impl=None, **kw) -> tuple[list[StitchRun], dict]:
+    """`satin_shape`, and under `thin_arm_stop` the judged one: the flag's
+    runs are kept only if they leave at most `_THIN_ARM_JUDGE_SLACK_MM2` more
+    bare artwork than the flag-off runs of the same shape. Off, exactly
+    `satin_shape`. `_impl` is the caller's own name for `satin_shape`, so a
+    test that replaces it there still sees every call."""
+    satin_shape_ = _impl or satin_shape
+    on = satin_shape_(poly, shape_id, **kw)
+    if not kw.get("thin_arm_stop"):
+        return on
+    off = satin_shape_(poly, shape_id, **{**kw, "thin_arm_stop": False})
+    if on[0] == off[0]:
+        return on
+    if _bare_mm2(poly, on[0]) <= _bare_mm2(poly, off[0]) + _THIN_ARM_JUDGE_SLACK_MM2:
+        return on
+    return off
+
+

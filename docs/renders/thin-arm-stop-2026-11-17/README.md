@@ -31,21 +31,22 @@ but `satin_junction_stack` is the ON default Kent flipped 2026-09-19 for
 MARINE's junctions, so turning it off moves every logo; the new flag is the
 narrow version.
 
-## The 26 corpus fixtures (director's request)
+## The 26 corpus fixtures (director's request), with the judge
 
 `tools.corpus_scorecard.FIXTURES` (TESTDATA), Studio request at 80 mm,
-`left_chest`, flag OFF vs ON, compared by md5 of `design["stitches"]`:
-**10 of 26 moved, 16 byte-identical. 8 are pictured** (`fx_<name>.png` =
-ORIGINAL | BEFORE | AFTER, `fx_<name>_closeup.png` = the three largest changed
-spots); the other 2 moved by 4 and 32 stitches, too small to show at any
-render scale (no close-up is produced), and have the full picture only.
+`left_chest`, flag OFF vs ON (the build with the judge below), compared by md5
+of `design["stitches"]`: **9 of 26 moved, 17 byte-identical** (the first build
+moved 10; `photo_dof_meadow` is now identical). 7 are pictured with close-ups
+(`fx_<name>.png` = ORIGINAL | BEFORE | AFTER, `fx_<name>_closeup.png` = the
+three largest changed spots); `photo_chrome_specular`, moved by 4 stitches, has
+the full picture only.
 
 By eye, worse first:
 
 | fixture | stitches / trims OFF -> ON | by eye |
 |---|---|---|
-| scene_stub | 23327/75 -> 22780/78 | **slightly worse at one spot**: the top-right patch gains a small cluster of crossing blocks; the other two spots re-lay, no clear change; -547 stitches |
-| phone_ui_golke | 10864/125 -> 10803/123 | **trivially worse**: a small pale sliver patch appears inside black; the rest unchanged |
+| scene_stub | 23327/75 -> 23216/75 | **slightly worse**: one small cream gap appears between patches (bottom spot); the others re-lay, no clear change (the judge reverted part of the first build's -547) |
+| phone_ui_golke | 10864/125 -> 10803/123 | **trivially worse**: a small pale sliver patch appears inside black |
 | golden_tee | 14360/54 -> 13940/54 | better: cleaner outer ring, a stray crossing patch gone |
 | repro_gradient_white_icon | 22911/12 -> 22672/12 | better: the fanned block at the top-left becomes one short tuck |
 | photo_owl_pale | 24873/9 -> 24840/9 | slightly better: the eye ring has fewer wedge fans |
@@ -53,13 +54,31 @@ By eye, worse first:
 | logo_bridge_bar | 10827/17 -> 10811/17 | no visible change |
 | photo_grass_macro | 3952/13 -> 3924/13 | no visible change |
 | photo_chrome_specular | 36052/85 -> 36048/85 | no visible change |
-| photo_dof_meadow | 20873/66 -> 20841/66 | no visible change |
 
-## Flipped ON (Kent, 2026-11-17: "Flip ON (Recommended)")
+## The MARINE finding and the judge (flip PR, 2026-11-17)
 
-One pinned number moved and was NOT in the pictures Kent was shown:
-`tests/test_junction_stack.py::test_marine_80_keeps_its_cover_without_the_junction_cover`
-reads the MARINE 80 mm fixture's bare artwork (`ARTWORK_UNCOVERED`) at **3.9 ->
-6.8 mm2** with the flag ON (ceiling 5.0). That test is about the junction stack,
-so `_run` now pins `satin_thin_arm_stop=False` there; the 2.9 mm2 rise is
-reported to the director rather than hidden.
+Kent's "Flip ON" was given without this: with the flag ON, Becker MARINE at
+80 mm (the junction-stack test's own config) reads **2.8 -> 6.8 mm2** of bare
+artwork (`ARTWORK_UNCOVERED`, test ceiling 5.0; ROADMAP gate 3's failure mode).
+`marine80_bare_zoom.png`: ORIGINAL | BEFORE (flag OFF) | AFTER, first build |
+AFTER, judged build, at the two new bare patches, (-7.9, 1.3) 2.4 mm2 and
+(-35.7, 5.1) 1.6 mm2 in plan mm. **What it is:** two thin arms that meet a
+wider node at a leg's foot / a slab. Stopped at the blob edge, their last
+stitches no longer reach the artwork's end; in the first build the stroke tails
+that fill the leg's bottom (row 2) and the slab's lower corner (row 1) are gone.
+
+Why no simple guard worked (all measured on MARINE's 9 and Toat's 11 firing
+ends): arm/node width ratio, arm width, angle to the stem, and the ribbon
+cover of the lost zone each overlap between the Toat M's ends and MARINE's
+offenders (ratio 3.2 / 4.3 against 2.5 / 3.8; ribbon margin 0.01-0.02 mm in
+both). Neither half of the rule alone works either (no reach-in alone: 4.4
+mm2; no tip cap alone: 5.2).
+
+**The judge** (`satin_shape_judged`): a shape sewn with the flag keeps it only
+where it leaves at most 0.3 mm2 more bare artwork than the same shape sewn
+without (the crown cover's patch finder and floors, `_uncovered_patches`).
+Results with the judge: MARINE 80 **2.8 mm2 ON, same as OFF, unmodified test
+green** (2,404 stitches against 2,476 OFF, 2,305 first build); the six pro
+movers are byte-identical to the first build (Toat hat 17,353, beanie 17,241:
+the M gain is whole); fixtures as above. Cost: a flagged shape is sewn twice
+(the OFF arm is memoized), only when the ON run differs.
