@@ -11,7 +11,7 @@ twist at all: his rope is one plain tan satin band round the hexagon
 
 **What this does.** After stage 5 (and `fragment_absorb`), on the planned
 regions: a chain of same-thread, sub-floor, rescued strands -- each within
-`LINK_MM` of the next, not lettering (no text cluster), at least
+`ROPE_LINK_MM` of the next, not lettering (no text cluster), at least
 `MIN_STRANDS` of them and `MIN_SPAN_MM` long -- is replaced by ONE region
 whose polygon is the chain closed over its gaps (`buffer(+r).buffer(-r)`,
 pockets under `MAX_POCKET_MM2` filled). It is a long band about as wide as one
@@ -34,7 +34,7 @@ from shapely.geometry import MultiPolygon, Polygon
 from shapely.ops import unary_union
 
 KEY = "rope_band"
-LINK_MM = 0.5          # strands this near are one chain (art gaps 0.0-0.3 mm)
+ROPE_LINK_MM = 0.5          # strands this near are one chain (art gaps 0.0-0.3 mm)
 MIN_STRANDS = 8        # a letter's rescued specks are never this many in a row
 MIN_SPAN_MM = 12.0     # ... nor this long
 MAX_STRAND_MM2 = 3.0   # a strand blob; a glyph piece is larger (6-8 mm^2 in Fremont)
@@ -58,7 +58,7 @@ def _strand(p) -> bool:
 
 
 def _chains(polys: list) -> list[list[int]]:
-    """Connected components of `polys` under distance <= LINK_MM."""
+    """Connected components of `polys` under distance <= ROPE_LINK_MM."""
     n = len(polys)
     seen, out = [False] * n, []
     for s in range(n):
@@ -69,7 +69,7 @@ def _chains(polys: list) -> list[list[int]]:
             i = stack.pop()
             comp.append(i)
             for j in range(n):
-                if not seen[j] and polys[i].distance(polys[j]) <= LINK_MM:
+                if not seen[j] and polys[i].distance(polys[j]) <= ROPE_LINK_MM:
                     seen[j] = True
                     stack.append(j)
         out.append(comp)
@@ -83,7 +83,7 @@ def _span(geom) -> float:
 
 def _close(geoms: list):
     """The strands closed over their gaps into one polygon (None if not one)."""
-    r = LINK_MM / 2.0 + 0.01
+    r = ROPE_LINK_MM / 2.0 + 0.01
     band = unary_union(geoms).buffer(r).buffer(-r)
     if isinstance(band, MultiPolygon):
         band = max(band.geoms, key=lambda g: g.area)
