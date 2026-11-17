@@ -99,6 +99,8 @@ from dataclasses import replace
 from pathlib import Path
 
 import cv2
+import math
+
 import numpy as np
 from skimage.color import deltaE_ciede2000
 from skimage import graph as skgraph
@@ -1080,6 +1082,33 @@ def _boundary_contrast_initial_adjust(rag) -> None:
             d["weight"] = float(d["weight"]) / factor
 
 
+# --- A colour does not merge into a neutral (`cfg.merge_chroma_guard`) -------
+#
+# Precision Drone, 2026-11-17 (the prime grader's "the blue sky ... is sewn
+# solid black"). Traced merge by merge: the black ring (78-107 k px, Lab
+# ~[10, 1, -4]) absorbed three blue regions (7.6-13.2 k px, ~[27, 15, -45])
+# at edge weights 20.7, 22.5 and 23.0, under the 26.0 threshold, though they
+# sit 38-47 apart in plain Lab. CIEDE2000 compresses dark blues hard, so the
+# merge's own yardstick calls a vivid dark blue and black neighbours. A
+# quarter of the merged "black" region was blue.
+#
+# The guard: when one side is neutral (chroma under `NEUTRAL_CHROMA`) and
+# the other clearly a colour (chroma at least `COLOUR_CHROMA`), the edge
+# weighs at least `MERGE_DELTAE00_THRESH + 1`, so the pair never merges on
+# colour distance alone; the area-ratio and boundary-contrast protections
+# still apply on top. Chroma is CIELAB sqrt(a^2 + b^2) of each side's mean.
+# Read from `g.graph`, so a run without the flag is the weight it always
+# was, bit for bit.
+NEUTRAL_CHROMA = 12.0
+COLOUR_CHROMA = 30.0
+
+
+def _chroma_gap(da, na) -> bool:
+    ca = math.hypot(float(da[1]), float(da[2]))
+    cn = math.hypot(float(na[1]), float(na[2]))
+    return min(ca, cn) < NEUTRAL_CHROMA and max(ca, cn) >= COLOUR_CHROMA
+
+
 def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
     deadline.check("stage 2")      # the merge runs 1-2 s inside skimage's own loop
     da = g.nodes[dst]["mean color"]
@@ -1091,6 +1120,8 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
         w = deltaE_ciede2000_1(da, na)
     else:
         w = float(deltaE_ciede2000(da.reshape(1, 3), na.reshape(1, 3))[0])
+    if g.graph.get("chroma_guard") and _chroma_gap(da, na):
+        w = max(w, MERGE_DELTAE00_THRESH + 1.0)
     # The face-local threshold drop's recompute half — see
     # `_face_local_threshold`. No-face runs never set the attribute, so `w`
     # is untouched there (the pre-face-priors float, bit for bit).
@@ -2821,6 +2852,8 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         # — it seeds the "fg pixel count" attribute that keeps node 0's
         # (background/excluded) mass from ever counting as protected
         # foreground area, on this initial pass and every later recompute.
+        if getattr(cfg, "merge_chroma_guard", False):
+            rag.graph["chroma_guard"] = True
         _init_fg_pixel_counts(rag)
         _area_ratio_initial_adjust(rag)
         # Boundary-contrast merge protection (regression fix, see
