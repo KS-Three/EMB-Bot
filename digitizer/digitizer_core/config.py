@@ -1528,6 +1528,17 @@ class PipelineConfig:
     # (`docs/renders/prime-fixes-2026-11-17/`). False is the engine as it
     # was; PRE_FLIP (COLOR_CAP_LEAST_LOSS_2026_11_17_OFF) pins it False.
     color_cap_least_loss: bool = True
+    # `merge_chroma_guard` (built OFF 2026-11-17, the prime grader's Precision
+    # Drone: "the blue sky ... is sewn solid black"). The photo/gradient
+    # lane's region merge weighs edges in CIEDE2000, which calls a vivid dark
+    # blue and black 21-23 apart, under the 26 threshold: the Drone's black
+    # ring swallowed its sky and water. ON, a neutral region (chroma < 12)
+    # and a coloured one (chroma >= 30) never merge on colour distance alone
+    # (`stage2_photo_segment._chroma_gap`). Reaches every design on that
+    # lane: the default is Kent's, with before | after pictures. No fabric
+    # constant: gate 1 does not apply. False is the merge bit for bit. Tests:
+    # `tests/test_merge_chroma_guard.py`.
+    merge_chroma_guard: bool = False
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
     # line") (`fine_bar.apply_fine_bar_survive`). A straight dark bar the art
