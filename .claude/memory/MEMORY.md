@@ -66,6 +66,7 @@ the OLDEST lines whole to the archive.
 - [Letter-reader replication](letter-reader-replication-2026-11-12.md) — #1389 reader pre-registered; Kent sat 9 logos 11-13: letter pins on 2 items (needs 5) = no verdict, not replicated
 - [Line chain, one thread](line-chain-one-thread-2026-11-11.md) — fix B `line_chain_one_thread`: Kent 11-11 "Keep off, very little improvements were made, if any"; stays OFF, no flip, no retune; 4 of 21 rows move
 - [Local lanes fill the disk](local-lanes-fill-disk-2026-11-08.md) — ~25 local lanes (900 MB node_modules each) took C: to 143 MB; remove a lane on merge, stop under 10 GB free
+- [Logo batch 11-16](logo-batch-2026-11-16.md) — 10 Commons logos, final before/after only (Kent); rim fabric-edges + group size-ring flags OFF; arc text, AA-blend thread NOT fixed
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [MFab AND re-check](mfab-and-recheck-2026-11-06.md) — 10-25 brief stale: on main 7ee2d98a the hollow A is gone (0 bean tags, A/N/D satin 126/110/120) since bean_ink_outlined_letters + bean_only_lines ON 10-27; no flag built; keyline art = MFab only
 - [MFab counter ring room](mfab-counter-ring-room-2026-11-14.md) — "random stitch" = photo-lane significant border on the A's 3.35 mm counter lightened to a bean loop inside its fill; `border_significant_ring_room` OFF drops it; our satin tier there was worse

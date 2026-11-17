@@ -4352,6 +4352,21 @@ class PipelineConfig:
     # its house angle); the flag's stars are in the lettering house group, so
     # out too. Not on the photo classes. Off, byte-identical.
     group_consistent_fill_angle: bool = True
+    # `group_consistent_border_by_size` (2026-11-16, BUILT OFF): the size ring
+    # (`border_by_size`) decided once per line of like shapes. The rule reads
+    # each shape's smallest dimension against 6.0 mm, so like shapes that
+    # straddle it sew unlike. NASA worm logotype (Commons PNG, 100 mm): three
+    # shapes of one 5.4 mm stroke read 6.19 (N), 6.26 (AS) and 5.92 (A); N and
+    # AS sewed as a fill under a 2.1 mm satin ring and the last A as a bare
+    # fill. ON, a line (`group_consistency.like_lines`) of shapes the rule
+    # could read takes its group's side (the decided members' when they
+    # agree, else the median's) and the undecided members on the other side
+    # follow (`stage7_sequence.tag_border_by_size_groups`); one moved onto
+    # the ring must pass the rule's own reach test. Lettering, review tiers
+    # and per-shape border intent are not read. Read only with
+    # `border_by_size`. Layout: Kent's call from the renders. Off, never read.
+    # Tests: `tests/test_group_border_by_size.py`.
+    group_consistent_border_by_size: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

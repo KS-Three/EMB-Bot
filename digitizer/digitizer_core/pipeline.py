@@ -82,7 +82,8 @@ from . import keyline_bean, shape_memo, shaped_band, sliver_prune
 from .columns import is_lettering
 from .lettering_thread import apply_lettering_thread
 from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_layers,
-                              depth_sort_layers, sequence, cut_every_jump_step_mm)
+                              depth_sort_layers, sequence, cut_every_jump_step_mm,
+                              tag_border_by_size_groups)
 from .stitches import StitchPlan
 from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean
 from .threads import chart_for, rgb_to_lab
@@ -1679,6 +1680,11 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # drift: whoever gets depth sequencing keeps it untouched. The
     # within-group half in `sequence` stays on everywhere — it orders
     # shapes inside one cone and cannot touch the block-level ramp.
+    # `cfg.group_consistent_border_by_size` (built OFF): the size ring decided
+    # once per line of like shapes, stamped here so the layer pass just below,
+    # stage 5 and stage 7 all read one answer (`_border_by_size_width`).
+    if cfg.border_by_size and cfg.group_consistent_border_by_size:
+        tag_border_by_size_groups(regions, cfg)
     if cfg.borders_last and not (
             is_photographic(cfg, gen.classification_class)
             or bool(cfg.extra.get("photo_sequencing"))):
