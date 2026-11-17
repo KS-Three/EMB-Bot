@@ -4352,7 +4352,7 @@ class PipelineConfig:
     # its house angle); the flag's stars are in the lettering house group, so
     # out too. Not on the photo classes. Off, byte-identical.
     group_consistent_fill_angle: bool = True
-    # `group_consistent_border_by_size` (2026-11-16, BUILT OFF): the size ring
+    # `group_consistent_border_by_size` (built OFF 2026-11-16): the size ring
     # (`border_by_size`) decided once per line of like shapes. The rule reads
     # each shape's smallest dimension against 6.0 mm, so like shapes that
     # straddle it sew unlike. NASA worm logotype (Commons PNG, 100 mm): three
@@ -4366,7 +4366,10 @@ class PipelineConfig:
     # and per-shape border intent are not read. Read only with
     # `border_by_size`. Layout: Kent's call from the renders. Off, never read.
     # Tests: `tests/test_group_border_by_size.py`.
-    group_consistent_border_by_size: bool = False
+    # **ON since 2026-11-16** (Kent 2026-11-16, same sheets: "Flip both ON").
+    # False is the engine as it was; PRE_FLIP (LOGO_BATCH_2026_11_16_OFF) and
+    # the snapshot pin it False.
+    group_consistent_border_by_size: bool = True
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the
@@ -7312,7 +7315,7 @@ class PipelineConfig:
     # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill_rim: bool = True
-    # `silhouette_underfill_rim_fabric_edges` (2026-11-16, BUILT OFF): the rim
+    # `silhouette_underfill_rim_fabric_edges` (built OFF 2026-11-16): the rim
     # above sews only where the host's outline meets bare fabric. It was read
     # off MFab's band and Fremont's ground, whose outlines ARE the design's
     # edge; since the recipe went to every job (2026-10-27) it also closes
@@ -7328,7 +7331,11 @@ class PipelineConfig:
     # closed loop, byte for byte. Read only with `silhouette_underfill_rim`.
     # Layout: Kent's call from the renders. OFF: never read.
     # Tests: `tests/test_underfill_rim_fabric_edges.py`.
-    silhouette_underfill_rim_fabric_edges: bool = False
+    # **ON since 2026-11-16** (Kent 2026-11-16, from the ten-logo art | before |
+    # after sheets: "Flip both ON"). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (LOGO_BATCH_2026_11_16_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    silhouette_underfill_rim_fabric_edges: bool = True
     # A script word sews as the pen wrote it (2026-10-26, built OFF; Kent:
     # "Measure, then build OFF"; `script_strokes.py`). A joined or italic word
     # the letter door refuses (aspect over its 1.4 ceiling, a cluster of one)

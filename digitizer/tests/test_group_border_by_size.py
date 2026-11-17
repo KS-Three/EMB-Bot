@@ -1,4 +1,4 @@
-"""The size ring decided once per line of like shapes (`cfg.group_consistent_border_by_size`, built OFF 2026-11-16).
+"""The size ring decided once per line of like shapes (`cfg.group_consistent_border_by_size`, ON since 2026-11-16).
 
 `border_by_size` reads each shape's smallest dimension against 6.0 mm, so
 like shapes that straddle it sew unlike. On the NASA worm logotype (Commons
@@ -43,8 +43,9 @@ def _widths(regs, cfg):
     return [_border_by_size_width(r, cfg) for r in regs]
 
 
-def test_flag_is_built_off():
-    assert PipelineConfig().group_consistent_border_by_size is False
+def test_flag_default_is_on():
+    # ON since 2026-11-16 (Kent, from the ten-logo sheets: "Flip both ON")
+    assert PipelineConfig().group_consistent_border_by_size is True
 
 
 def test_the_fixture_straddles_the_floor():
