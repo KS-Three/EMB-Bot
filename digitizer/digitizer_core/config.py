@@ -2426,6 +2426,23 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` carries it False. Tests:
     # `tests/test_enclosed_white_skip_transparent.py`.
     enclosed_white_skip_transparent: bool = True
+    # Kent 2026-11-17, logo trial (a red square logo in a thin black frame,
+    # white letters each wrapped in a thick black band): stage 1 takes the
+    # black frame as the page, so the band and the counters are
+    # `enclosed_background` regions whose colour is KNOWN (black), and the
+    # Studio's "Sew white areas" thread (`sew_enclosed_rgb` white) recoloured
+    # them white, where `DUPLICATE_CONE_LAYERS_MERGED` fused the band with
+    # the letters: the word sewed as one white blob. ON, an enclosed area the
+    # option sews whose own thread is KNOWN (not `enclosed_colour_unknown`)
+    # and farther than `enclosed_by_garment_de00` (CIEDE2000, the existing
+    # constant, no new one) from the chosen thread keeps that own thread;
+    # it still sews, in its own front layer, exactly as with
+    # `sew_enclosed_rgb` None. A white page's own white (distance 0) and an
+    # alpha hole (colour unknown) behave as before. Built OFF: it changes
+    # the design, Kent picks the default. False is the engine before the
+    # flag, byte for byte; `tests/engine_2026_10_27.json` carries it False.
+    # Tests: `tests/test_enclosed_white_known_colour.py`.
+    enclosed_white_keeps_known_colour: bool = False
     # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
     # read only with `sew_enclosed_white`. ON, an enclosed field it sews that
     # is a KEYLINE -- a band with holes, at least `machine.KEYLINE_REACH_FRAC`
@@ -2727,6 +2744,19 @@ class PipelineConfig:
     # `white_keyline_art.RECIPE` (Kent 2026-10-27, verbatim: "Every job
     # (Recommended)"). False is the pre-flip default.
     absorb_fragments: bool = True
+    # `rope_band` (built OFF 2026-11-17): `rope_band` -- a chain of rescued rope
+    # strands sewn as ONE band (the pro draws a plain satin band, not the twist)
+    # instead of ~100 run-stitch ticks (Hotel Fremont's hexagon, prime grader
+    # scorecard 2026-11-17). `cfg.extra["rope_band"]` wins when set. Tests:
+    # `tests/test_rope_band.py`.
+    # **ON since 2026-11-17** (Kent 2026-11-17, shown the Hotel Fremont ORIGINAL |
+    # BEFORE | AFTER picture, `docs/renders/rope-band-2026-11-17/`, and asked
+    # "Flip the Fremont rope fix (rope_band) ON by default?": "Flip ON
+    # (Recommended)"). Of 35 runs (9 pro jobs + 26 fixtures) only the Fremont art
+    # moves (2 runs: hat 16,270 -> 15,268 stitches, 80 mm 12,893 -> 11,902); the
+    # rest are byte-identical. False is the engine as it was; `tests/conftest.py`
+    # PRE_FLIP (ROPE_BAND_2026_11_17_OFF) and `tests/engine_2026_10_27.json` pin it False.
+    rope_band: bool = True
     # The rule's threshold on ΔE00(background, garment). 10 is
     # `preflight.DELTA_E_CLEARLY_DIFFERENT` (pinned equal by test), so the
     # Studio's default Natural garment (235, 232, 223) does NOT sew a white
