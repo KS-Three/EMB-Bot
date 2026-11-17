@@ -542,6 +542,14 @@ def cmd_record(a) -> int:
     path = kit_dir / "readings.json"
     readings = _load(path) if path.exists() else {"kit_sha256": kit["kit_sha256"],
                                                   "rubric_sha256": kit["rubric_sha256"], "items": {}}
+    if a.check:
+        try:
+            clean_verdict(body, item)
+        except ValueError as e:
+            print(f"refused: {e}", file=sys.stderr)
+            return 2
+        print(f"{item['id']}: the verdict is well formed (not recorded)")
+        return 0
     if item["id"] in readings["items"] and not a.replace:
         print(f"{item['id']} is already recorded (the rubric: do not go back)", file=sys.stderr)
         return 2
@@ -715,6 +723,7 @@ def main(argv=None) -> int:
     p.add_argument("--kit", required=True)
     p.add_argument("--verdict", required=True)
     p.add_argument("--replace", action="store_true", help="overwrite a recorded design (a malformed first write)")
+    p.add_argument("--check", action="store_true", help="validate only; write nothing")
     p = sub.add_parser("scorecard")
     p.add_argument("--kit", required=True)
     p.add_argument("--out", required=True)
