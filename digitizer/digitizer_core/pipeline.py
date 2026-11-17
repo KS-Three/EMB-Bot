@@ -1146,7 +1146,8 @@ def build_generation(
     # never loads.
     if cfg.keyline_fragment_drop and classification.class_ not in PHOTO_CLASSES:
         from .keyline_fragment import drop_keyline_fragments
-        drop_keyline_fragments(regions, chart_for(cfg))
+        ipm = float(getattr(p, "input_px_per_mm", 0.0) or 0.0) or float(p.px_per_mm)
+        drop_keyline_fragments(regions, chart_for(cfg), mm_per_src_px=1.0 / ipm if ipm > 0 else None)
 
     # `cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review
     # pack (review-1115): ticked ON; built OFF 2026-11-14 as

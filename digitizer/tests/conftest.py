@@ -1148,10 +1148,27 @@ PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
 COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
 PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
+# `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
+# gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
+COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
+PRE_FLIP.update(COVER_HOPS_2026_11_17_OFF)
+# The flag's ends and seams: `satin_cap_skew_inset`, `satin_seam_hold`,
+# `satin_free_end_chord_aim` (Kent 2026-11-17, shown the labelled before |
+# after page for his Flag.webp and 12 logos: "Flip all three ON
+# (Recommended)"): `tests/test_satin_flag_stripes.py`,
+# `tests/test_satin_free_end_chord_aim.py`.
+FLAG_ENDS_SEAM_2026_11_17_OFF = {"satin_cap_skew_inset": False, "satin_seam_hold": False,
+                                 "satin_free_end_chord_aim": False}
+PRE_FLIP.update(FLAG_ENDS_SEAM_2026_11_17_OFF)
 # `rope_band` (Kent 2026-11-17, shown the Hotel Fremont ORIGINAL | BEFORE | AFTER
 # picture: "Flip ON (Recommended)"): `tests/test_rope_band.py`.
 ROPE_BAND_2026_11_17_OFF = {"rope_band": False}
 PRE_FLIP.update(ROPE_BAND_2026_11_17_OFF)
+# `keyline_fragment_drop` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER for
+# the Drone render and Bridge: "Flip ON (Recommended)"):
+# `tests/test_keyline_fragment.py`.
+KEYLINE_FRAGMENT_2026_11_17_OFF = {"keyline_fragment_drop": False}
+PRE_FLIP.update(KEYLINE_FRAGMENT_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

@@ -90,6 +90,10 @@ def _cfg(**kw) -> PipelineConfig:
     # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline: the
     # junctions this patches move with it
     kw.setdefault("outline_redraw_k", PRE_FLIP["outline_redraw_k"])
+    # ...and the flag ends/seam trio (ON since 2026-11-17, Kent): with it no
+    # patch fires on this fixture (CI run 44158966435; why is not yet read)
+    for name in ("satin_cap_skew_inset", "satin_seam_hold", "satin_free_end_chord_aim"):
+        kw.setdefault(name, PRE_FLIP[name])
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 

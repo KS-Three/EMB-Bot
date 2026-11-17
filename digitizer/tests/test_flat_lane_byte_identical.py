@@ -42,6 +42,17 @@ reproduced both old entries on this machine before the capture
 (`tools/recapture_flat_lane_key.py --pre-change-tree`). `enthusiast_logo`
 stays the platform red.
 
+**Exception TAKEN 2026-11-17, the flag ends/seam trio ON (Kent 2026-11-17, PR
+#1641):** all three flat entries were re-captured after `satin_cap_skew_inset`,
+`satin_seam_hold` and `satin_free_end_chord_aim` became defaults. Every free satin
+end takes the 0.03 mm cap inset, so every satin design moves a little:
+`ribbon_curve.png` 1005 -> 1007 stitches, `logo_whitebg.png` 5513 -> 5509,
+`logo_alpha.png` 6188 -> 6186. No control key is left, so the machine check was the
+pre-change tree alone: main at 796123f2 reproduced each old entry byte for byte on
+this machine before its capture (`tools/recapture_flat_lane_key.py
+--pre-change-tree`). `photo/enthusiast_logo.png` was refused by that same check
+and stays the platform red.
+
 **Exception TAKEN 2026-10-24, `border_by_size` ON (Kent 2026-10-23, PR #1057):** the
 `logo_alpha.png` and `logo_whitebg.png` entries were re-captured after the pro's
 size rule for borders became a default: a shape whose smallest dimension is 6 mm

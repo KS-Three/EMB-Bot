@@ -43,7 +43,7 @@ from digitizer_core.stage3_segment import merge_duplicate_cone_layers
 from digitizer_core.threads import CHART
 from digitizer_core.warnings_codes import DUPLICATE_CONE_LAYERS_MERGED
 
-from .conftest import cfg
+from .conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, cfg
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 DRONE = TESTDATA / "photo" / "drone_render.png"
@@ -363,14 +363,16 @@ def test_on_the_shipped_engine_the_fold_still_saves_stops_revisits_and_flying(
 # the defect stays tracked rather than quietly retired.
 @pytest.fixture(scope="module")
 def drone_presnap_off():
+    # ...and before the flag ends/seam trio (ON 2026-11-17, Kent), which also
+    # makes the strict xfail below XPASS: same reason, same hold.
     return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False,
-                               snap_region_edges=False))
+                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF))
 
 
 @pytest.fixture(scope="module")
 def drone_presnap_on():
     return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
-                               snap_region_edges=False))
+                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF))
 
 
 @pytest.mark.xfail(strict=True, reason=(

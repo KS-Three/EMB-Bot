@@ -42,7 +42,7 @@ from digitizer_core.pipeline import (build_generation, finish_generation,
                                      plan_stitches)
 from digitizer_core.preflight import run_preflight
 from digitizer_core import stitches
-from tests.conftest import TESTDATA
+from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, TESTDATA
 
 MARINE_127 = (TESTDATA.parents[1] / "docs" / "renders"
               / "lettering-split-2026-09-19" / "marine_127mm_traced_input.png")
@@ -53,6 +53,11 @@ def _sew(art, width_mm, **kw):
     # Column lane (`lettering_columns`, ON by default since Kent's 2026-10-12
     # flip) builds the letters from their outline with no crowns to close.
     kw.setdefault("lettering_columns", False)
+    # ... and before the flag ends/seam trio (ON since 2026-11-17, Kent): with
+    # it the OFF arm shows 6 bare crowns against the 8 this fixture needs (CI
+    # run 44158966435), so the cover has less to close.
+    for name, value in FLAG_ENDS_SEAM_2026_11_17_OFF.items():
+        kw.setdefault(name, value)
     # ... and without the photo lane's phantom-blend dissolve
     # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
     # MARINE reads the gradient lane, and with the dissolve ON the cover's
