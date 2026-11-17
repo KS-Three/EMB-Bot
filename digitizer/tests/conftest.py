@@ -1133,6 +1133,11 @@ PRE_FLIP.update(BEAN_BY_WIDTH_2026_11_16_OFF)
 # `tests/test_small_text_tight_word_space.py`.
 TIGHT_WORD_SPACE_2026_11_16_OFF = {"small_text_reset_tight_word_space": False}
 PRE_FLIP.update(TIGHT_WORD_SPACE_2026_11_16_OFF)
+# `lettering_columns_ribbon_handback` (Kent 2026-11-16, shown the Adidas ORIGINAL
+# ART | BEFORE | AFTER sheet: "Flip ON (Recommended)"):
+# `tests/test_lettering_ribbon_handback.py`.
+RIBBON_HANDBACK_2026_11_16_OFF = {"lettering_columns_ribbon_handback": False}
+PRE_FLIP.update(RIBBON_HANDBACK_2026_11_16_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

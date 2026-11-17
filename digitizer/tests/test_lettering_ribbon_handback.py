@@ -50,8 +50,8 @@ def _regions(polys, tagged=True):
     return out
 
 
-def _sew(polys, tagged=True, **cfg_kw):
-    cfg = PipelineConfig(**cfg_kw)
+def _sew(polys, tagged=True, _default=False, **cfg_kw):
+    cfg = PipelineConfig(**cfg_kw) if _default else PipelineConfig(**{**OFF, **cfg_kw})
     regs = _regions(polys, tagged)
     blocks, _ = sequence([PlannedRegion(region=r, polygon=r.polygon, sew_index=i) for i, r in enumerate(regs)],
                          fabric_for(cfg), cfg)
@@ -76,12 +76,13 @@ def _kinds(runs) -> set[str]:
 
 
 ON = {"lettering_columns_ribbon_handback": True}
+OFF = {"lettering_columns_ribbon_handback": False}      # the pre-flip engine (conftest.RIBBON_HANDBACK_2026_11_16_OFF)
 MATES_THIN = [bar(3.0)] * 3                 # p90 ~3.0, satin
 MATES_BOLD = [bar(4.4)] * 3                 # p90 ~4.4, still satin
 
 
-def test_flag_is_built_off():
-    assert PipelineConfig().lettering_columns_ribbon_handback is False
+def test_flag_is_on_by_default():
+    assert PipelineConfig().lettering_columns_ribbon_handback is True       # ON since 2026-11-16 (Kent)
     assert RIBBON_HANDBACK_OUTLIER == 1.6 and RIBBON_HANDBACK_MIN_CLUSTER == 3
 
 
@@ -130,9 +131,10 @@ def test_a_two_member_cluster_never_hands_back():
     assert _md5_all(_sew(polys, **ON)) == _md5_all(_sew(polys))
 
 
-def test_off_spelled_false_is_the_default_byte_for_byte():
+def test_the_default_is_the_explicit_on_byte_for_byte():
     polys = MATES_THIN + [bar(6.4)]
-    assert _md5_all(_sew(polys)) == _md5_all(_sew(polys, lettering_columns_ribbon_handback=False))
+    assert _md5_all(_sew(polys, _default=True)) == _md5_all(_sew(polys, **ON))
+    assert _md5_all(_sew(polys, _default=True)) != _md5_all(_sew(polys))      # and not the OFF arm
 
 
 def test_a_design_with_no_text_cluster_is_untouched():
@@ -146,7 +148,7 @@ def test_the_stamp_and_the_cluster_tags():
     assert [bool(r.meta.get(RIBBON_OUTLIER_KEY)) for r in regs] == [False, False, False, True]
     assert all(r.meta["text_candidate"] and r.meta["text_cluster_id"] == "TC1" for r in regs)   # tags stay
     regs_off = _regions(MATES_THIN + [bar(6.4)])
-    stamp_ribbon_outliers(regs_off, PipelineConfig())
+    stamp_ribbon_outliers(regs_off, PipelineConfig(**OFF))
     assert not any(RIBBON_OUTLIER_KEY in r.meta for r in regs_off)                              # off: nothing written
 
 
