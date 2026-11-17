@@ -109,7 +109,7 @@ _CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO"),
 #: they are handed, which are arguments and so already in the key. It is set
 #: for one guarded `_plan_stitches` call and reset in a `finally`, and that
 #: call opens its own scope, so the un-guarded plan's memo is gone before it.
-#: `columns._STROKE_JUDGING` (`lettering_columns_stroke_floor`, built OFF)
+#: `columns._STROKE_JUDGING` (`lettering_columns_stroke_floor`, ON since 2026-11-16)
 #: is set round one `lettering_columns_shape` call inside that function's
 #: own judge and reset in a `finally`; stage 7 calls that function directly,
 #: and no memoized emitter reads the var.

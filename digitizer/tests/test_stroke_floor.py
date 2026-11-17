@@ -1,4 +1,5 @@
-"""`cfg.extra["lettering_columns_stroke_floor"]` (built OFF 2026-11-16): under
+"""`cfg.lettering_columns_stroke_floor` (built OFF 2026-11-15 as a `cfg.extra` key; ON since
+2026-11-16, Kent's flip: "On, the United States is a huge improvement."): under
 `thin_floor`, a column that keeps fewer than half its crosses over the floor
 is floored whole, as one that keeps fewer than three already is.
 
@@ -75,7 +76,14 @@ def _pts(runs):
     return [r.points for r in runs]
 
 
-def test_off_is_the_default():
+def test_config_default_is_on_and_false_is_the_old_engine():
+    # ON since 2026-11-16 (Kent: "On, the United States is a huge improvement.");
+    # the ambient scope outside a plan stays False, so a bare call is the old lane
+    from digitizer_core.config import PipelineConfig
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().lettering_columns_stroke_floor is True
+    assert PRE_FLIP["lettering_columns_stroke_floor"] is False
+    assert PipelineConfig(**{"lettering_columns_stroke_floor": False}).lettering_columns_stroke_floor is False
     assert C._STROKE_FLOOR.get() is False and C._STROKE_JUDGING.get() is None
     assert ("columns", "_STROKE_FLOOR") in shape_memo._AMBIENT
     assert ("columns", "_STROKE_JUDGING") in shape_memo._INERT
