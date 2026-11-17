@@ -1148,6 +1148,14 @@ PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
 COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
 PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
+# The flag's ends and seams: `satin_cap_skew_inset`, `satin_seam_hold`,
+# `satin_free_end_chord_aim` (Kent 2026-11-17, shown the labelled before |
+# after page for his Flag.webp and 12 logos: "Flip all three ON
+# (Recommended)"): `tests/test_satin_flag_stripes.py`,
+# `tests/test_satin_free_end_chord_aim.py`.
+FLAG_ENDS_SEAM_2026_11_17_OFF = {"satin_cap_skew_inset": False, "satin_seam_hold": False,
+                                 "satin_free_end_chord_aim": False}
+PRE_FLIP.update(FLAG_ENDS_SEAM_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
