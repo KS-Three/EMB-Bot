@@ -39,8 +39,6 @@ narrow version.
 ORIGINAL | BEFORE | AFTER, `fx_<name>_closeup.png` = the three largest changed
 spots); the other 2 moved by 4 and 32 stitches, too small to show at any
 render scale (no close-up is produced), and have the full picture only.
-All movers are photo-folder fixtures; none of the four logo fixtures at the
-top of the list move.
 
 By eye, worse first:
 
@@ -48,7 +46,7 @@ By eye, worse first:
 |---|---|---|
 | scene_stub | 23327/75 -> 22780/78 | **slightly worse at one spot**: the top-right patch gains a small cluster of crossing blocks; the other two spots re-lay, no clear change; -547 stitches |
 | phone_ui_golke | 10864/125 -> 10803/123 | **trivially worse**: a small pale sliver patch appears inside black; the rest unchanged |
-| golden_tee (logo) | 14360/54 -> 13940/54 | better: cleaner outer ring, a stray crossing patch gone |
+| golden_tee | 14360/54 -> 13940/54 | better: cleaner outer ring, a stray crossing patch gone |
 | repro_gradient_white_icon | 22911/12 -> 22672/12 | better: the fanned block at the top-left becomes one short tuck |
 | photo_owl_pale | 24873/9 -> 24840/9 | slightly better: the eye ring has fewer wedge fans |
 | drone_render | 18337/114 -> 18273/114 | no visible change |
