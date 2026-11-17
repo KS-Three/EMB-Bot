@@ -1117,6 +1117,11 @@ PRE_FLIP.update(INLETS_2026_11_15_OFF)
 # `outline_inlets_teeth` (the same tick): `tests/test_outline_inlets.py`.
 TEETH_2026_11_15_OFF = {"outline_inlets_teeth": False}
 PRE_FLIP.update(TEETH_2026_11_15_OFF)
+# `lettering_columns_stroke_floor` (Kent 2026-11-16, shown the NOAA ring-text
+# picture and asked "Flip the existing flag lettering_columns_stroke_floor ON?":
+# "On, the United States is a huge improvement."): `tests/test_stroke_floor.py`.
+STROKE_FLOOR_2026_11_16_OFF = {"lettering_columns_stroke_floor": False}
+PRE_FLIP.update(STROKE_FLOOR_2026_11_16_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

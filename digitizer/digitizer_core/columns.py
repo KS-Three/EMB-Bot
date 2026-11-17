@@ -94,7 +94,8 @@ def ring_floor_scope(on: bool):
         _RING_FLOOR.reset(token)
 
 
-# `cfg.extra["lettering_columns_stroke_floor"]` (built OFF 2026-11-16): under
+# `cfg.lettering_columns_stroke_floor` (built OFF 2026-11-15 as a `cfg.extra` key; ON
+# since 2026-11-16, Kent's flip: "On, the United States is a huge improvement."): under
 # `thin_floor`, a column that keeps fewer than HALF its crosses over the floor
 # is floored whole (`_floor_crosses`), as one that keeps fewer than three
 # already is. Commons Bukit Asam at 80.4 mm left chest, the y of "beyond":
