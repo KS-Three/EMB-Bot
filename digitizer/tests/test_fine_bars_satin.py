@@ -78,6 +78,9 @@ def _cfg(**kw) -> PipelineConfig:
     # `bean_only_lines` (ON since Kent's 2026-10-27 flip) refuses the dot's and
     # the lenses' rings; this file prices the bars alone, on the engine the md5 was pinned on
     kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])
+    # `border_by_size_corner_loss` (ON since 2026-11-17): the fixture's 6 mm sharp
+    # square (Ssquare, rounding loss 0.171) lost its size ring; the md5 was pinned with it
+    kw.setdefault("border_by_size_corner_loss", PRE_FLIP["border_by_size_corner_loss"])
     kw.setdefault("edge_cap", "bean")   # ...with the bean cap that engine sewed (default "none" since 2026-10-29)
     return PipelineConfig(underlay=False, garment_rgb=GARMENT, **kw)
 

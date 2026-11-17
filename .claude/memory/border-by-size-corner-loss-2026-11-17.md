@@ -1,6 +1,6 @@
 ---
 name: border-by-size-corner-loss-2026-11-17
-description: border_by_size ring redraws a small square as a cushion (Intel's blue square, loss 12.1% vs next 5.8%); border_by_size_corner_loss built OFF refuses a ring over 0.083 rounding loss; only Intel moves of 44 jobs
+description: border_by_size ring redraws a small square as a cushion (Intel's blue square, loss 12.1% vs next 5.8%); border_by_size_corner_loss refuses a ring over 0.083 rounding loss; ON 11-17 (Kent "Flip ON"); only Intel moves of 44 jobs
 metadata:
   type: project
 ---
@@ -21,11 +21,14 @@ edge: the flat square sews as a cushion of four trapezoids (141-point ring over
   batch, 10 batch2, texaco, intel), 19 by-size rings: Intel 0.1205 (2.10x the
   next), Texaco T's 0.0575 / 0.0508, NPS 0.0356 ... Python 0.0016.
   `machine.BORDER_BY_SIZE_CORNER_LOSS_MAX` = 0.083 (geometric middle).
-- **`border_by_size_corner_loss` (OFF).** `_border_by_size_width` reads None over
+- **Flipped ON 2026-11-17** (Kent, shown the Intel ORIGINAL ART | BEFORE | AFTER
+  sheet: "Flip ON (Recommended)"). `CORNER_LOSS_2026_11_17_OFF` in conftest
+  `PRE_FLIP`; the pin file stays false.
+- **`border_by_size_corner_loss` (was OFF at build).** `_border_by_size_width` reads None over
   the constant, so prediction, seam ownership and emitter agree; wins over a
   group stamp, and `tag_border_by_size_groups` skips a refused shape (no
   evidence for its line).
 - **Measured, OFF vs ON, 44 jobs:** only Intel changes (5077 -> 4932 stitches,
   trims 8 -> 7, ring gone, plain fill square); 43 byte-identical (32 with no
   ring, 11 with rings). Pictures local only (public repo).
-- Tests `tests/test_border_by_size_corner_loss.py`. Built OFF, flip is Kent's.
+- Tests `tests/test_border_by_size_corner_loss.py`. Built OFF 11-17 (#1622), flipped ON the same day.

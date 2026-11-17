@@ -1138,6 +1138,11 @@ PRE_FLIP.update(TIGHT_WORD_SPACE_2026_11_16_OFF)
 # `tests/test_lettering_ribbon_handback.py`.
 RIBBON_HANDBACK_2026_11_16_OFF = {"lettering_columns_ribbon_handback": False}
 PRE_FLIP.update(RIBBON_HANDBACK_2026_11_16_OFF)
+# `border_by_size_corner_loss` (Kent 2026-11-17, shown the Intel ORIGINAL ART |
+# BEFORE | AFTER sheet: "Flip ON (Recommended)"):
+# `tests/test_border_by_size_corner_loss.py`.
+CORNER_LOSS_2026_11_17_OFF = {"border_by_size_corner_loss": False}
+PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
