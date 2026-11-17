@@ -3,15 +3,15 @@
 Moved here from the root `CLAUDE.md` (2026-10-26) so it loads when a session works
 in `digitizer/`. The root file keeps the one-line warning.
 
-- **A cloud container's `/usr/bin/python3.12` is 3.12.3, and 3.12.3 cannot
-import `digitizer_core`.** `pipeline.py`'s `plan_stitches` holds a 20-item
-`with`, and 3.12.3 refuses it: *"SyntaxError: too many statically nested
-blocks"* at collection (`tests/conftest.py`), so every test and every tool
-fails in 0.2 s. 3.12.13 and 3.13 compile the same file, and CI's
-`python-version: '3.12'` resolves to a late patch, which is why CI is green.
-**Fix:** `uv python install 3.12`, then build the venv with
-`$(uv python find 3.12.13)`. The lasting fix is fewer nested scopes in that
-`with`; until then do not add a 21st item.
+- **FIXED 2026-11-17 (PR #1615): `digitizer_core` imports on a cloud
+container's `/usr/bin/python3.12` (3.12.3) again.** `plan_stitches` held a
+21-item `with`; 3.12.3 allows 20 statically nested blocks and refused the
+module (*"SyntaxError: too many statically nested blocks"*, every test and
+tool failing in 0.2 s) while 3.12.13, 3.13 and CI's late 3.12 patch compiled
+it. The scopes now enter through one `contextlib.ExitStack`: add a new scope
+as one more `_enter(...)` line. `tests/test_with_nesting.py` fails any
+`with` over 10 managers. On a checkout from before that PR, the workaround
+stands: `uv python install 3.12`, venv from `$(uv python find 3.12.13)`.
 *(hit 2026-11-17 on main `3608ef63`; measured on 3.12.3, 3.12.13, 3.13.18)*
 
 - **Build that venv with `python3.12` explicitly, NOT the bare `python3`.**
