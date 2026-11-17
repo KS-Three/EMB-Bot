@@ -4288,9 +4288,13 @@ class PipelineConfig:
     # alone) reads 2.01. Texaco's disc wedges (1.43-1.53) deliberately stay.
     # A candidate resting on one logo. `photo_width_floor` (a thin ribbon that
     # earned satin) stays in the lane.
-    # False: the lane's routing is today's, byte for byte. Flipping it is
-    # Kent's. Tests: `tests/test_lettering_ribbon_handback.py`.
-    lettering_columns_ribbon_handback: bool = False
+    # **ON since 2026-11-16** (Kent, from the Adidas ORIGINAL ART | BEFORE |
+    # AFTER sheet: "Flip ON (Recommended)"). Of the 14 designs with a
+    # fill-verdict lane member only Adidas changes (6829/8 -> 7212/8 stitches/
+    # trims, the slits gone); the other 13 are byte-identical. False: the
+    # lane's routing is as before the flip, byte for byte.
+    # Tests: `tests/test_lettering_ribbon_handback.py`.
+    lettering_columns_ribbon_handback: bool = True
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --
