@@ -4459,7 +4459,10 @@ class PipelineConfig:
     # as evidence for its line. Read only with `border_by_size`. Layout:
     # Kent's call from the renders. Off, byte-identical.
     # Tests: `tests/test_border_by_size_corner_loss.py`.
-    border_by_size_corner_loss: bool = False
+    # **ON since 2026-11-17** (Kent, from the Intel sheets: "Flip ON"). False
+    # is the engine as it was; PRE_FLIP (CORNER_LOSS_2026_11_17_OFF) pins it
+    # False. The other 43 census jobs are byte-identical.
+    border_by_size_corner_loss: bool = True
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the
