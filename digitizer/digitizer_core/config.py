@@ -4443,6 +4443,23 @@ class PipelineConfig:
     # False is the engine as it was; PRE_FLIP (LOGO_BATCH_2026_11_16_OFF) and
     # the snapshot pin it False.
     group_consistent_border_by_size: bool = True
+    # `border_by_size_corner_loss` (2026-11-17, built OFF): no size ring on a
+    # shape the ring's own corner rounding would redraw. The ring is built on
+    # the shape with every corner relaxed inward by 2.1 mm
+    # (`stage6_border.round_inward`), right for a large shape and wrong for a
+    # small one: Intel's blue square (Commons PNG, 100 mm left chest, 7.3 x
+    # 7.2 mm, region Sa06ad4a2) keeps 3 mm of straight edge between four
+    # 2.1 mm arcs, loses 12.1% of its area, and sews as a cushion of four
+    # trapezoids under a 141-point ring. Of the 19 by-size rings in a 44-job
+    # census the next highest loss is 5.8% (Texaco's T), the rest 0.1-5.1%;
+    # `machine.BORDER_BY_SIZE_CORNER_LOSS_MAX` 0.083 is the middle of that gap.
+    # ON, `_border_by_size_width` reads None for a shape over it, so the
+    # prediction, seam ownership and the emitter agree and it sews as a plain
+    # fill; the rule wins over a group stamp and a refused shape is not read
+    # as evidence for its line. Read only with `border_by_size`. Layout:
+    # Kent's call from the renders. Off, byte-identical.
+    # Tests: `tests/test_border_by_size_corner_loss.py`.
+    border_by_size_corner_loss: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

@@ -636,6 +636,12 @@ BORDER_BY_SIZE_WIDTH_MM = ((6.0, 2.1), (4.0, 1.5))
 # an 8 mm square 0.93. The core's own share does NOT separate them (bar
 # 0.07, Becker ring 0.05). Measured 2026-10-23 on the census's own regions.
 BORDER_BY_SIZE_REACH_FRAC = 0.5
+# `cfg.border_by_size_corner_loss` (2026-11-17): the share of a shape's area
+# the ring's corner rounding (`round_inward` at BORDER_CORNER_RADIUS_MM) takes
+# off. Over this the ring redraws the shape, so the shape is no ring's. 19
+# rings of the 44-job census read 0.0006-0.0575 (Texaco's two T's the top);
+# Intel's 7.3 mm square reads 0.1205. 0.083 = their geometric middle, 2 sf.
+BORDER_BY_SIZE_CORNER_LOSS_MAX = 0.083
 
 
 # The keyline band (`cfg.enclosed_white_keyline`, 2026-10-23): the pro's
