@@ -1304,8 +1304,14 @@ class PipelineConfig:
     # pixels on the field's own label, 48% within 2 px of yellow, 5% of
     # green). The NPS arrowhead (75 mm) gains a 121-stitch block the same way.
     # ON: a component whose majority label differs from the majority label of
-    # its ring (`_dark_ring`, foreground pixels) is treated as survived; no
-    # foreground ring pixels keeps the old answer. No new constant.
+    # its ring (`_dark_ring`, foreground pixels) survives unless that label is
+    # an INK LABEL, at least `DARK_INK_LABEL_INK_SHARE` (0.5) of its pixels
+    # inside the dark thin population: then it is absorbed as before. Measured
+    # on 363 absorbed components, six designs: Forest Service and NPS 0.005-
+    # 0.035 (a solid ground, pieces survive), Hotel Fremont hat and patch
+    # 0.940-0.999 (the label is the strokes, carved as today), Bridge's BAR
+    # 0.075-0.172 (survives, sews as satin). Ring on the same label, or no
+    # foreground ring pixels, keeps the old answer.
     # Read only with `flat_light_text_runs`. OFF: never read, byte for byte.
     # Tests: `tests/test_flat_dark_ink_own_ground.py`.
     flat_dark_ink_own_ground: bool = False

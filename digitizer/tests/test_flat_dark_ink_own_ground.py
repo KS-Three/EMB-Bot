@@ -1,6 +1,7 @@
 """`flat_dark_ink_own_ground` (built OFF 2026-11-16): `absorbed_dark_ink` counts
-a dark component absorbed only when the label it carries is also the label of
-the ground round it. Synthetic arrays only."""
+a dark component ringed by another label survives unless its label is an ink
+label (at least half its pixels in the dark thin population). Synthetic arrays
+only."""
 import numpy as np
 
 from digitizer_core.config import PipelineConfig
@@ -70,3 +71,59 @@ def test_keyword_off_equals_no_keyword():
             assert np.array_equal(a.mask, b.mask)
             assert np.array_equal(a.labels, b.labels)
             assert a.spools == b.spools
+
+
+def _ink_label_frame(extra_body=0):
+    """Label 0 is made of dark strokes: five 4x4 pieces (rows 28-31) ringed
+    by label 1, plus `extra_body` non-dark label-0 pixels (a strip at the left
+    edge). Returns the frame and the first piece's mask."""
+    merged = np.full((60, 60), 1, np.int32)
+    mask = np.zeros((60, 60), bool)
+    for k in range(5):
+        mask[28:32, 6 + 10 * k:10 + 10 * k] = True
+    merged[mask] = 0
+    if extra_body:
+        merged[:extra_body, :1] = 0
+    valid = np.ones((60, 60), bool)
+    first = np.zeros_like(mask)
+    first[28:32, 6:10] = True
+    return _dark(mask), merged, valid, first
+
+
+def test_piece_whose_label_is_the_strokes_is_absorbed_with_flag():
+    dark, merged, valid, first = _ink_label_frame()
+    for flag in (False, True):
+        got = absorbed_dark_ink(dark, merged, valid, own_ground=flag)
+        assert got is not None
+        assert int(got.mask.sum()) == 80
+        assert got.mask[first].all()
+
+
+def test_piece_whose_label_is_a_solid_body_survives_only_with_flag():
+    # the same five pieces on label 0, but label 0 is mostly a solid body
+    dark, merged, valid, first = _ink_label_frame(extra_body=60)
+    merged[:, :1] = 0                      # 60 body px
+    merged[:, 1:6] = 0                     # +300 more: ink share 80/440
+    off = absorbed_dark_ink(dark, merged, valid)
+    on = absorbed_dark_ink(dark, merged, valid, own_ground=True)
+    assert off is not None and off.mask[first].all()
+    assert on is None
+
+
+def test_ink_share_is_read_over_the_whole_dark_population():
+    # label 0: a 10x20 dark component that survives (own share 0.85), a 4x4
+    # dark piece ringed by label 1, and 20 non-dark px. The label's ink share
+    # is 216/236 = 0.92 only when the survivor counts; over the absorbed
+    # piece alone it would be 16/236 = 0.07 and the piece would survive.
+    merged = np.full((60, 60), 1, np.int32)
+    mask = np.zeros((60, 60), bool)
+    mask[5:15, 40:60] = True
+    mask[28:32, 40:44] = True
+    merged[mask] = 0
+    merged[:10, :2] = 0
+    valid = np.ones((60, 60), bool)
+    dark = _dark(mask)
+    on = absorbed_dark_ink(dark, merged, valid, own_ground=True)
+    assert on is not None
+    assert int(on.mask.sum()) == 16
+    assert on.mask[28:32, 40:44].all()

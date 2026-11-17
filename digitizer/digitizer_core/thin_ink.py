@@ -334,6 +334,17 @@ _DARK_INK_GUARD_PX = 2
 # lets through, at the majority `absorbed_dark_ink` already asks for.
 DARK_INK_EDGE_PX = _DARK_INK_GUARD_PX + _RING_PX
 DARK_INK_STRAY_SHARE = 0.5
+# An INK LABEL (`cfg.flat_dark_ink_own_ground`, built OFF 2026-11-16): a merged
+# label whose foreground pixels lie, at least this share, inside the dark thin
+# population (`find_dark_thin_ink`'s whole mask, before the absorbed filter).
+# The majority, as `DARK_INK_STRAY_SHARE`. Measured over 363 absorbed
+# components on six designs (flat lane, ring label never equal to the
+# component's): the US Forest Service shield and NPS arrowhead (44 components,
+# a solid ground with a few thin pieces) sit at 0.005-0.035; the Hotel Fremont
+# hat and patch (316 components, a label that IS the strokes) at 0.940-0.999.
+# No label between 0.035 and 0.94; Bridge's "BAR" lettering (3 components) at
+# 0.075-0.172, under the line, so it survives and sews as satin.
+DARK_INK_LABEL_INK_SHARE = 0.5
 
 
 def stray_clause(bbox: tuple[int, int, int, int], art_bbox: tuple[int, int, int, int],
@@ -560,13 +571,18 @@ def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray,
     pot's: 0.4% of that label inside the letter), or whose pixels the
     quantiser read already owns (none left in `base_valid`), is absorbed.
 
-    `own_ground` (`cfg.flat_dark_ink_own_ground`): a component is absorbed
-    only when its majority label is also the majority label of the ground
-    AROUND it (`_dark_ring`'s foreground pixels). A thin dark piece the
-    quantiser labelled correctly, ringed by another colour, survived. A
-    component with no foreground ring pixels answers as before."""
+    `own_ground` (`cfg.flat_dark_ink_own_ground`): a component whose
+    majority label is NOT the majority label of the ground AROUND it
+    (`_dark_ring`'s foreground pixels) is still absorbed when that label is
+    an INK LABEL -- at least `DARK_INK_LABEL_INK_SHARE` of the label's
+    foreground pixels lie in `dark` (the label IS the strokes) -- and
+    survives otherwise (a thin piece of a solid ground's own colour, ringed
+    by another colour). A component whose ring is the same label, or has no
+    foreground pixels, answers as before."""
     n, cc, stats, _ = cv2.connectedComponentsWithStats(dark.mask.astype(np.uint8), connectivity=8)
     totals = np.bincount(merged[base_valid].astype(np.int64)) if base_valid.any() else np.zeros(1, np.int64)
+    ink_px = np.bincount(merged[dark.mask & base_valid].astype(np.int64), minlength=totals.size) \
+        if own_ground and base_valid.any() else None
     keep = np.zeros_like(dark.mask)
     for c in range(1, n):
         bx, by, bw, bh, _a = (int(v) for v in stats[c, :5])
@@ -578,10 +594,11 @@ def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray,
             own = float(np.count_nonzero(inside == label)) / float(totals[label])
             if own >= 0.5:
                 continue
-            if own_ground:
+            if own_ground and ink_px is not None:
                 ring, _n, _g = _dark_ring(merged, base_valid, comp, by, bx)
                 if ring is not None and ring.size and \
-                        int(np.bincount(ring.astype(np.int64)).argmax()) != label:
+                        int(np.bincount(ring.astype(np.int64)).argmax()) != label and \
+                        float(ink_px[label]) / float(totals[label]) < DARK_INK_LABEL_INK_SHARE:
                     continue
         keep[crop] |= comp
     if not keep.any():
