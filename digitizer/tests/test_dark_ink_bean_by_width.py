@@ -19,6 +19,8 @@ from digitizer_core.thin_ink import (BEAN_MAX_GROUND_DE00, DARK_INK_BEAN_MAX_WID
                                      DARK_INK_GROUND_KEY, _thread_de00, bean_dark_ink)
 from digitizer_core.threads import CHART
 
+from .conftest import BEAN_BY_WIDTH_2026_11_16_OFF
+
 _IDX = {c.number: i for i, c in enumerate(CHART)}
 POT, PEN = _IDX["0763"], _IDX["1233"]          # 17.8 dE00 apart: a "pen line"
 WHITE, BLACK = _IDX["0015"], _IDX["0020"]      # 100 dE00 apart: "designed lettering"
@@ -45,8 +47,10 @@ def _tagged(regions):
     return {r.shape_id for r in regions if BEAN_LETTER_KEY in r.meta}
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().dark_ink_bean_by_width is False
+def test_the_flag_is_on_by_default_since_the_flip():
+    # Kent 2026-11-16: "Flip ON (Recommended)".
+    assert PipelineConfig().dark_ink_bean_by_width is True
+    assert PipelineConfig(**BEAN_BY_WIDTH_2026_11_16_OFF).dark_ink_bean_by_width is False
 
 
 def test_the_width_gate_is_one_and_a_half_cross_floors():
