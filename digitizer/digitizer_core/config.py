@@ -1245,7 +1245,7 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
     dark_ink_bean: bool = True
-    # `dark_ink_bean_by_width` (BUILT OFF 2026-11-16): which dark-ink strokes
+    # `dark_ink_bean_by_width` (built OFF 2026-11-16): which dark-ink strokes
     # sew as a bean is decided by WIDTH, not thread contrast. Contrast stood
     # in for "pen line versus designed lettering" and gets real lettering
     # backwards. NOAA's emblem ring text (Commons PNG, 90 mm): strokes 0.46 mm
@@ -1265,7 +1265,18 @@ class PipelineConfig:
     # black, Bridge BAR); nothing between 0.65 and 0.80. Read only with
     # `dark_ink_bean`. Layout: Kent's call from the renders. OFF: never read,
     # byte for byte. Tests: `tests/test_dark_ink_bean_by_width.py`.
-    dark_ink_bean_by_width: bool = False
+    # **ON since 2026-11-16** (Kent 2026-11-16, shown four ORIGINAL ART |
+    # BEFORE | AFTER sheets (EPA, NOAA, USAID, Bridge hat) and asked "Flip
+    # dark_ink_bean_by_width ON?": "Flip ON (Recommended)"; earlier that day,
+    # on the EPA ring-text close-up with the bean off: "the United States is a
+    # huge improvement."). Of the 16 designs that carry dark-ink strokes, 8
+    # change and 8 are byte-identical (both Hotel Fremont jobs, Pooh,
+    # Precision Drone, Energy Star, Ford, Forest Service and NPS); NOAA trims
+    # 28 -> 49, EPA trims 42 -> 35, USAID 10,095 -> 12,175 stitches. False is
+    # the engine as it was; `tests/conftest.py` PRE_FLIP
+    # (BEAN_BY_WIDTH_2026_11_16_OFF) and `tests/engine_2026_10_27.json` pin it
+    # False.
+    dark_ink_bean_by_width: bool = True
     # A dark-ink carve (`keep_dark_thin_strokes`) under stage 3's detail floor
     # is kept for the lettering path instead of absorbed into its ground
     # (built OFF 2026-11-03, Kent on the Pooh pot: "a lettering rescue from

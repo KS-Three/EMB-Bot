@@ -1,0 +1,154 @@
+{
+ "designs": 9,
+ "grade_n": 6,
+ "grade_kappa_linear": 0.2941,
+ "grade_kappa_ci95": [
+  0.0,
+  0.4706
+ ],
+ "gross_pins": 41,
+ "hit_rate": 0.2195,
+ "chance": 0.1384,
+ "above_chance": 0.0941,
+ "hit_same_class": 2,
+ "by_class": {
+  "artefact": {
+   "n": 5,
+   "hit": 0,
+   "hit_class": 0
+  },
+  "colour": {
+   "n": 1,
+   "hit": 0,
+   "hit_class": 0
+  },
+  "edge": {
+   "n": 6,
+   "hit": 1,
+   "hit_class": 0
+  },
+  "gap": {
+   "n": 2,
+   "hit": 1,
+   "hit_class": 0
+  },
+  "letter": {
+   "n": 9,
+   "hit": 0,
+   "hit_class": 0
+  },
+  "missing": {
+   "n": 9,
+   "hit": 4,
+   "hit_class": 0
+  },
+  "other": {
+   "n": 4,
+   "hit": 1,
+   "hit_class": 0
+  },
+  "pen_flow": {
+   "n": 3,
+   "hit": 2,
+   "hit_class": 2
+  },
+  "stitch_type": {
+   "n": 2,
+   "hit": 0,
+   "hit_class": 0
+  }
+ },
+ "rows": [
+  {
+   "id": "L_becker_hat_large",
+   "grader": "Okay",
+   "kent": "Okay",
+   "gross_pins": 18,
+   "hit": 3,
+   "hit_class": 1,
+   "chance": 0.099,
+   "grader_faults": 18
+  },
+  {
+   "id": "L_gaulke_roofing_hat",
+   "grader": "Okay",
+   "kent": null,
+   "gross_pins": 5,
+   "hit": 1,
+   "hit_class": 0,
+   "chance": 0.218,
+   "grader_faults": 21
+  },
+  {
+   "id": "L_hotel_fremont_hat",
+   "grader": "Okay",
+   "kent": "Good",
+   "gross_pins": 2,
+   "hit": 0,
+   "hit_class": 0,
+   "chance": 0.167,
+   "grader_faults": 17
+  },
+  {
+   "id": "L_mfab_hat",
+   "grader": "Okay",
+   "kent": "Okay",
+   "gross_pins": 4,
+   "hit": 1,
+   "hit_class": 0,
+   "chance": 0.107,
+   "grader_faults": 15
+  },
+  {
+   "id": "L_precision_drone",
+   "grader": "Bad",
+   "kent": "Terrible",
+   "gross_pins": 5,
+   "hit": 1,
+   "hit_class": 0,
+   "chance": 0.217,
+   "grader_faults": 24
+  },
+  {
+   "id": "L_tires_hat_3d",
+   "grader": "Okay",
+   "kent": "Good",
+   "gross_pins": 0,
+   "hit": 0,
+   "hit_class": 0,
+   "chance": 0.0,
+   "grader_faults": 14
+  },
+  {
+   "id": "L_goldentee_hat",
+   "grader": "Bad",
+   "kent": null,
+   "gross_pins": 1,
+   "hit": 0,
+   "hit_class": 0,
+   "chance": 0.255,
+   "grader_faults": 20
+  },
+  {
+   "id": "L_toat_machine_hat",
+   "grader": "Okay",
+   "kent": "Good",
+   "gross_pins": 3,
+   "hit": 1,
+   "hit_class": 0,
+   "chance": 0.102,
+   "grader_faults": 17
+  },
+  {
+   "id": "L_toat_beanie",
+   "grader": "Okay",
+   "kent": null,
+   "gross_pins": 3,
+   "hit": 2,
+   "hit_class": 1,
+   "chance": 0.129,
+   "grader_faults": 17
+  }
+ ],
+ "radius_mm": 3.0
+}

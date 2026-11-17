@@ -2887,6 +2887,45 @@ arm under contention and `tires` ~80 s (photo-scene prep), the rest under
 cutout the product ships; without it every such render differs from Kent's
 box on BOTH sides.
 
+### The prime grader: a Claude session's eye as the yardstick (2026-11-17)
+
+Kent, 2026-11-17: the computed yardstick is sub par and Claude's grade of a
+picture is "almost SPOT ON", so the session's eye becomes the standing grader.
+He chose: grader plus magnifier, a nightly cloud session, and the closed loop
+(grade, adjust, re-digitize) as a dev tool only. This replaces the 11-14 "no
+nightly run" line; "flips stay his" is unchanged.
+
+From `digitizer/`:
+
+    python -m tools.prime_grader capture   --out eye_pairs_out/prime-<date>/run
+    python -m tools.prime_grader kit       --run eye_pairs_out/prime-<date>/run --out eye_pairs_out/prime-<date>/kit
+    # a session reads tools/prime_grader_rubric.md, then per design: look, write a verdict json, and
+    python -m tools.prime_grader record    --kit eye_pairs_out/prime-<date>/kit --verdict FILE.json
+    python -m tools.prime_grader scorecard --kit eye_pairs_out/prime-<date>/kit --out ../docs/prime-grader --prev ../docs/prime-grader/latest.json
+    python -m tools.prime_grader kent      --kit eye_pairs_out/prime-<date>/kit --marks ../docs/defect-marks-2026-11-1*/marks.json
+
+- **Population:** one job per pro-paired artwork whose art and pro file are
+  both committed (9 today; Bridge and ProSeal are not in the repo). MFab and
+  Tires run without `rembg_isolated` in a cloud session, so their renders
+  differ from Kent's machine.
+- **The magnifier:** each design is cut into at most 9 tiles drawn at 30 px
+  per mm, the original's patch beside ours with a ruler in design mm. The
+  original is placed by an automatic fit (`art_fit` in `kit.json`, an overlap
+  score; low means the left-hand patch is only a rough guide). `record`
+  refuses a verdict that has not read every tile.
+- **Blindness:** the computed yardstick's reading sits in `_sealed.json` and
+  the rubric forbids opening it, Kent's marks or an earlier scorecard before
+  every design is recorded.
+- **The rubric is pinned** (`RUBRIC_SHA256`, `tests/test_prime_grader.py`). A
+  changed word is a new dated version; do not compare scorecards across
+  versions as if they were one instrument.
+- **What it is not:** a quality claim, a gate, or a judge of close A/B picks.
+  The kit folder holds client artwork; only the text scorecard is committed
+  (`docs/prime-grader/`).
+- **Python:** the container's `/usr/bin/python3.12` is 3.12.3, which cannot
+  compile `digitizer_core/pipeline.py` (`digitizer/CLAUDE.md`). Use
+  `uv python install 3.12` first.
+
 ### Eye pairs — the blind A/B picker (2026-09-17)
 
 `python -m tools.eye_pairs` (from `digitizer/`) is the instrument for ROADMAP
