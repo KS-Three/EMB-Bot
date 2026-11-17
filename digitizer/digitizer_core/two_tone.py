@@ -157,6 +157,7 @@ def apply(p) -> bool:
     if lines.any():
         p.rgb[lines] = np.asarray(tt.light, dtype=p.rgb.dtype)
         p.bg_mask = p.bg_mask & ~lines
+        p.page_lines = lines
     if p.enclosed_mask is not None:
         p.enclosed_mask = p.enclosed_mask & ~p.bg_mask
         if not p.enclosed_mask.any():

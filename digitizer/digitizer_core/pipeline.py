@@ -74,6 +74,7 @@ from .textcluster import (detect_text_clusters, ocr_suggest_text,
                           set_lettering_house_angle)
 from .design_ramp import DesignRamp, fit_design_ramp
 from .enclosed_white import apply_enclosed_white
+from .page_line import apply_page_lines
 from .stage5_overlap import PlannedRegion, resolve_overlaps
 from .stage6_blend import SourcePixels, legacy_design_ramp_angle
 from .stage6_hairline import HairlineSet, InkSource, hairline_candidates
@@ -1554,6 +1555,10 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     if cfg.sew_enclosed_white:
         quant_indices, n_enclosed_white = apply_enclosed_white(
             regions, quant_indices, cfg, chart_for(cfg), shape_overrides)
+    # `cfg.page_line_front` (built OFF 2026-11-17): the art's thin white lines
+    # sew first, so the ink beside them lays over their edges.
+    if cfg.page_line_front and p is not None:
+        quant_indices, _n_page_lines = apply_page_lines(regions, quant_indices, p)
     n_by_garment = 0
     for r in regions:
         default_stitched = not r.meta.get("enclosed_background", False) \

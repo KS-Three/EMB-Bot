@@ -591,6 +591,15 @@ class PipelineConfig:
     # halo, which the snap removes, measure the pre-flip engine through
     # `tests/conftest.py`'s PRE_FLIP. False is the pre-flip engine.
     two_tone_snap: bool = True
+    # Sew the art's thin white lines (`two_tone.keep_lines`) BEFORE the ink
+    # either side of them (`page_line.py`, built OFF 2026-11-17, prime
+    # grader's gaulke_roofing_hat: the hairline gap under the inner roof sews
+    # as a white satin bar over the thin black line beneath it, which is left
+    # a ragged fringe). ON, those regions take a front layer so the black
+    # lays over their edges. Order only; no width or fabric number. False is
+    # the engine as it was, byte for byte; `tests/engine_2026_10_27.json`
+    # carries it False. Tests: `tests/test_page_line_front.py`.
+    page_line_front: bool = False
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on
