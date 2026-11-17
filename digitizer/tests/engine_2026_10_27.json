@@ -319,6 +319,7 @@
  "small_text_reset_one_baseline": false,
  "small_text_reset_ground_ring": false,
  "small_text_reset_bean_follows": false,
+ "small_text_reset_tight_word_space": false,
  "small_text_handover": false,
  "small_text_restore_mm": null,
  "small_text_true_size": true,

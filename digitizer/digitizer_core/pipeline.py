@@ -22,6 +22,7 @@ what takes a boundary-edit re-run from a full stage 0-7 cost to
 from __future__ import annotations
 
 import copy
+from contextlib import ExitStack
 from dataclasses import dataclass, field, replace
 from pathlib import Path
 
@@ -1228,6 +1229,10 @@ def build_generation(
                            # ON"): False, as it was
                            **({"bean_follows": True}
                               if cfg.small_text_reset_bean_follows else {}),
+                           # a word space read at 0.35 of the cap, not 0.5 (built OFF
+                           # 2026-11-16): False, the call as it was
+                           **({"tight_word_space": True}
+                              if cfg.small_text_reset_tight_word_space else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))
@@ -2164,7 +2169,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import apex_pro_scope      # `cfg.lettering_columns_apex_pro` (ON since 2026-11-15, Kent's flip), the same way
     # `cfg.lettering_columns_ring_floor` (ON since 2026-11-15, Kent's flip) and
     # `cfg.lettering_columns_stroke_floor` (ON since 2026-11-16, Kent's flip), the same way, as ONE
-    # manager: the `with` below is at CPython's 20 nested blocks (`columns.floor_scopes`)
+    # manager (`columns.floor_scopes`); the scopes now enter through one `ExitStack` below
     from .columns import floor_scopes
     from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
@@ -2183,25 +2188,38 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .stage6_fill import seam_aware_scope     # `cfg.fill_seam_aware_sections` (built OFF), the same way
     from .stage6_satin import chord_aim_scope     # `cfg.satin_free_end_chord_aim` (built OFF), the same way
     from .outline_cut import curve_chord_scope    # `cfg.curve_chord_mm` (built OFF), the same way
-    with apex_cut_scope(cfg.lettering_columns_apex_cut), \
-            curve_chord_scope(cfg.curve_chord_mm), \
-            apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))), \
-            lean_flat_ends_scope(bool((cfg.extra or {}).get("lettering_columns_lean_flat_ends"))), \
-            rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))), \
-            apex_pro_scope(cfg.lettering_columns_apex_pro), \
-            floor_scopes(cfg.lettering_columns_ring_floor,
-                         cfg.lettering_columns_stroke_floor), \
-            apex_pro_joints_scope(cfg.lettering_columns_apex_pro_joints), \
-            fold_cap_flared_scope(cfg.lettering_columns_corner_fold_cap_flared), \
-            apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))), \
-            flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))), \
-            absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))), \
-            fill_section_travel.enabled(cfg), \
-            loop_mitre_scope(cfg.outline_loop_mitre), loop_chain_scope(cfg.keyline_loop_chain), \
-            cut_exposed_scope(cfg.fill_bridge_cut_exposed), seam_order_scope(cfg.fill_seam_order), \
-            seam_priced_scope(cfg.fill_seam_order_priced), one_pass_scope(cfg.fill_one_pass_sections), \
-            seam_aware_scope(cfg.fill_seam_aware_sections), \
-            chord_aim_scope(cfg.satin_free_end_chord_aim):
+    # One `ExitStack`, not one `with a, b, c, ...`: CPython caps statically
+    # nested blocks (20 on 3.12.3, the stock Ubuntu 24.04 build; later 3.12
+    # patch releases take one more) and each manager of a multi-item `with` is
+    # a block. At 21 managers this module raised `SyntaxError: too many
+    # statically nested blocks` at IMPORT on 3.12.3 while CI's newer 3.12 stayed
+    # green (2026-11-17). The stack enters in the order written and exits in
+    # reverse, exactly as the multi-item `with` did, and has no ceiling: add a
+    # new scope as one more `_enter(...)` line.
+    with ExitStack() as _scopes:
+        _enter = _scopes.enter_context
+        _enter(apex_cut_scope(cfg.lettering_columns_apex_cut))
+        _enter(curve_chord_scope(cfg.curve_chord_mm))
+        _enter(apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))))
+        _enter(lean_flat_ends_scope(bool((cfg.extra or {}).get("lettering_columns_lean_flat_ends"))))
+        _enter(rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))))
+        _enter(apex_pro_scope(cfg.lettering_columns_apex_pro))
+        _enter(floor_scopes(cfg.lettering_columns_ring_floor,
+                            cfg.lettering_columns_stroke_floor))
+        _enter(apex_pro_joints_scope(cfg.lettering_columns_apex_pro_joints))
+        _enter(fold_cap_flared_scope(cfg.lettering_columns_corner_fold_cap_flared))
+        _enter(apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))))
+        _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
+        _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
+        _enter(fill_section_travel.enabled(cfg))
+        _enter(loop_mitre_scope(cfg.outline_loop_mitre))
+        _enter(loop_chain_scope(cfg.keyline_loop_chain))
+        _enter(cut_exposed_scope(cfg.fill_bridge_cut_exposed))
+        _enter(seam_order_scope(cfg.fill_seam_order))
+        _enter(seam_priced_scope(cfg.fill_seam_order_priced))
+        _enter(one_pass_scope(cfg.fill_one_pass_sections))
+        _enter(seam_aware_scope(cfg.fill_seam_aware_sections))
+        _enter(chord_aim_scope(cfg.satin_free_end_chord_aim))
         # `outline_inlets_kept` / `_teeth`: logos only, never a photo class
         # (2026-11-16, as `point_touch_split` and `lone_glyph_keep`): a
         # photograph's quantised blobs have inlets everywhere, and none of the

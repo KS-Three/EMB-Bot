@@ -798,6 +798,102 @@ def drop_unclaimed_floor_rescues(regions: list) -> list[float]:
     return [float(r.area_mm2) for r in crumbs]
 
 
+#: `refuse_ground_gaps`: how far outside a component its ring is read, and
+#: how far outside the shapes in that ring their own surround is read, in
+#: working px. Both are the reader's own anti-alias guard plus one pixel.
+_GAP_RING_PX = _DARK_INK_GUARD_PX + 1
+
+
+def refuse_ground_gaps(dark: ThinInk, labels: np.ndarray, valid: np.ndarray) -> ThinInk | None:
+    """`cfg.extra["dark_ink_refuse_ground_gaps"]` (built OFF 2026-11-17):
+    `dark` without the components that are the GROUND showing between or
+    inside lighter shapes, or None when none is left.
+
+    The lightness read keeps a thin dark component ringed by one lighter
+    ground. Light lettering on a dark field makes the same picture inside
+    out: the strip of field between two letters, and a letter's counter, are
+    thin, dark and ringed by one lighter colour. Measured on the US Forest
+    Service shield at 80 mm (yellow lettering on green): 13 such strips were
+    carved as pen strokes, re-snapped from their edge pixels to a second
+    green (5643 beside the field's 5324) and sewn as bean lines, a third
+    thread in a two-colour logo.
+
+    A component is ground when all three hold, read on the quantiser's own
+    label map: (1) its majority label L is not the label G of its ring (it
+    was not lost into its ground: the cartoon's letters, whose label IS the
+    pot's, are left alone); (2) the G shapes in its ring are themselves
+    surrounded mostly by L; (3) the largest L body in that surround is
+    larger than those G shapes together. So the dark colour is the bigger
+    body the light shapes sit on. A dark letter on a light ground fails (2)
+    or (3): its ring's shape is the ground, larger than any dark body round
+    it. No new constant: the ring depth is the reader's guard, the shares
+    are majorities.
+    """
+    h, w = labels.shape
+    n, cc, stats, _ = cv2.connectedComponentsWithStats(dark.mask.astype(np.uint8), connectivity=8)
+    by_label: dict[int, tuple] = {}
+
+    def bodies(label: int):
+        if label not in by_label:
+            m = (valid & (labels == label)).astype(np.uint8)
+            by_label[label] = cv2.connectedComponentsWithStats(m, connectivity=8)[1:3]
+        return by_label[label]
+
+    kr = np.ones((2 * _GAP_RING_PX + 1,) * 2, np.uint8)
+    keep = np.zeros_like(dark.mask)
+    for c in range(1, n):
+        bx, by, bw, bh, _a = (int(v) for v in stats[c, :5])
+        crop = (slice(by, by + bh), slice(bx, bx + bw))
+        comp = cc[crop] == c
+        inside = labels[crop][comp & valid[crop]].astype(np.int64)
+        if not inside.size:
+            keep[crop] |= comp
+            continue
+        own = int(np.bincount(inside).argmax())
+        # the ring, in a window padded by its depth
+        wy0, wx0 = max(0, by - _GAP_RING_PX), max(0, bx - _GAP_RING_PX)
+        wy1, wx1 = min(h, by + bh + _GAP_RING_PX), min(w, bx + bw + _GAP_RING_PX)
+        win = np.zeros((wy1 - wy0, wx1 - wx0), np.uint8)
+        win[by - wy0:by - wy0 + bh, bx - wx0:bx - wx0 + bw] = comp
+        ring = (cv2.dilate(win, kr) > 0) & (win == 0) & valid[wy0:wy1, wx0:wx1]
+        ring &= labels[wy0:wy1, wx0:wx1] != own
+        ring_labels = labels[wy0:wy1, wx0:wx1][ring].astype(np.int64)
+        if not ring_labels.size:
+            keep[crop] |= comp
+            continue
+        ground = int(np.bincount(ring_labels).argmax())
+        g_cc, g_stats = bodies(ground)
+        ids = np.unique(g_cc[wy0:wy1, wx0:wx1][ring & (labels[wy0:wy1, wx0:wx1] == ground)])
+        ids = ids[ids > 0]
+        if not ids.size:
+            keep[crop] |= comp
+            continue
+        g_area = int(sum(int(g_stats[i, cv2.CC_STAT_AREA]) for i in ids))
+        # the surround of those G shapes, in the window that holds them all
+        x0 = max(0, min(int(g_stats[i, cv2.CC_STAT_LEFT]) for i in ids) - _GAP_RING_PX)
+        y0 = max(0, min(int(g_stats[i, cv2.CC_STAT_TOP]) for i in ids) - _GAP_RING_PX)
+        x1 = min(w, max(int(g_stats[i, cv2.CC_STAT_LEFT] + g_stats[i, cv2.CC_STAT_WIDTH]) for i in ids) + _GAP_RING_PX)
+        y1 = min(h, max(int(g_stats[i, cv2.CC_STAT_TOP] + g_stats[i, cv2.CC_STAT_HEIGHT]) for i in ids) + _GAP_RING_PX)
+        fig = np.isin(g_cc[y0:y1, x0:x1], ids).astype(np.uint8)
+        surround = (cv2.dilate(fig, kr) > 0) & (fig == 0)
+        total = int(surround.sum())
+        is_own = surround & valid[y0:y1, x0:x1] & (labels[y0:y1, x0:x1] == own)
+        if total == 0 or float(is_own.sum()) / float(total) < 0.5:
+            keep[crop] |= comp
+            continue
+        o_cc, o_stats = bodies(own)
+        o_ids = np.unique(o_cc[y0:y1, x0:x1][is_own])
+        o_ids = o_ids[o_ids > 0]
+        if o_ids.size and max(int(o_stats[i, cv2.CC_STAT_AREA]) for i in o_ids) > g_area:
+            continue                      # the ground, showing through: not a stroke
+        keep[crop] |= comp
+    if not keep.any():
+        return None
+    if keep.sum() == dark.mask.sum():
+        return dark
+    return _restricted(dark, keep)
+
+
 # The flat lane's dark-ink carve (`cfg.flat_light_text_runs`, built OFF
 # 2026-11-07, ON since that day, Kent's flip). Stage 0 now sends Fremont
 # hat flat (#1301), and its tan tagline (EST 1895, EAT STAY PLAY) stopped reading: native word cc
@@ -828,6 +924,11 @@ def carve_flat_dark_ink(p: Prep, cfg: PipelineConfig, q):
     dark = find_dark_thin_ink(p, cfg, labelled)
     if dark is None:
         return q
+    if (getattr(cfg, "extra", None) or {}).get("dark_ink_refuse_ground_gaps"):
+        # built OFF 2026-11-17: the field between light letters is not a pen stroke
+        dark = refuse_ground_gaps(dark, q.labels, labelled)
+        if dark is None:
+            return q
     absorbed = absorbed_dark_ink(dark, q.labels, labelled)
     if absorbed is None:
         return q
