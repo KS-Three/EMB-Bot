@@ -96,5 +96,25 @@ loses a stray diagonal at its joint); USGS 7,887 -> 7,898, trims 19 both
 (tagline a and d change, read about the same). Cost: the M's stems sew as
 two columns each (5 columns, was 2). Not run: the `scratch_kent` corpus.
 
-**Not fixed, seen again:** NOAA / EPA ring text; Forest Service's N and A
-joints are still rough.
+**Kent 2026-11-17 on all three flags: "Paired check first".** None flips
+until the pro-paired jobs are run with all three ON against OFF and he has
+seen art | before | after for every job that moves. It has to run on his
+machine (`scratch_kent/`; his EMB-Bot folder is not offered to cloud
+sessions): `python -m tools.pro_intake --list`, then `tools.pro_pair --job
+SLUG` twice per job, the ON arm with `--set extra.KEY=true` for each of
+`dark_ink_refuse_ground_gaps`, `group_consistent_fill_angle_split_ground`,
+`lettering_columns_neck_cuts`; a job that moves is re-run one flag at a
+time to say which moved it. Look at the real Becker jobs for the bare A
+counter named above.
+
+**N and A joints (Kent's next pick, 11-17): looked, nothing built.** A
+contact sheet of the 36 Forest Service letters at 80 mm (outline + satin
+runs per letter): every letter covers 0.97 or more of itself, and after the
+M no letter has a missing stroke. The N sews stem, diagonal, stem with the
+diagonal run through both joints; the A two legs and a bar. That is the
+`apex_pro` / `apex_pro_joints` construction Kent ruled ON 11-15. What
+roughness is left is that construction at 6.5 mm, so a change needs his
+pins on a picture or the pro's file for lettering this size, not another
+rule from here.
+
+**Not fixed, seen again:** NOAA / EPA ring text.
