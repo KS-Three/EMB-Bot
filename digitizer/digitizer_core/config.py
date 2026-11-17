@@ -4093,6 +4093,25 @@ class PipelineConfig:
     # False is the lane as it was; `tests/conftest.py` PRE_FLIP and
     # `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_ring_floor.py`.
     lettering_columns_ring_floor: bool = True
+    # Under `lettering_columns_small_bold`'s thin floor, a Column whose crosses
+    # mostly fall under the 0.5 mm cross floor (it keeps fewer than HALF of them
+    # over it) is sewn AT the floor instead of dropping most of its crosses; a
+    # letter this changes is kept only if it sews better, judged
+    # (`columns._STROKE_FLOOR`, `_stroke_floor_judged`; built OFF 2026-11-15 as
+    # `cfg.extra["lettering_columns_stroke_floor"]`, #1587). **ON since
+    # 2026-11-16, Kent's flip**: shown the NOAA ring-text picture (today / flag
+    # ON / bean arm) and asked "Flip the existing flag
+    # lettering_columns_stroke_floor ON?", he answered: "On, the United States
+    # is a huge improvement." Evidence: NOAA emblem ring text (90 mm left
+    # chest, strokes 0.48-0.55 mm): ring letters with under 0.8 of their area
+    # sewn drop from 7 to 2, 33,436 -> 33,570 stitches, 28 trims both, digitize
+    # 49.1 -> 52.6 s; the 22 pro-paired jobs and 20 other trial logos are
+    # byte-identical; Bukit Asam's "beyond" y no longer sews as an r (catch
+    # +12 to +33 s per Bukit digitize). Promoted from `cfg.extra` to a field so
+    # the default can be ON. False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_stroke_floor.py`.
+    lettering_columns_stroke_floor: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
