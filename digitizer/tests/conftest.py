@@ -1122,6 +1122,12 @@ PRE_FLIP.update(TEETH_2026_11_15_OFF)
 # "On, the United States is a huge improvement."): `tests/test_stroke_floor.py`.
 STROKE_FLOOR_2026_11_16_OFF = {"lettering_columns_stroke_floor": False}
 PRE_FLIP.update(STROKE_FLOOR_2026_11_16_OFF)
+# `dark_ink_bean_by_width` (Kent 2026-11-16, shown the EPA, NOAA, USAID and
+# Bridge hat ORIGINAL ART | BEFORE | AFTER sheets and asked "Flip
+# dark_ink_bean_by_width ON?": "Flip ON (Recommended)"):
+# `tests/test_dark_ink_bean_by_width.py`.
+BEAN_BY_WIDTH_2026_11_16_OFF = {"dark_ink_bean_by_width": False}
+PRE_FLIP.update(BEAN_BY_WIDTH_2026_11_16_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
