@@ -72,7 +72,7 @@ pictures above stand.
 
 | Design | Pictures | By eye |
 |---|---|---|
-| `toat_machine_beanie` (pro row) | `pro_row_toat_machine_beanie__zoom1..3`, `__whole` | **Better**, as the other TOAT jobs: the small A has two legs, a flat top and an open counter; the T bars lose the fanned patch (the first T's bar ends in a slant cut, as the art's does). 17,012 -> 16,961 stitches, trims 21 -> 19. |
+| `toat_machine_beanie` (pro row) | `otherrow_toat_machine_beanie__zoom1..3`, `__whole` | **Better**, as the other TOAT jobs: the small A has two legs, a flat top and an open counter; the T bars lose the fanned patch (the first T's bar ends in a slant cut, as the art's does). 17,012 -> 16,961 stitches, trims 21 -> 19. |
 
 ## No visible change
 
@@ -80,7 +80,7 @@ pictures above stand.
 |---|---|---|
 | `drone_render` (fixture) | `fixture_drone_render__zoom1..4`, `__whole` | no visible change: a few grey patches in the hero art shift at the sub-millimetre level. 18,337 -> 18,342 stitches. |
 | `repro_gradient_white_icon` (fixture) | `fixture_repro_gradient_white_icon__zoom1`, `__whole` | no visible change at the size shown (the lower-right border's thread differs by a few stitches). 22,911 -> 22,813. |
-| `mfab_lc` (pro row) | `pro_row_mfab_lc__zoom1..4`, `__whole` | no visible change: connector and fan stitches shift inside the lettering. 17,906 -> 17,966, trims 24 -> 26. |
+| `mfab_lc` (pro row) | `otherrow_mfab_lc__zoom1..4`, `__whole` | no visible change: connector and fan stitches shift inside the lettering. 17,906 -> 17,966, trims 24 -> 26. |
 
 **Totals (second run):** 9 + 9 pro rows + 26 fixtures = 44 designs; 7 moved (the 3 TOAT rows are one artwork, plus 3
 fixtures and `mfab_lc`), every mover pictured. By eye: 3 better (all TOAT), **0 worse**, 4 no visible change
