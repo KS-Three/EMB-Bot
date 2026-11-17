@@ -2013,6 +2013,47 @@ GUARD_KEY = "small_text_true_size_guarded"
 COUNTER_KEY = "small_text_min_counter_mm"
 
 
+#: `_tall_letters` (`cfg.extra["small_text_keep_tall_letters"]`, built OFF
+#: 2026-11-17). `_core` keeps a line's letters of ONE height (0.8-1.25 of the
+#: median), which in a lowercase line is its x-height: a capital or a tall
+#: ascender is set aside as a stray and loses its lettering tags. SBA's
+#: subtitle at 90 mm: the A of "Administration" (3.75 mm in a 2.72 mm line,
+#: 1.38x) and its d (4.12 in 2.62, 1.57x) were stripped; the A then took the
+#: fill tier and sewed as a blob beside satin neighbours. A tall letter of
+#: the line stands on its baseline (or, a descender, hangs from its top), is
+#: taller than the line by no more than `TALL_MAX_RATIO`, is no wider than
+#: `_adopt` lets a letter be, and sits within one line height of a member.
+#: Candidates: layout, judged by eye.
+TALL_MAX_RATIO = 1.7
+TALL_EDGE_SHARE = 0.15
+
+
+def _tall_letters(strays: list[Region], line: list[Region], cap: float) -> list[Region]:
+    """The strays that are capitals, ascenders or descenders of `line` (see
+    `TALL_MAX_RATIO`), in input order."""
+    if not strays or not line or cap <= 0:
+        return []
+    thread = line[0].thread_index
+    base = float(np.median([r.polygon.bounds[3] for r in line]))    # y down: the baseline
+    top = float(np.median([r.polygon.bounds[1] for r in line]))
+    out = []
+    for r in strays:
+        if r.thread_index != thread:
+            continue
+        b = r.polygon.bounds
+        h = b[3] - b[1]
+        if not (1.25 * cap < h <= TALL_MAX_RATIO * cap) or (b[2] - b[0]) > 1.6 * cap:
+            continue
+        on_base = abs(b[3] - base) <= TALL_EDGE_SHARE * cap
+        from_top = abs(b[1] - top) <= TALL_EDGE_SHARE * cap
+        if not (on_base or from_top):
+            continue
+        if not any(q.polygon.bounds[0] - cap <= b[2] and b[0] <= q.polygon.bounds[2] + cap for q in line):
+            continue
+        out.append(r)
+    return out
+
+
 def _stray_line(strays: list[Region], keep_stray_lines: bool) -> list[Region]:
     """`keep_stray_lines`: the strays that are themselves a line of lettering
     (`_core`, three or more), else none."""
@@ -2108,7 +2149,8 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        thread_wts: dict[int, int] | None = None,
                        default_wt: int = 40,
                        min_cap_mm: float = 0.0,
-                       handover: bool = False) -> list[dict]:
+                       handover: bool = False,
+                       keep_tall_letters: bool = False) -> list[dict]:
     """The true-size half of this module (`cfg.small_text_restore_mm`): no
     scale, no move. For every line of lettering under `cap_mm`, ADOPT the
     untagged letters of the line into its text cluster and RETRACE every
@@ -2214,6 +2256,12 @@ def restore_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
             # They sew as the ordinary shapes they are.
             line_ids = {id(r) for r in group}
             strays = [r for r in clusters[cid] if id(r) not in line_ids]
+            if keep_tall_letters:
+                # built OFF: a capital or ascender of this line keeps its tags
+                for r in _tall_letters(strays, group, cap):
+                    r.meta["small_text_tall_letter"] = True
+                    claimed.add(id(r))
+                strays = [r for r in strays if not r.meta.get("small_text_tall_letter")]
             kept = _stray_line(strays, keep_stray_lines)
             kept_ids = {id(r) for r in kept}
             for r in strays:
