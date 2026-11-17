@@ -22,7 +22,8 @@ from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
-from tests.conftest import FLIP_2026_10_23, RECIPE_2026_10_27, TEXT_GAPS_2026_11_15_OFF
+from tests.conftest import (FLAG_ENDS_SEAM_2026_11_17_OFF, FLIP_2026_10_23, RECIPE_2026_10_27,
+                            TEXT_GAPS_2026_11_15_OFF)
 
 FABRIC = fabric_for_garment("hat_front")
 
@@ -58,7 +59,8 @@ def _sew(regions, **kw):
     # OFF_MD5 was captured on main before the 2026-10-23 and 2026-10-27 flips: pin them off (conftest)
     # ...and before the six 2026-11-15 text/gap flips
     cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **RECIPE_2026_10_27,
-                                            **TEXT_GAPS_2026_11_15_OFF, **kw})
+                                            **TEXT_GAPS_2026_11_15_OFF,
+                                            **FLAG_ENDS_SEAM_2026_11_17_OFF, **kw})
     if cfg.silhouette_underfill:
         regions, _ = su.apply(regions)
     planned, _ = resolve_overlaps(regions, FABRIC, cfg)

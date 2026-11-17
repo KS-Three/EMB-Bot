@@ -160,7 +160,10 @@ def test_on_the_flag_the_red_bands_sew_their_art(flag):
 def test_off_the_last_colour_lies_over_its_neighbours(flag):
     """The fault the flag fixes, pinned so a change to the side-by-side path shows."""
     art_mm = 100.0 * ROW_PX / 1200
-    plan = _sew(flag)
+    # the engine before the ends/seam trio (ON since 2026-11-17, Kent): with
+    # `satin_seam_hold` the inner reds sew 4.04 mm from 4.00 art and the fault is gone
+    from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF
+    plan = _sew(flag, **FLAG_ENDS_SEAM_2026_11_17_OFF)
     assert not any(r.kind == "fill" for b in plan.blocks if b.thread_index == WHITE
                    for r in b.runs)
     # red sews last here and takes its pull on both rails, over the white

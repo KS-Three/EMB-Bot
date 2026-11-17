@@ -27,6 +27,7 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage6_hairline import InkSource
 from digitizer_core.stage7_sequence import _sews_satin, sequence
+from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF
 
 
 def _loops(r=1.2, d=2.4, turns=3, w=0.9):
@@ -56,7 +57,9 @@ def _region(poly, **meta) -> Region:
 
 
 def _runs(poly, **cfg_kw):
-    cfg = PipelineConfig(**cfg_kw)
+    # the flag ends/seam trio (ON since 2026-11-17) insets every free satin end;
+    # the md5s were captured before it
+    cfg = PipelineConfig(**{**FLAG_ENDS_SEAM_2026_11_17_OFF, **cfg_kw})
     reg = _region(poly)
     blocks, _ = sequence([PlannedRegion(region=reg, polygon=poly, sew_index=0)],
                          fabric_for_garment("hat_front"), cfg)

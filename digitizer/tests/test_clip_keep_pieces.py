@@ -247,10 +247,15 @@ def test_gaulke_roof_line_is_sewn_by_default_and_lost_legacy():
     line is missing. Read without shape ids, which move per platform. The
     default (the parent keeps its ink) sews it, and so does the full path."""
     art = ROOT / "testdata" / "photo" / "logo_gaulke_roofing.png"
-    kw = dict(target_width_mm=80.0, garment_id="left_chest")
-    # The legacy drop needs the roof's white line SEWN over the black stroke, so
-    # that arm reads the stages with `page_line_open` False (ON by default since
-    # Kent 2026-11-17, which leaves the channel bare fabric and drops nothing).
+    base = dict(target_width_mm=80.0, garment_id="left_chest")
+    # Held before the flag ends/seam trio (ON since 2026-11-17, Kent): with it
+    # the legacy arm has no inkless parent left on this fixture (CI run
+    # 44158966435), so the fixture stops showing the drop this prices.
+    # And the legacy drop needs the roof's white line SEWN over the black
+    # stroke, so that arm reads the stages with `page_line_open` False (ON by
+    # default since Kent 2026-11-17, which leaves the channel bare fabric).
+    from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF
+    kw = dict(**base, **FLAG_ENDS_SEAM_2026_11_17_OFF)
     cfg = PipelineConfig(**kw, page_line_open=False)
     result = run_stages(art, cfg)
     regions = [r for r in result.regions if r.meta.get("stitched", True)]
@@ -263,7 +268,7 @@ def test_gaulke_roof_line_is_sewn_by_default_and_lost_legacy():
                                  result.design_class)
         assert _inkless_parents(on, regions) == []
     # and the "sewn by default" half at the LIVE default (channel unsewn)
-    live_cfg = PipelineConfig(**kw)
+    live_cfg = PipelineConfig(**base)
     live = run_stages(art, live_cfg)
     live_regions = [r for r in live.regions if r.meta.get("stitched", True)]
     on, _ = resolve_overlaps(live_regions, fabric_for(live_cfg), live_cfg, live.design_class)
