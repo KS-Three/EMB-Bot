@@ -4343,6 +4343,28 @@ class PipelineConfig:
     # the walk as it was; `tests/conftest.py` PRE_FLIP and
     # `tests/engine_2026_10_27.json` pin it False.
     lettering_columns_connectors_edge_walk: bool = True
+    # Under `lettering_columns`, a needle-down travel (a hop between strokes,
+    # an underpath) never crosses fabric that none of the letter's satin
+    # covers (2026-11-17, built OFF; `columns._cut_bare_travel`). The link
+    # rule calls a hop "inside the letter" by the outline grown by the pull,
+    # which also closes a notch the satin leaves open: the prime grader's
+    # Toat beanie scorecard (pins near 38.5, 31.5 and 37, 36 mm) shows a bare
+    # run across the c of Machine's mouth. ON: such a segment breaks the run
+    # and the needle jumps with a trim over it. False is the walk as it was,
+    # byte for byte. Layout, not a physical constant. Tests:
+    # `tests/test_column_cover_hops.py`.
+    # **ON since 2026-11-17, Kent: "Flip ON anyway"**, shown the Toat beanie c-mouth
+    # ORIGINAL | BEFORE | AFTER (11 of 35 runs move: beanie and Bridge better, the
+    # rest no visible change, none worse, 15 extra trims) with the director's
+    # recommendation to keep it OFF until a sew-out. **The three exposure
+    # tolerances (`columns._BARE_MAX_MM` 0.3, `_BARE_GROUND_MM` 0.1 and the
+    # script path's 0.2 mm) are untested on cloth and were flipped OVER ROADMAP
+    # gate 1 ("link cover tolerance") by Kent's ruling, knowingly.** A
+    # no-tolerance rule (cut any travel off the artwork) kept the cure but added
+    # 21 trims on the 9 pro jobs instead of 8 and was dropped
+    # (`docs/renders/cover-hops-2026-11-17/README.md`). False is the walk as it
+    # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it False.
+    lettering_columns_cover_hops: bool = True
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2
@@ -4984,6 +5006,21 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_text_cluster_solid_guard.py`.
     text_cluster_solid_guard: bool = True
+    # A line of mixed cap heights is still a word (2026-11-17, built OFF,
+    # prime grader scorecard: "To A T" on the TOAT hat and beanie). The letter
+    # door links two glyphs only within `LETTER_HEIGHT_RATIO` (0.8) of each
+    # other's height, so a line set in two sizes splits: TOAT's T and T (11.9
+    # mm) pair, its o and A (7.2 / 7.7 mm) pair, no pair reaches
+    # `MIN_CLUSTER_MEMBERS`, nothing tags, and the small A sews as the
+    # generic satin's three patches (a fan over the apex, a crossbar run into
+    # a leg) with its counter shut. ON, the glyphs no cluster took are
+    # clustered once more at `HEIGHT_BAND_MIN` (0.6), every other term of the
+    # link unchanged, and a group of three or more tags (`textcluster.
+    # _mixed_caps`); a group that tagged keeps its members. The lane then
+    # sews the A as the pro does: two level-crossed legs and a short crossbar
+    # between them. Layout, not a cloth constant (gate 1). False is the tagger
+    # as it was, byte for byte. Tests: `tests/test_text_cluster_mixed_caps.py`.
+    text_cluster_mixed_caps: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
