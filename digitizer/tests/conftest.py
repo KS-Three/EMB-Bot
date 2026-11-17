@@ -1154,6 +1154,10 @@ PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
 # `tests/test_page_line_front.py` names the flag itself.
 PAGE_LINE_OPEN_2026_11_17_OFF = {"page_line_open": False}
 PRE_FLIP.update(PAGE_LINE_OPEN_2026_11_17_OFF)
+# `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
+# gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
+COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
+PRE_FLIP.update(COVER_HOPS_2026_11_17_OFF)
 # The flag's ends and seams: `satin_cap_skew_inset`, `satin_seam_hold`,
 # `satin_free_end_chord_aim` (Kent 2026-11-17, shown the labelled before |
 # after page for his Flag.webp and 12 logos: "Flip all three ON

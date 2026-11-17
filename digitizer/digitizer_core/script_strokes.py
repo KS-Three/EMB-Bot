@@ -1127,7 +1127,8 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                          start_near=None, end_near=None,
                          inside_connectors: bool = False,
                          inside_stagger: bool = False,
-                         ink=None, drawn_width: bool = False):
+                         ink=None, drawn_width: bool = False,
+                         cover_hops: bool = False):
     """One script word (its ARTWORK polygon) -> (runs, report), the satin
     tier's contract (`empty` when nothing could be built: the caller falls
     through to the ladder). `ink`: `stage6_hairline.InkSource` or None.
@@ -1189,6 +1190,12 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     report["script_path_ink"] = int(grid.source == "ink")
     report["script_underlay_cleared"] = clear_finished_underlay(runs, trim_at_mm)
     report["script_hops_buried"] = bury_hops(runs, trim_at_mm)
+    if cover_hops:
+        # `cfg.lettering_columns_cover_hops`: a travel on none of the word's satin is cut
+        from .columns import _cut_bare_travel
+        grounds = [LineString(r.points) for r in runs if r.kind == stitches.SATIN and len(r.points) > 1]
+        if grounds:
+            runs = _cut_bare_travel(runs, grounds, report, ground_mm=0.2)
     report["jumps"] = sum(1 for r in runs[1:] if r.jump)
     return runs, report
 

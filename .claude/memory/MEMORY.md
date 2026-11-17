@@ -33,6 +33,7 @@ the OLDEST lines whole to the archive.
 - [Corner-fold kappa](corner-fold-kappa-2026-11-15.md) — Becker hat kappa drop 0.337->0.289 = scorecard REGISTRATION (0.1 mm moves the 2 mm grid), not the fold: one frame +0.006/-0.008; tripwire frame pin ON 11-15 (Kent "Flip ON now")
 - [Corner turn](corner-turn-2026-11-14.md) — `corner_fold_apex_side` ON 11-14 (Kent "Flip ON"): the fold takes a pointed-slot E, one column round both corners; only the 5 Becker jobs move, trims 589->584
 - [Counter fan](counter-fan-2026-11-14.md) — MFab's A counter as one fanned satin, 29.9 -> 7.1 deg off the pro at 90 mm; 5.0 mm cap refuses it from ~94 mm; Kent 11-15 "Both ON, keep 5.0", flip pending
+- [Cover hops](cover-hops-2026-11-17.md) — Kent 11-17 "Flip ON anyway" OVER gate 1: `lettering_columns_cover_hops` (Toat c-mouth bars); its 0.3/0.1/0.2 mm tolerances untested on cloth; no-tolerance rule dropped
 - [Curve facets](curve-facets-2026-11-14.md) — lettering chords = the Column lane's W/16 simplify, not stage 4; `curve_chord_mm` + `curve_chord_stage4` OFF; Tires #0 cured (stage 4), lettering pins not measurable; next = satin end jitter
 - [Dark-ink bean by width](dark-ink-bean-by-width-2026-11-16.md) — `dark_ink_bean_by_width` ON 11-16 (Kent "Flip ON"): bean vs satin by group median width (0.75 mm), not contrast 50; NOAA 0.46 mm lost strokes, EPA 0.91 mm sewed bean; 8 of 16 move
 - [Dark-ink ground gaps](dark-ink-ground-gaps-2026-11-17.md) — `dark_ink_refuse_ground_gaps` OFF: field between light letters read as pen strokes; Forest Service 3 -> 2 threads
