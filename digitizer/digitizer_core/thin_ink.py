@@ -343,7 +343,16 @@ DARK_INK_STRAY_SHARE = 0.5
 # a solid ground with a few thin pieces) sit at 0.005-0.035; the Hotel Fremont
 # hat and patch (316 components, a label that IS the strokes) at 0.940-0.999.
 # No label between 0.035 and 0.94; Bridge's "BAR" lettering (3 components) at
-# 0.075-0.172, under the line, so it survives and sews as satin.
+# 0.075-0.172. The label test ALONE (v2) lost NPS's snow streaks: they carry
+# the mountain's body label (share low) but are islands, strokes drawn on the
+# white snow in the mountain's colour. v3 (2026-11-16) refuses a piece as a
+# solid body's limb only when its label is under the line AND a pixel of its
+# own label touches it; letter counters are refused by `is_counter`, with the
+# flat labels' own thin components as `glyphs` (`carve_flat_dark_ink`). Probe:
+# Forest Service 13 pieces = 8 counters + 5 attached body limbs; NPS 31 =
+# 4 counters, 19 attached body limbs, 8 body-label islands (5 snow streaks,
+# kept as ink); Hotel Fremont 158 = no counter, 11 attached but an ink label
+# (0.94+), the rest islands: all ink.
 DARK_INK_LABEL_INK_SHARE = 0.5
 
 
@@ -558,6 +567,20 @@ def merge_thin_ink(a: ThinInk | None, b: ThinInk | None) -> ThinInk | None:
                    dark=a.dark + (b.dark if a.dark == len(a.spools) else 0))
 
 
+def _touches_own_label(merged: np.ndarray, base_valid: np.ndarray, comp: np.ndarray,
+                       by: int, bx: int, label: int) -> bool:
+    """True when a foreground pixel carrying `label` lies in the 1 px border
+    (3x3 dilation minus itself) round `comp`, whose bbox corner is (by, bx)."""
+    h, w = merged.shape
+    bh, bw = comp.shape
+    y0, x0 = max(by - 1, 0), max(bx - 1, 0)
+    y1, x1 = min(by + bh + 1, h), min(bx + bw + 1, w)
+    pad = np.zeros((y1 - y0, x1 - x0), bool)
+    pad[by - y0:by - y0 + bh, bx - x0:bx - x0 + bw] = comp
+    border = cv2.dilate(pad.astype(np.uint8), np.ones((3, 3), np.uint8)).astype(bool) & ~pad
+    return bool((border & base_valid[y0:y1, x0:x1] & (merged[y0:y1, x0:x1] == label)).any())
+
+
 def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray,
                       own_ground: bool = False) -> ThinInk | None:
     """The components of `dark` that the merge folded into their ground, as
@@ -572,13 +595,15 @@ def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray,
     quantiser read already owns (none left in `base_valid`), is absorbed.
 
     `own_ground` (`cfg.flat_dark_ink_own_ground`): a component whose
-    majority label is NOT the majority label of the ground AROUND it
-    (`_dark_ring`'s foreground pixels) is still absorbed when that label is
-    an INK LABEL -- at least `DARK_INK_LABEL_INK_SHARE` of the label's
-    foreground pixels lie in `dark` (the label IS the strokes) -- and
-    survives otherwise (a thin piece of a solid ground's own colour, ringed
-    by another colour). A component whose ring is the same label, or has no
-    foreground pixels, answers as before."""
+    majority label differs from the majority label of the ground AROUND it
+    (`_dark_ring`'s foreground pixels) survives (is not carved) only when
+    BOTH hold: its label is a BODY label (under `DARK_INK_LABEL_INK_SHARE`
+    of the label's foreground pixels lie in `dark`) AND it is ATTACHED (a
+    foreground pixel of its own label touches it, `_touches_own_label`): a
+    limb of a solid body. An ink label (the label IS the strokes), or an
+    island of a body label (a stroke drawn on another ground in the body's
+    colour), stays absorbed. A component whose ring is the same label, or has
+    no foreground pixels, answers as before."""
     n, cc, stats, _ = cv2.connectedComponentsWithStats(dark.mask.astype(np.uint8), connectivity=8)
     totals = np.bincount(merged[base_valid].astype(np.int64)) if base_valid.any() else np.zeros(1, np.int64)
     ink_px = np.bincount(merged[dark.mask & base_valid].astype(np.int64), minlength=totals.size) \
@@ -598,7 +623,8 @@ def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray,
                 ring, _n, _g = _dark_ring(merged, base_valid, comp, by, bx)
                 if ring is not None and ring.size and \
                         int(np.bincount(ring.astype(np.int64)).argmax()) != label and \
-                        float(ink_px[label]) / float(totals[label]) < DARK_INK_LABEL_INK_SHARE:
+                        float(ink_px[label]) / float(totals[label]) < DARK_INK_LABEL_INK_SHARE and \
+                        _touches_own_label(merged, base_valid, comp, by, bx, label):
                     continue
         keep[crop] |= comp
     if not keep.any():
@@ -804,7 +830,9 @@ def drop_unclaimed_floor_rescues(regions: list) -> list[float]:
 # that shares a cluster with other strokes (a word's letters, the rope)
 # leaves it for the dark block. No new constant: every number is the
 # gradient lane's. `glyphs` is None -- the flat lane has no thin population
-# to name a glyph's counter (see `is_counter`).
+# to name a glyph's counter (see `is_counter`) -- unless
+# `cfg.flat_dark_ink_own_ground` builds one from the flat labels' own thin
+# components.
 def carve_flat_dark_ink(p: Prep, cfg: PipelineConfig, q):
     """`q` (the flat quantiser's `Quant`) with the absorbed dark-ink strokes
     moved to a trailing label block, named in `dark_ink_labels`; `q` itself
@@ -816,12 +844,21 @@ def carve_flat_dark_ink(p: Prep, cfg: PipelineConfig, q):
     labelled = valid & (q.labels >= 0)
     if not labelled.any():
         return q
-    dark = find_dark_thin_ink(p, cfg, labelled)
+    own_ground = bool(getattr(cfg, "flat_dark_ink_own_ground", False))
+    glyphs = None
+    if own_ground:
+        # `flat_dark_ink_own_ground`: the flat labels' own thin components name
+        # a letter's COUNTER (`is_counter`), as the gradient lane's population
+        # does. Off: no glyphs, as before.
+        flat = np.where(labelled, q.labels, -1).astype(np.int32)
+        glyphs = np.zeros(flat.shape, bool)
+        for t in iter_thin_components(flat, len(q.thread_indices), p.px_per_mm, cfg):
+            tx, ty, tw, th = t.bbox
+            glyphs[ty:ty + th, tx:tx + tw] |= t.comp
+    dark = find_dark_thin_ink(p, cfg, labelled, glyphs)
     if dark is None:
         return q
-    absorbed = absorbed_dark_ink(
-        dark, q.labels, labelled,
-        own_ground=bool(getattr(cfg, "flat_dark_ink_own_ground", False)))
+    absorbed = absorbed_dark_ink(dark, q.labels, labelled, own_ground=own_ground)
     if absorbed is None:
         return q
     base_k = len(q.thread_indices)

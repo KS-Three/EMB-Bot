@@ -1303,15 +1303,18 @@ class PipelineConfig:
     # shapes in a third colour block on a two-colour logo (90.5% of the carved
     # pixels on the field's own label, 48% within 2 px of yellow, 5% of
     # green). The NPS arrowhead (75 mm) gains a 121-stitch block the same way.
-    # ON: a component whose majority label differs from the majority label of
-    # its ring (`_dark_ring`, foreground pixels) survives unless that label is
-    # an INK LABEL, at least `DARK_INK_LABEL_INK_SHARE` (0.5) of its pixels
-    # inside the dark thin population: then it is absorbed as before. Measured
-    # on 363 absorbed components, six designs: Forest Service and NPS 0.005-
-    # 0.035 (a solid ground, pieces survive), Hotel Fremont hat and patch
-    # 0.940-0.999 (the label is the strokes, carved as today), Bridge's BAR
-    # 0.075-0.172 (survives, sews as satin). Ring on the same label, or no
-    # foreground ring pixels, keeps the old answer.
+    # ON (rule v3): a carved piece is refused when it is (a) a letter COUNTER
+    # (`is_counter`, with the flat labels' own thin components as `glyphs`), or
+    # (b) a LIMB of a solid body: its majority label differs from its ring's
+    # (`_dark_ring`), the label is a body label (under `DARK_INK_LABEL_INK_SHARE`,
+    # 0.5, of its pixels in the dark thin population) AND a pixel of its own
+    # label touches it. An island of a body label, or any piece of an ink label,
+    # stays ink. Measured on 363 absorbed components, six designs: label ink
+    # share Forest Service and NPS 0.005-0.035, Hotel Fremont 0.940-0.999,
+    # Bridge BAR 0.075-0.172. v2's label test alone lost NPS's snow streaks (body
+    # label, but islands on white snow); attachment keeps them. Forest Service
+    # 13 pieces = 8 counters + 5 attached limbs; Fremont 158 pieces: none refused.
+    # Ring on the same label, or no foreground ring pixels: the old answer.
     # Read only with `flat_light_text_runs`. OFF: never read, byte for byte.
     # Tests: `tests/test_flat_dark_ink_own_ground.py`.
     flat_dark_ink_own_ground: bool = False
