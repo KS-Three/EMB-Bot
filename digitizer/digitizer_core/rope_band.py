@@ -21,7 +21,8 @@ dropped: every strand's area is inside the band.
 A text cluster's glyph pieces (`text_cluster_id`), and a chain too short or too
 few (a single letter's rescued specks), are never touched.
 
-Off (the default) this returns its input, so the plan is byte-identical. Not
+ON by default since 2026-11-17 (Kent: "Flip ON (Recommended)"); off it returns
+its input, so the plan is byte-identical to the engine as it was. Not
 a physical constant: the numbers are read from the art's geometry (strand
 gaps 0.0-0.3 mm in the Fremont plan) and the choice of one band over a drawn
 twist is LAYOUT, judged from renders.

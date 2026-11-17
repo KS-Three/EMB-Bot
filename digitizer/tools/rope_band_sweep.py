@@ -46,7 +46,7 @@ def main(argv=None) -> int:
     for name, garment, width, art in _jobs(a.fixtures, a.only)[k::n]:
         stem = Path(name).stem
         try:
-            d0 = pp.digitize(art, width, garment)
+            d0 = pp.digitize(art, width, garment, extra={pp.EXTRA_PREFIX + "rope_band": False})
             d1 = pp.digitize(art, width, garment, extra={pp.EXTRA_PREFIX + "rope_band": True})
         except Exception as e:  # noqa: BLE001 - recorded, not hidden
             rows[name] = {"error": repr(e)[:200]}

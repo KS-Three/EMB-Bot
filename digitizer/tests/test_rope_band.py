@@ -18,6 +18,16 @@ ON = frozen_cfg(extra={rb.KEY: True})
 OFF = frozen_cfg()
 
 
+def test_flag_default_is_on_and_the_frozen_engine_and_off_arm_are_off():
+    """ON by default since 2026-11-17 (Kent "Flip ON (Recommended)"); the
+    frozen snapshot and `conftest.ROPE_BAND_2026_11_17_OFF` keep the old engine."""
+    from digitizer_core import PipelineConfig
+    from tests.conftest import PRE_FLIP, ROPE_BAND_2026_11_17_OFF
+    assert PipelineConfig().rope_band is True
+    assert rb.enabled(PipelineConfig()) and not rb.enabled(OFF)
+    assert ROPE_BAND_2026_11_17_OFF == {"rope_band": False} and PRE_FLIP["rope_band"] is False
+
+
 def _pr(name, poly, **meta):
     m = {"layer": 1, "stitched": True, "rescued_small_shape": True, "dark_ink": True,
          "bean_letter_spines": [[0, 0]], "stitch_width_measured_mm": 0.5, **meta}
