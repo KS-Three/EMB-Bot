@@ -95,5 +95,31 @@ def test_least_loss_keep_returns_n_in_ranked_order():
     assert len(kept) == 5 and kept == [t for t in ranked if t in kept]
 
 
+def test_a_grey_never_evicts_a_colour():
+    """Summit badge, the first sweep: a grey took the lavender lettering's slot."""
+    lav, purple, orange = _nearest([60, 12, -28]), _nearest([45, 45, -40]), _nearest([65, 35, 65])
+    grey = _nearest([72, 0, 0])
+    assert len({BLACK, lav, purple, orange, grey}) == 5
+    regions = [_region("k", BLACK, 900), _region("p", purple, 300), _region("o", orange, 200),
+               _region("l", lav, 60), _region("g", grey, 55)]
+    off = [r.thread_index for r in regions]
+    enforce_color_cap(regions, CHART, 4, least_loss=True)
+    kept = {r.thread_index for r in regions}
+    assert lav in kept and grey not in kept
+    regions2 = [_region("k", BLACK, 900), _region("p", purple, 300), _region("o", orange, 200),
+                _region("l", lav, 60), _region("g", grey, 55)]
+    enforce_color_cap(regions2, CHART, 4)
+    assert [r.thread_index for r in regions] == [r.thread_index for r in regions2] != off
+
+
+def test_a_second_shade_of_a_kept_hue_buys_no_slot():
+    o1, o2 = _nearest([65, 35, 65]), _nearest([75, 22, 75])
+    assert o1 != o2
+    regions = [_region("k", BLACK, 900), _region("w", WHITE, 300), _region("o", o1, 200),
+               _region("g0", GREYS[0], 90), _region("g1", GREYS[2], 80), _region("o2", o2, 40)]
+    enforce_color_cap(regions, CHART, 5, least_loss=True)
+    assert o2 not in {r.thread_index for r in regions}
+
+
 def test_the_flag_is_off_by_default():
     assert PipelineConfig().color_cap_least_loss is False

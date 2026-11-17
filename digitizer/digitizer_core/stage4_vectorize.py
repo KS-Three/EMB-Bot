@@ -1259,6 +1259,15 @@ def revalidate_threads(regions: list[Region], p: Prep,
     )]
 
 
+#: `_least_loss_keep`'s guard (2026-11-17, after the first sweep: Summit badge
+#: lost its lavender lettering to a grey). A dropped thread may take a slot
+#: only when it is a LONE COLOUR: chroma at least `LONE_CHROMA` (a grey never
+#: evicts anything) and at least `LONE_DE00` from every kept thread (a second
+#: orange is not a missing colour). CIELAB chroma / CIEDE2000, no fabric in it.
+LONE_CHROMA = 25.0
+LONE_DE00 = 20.0
+
+
 def _least_loss_keep(ranked: list[int], n: int, pinned: list[int],
                      sewn_area: dict[int, float], chart) -> list[int]:
     """`n` of `ranked` (largest sewn area first) to keep so that the dropped
@@ -1267,11 +1276,15 @@ def _least_loss_keep(ranked: list[int], n: int, pinned: list[int],
     shades moved 5 each are not; unsquared, the Drone's 34 mm2 of blue still
     lost to an 83 mm2 fourth grey).
     Starts from the first `n` (the area ranking) and swaps one kept, unpinned
-    thread for one dropped thread while the total falls; the first best swap
-    in `ranked` order wins a tie, so the answer does not depend on set order.
-    Returned in `ranked` order."""
+    thread for one dropped thread while the total falls. Two guards on a swap:
+    the thread coming in is a lone colour (`LONE_CHROMA`, `LONE_DE00`), and
+    the thread going out has a kept neighbour nearer than the incomer's
+    nearest (a near-duplicate gives way, never the only one of its kind). The
+    first best swap in `ranked` order wins a tie, so the answer does not
+    depend on set order. Returned in `ranked` order."""
     lab = np.array([chart.lab[t] for t in ranked])
     dist = deltaE_ciede2000(lab[:, None, :], lab[None, :, :])
+    chroma = np.hypot(lab[:, 1], lab[:, 2])
     w = np.array([sewn_area.get(t, 0.0) for t in ranked])
     keep = list(range(n))
     fixed = {i for i, t in enumerate(ranked) if t in set(pinned)}
@@ -1282,11 +1295,17 @@ def _least_loss_keep(ranked: list[int], n: int, pinned: list[int],
     best = loss(keep)
     for _ in range(4 * len(ranked)):
         move = None
-        for ki, k in enumerate(keep):
-            if k in fixed:
+        for d in range(len(ranked)):
+            if d in keep or chroma[d] < LONE_CHROMA:
                 continue
-            for d in range(len(ranked)):
-                if d in keep:
+            d_near = float(dist[d, keep].min())
+            if d_near < LONE_DE00:
+                continue
+            for ki, k in enumerate(keep):
+                if k in fixed:
+                    continue
+                others = [x for x in keep if x != k]
+                if not others or float(dist[k, others].min()) >= d_near:
                     continue
                 trial = keep[:ki] + [d] + keep[ki + 1:]
                 v = loss(trial)
@@ -1313,7 +1332,10 @@ def enforce_color_cap(regions: list[Region], chart, max_colors: int, *,
     one that changes the artwork least: the sum over dropped threads of sewn
     area x CIEDE2000 squared to the thread each lands on, found by swapping one kept
     thread for one dropped while that sum falls (`_least_loss_keep`).
-    Near-duplicate shades give way to a colour nothing else is near. Still
+    Near-duplicate shades give way to a colour nothing else is near, and
+    only to one: the incomer must be a lone colour (`LONE_CHROMA`,
+    `LONE_DE00`), so a grey never evicts a colour (Summit badge, the first
+    sweep) and a second shade of a kept hue never buys a slot. Still
     exactly N threads, protected threads still pinned. False is the cap
     byte for byte.
 

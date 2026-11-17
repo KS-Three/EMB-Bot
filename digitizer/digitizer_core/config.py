@@ -1504,7 +1504,10 @@ class PipelineConfig:
     # Drone's blue water) is sewn in the nearest grey. ON, the cap keeps the N
     # threads that change the artwork least: least total (sewn area x
     # CIEDE2000 squared to the thread a dropped colour lands on), by swaps from the
-    # area ranking (`stage4_vectorize._least_loss_keep`). Same count, pinned
+    # area ranking (`stage4_vectorize._least_loss_keep`). Guarded after the
+    # first sweep (Summit badge's lavender lettering went grey): only a LONE
+    # COLOUR may take a slot (chroma >= 25, >= 20 dE00 from every kept
+    # thread), and only from a thread with a nearer kept neighbour. Same count, pinned
     # threads still pinned. A DESIGN CHANGE on every design the cap touches:
     # the default is Kent's, with before | after pictures. No fabric
     # constant: gate 1 does not apply. False is the cap byte for byte. Tests:
