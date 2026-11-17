@@ -22,3 +22,14 @@ toat_machine_hat, toat_beanie). **1 of 1 moved design is pictured**
 
 Reproduce: OFF/ON via `pro_pair.digitize(art, width, garment, {"page_line_front": True})`,
 rendered with `digitizer_core.stitchviz.render_design`.
+
+## Second sweep: the 26 corpus fixtures, Studio request at 80 mm (director's check)
+
+`tools.corpus_scorecard.FIXTURES` (26) at `studio_request(80.0)`, garment `left_chest`, flag
+OFF vs ON, md5 of `design["stitches"]`. **1 of 26 moved**: `photo/logo_gaulke_roofing.png`
+(5123 -> 5012 stitches). The other 25 are byte-identical. **1 of 1 moved pictured**:
+`fixtures/photo_logo_gaulke_roofing.png`. Per-fixture rows: `fixtures/sweep26.json`.
+
+| fixture | verdict by eye |
+|---|---|
+| photo/logo_gaulke_roofing | **Better.** OFF: the white roof bar, and the window's cross sewn as a white mass over the panes. ON: roof bar gone, black line whole, the window reads as four dark panes with a thin cross gap, as in the art. Same catch as the hat: the thin white gaps are hairlines, nearly closed in places. Not worse anywhere. |
