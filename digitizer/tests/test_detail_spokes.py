@@ -41,7 +41,7 @@ from digitizer_core.threads import chart_for, rgb_to_lab
 from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
 
 from .conftest import (FLAT_GOLDEN_MD5, PRE_FLIP, RECIPE_2026_10_27, LETTERING_2026_10_24_OFF, TESTDATA,
-                       WAVE3_2026_10_26_OFF)
+                       ROPE_BAND_2026_11_17_OFF, WAVE3_2026_10_26_OFF)
 
 
 def test_flag_defaults_on_since_kents_flip_and_the_floor_scales_from_the_pros():
@@ -478,7 +478,7 @@ def fremont_off():
                                  **WAVE3_2026_10_26_OFF,    # fine bars moves Fremont's separators
                                  **RECIPE_2026_10_27,        # the recipe sews its ground under them
                                  **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
-                                 **TEXT_GAPS_2026_11_15_OFF})
+                                 **TEXT_GAPS_2026_11_15_OFF, **ROPE_BAND_2026_11_17_OFF})
 
 
 @pytest.fixture(scope="module")
@@ -489,7 +489,7 @@ def fremont_on():
                                  **WAVE3_2026_10_26_OFF,
                                  **RECIPE_2026_10_27,      # as the OFF arm: this prices the spokes
                                  **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
-                                 **TEXT_GAPS_2026_11_15_OFF})
+                                 **TEXT_GAPS_2026_11_15_OFF, **ROPE_BAND_2026_11_17_OFF})
 
 
 def test_test_environment_caps_ipp_at_avx2():

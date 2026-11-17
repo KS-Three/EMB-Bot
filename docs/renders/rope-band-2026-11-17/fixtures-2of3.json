@@ -1,0 +1,58 @@
+{
+ "logo_whitebg.png": {
+  "moved": false,
+  "stitches_off": 6720,
+  "stitches_on": 6720,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/enthusiast_logo.png": {
+  "moved": false,
+  "stitches_off": 2343,
+  "stitches_on": 2343,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/gradient_ramp_radial.png": {
+  "moved": false,
+  "stitches_off": 18289,
+  "stitches_on": 18289,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/photo_grass_macro.png": {
+  "moved": false,
+  "stitches_off": 3983,
+  "stitches_on": 3983,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/photo_subject_stub.png": {
+  "moved": false,
+  "stitches_off": 3142,
+  "stitches_on": 3142,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/repro_gradient_white_icon.png": {
+  "moved": false,
+  "stitches_off": 22939,
+  "stitches_on": 22939,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "logo_script_tires.png": {
+  "moved": false,
+  "stitches_off": 2515,
+  "stitches_on": 2515,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/logo_golden_tee.jpg": {
+  "moved": false,
+  "stitches_off": 14503,
+  "stitches_on": 14503,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ }
+}
