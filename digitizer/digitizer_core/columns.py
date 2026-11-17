@@ -1202,6 +1202,19 @@ def _polygonal(g):
     return g
 
 
+def _zigzag_near_counter(stations: list, poly: Polygon, clear_mm: float) -> bool:
+    """`cfg.small_print_floor`: does the zigzag these stations sew (rail to
+    rail, station to station) come within `clear_mm` of one of the letter's
+    counters? False for a letter with no counter."""
+    if not poly.interiors or len(stations) < 1:
+        return False
+    path = [p for a, b in stations for p in (a, b)]
+    if len(path) < 2:
+        return False
+    line = LineString(path)
+    return any(Polygon(r).distance(line) <= clear_mm for r in poly.interiors)
+
+
 def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
                     min_cross_mm: float) -> tuple[list, list]:
     """`cfg.small_print_floor`: every penetration that lands within
@@ -2211,6 +2224,10 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     for col in columns:
         col_pull = pull_mm if pull_of is None else pull_of(column_width(col))
         a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold, pull_keep)
+        # `cfg.small_print_floor`: read where the rails land BEFORE the hold
+        # below moves them (held, they sit exactly the clearance off)
+        near_counter = (counter_clear_mm > 0
+                        and _zigzag_near_counter(list(zip(a_pts, b_pts)), cpoly, counter_clear_mm))
         if counter_clear_mm > 0:
             a_pts, b_pts = _clear_counters(a_pts, b_pts, cpoly, counter_clear_mm, min_cross_mm)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
@@ -2222,9 +2239,17 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # short-stitched (lettering-thickness-fremont-2026-10-06).
         guarded = (_inside_stagger(a_pts, b_pts) if inside_stagger    # the pro's inside
                    else _short_stitch_guard(a_pts, b_pts))
-        if counter_clear_mm > 0:
+        if near_counter:
             # Small print: no zigzag stitch over a counter
             # (`_counter_safe_pieces`); one column may sew as several.
+            # Only a column whose zigzag comes within the clearance of a
+            # counter: any other takes the path below, with its floors
+            # (`thin_floor`, `_STROKE_FLOOR`, `_RING_FLOOR`), exactly as it
+            # sews with the flag off. Until 2026-11-17 EVERY column of a
+            # floored letter came here, and a piece under the cross floor
+            # was dropped instead of sewn at the floor: SBA's subtitle at 90
+            # mm (2.6 mm letters) lost each t's crossbar, an m's first arch
+            # and an r's arm -- letters with no counter at all.
             pieces, dropped = _counter_safe_pieces(guarded, cpoly, min_cross_mm,
                                                    counter_clear_mm)
             report["thin_crosses"] += dropped
