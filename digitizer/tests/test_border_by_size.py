@@ -32,6 +32,8 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
 
+from .conftest import CORNER_LOSS_2026_11_17_OFF
+
 
 def _square(side: float, cx: float = 0.0, cy: float = 0.0) -> Polygon:
     h = side / 2.0
@@ -86,7 +88,8 @@ def test_off_an_8mm_square_fills_with_no_border():
 
 def test_on_an_8mm_square_fills_and_gets_a_satin_border_at_the_pro_width():
     sq = _square(8.0)
-    runs, _w = _plan(sq, border_by_size=True)
+    # pins the ring's WIDTH on the old default: a sharp 8 mm square loses 9.6% to the corner radius, so since 2026-11-17 it is refused (border_by_size_corner_loss)
+    runs, _w = _plan(sq, border_by_size=True, **CORNER_LOSS_2026_11_17_OFF)
     kinds = _kinds(runs)
     assert stitches.FILL in kinds and stitches.BORDER in kinds, kinds
     # the border goes on after the fill it covers

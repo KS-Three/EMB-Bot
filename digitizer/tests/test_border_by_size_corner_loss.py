@@ -1,4 +1,4 @@
-"""No size ring on a shape its own corner rounding would redraw (`cfg.border_by_size_corner_loss`, built OFF 2026-11-17).
+"""No size ring on a shape its own corner rounding would redraw (`cfg.border_by_size_corner_loss`, ON since 2026-11-17).
 
 The size ring (`border_by_size`) is built on the shape with every corner
 relaxed inward by `BORDER_CORNER_RADIUS_MM` (2.1 mm). On Intel's blue square
@@ -6,7 +6,8 @@ relaxed inward by `BORDER_CORNER_RADIUS_MM` (2.1 mm). On Intel's blue square
 edge between four 2.1 mm arcs and costs 12% of the area: the square reads as
 a cushion. ON, a shape whose rounding loss is over
 `machine.BORDER_BY_SIZE_CORNER_LOSS_MAX` is no ring's and sews as a plain
-fill. Off, byte-identical.
+fill. Off (conftest.CORNER_LOSS_2026_11_17_OFF), byte-identical to the
+pre-flip engine. Flipped ON by Kent 2026-11-17 from the Intel sheets.
 
 Synthetic shapes only: the logo is not in the repo.
 """
@@ -24,6 +25,7 @@ from digitizer_core.stage7_sequence import (BORDER_GROUP_KEY, _border_by_size_wi
                                             _sews_satin, sequence, tag_border_by_size_groups)
 
 ON = dict(border_by_size_corner_loss=True)
+OFF = dict(border_by_size_corner_loss=False)      # the pre-flip engine (conftest.CORNER_LOSS_2026_11_17_OFF)
 
 
 def _region(poly, sid="Sbig", **meta):
@@ -52,8 +54,14 @@ def _md5(runs):
     return h.hexdigest()
 
 
-def test_flag_default_is_off():
-    assert PipelineConfig().border_by_size_corner_loss is False
+def test_flag_default_is_on():
+    # Kent 2026-11-17, from the Intel ORIGINAL ART | BEFORE | AFTER sheets: "Flip ON"
+    assert PipelineConfig().border_by_size_corner_loss is True
+
+
+def test_the_pre_flip_dict_pins_it_off():
+    from .conftest import CORNER_LOSS_2026_11_17_OFF
+    assert PipelineConfig(**CORNER_LOSS_2026_11_17_OFF).border_by_size_corner_loss is False
 
 
 def test_the_constant_sits_between_the_census_numbers():
@@ -68,7 +76,7 @@ def test_loss_reads_the_square_high_and_the_big_and_round_shapes_low():
 
 
 def test_off_the_7mm_square_is_ringed():
-    kinds = _kinds(_plan(box(0, 0, 7.2, 7.2)))
+    kinds = _kinds(_plan(box(0, 0, 7.2, 7.2), **OFF))
     assert stitches.BORDER in kinds and stitches.FILL in kinds
 
 
@@ -79,33 +87,48 @@ def test_on_the_7mm_square_is_a_plain_fill():
 
 def test_on_a_30mm_square_keeps_its_ring_byte_identical():
     sq = box(0, 0, 30, 30)
-    off, on = _plan(sq), _plan(sq, **ON)
+    off, on = _plan(sq, **OFF), _plan(sq, **ON)
     assert stitches.BORDER in _kinds(on)
     assert _md5(off) == _md5(on)
 
 
 def test_on_a_12mm_disc_is_byte_identical():
     disc = Point(0, 0).buffer(6.0, 64)
-    off, on = _plan(disc), _plan(disc, **ON)
+    off, on = _plan(disc, **OFF), _plan(disc, **ON)
     assert stitches.BORDER in _kinds(off)
+    assert _md5(off) == _md5(on)
+
+
+def test_on_an_8mm_sharp_square_is_a_plain_fill():
+    # loss 0.096 > 0.083: a 2.1 mm corner radius leaves 3.8 mm of straight side
+    assert _corner_loss(box(0, 0, 8, 8)) > machine.BORDER_BY_SIZE_CORNER_LOSS_MAX
+    kinds = _kinds(_plan(box(0, 0, 8, 8), **ON))
+    assert stitches.FILL in kinds and stitches.BORDER not in kinds
+
+
+def test_on_a_10mm_sharp_square_keeps_its_ring_byte_identical():
+    sq = box(0, 0, 10, 10)
+    assert _corner_loss(sq) < machine.BORDER_BY_SIZE_CORNER_LOSS_MAX      # 0.061
+    off, on = _plan(sq, **OFF), _plan(sq, **ON)
+    assert stitches.BORDER in _kinds(on)
     assert _md5(off) == _md5(on)
 
 
 def test_a_shape_under_the_floor_is_untouched():
     sq = box(0, 0, 5.0, 5.0)            # smallest dimension 5.0 < 6.0, loss over the max
-    off, on = _plan(sq), _plan(sq, **ON)
+    off, on = _plan(sq, **OFF), _plan(sq, **ON)
     assert stitches.BORDER not in _kinds(off)
     assert _md5(off) == _md5(on)
 
 
-def test_off_is_byte_identical_to_no_field():
+def test_the_default_is_the_on_arm_byte_for_byte():
     sq = box(0, 0, 7.2, 7.2)
-    assert _md5(_plan(sq)) == _md5(_plan(sq, border_by_size_corner_loss=False))
+    assert _md5(_plan(sq)) == _md5(_plan(sq, **ON))
 
 
 def test_the_prediction_and_the_emitter_agree_for_the_square_both_ways():
     sq = box(0, 0, 7.2, 7.2)
-    for flags, ringed in (({}, True), (ON, False)):
+    for flags, ringed in ((OFF, True), (ON, False)):
         cfg = PipelineConfig(underlay=False, **flags)
         reg = _region(sq)
         # the by-size reader (prediction, seam ownership, emitter's two blocks) ...
@@ -119,9 +142,8 @@ def test_the_prediction_and_the_emitter_agree_for_the_square_both_ways():
 def test_the_corner_rule_wins_over_a_group_stamp():
     sq = _region(box(0, 0, 7.2, 7.2))
     sq.meta[BORDER_GROUP_KEY] = True
-    cfg = PipelineConfig(**ON)
-    assert _border_by_size_width(sq, cfg) is None
-    assert _border_by_size_width(sq, PipelineConfig()) is not None
+    assert _border_by_size_width(sq, PipelineConfig(**ON)) is None
+    assert _border_by_size_width(sq, PipelineConfig(**OFF)) is not None
 
 
 def test_a_refused_shape_is_not_evidence_for_its_line():
