@@ -4496,6 +4496,24 @@ class PipelineConfig:
     # is the engine as it was; PRE_FLIP (CORNER_LOSS_2026_11_17_OFF) pins it
     # False. The other 43 census jobs are byte-identical.
     border_by_size_corner_loss: bool = True
+    # `border_by_size_smooth_only` (2026-11-17, Kent's logo trial, built OFF):
+    # no size ring on a shape whose outline has a SHARP CONVEX CORNER. The ring
+    # is built on the shape with its corners relaxed inward by 2.1 mm, so on a
+    # sharp-cornered shape it redraws the outline: four flat 10 mm squares sew
+    # as cushions (loss 0.062, under `border_by_size_corner_loss`'s 0.083),
+    # heavy slanted block letters read bevelled with fans in their corners, an
+    # "E" and "x" read framed. A ring with sharp corners was tried and reads as
+    # a picture frame; the arm with no ring reads closest to the art. Area loss
+    # does not separate them (faulty shapes 0.02-0.06, beside fine ones).
+    # ON, `_border_by_size_width` reads None when `stage7_sequence._sharp_corners`
+    # finds one (a convex vertex of the outline simplified at
+    # `machine.BORDER_SMOOTH_SIMPLIFY_MM`, interior angle at or under
+    # `BORDER_SMOOTH_SHARP_MAX_DEG`, each side straight for one ring width);
+    # holes are ignored, a refused shape wins over a group stamp and is no
+    # evidence for its line. Read only with `border_by_size`. Layout: Kent's
+    # call from the renders. Off, byte-identical.
+    # Tests: `tests/test_border_by_size_smooth_only.py`.
+    border_by_size_smooth_only: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

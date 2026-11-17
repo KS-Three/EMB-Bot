@@ -642,6 +642,14 @@ BORDER_BY_SIZE_REACH_FRAC = 0.5
 # rings of the 44-job census read 0.0006-0.0575 (Texaco's two T's the top);
 # Intel's 7.3 mm square reads 0.1205. 0.083 = their geometric middle, 2 sf.
 BORDER_BY_SIZE_CORNER_LOSS_MAX = 0.083
+# `cfg.border_by_size_smooth_only` (2026-11-17): what reads as a SHARP CORNER
+# of a shape's outline. GEOMETRY, not cloth constants: the outline is
+# simplified (Douglas-Peucker) at this tolerance to find candidate vertices,
+# and a convex candidate counts when its interior angle is at or under the
+# angle and each side runs straight (within the same tolerance) for at least
+# one ring width (`border_by_size_width_mm`, 2.1 mm).
+BORDER_SMOOTH_SIMPLIFY_MM = 0.15
+BORDER_SMOOTH_SHARP_MAX_DEG = 110.0
 
 
 # The keyline band (`cfg.enclosed_white_keyline`, 2026-10-23): the pro's

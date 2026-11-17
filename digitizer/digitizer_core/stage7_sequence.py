@@ -470,6 +470,82 @@ def _corner_loss_refused(poly, cfg: PipelineConfig) -> bool:
             and _corner_loss(poly) > machine.BORDER_BY_SIZE_CORNER_LOSS_MAX)
 
 
+def _sharp_corners(poly) -> int:
+    """How many SHARP CONVEX CORNERS the exterior outline of `poly` has
+    (`cfg.border_by_size_smooth_only`; holes are ignored).
+
+    The outline is simplified at `machine.BORDER_SMOOTH_SIMPLIFY_MM` (a
+    traced edge's stair-steps go), then every point of it, 0.1 mm apart, is a
+    candidate: two chords are taken along the outline, one ring width
+    (`border_by_size_width_mm`, 2.1 mm) each way; the point counts when both
+    runs stay within the tolerance of their chord (straight, so a rounded
+    corner or a curve is no corner), the turn is convex and the chords meet at
+    an interior angle of at most `machine.BORDER_SMOOTH_SHARP_MAX_DEG`.
+    Candidates within one ring width of each other along the outline are one
+    corner (a raster-rounded tip is a handful of points). Every point is tried,
+    not only the simplified vertices: Douglas-Peucker drops the apex of a tip
+    rounded by a fraction of a millimetre, and the corner would vanish with it."""
+    import math
+    import numpy as np
+    from shapely.geometry import Polygon
+    from shapely.geometry.polygon import orient
+    if poly is None or poly.is_empty:
+        return 0
+    parts = [poly] if poly.geom_type == "Polygon" else [
+        g for g in getattr(poly, "geoms", []) if g.geom_type == "Polygon" and not g.is_empty]
+    tol = machine.BORDER_SMOOTH_SIMPLIFY_MM
+    leg = machine.border_by_size_width_mm(machine.BORDER_BY_SIZE_MIN_DIM_MM)
+    cos_max = math.cos(math.radians(machine.BORDER_SMOOTH_SHARP_MAX_DEG))
+    step = 0.1
+    ts = np.linspace(0.0, leg, max(int(round(leg / step)) + 1, 3))
+    total = 0
+    for part in parts:
+        shell = orient(Polygon(part.exterior), 1.0)         # counter-clockwise
+        simp = shell.simplify(tol)
+        if simp.geom_type != "Polygon" or simp.is_empty:
+            continue
+        xy = np.asarray(simp.exterior.coords)               # closed
+        cum = np.concatenate([[0.0], np.cumsum(np.hypot(*np.diff(xy, axis=0).T))])
+        perim = float(cum[-1])
+        if perim < 2.0 * leg + step:
+            continue
+        grid = np.arange(0.0, perim, step)
+
+        def at(s):
+            s = np.mod(s, perim)
+            return np.stack([np.interp(s, cum, xy[:, 0]), np.interp(s, cum, xy[:, 1])], axis=-1)
+
+        def run(sign):
+            pts = at(grid[:, None] + sign * ts[None, :])    # (K, J, 2); pts[:, 0] is the point
+            chord = pts[:, -1] - pts[:, 0]
+            n = np.hypot(chord[:, 0], chord[:, 1])
+            rel = pts - pts[:, :1]
+            off = np.abs(rel[..., 0] * chord[:, None, 1] - rel[..., 1] * chord[:, None, 0])
+            ok = (n >= 0.5 * leg) & (off.max(axis=1) <= tol * np.maximum(n, 1e-9))
+            return chord / np.maximum(n, 1e-9)[:, None], ok
+
+        fwd, ok_f = run(1.0)
+        back, ok_b = run(-1.0)
+        come = -back                                        # direction of travel into the point
+        left = come[:, 0] * fwd[:, 1] - come[:, 1] * fwd[:, 0] > 0.0   # convex on a CCW outline
+        sharp = ok_f & ok_b & left & ((back * fwd).sum(axis=1) >= cos_max)
+        hits = grid[sharp]
+        if not len(hits):
+            continue
+        corners = 1 + int((np.diff(hits) >= leg).sum())     # a gap of a ring width starts another corner
+        if corners > 1 and hits[0] + perim - hits[-1] < leg:
+            corners -= 1                                    # the first and last run are one, across the seam
+        total += corners
+    return total
+
+
+def _sharp_refused(poly, cfg: PipelineConfig) -> bool:
+    """`cfg.border_by_size_smooth_only`: the outline has a sharp convex corner,
+    and the ring would round or frame it. False when off."""
+    return (bool(getattr(cfg, "border_by_size_smooth_only", False))
+            and _sharp_corners(poly) > 0)
+
+
 def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
     """`cfg.group_consistent_border_by_size`: decide the size ring once per
     line of like shapes. -> how many shapes the group moved.
@@ -499,7 +575,9 @@ def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
                 and r.polygon.geom_type == "Polygon"
                 # `cfg.border_by_size_corner_loss`: refused whatever its line
                 # says, so it is no evidence for the line either way
-                and not _corner_loss_refused(r.polygon, cfg))
+                and not _corner_loss_refused(r.polygon, cfg)
+                # `cfg.border_by_size_smooth_only`: likewise
+                and not _sharp_refused(r.polygon, cfg))
 
     for r in regions:                   # a verdict never outlives the read that made it
         if r.meta:
@@ -560,6 +638,8 @@ def _border_by_size_width(region, cfg: PipelineConfig, untagged: bool = False) -
         return None
     if _corner_loss_refused(poly, cfg):
         return None     # `cfg.border_by_size_corner_loss`: wins over a group stamp
+    if _sharp_refused(poly, cfg):
+        return None     # `cfg.border_by_size_smooth_only`: likewise
     return width
 
 
