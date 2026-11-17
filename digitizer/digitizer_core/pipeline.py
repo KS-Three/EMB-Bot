@@ -2180,6 +2180,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
+    from .outline_cut import neck_cuts_scope
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2215,6 +2216,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))))
         _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
         _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
+        # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
+        _enter(neck_cuts_scope(bool((cfg.extra or {}).get("lettering_columns_neck_cuts"))))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))
