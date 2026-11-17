@@ -15,8 +15,10 @@ def _travel(points, jump=False, trim=False):
     return StitchRun(points=points, kind=stitches.TRAVEL, jump=jump, trim=trim)
 
 
-def test_flag_is_off_by_default():
-    assert PipelineConfig().lettering_columns_cover_hops is False
+def test_flag_is_on_by_default_and_pre_flip_is_off():
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().lettering_columns_cover_hops is True
+    assert PRE_FLIP["lettering_columns_cover_hops"] is False
 
 
 def test_covered_travel_is_untouched():

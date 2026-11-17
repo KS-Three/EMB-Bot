@@ -4250,7 +4250,18 @@ class PipelineConfig:
     # and the needle jumps with a trim over it. False is the walk as it was,
     # byte for byte. Layout, not a physical constant. Tests:
     # `tests/test_column_cover_hops.py`.
-    lettering_columns_cover_hops: bool = False
+    # **ON since 2026-11-17, Kent: "Flip ON anyway"**, shown the Toat beanie c-mouth
+    # ORIGINAL | BEFORE | AFTER (11 of 35 runs move: beanie and Bridge better, the
+    # rest no visible change, none worse, 15 extra trims) with the director's
+    # recommendation to keep it OFF until a sew-out. **The three exposure
+    # tolerances (`columns._BARE_MAX_MM` 0.3, `_BARE_GROUND_MM` 0.1 and the
+    # script path's 0.2 mm) are untested on cloth and were flipped OVER ROADMAP
+    # gate 1 ("link cover tolerance") by Kent's ruling, knowingly.** A
+    # no-tolerance rule (cut any travel off the artwork) kept the cure but added
+    # 21 trims on the 9 pro jobs instead of 8 and was dropped
+    # (`docs/renders/cover-hops-2026-11-17/README.md`). False is the walk as it
+    # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it False.
+    lettering_columns_cover_hops: bool = True
     # Under `lettering_columns`, let a thin STEM under the area floor reach
     # the Column lane (2026-10-13, `columns.is_thin_stem`). Stage 7's
     # small-shape rescue sends every auto-tier shape under `min_detail_mm`^2

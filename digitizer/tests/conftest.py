@@ -1148,6 +1148,10 @@ PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
 COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
 PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
+# `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
+# gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
+COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
+PRE_FLIP.update(COVER_HOPS_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
