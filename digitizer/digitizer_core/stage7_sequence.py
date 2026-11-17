@@ -447,6 +447,29 @@ def _by_size_reach_ok(poly, width: float) -> bool:
             >= machine.BORDER_BY_SIZE_REACH_FRAC * poly.area)
 
 
+def _corner_loss(poly) -> float:
+    """Share of `poly`'s area the size ring's corner rounding takes off
+    (`stage6_border.round_inward`, as `_border_runs` builds the ring)."""
+    from .stage6_border import round_inward
+    if poly is None or poly.is_empty or poly.area <= 0.0:
+        return 0.0
+    parts = [poly] if poly.geom_type == "Polygon" else [
+        g for g in getattr(poly, "geoms", []) if g.geom_type == "Polygon" and not g.is_empty]
+    kept = 0.0
+    for part in parts:
+        rounded = round_inward(part, machine.BORDER_CORNER_RADIUS_MM,
+                               machine.BORDER_DENSITY_MM / 2.0)
+        kept += rounded.area
+    return max(0.0, 1.0 - kept / poly.area)
+
+
+def _corner_loss_refused(poly, cfg: PipelineConfig) -> bool:
+    """`cfg.border_by_size_corner_loss`: the ring's rounding would redraw this
+    shape (loss over `machine.BORDER_BY_SIZE_CORNER_LOSS_MAX`). False when off."""
+    return (bool(getattr(cfg, "border_by_size_corner_loss", False))
+            and _corner_loss(poly) > machine.BORDER_BY_SIZE_CORNER_LOSS_MAX)
+
+
 def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
     """`cfg.group_consistent_border_by_size`: decide the size ring once per
     line of like shapes. -> how many shapes the group moved.
@@ -473,7 +496,10 @@ def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
                 and str(meta.get("tier", "auto")).lower() == "auto"
                 and meta.get("border") is None and not is_lettering(r, cfg)
                 and r.polygon is not None and not r.polygon.is_empty
-                and r.polygon.geom_type == "Polygon")
+                and r.polygon.geom_type == "Polygon"
+                # `cfg.border_by_size_corner_loss`: refused whatever its line
+                # says, so it is no evidence for the line either way
+                and not _corner_loss_refused(r.polygon, cfg))
 
     for r in regions:                   # a verdict never outlives the read that made it
         if r.meta:
@@ -532,6 +558,8 @@ def _border_by_size_width(region, cfg: PipelineConfig, untagged: bool = False) -
     reach = core.buffer(grow).intersection(poly).area
     if reach < machine.BORDER_BY_SIZE_REACH_FRAC * poly.area:
         return None
+    if _corner_loss_refused(poly, cfg):
+        return None     # `cfg.border_by_size_corner_loss`: wins over a group stamp
     return width
 
 
