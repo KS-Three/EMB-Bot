@@ -2426,6 +2426,23 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` carries it False. Tests:
     # `tests/test_enclosed_white_skip_transparent.py`.
     enclosed_white_skip_transparent: bool = True
+    # Kent 2026-11-17, logo trial (a red square logo in a thin black frame,
+    # white letters each wrapped in a thick black band): stage 1 takes the
+    # black frame as the page, so the band and the counters are
+    # `enclosed_background` regions whose colour is KNOWN (black), and the
+    # Studio's "Sew white areas" thread (`sew_enclosed_rgb` white) recoloured
+    # them white, where `DUPLICATE_CONE_LAYERS_MERGED` fused the band with
+    # the letters: the word sewed as one white blob. ON, an enclosed area the
+    # option sews whose own thread is KNOWN (not `enclosed_colour_unknown`)
+    # and farther than `enclosed_by_garment_de00` (CIEDE2000, the existing
+    # constant, no new one) from the chosen thread keeps that own thread;
+    # it still sews, in its own front layer, exactly as with
+    # `sew_enclosed_rgb` None. A white page's own white (distance 0) and an
+    # alpha hole (colour unknown) behave as before. Built OFF: it changes
+    # the design, Kent picks the default. False is the engine before the
+    # flag, byte for byte; `tests/engine_2026_10_27.json` carries it False.
+    # Tests: `tests/test_enclosed_white_known_colour.py`.
+    enclosed_white_keeps_known_colour: bool = False
     # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
     # read only with `sew_enclosed_white`. ON, an enclosed field it sews that
     # is a KEYLINE -- a band with holes, at least `machine.KEYLINE_REACH_FRAC`

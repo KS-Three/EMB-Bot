@@ -384,5 +384,6 @@
  "lettering_columns_apex_pro_joints": false,
  "lettering_columns_corner_fold_cap_flared": false,
  "lettering_columns_ring_floor": false,
- "lettering_columns_stroke_floor": false
+ "lettering_columns_stroke_floor": false,
+ "enclosed_white_keeps_known_colour": false
 }
