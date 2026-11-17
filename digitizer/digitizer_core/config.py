@@ -1497,7 +1497,7 @@ class PipelineConfig:
     # light shading in counters go to the page, darkest-ink bands (the tee's
     # shadow) are drawn and stay: Golden Tee 3 threads, as he sews it.
     bevel_ring_fold: bool = False
-    # `color_cap_least_loss` (built OFF 2026-11-17, the prime grader's first
+    # `color_cap_least_loss` (built 2026-11-17, the prime grader's first
     # scorecard: Precision Drone "no blue thread anywhere"). The colour cap
     # keeps the N threads with the most sewn area, so several near-identical
     # greys each buy a slot and a small colour nothing else is near (the
@@ -1512,7 +1512,13 @@ class PipelineConfig:
     # the default is Kent's, with before | after pictures. No fabric
     # constant: gate 1 does not apply. False is the cap byte for byte. Tests:
     # `tests/test_color_cap_least_loss.py`.
-    color_cap_least_loss: bool = False
+    # **ON since 2026-11-17** (Kent, shown ORIGINAL | BEFORE | AFTER for both
+    # designs it moves: "Flip ON (Recommended)"). 2 of 35 runs move: Precision
+    # Drone's hat job keeps its blue, the phone screenshot shows no visible
+    # change; the other 33 are colour-identical
+    # (`docs/renders/prime-fixes-2026-11-17/`). False is the engine as it
+    # was; PRE_FLIP (COLOR_CAP_LEAST_LOSS_2026_11_17_OFF) pins it False.
+    color_cap_least_loss: bool = True
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
     # line") (`fine_bar.apply_fine_bar_survive`). A straight dark bar the art

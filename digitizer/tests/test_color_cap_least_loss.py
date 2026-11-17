@@ -121,5 +121,8 @@ def test_a_second_shade_of_a_kept_hue_buys_no_slot():
     assert o2 not in {r.thread_index for r in regions}
 
 
-def test_the_flag_is_off_by_default():
-    assert PipelineConfig().color_cap_least_loss is False
+def test_the_flag_is_on_since_kents_flip():
+    """Kent 2026-11-17: "Flip ON (Recommended)". The frozen snapshot keeps False."""
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().color_cap_least_loss is True
+    assert PRE_FLIP["color_cap_least_loss"] is False

@@ -1143,6 +1143,11 @@ PRE_FLIP.update(RIBBON_HANDBACK_2026_11_16_OFF)
 # `tests/test_border_by_size_corner_loss.py`.
 CORNER_LOSS_2026_11_17_OFF = {"border_by_size_corner_loss": False}
 PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
+# `color_cap_least_loss` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER for
+# the two designs it moves, Precision Drone and the phone screenshot: "Flip ON
+# (Recommended)"): `tests/test_color_cap_least_loss.py`.
+COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
+PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

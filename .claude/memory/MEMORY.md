@@ -82,6 +82,7 @@ the OLDEST lines whole to the archive.
 - [Outline inlets kept](outline-inlets-2026-11-14.md) — 'shape detail lost' 18 pins: 9 satin ends (apex/flat-ends lanes), 3 an outline inlet the polygon keeps and thread sews over (gear teeth, beak, notch); `outline_inlets_kept` OFF
 - [Pen stroke](pen-stroke-2026-11-13.md) — drag draws a Column/Line; Join tick built OFF (Kent 11-13): touching Columns sew as one path, own touch rule not the glyph's; same-colour shapes still stop
 - [Point-touch split](point-touch-split-2026-11-14.md) — NSYNC's star touching the N at one point made one region and a satin fan; split under 0.15 mm into bodies; ticked ON 11-15, pending
+- [Prime grader](prime-grader-2026-11-17.md) — Kent 11-17: session eye is the grader (tools/prime_grader.py, nightly); first run weak vs old pins (kappa 0.29 n 6); `color_cap_least_loss` ON (Drone blue)
 - [Proof-read](proofread-2026-11-13.md) — `cfg.proofread` OFF metrics: thread vs art per colour in mm, tag-attributed; 20/34 pins vs 0.38; census of 34 kit items; guard `proofread_guard_clipped` OFF (qr squares back); kanji claim retracted 11-14
 - [ProSeal size faults](proseal-size-2026-11-14.md) — 109.6 mm tagline 4.01 mm >= 0.9 cap: skipped, raw trace (teal sliver, A, T); 85.7 re-set reads; blend band no factor; near-cap re-set still no_room
 - [Regular structure](regular-structure-2026-11-13.md) — `regular_structure` OFF: Bridge's 8 handles 0.18 -> 0.006 mm apart; census of 11: only Bridge is geometry, rest of the "alike" family = angle/tag/pull/text; group tag for later stages
