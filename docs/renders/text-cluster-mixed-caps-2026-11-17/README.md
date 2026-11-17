@@ -43,20 +43,30 @@ faults and do not move.
 Settings: the Studio request at 80 mm on `left_chest` for the 26 `corpus_scorecard.FIXTURES`; each other
 `pro_baseline.JOBS` row at its own garment and width. Compared by md5 of `design["stitches"]`, flag OFF vs ON.
 
-**Fixtures: 3 of 26 moved; 3 pictured (every changed region, 11 images); 23 byte-identical.**
+**Fixtures: 3 of 26 moved; 3 pictured (every changed region); 23 byte-identical.**
 **Other pro rows that resolve here (9 beyond the first 9): 2 moved, both pictured (9 images); 7 byte-identical**
 (Becker hat small, Becker chest small, Becker LC large, Becker beanie, Gaulke LC, Gaulke beanie, Hotel Fremont
 patch). 18 of the 22 JOBS rows resolve in this container (not Bridge hat / LC, ProSeal hat / beanie).
 For photographs and for art with an unstitched margin the ORIGINAL panel is fitted by bounding box and is only
 approximate; judge BEFORE against AFTER.
 
-## WORSE (named first)
+## WORSE (named first): none in the second run
 
-| Design | Pictures | By eye |
+**First run (flag as first built): 1 worse.** `screenshot_phone_ui_golke`: the "Photo" label tagged as a
+mixed-height word (ascender over x-height) and the small-text re-set grew it to about twice its drawn size, low and
+crowding the chevron (`first_run_golke_worse/`, 11,024 stitches).
+
+**Fix (second run):** a line that tags only through the mixed-height pass is marked (`text_cluster_mixed_caps` in
+the regions' meta) and goes to the column lane at its DRAWN size: `small_text.enlarge_small_text` and
+`restore_small_text` skip it, and `regularize_text_clusters` never redraws it. A line that tags without the pass
+is untouched. OFF is byte-identical (nothing is marked).
+
+| Design | Pictures | By eye, second run |
 |---|---|---|
-| `screenshot_phone_ui_golke` (fixture) | `fixture_screenshot_phone_ui_golke__zoom1.jpg`, `__whole` | **WORSE.** The "Photo" label of the phone screenshot now tags as a word and the small-text re-set grows it to about twice its drawn size (BEFORE: a small black cluster; AFTER: a large "Photo" that sits low and crowds the chevron icon). More legible, but the wrong size. The mechanism is the flag's own: a lowercase word with an ascender (P, h, t) over x-height letters is a mixed-height line, so it now tags and is re-set. Stitches 10,864 -> 11,024, trims 125 -> 127. |
+| `screenshot_phone_ui_golke` (fixture) | `fixture_screenshot_phone_ui_golke__whole.jpg`, `__zoom1`, `__zoom2` | **no visible change.** "Photo" is back at its drawn size, the same as OFF. The two remaining changed regions (the truck's chrome, a grille patch) show no visible difference. 10,864 -> 10,858 stitches, trims 125 -> 127. |
 
-The other two zooms of this design (`zoom2`, `zoom3`, the truck's chrome and grille) show no visible change.
+The TOAT jobs and every other mover are unchanged by this fix (identical stitch counts in both runs), so their
+pictures above stand.
 
 ## Better
 
@@ -72,5 +82,6 @@ The other two zooms of this design (`zoom2`, `zoom3`, the truck's chrome and gri
 | `repro_gradient_white_icon` (fixture) | `fixture_repro_gradient_white_icon__zoom1`, `__whole` | no visible change at the size shown (the lower-right border's thread differs by a few stitches). 22,911 -> 22,813. |
 | `mfab_lc` (pro row) | `pro_row_mfab_lc__zoom1..4`, `__whole` | no visible change: connector and fan stitches shift inside the lettering. 17,906 -> 17,966, trims 24 -> 26. |
 
-**Totals:** 9 + 9 pro rows + 26 fixtures = 44 designs; 7 moved (the 3 TOAT rows are one artwork, plus 3 fixtures and
-`mfab_lc`), every mover pictured. By eye: 3 better (all TOAT), **1 worse (golke screenshot)**, 3 no visible change.
+**Totals (second run):** 9 + 9 pro rows + 26 fixtures = 44 designs; 7 moved (the 3 TOAT rows are one artwork, plus 3
+fixtures and `mfab_lc`), every mover pictured. By eye: 3 better (all TOAT), **0 worse**, 4 no visible change
+(`drone_render`, `repro_gradient_white_icon`, `golke screenshot`, `mfab_lc`).
