@@ -1179,6 +1179,7 @@ def build_generation(
                          counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn),
                          **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}),
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
+                         **({"mixed_caps": True} if cfg.text_cluster_mixed_caps else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
                          **({"nest_guard_rotated": True} if cfg.text_cluster_nest_guard_rotated else {}),
                          # a row of solid blobs is no word (2026-11-13, ON
