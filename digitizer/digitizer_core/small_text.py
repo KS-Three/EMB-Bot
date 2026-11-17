@@ -378,6 +378,15 @@ SEWN_EDGE_MM = 0.17
 # as drawn, never closed.
 WORD_SPACE_RATIO = 2.0
 WORD_SPACE_CAP = 0.5
+# `cfg.small_text_reset_tight_word_space` (built OFF 2026-11-16): the cap
+# floor above is read at this share instead. A printed word space is about a
+# quarter em and a cap is about 0.7 em, so a word space is ~0.35 of the cap:
+# 0.5 sits above a normal one. The USAID tagline "FROM THE AMERICAN PEOPLE"
+# (cap 3.23 mm, median gap 0.417 mm) has THE | AMERICAN at 1.562 mm = 0.484 of
+# the cap and 3.75x the median, 0.053 mm under the 0.5 floor, so it was closed
+# up and sewed "THEAMERICAN". The 2x-median test is unchanged. A CANDIDATE,
+# like every number of the re-set.
+WORD_SPACE_CAP_TIGHT = 0.35
 # Letter widths are searched from the uniform scale (`f` = s) down to this
 # share of the drawn width in `RESET_WIDTH_STEPS` steps, widest first. Below
 # 1 the letters are condensed -- the condensed growth's own idea -- where
@@ -412,14 +421,17 @@ def _units(shapes) -> list[list[int]]:
     return units
 
 
-def _words(spans: list[tuple[float, float]], cap: float) -> list[list[int]]:
+def _words(spans: list[tuple[float, float]], cap: float, *,
+           tight: bool = False) -> list[list[int]]:
     """Letters (their x spans, left to right) grouped into words at the
-    spaces (`WORD_SPACE_RATIO`, `WORD_SPACE_CAP`)."""
+    spaces (`WORD_SPACE_RATIO`, `WORD_SPACE_CAP`; `tight`,
+    `cfg.small_text_reset_tight_word_space`: `WORD_SPACE_CAP_TIGHT`)."""
     gaps = [b[0] - a[1] for a, b in zip(spans, spans[1:])]
     med = float(np.median(gaps)) if gaps else 0.0
+    floor = (WORD_SPACE_CAP_TIGHT if tight else WORD_SPACE_CAP) * cap
     words = [[0]] if spans else []
     for k, g in enumerate(gaps):
-        if g >= max(WORD_SPACE_RATIO * med, WORD_SPACE_CAP * cap):
+        if g >= max(WORD_SPACE_RATIO * med, floor):
             words.append([k + 1])
         else:
             words[-1].append(k + 1)
@@ -466,7 +478,8 @@ def _reset_word(it: dict, s: float, f: float, gap_mm: float, min_stroke_mm: floa
     # a line of two height classes (`one_baseline`) reads its word spaces
     # against its x-height: a space is a share of the em, and against the
     # ascenders "beyond coal"'s 0.79 mm space (0.46 of 1.73) read as a gap
-    words = it.setdefault("words", _words(spans, min(it.get("caps", [it["cap"]]))))
+    words = it.setdefault("words", _words(spans, min(it.get("caps", [it["cap"]])),
+                                          tight=bool(it.get("tight_word_space"))))
     c = it["hull"].centroid
     target = _stroke_target(it, s, min_stroke_mm, bold_scale)
     widen = max(0.0, (target - min(s, f) * it["stroke"]) / 2.0) if it["stroke"] > 0 else 0.0
@@ -1039,9 +1052,15 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        grow_away: bool = False,
                        one_baseline: bool = False,
                        ground_ring: bool = False,
-                       bean_follows: bool = False) -> list[dict]:
+                       bean_follows: bool = False,
+                       tight_word_space: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
+
+    `tight_word_space` (`cfg.small_text_reset_tight_word_space`, built OFF
+    2026-11-16; comment at `WORD_SPACE_CAP_TIGHT`): a gap of 0.35 of the cap
+    that is also 2x the line's median gap is a word space, not 0.5. False:
+    byte for byte.
 
     `one_baseline` (`cfg.small_text_reset_one_baseline`, built OFF
     2026-11-13, ON since 2026-11-14; comment at `BASELINE_CLASS_RATIO`): the height classes of a
@@ -1145,6 +1164,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 "stroke": 2.0 * float(members[0].meta.get("text_cluster_stroke_mm") or 0.0),
                 "mid": (hull.bounds[1] + hull.bounds[3]) / 2.0,
                 **({"all": clusters[cid]} if one_baseline else {}),
+                **({"tight_word_space": True} if tight_word_space else {}),
             })
         except Exception as exc:  # fail open: never take the pipeline down
             row["skipped"] = f"error:{type(exc).__name__}"
