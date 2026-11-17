@@ -3,6 +3,7 @@
  "aa_iterations": 2,
  "aa_phantom_edge_frac": 0.9,
  "absorb_fragments": false,
+ "rope_band": false,
  "alpha_edge_extend": true,
  "alpha_edge_extend_px": 0,
  "alpha_edge_extend_stage0_whole": true,
@@ -378,11 +379,13 @@
  "bevel_ring_fold": false,
  "color_cap_least_loss": false,
  "merge_chroma_guard": false,
+ "keyline_fragment_drop": false,
  "lettering_columns_apex_pro": false,
  "lettering_columns_apex_pro_joints": false,
  "lettering_columns_corner_fold_cap_flared": false,
  "lettering_columns_ring_floor": false,
  "lettering_columns_stroke_floor": false,
  "page_line_front": false,
- "page_line_open": false
+ "page_line_open": false,
+ "enclosed_white_keeps_known_colour": false
 }

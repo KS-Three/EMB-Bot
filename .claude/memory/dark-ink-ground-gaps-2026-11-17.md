@@ -103,7 +103,9 @@ machine (`scratch_kent/`; his EMB-Bot folder is not offered to cloud
 sessions): `python -m tools.pro_intake --list`, then `tools.pro_pair --job
 SLUG` twice per job, the ON arm with `--set extra.KEY=true` for each of the four:
 `dark_ink_refuse_ground_gaps`, `group_consistent_fill_angle_split_ground`,
-`lettering_columns_neck_cuts`, `satin_straight_slots`; a job that moves is re-run one flag at a
+`lettering_columns_neck_cuts`, `satin_straight_slots`, and the two of
+[[logo-batch-2-2026-11-17]] Kent added the same day
+(`small_text_keep_tall_letters`, `small_bold_pull_reaches_floor`); a job that moves is re-run one flag at a
 time to say which moved it. Look at the real Becker jobs for the bare A
 counter named above.
 

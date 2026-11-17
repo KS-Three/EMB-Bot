@@ -895,10 +895,14 @@ def _inscribed_width(poly: Polygon) -> float:
     return 2.0 * float(poly.exterior.distance(c))
 
 
-def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float):
+def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float,
+               counters: bool = True):
     """`growth_keeps_gaps`: `grown` less the bare fabric `r` must leave as the
     art drew it (comment at `GAP_SEWABLE_MM`). `others`: the shapes near `r`;
-    `later`: what sews after `r` (a counter it fills is a seam, not bare)."""
+    `later`: what sews after `r` (a counter it fills is a seam, not bare).
+    `counters` False (`growth_keeps_gaps_between`): the gaps between shapes
+    only; `r`'s own holes are not held (a fill's holes are mostly the halo
+    round a letter sewn over it, which growth is meant to cover)."""
     keep = []
     for o in others:
         d = poly.distance(o.polygon)
@@ -910,7 +914,7 @@ def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float):
         lens = poly.buffer(span).intersection(o.polygon.buffer(span))
         if not lens.is_empty:
             keep.append(lens)
-    for ring in getattr(poly, "interiors", ()):
+    for ring in (getattr(poly, "interiors", ()) if counters else ()):
         hole = Polygon(ring)
         w = _inscribed_width(hole)
         if GAP_SEWABLE_MM <= w <= GAP_PROTECT_MM:
@@ -932,7 +936,7 @@ def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
 #: the geometry flags in `cfg.extra` (comment at `GAP_SEWABLE_MM`): a pass
 #: with none -- and with `cfg.outline_inlets_kept` off, `_off_angles` -- is
 #: the engine as it was
-GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps")
+GROWTH_FLAGS = ("pull_comp_along_stitch_only", "growth_keeps_gaps", "growth_keeps_gaps_between")
 
 
 def _off_angles(regions, fabric, cfg, design_class, hairline) -> dict[str, float]:
@@ -995,7 +999,13 @@ def resolve_overlaps(
     # (comment at `GAP_SEWABLE_MM`, both built OFF). Absent: as before.
     flags_extra = getattr(cfg, "extra", None) or {}
     along = bool(flags_extra.get("pull_comp_along_stitch_only")) and pull > 0
-    keep_gaps = bool(flags_extra.get("growth_keeps_gaps"))
+    keep_between = bool(flags_extra.get("growth_keeps_gaps_between"))
+    keep_gaps = bool(flags_extra.get("growth_keeps_gaps")) or keep_between
+    # `growth_keeps_gaps_between` (built OFF 2026-11-17): the same rule for the
+    # gaps between two shapes only; `growth_keeps_gaps` also holds a shape's
+    # own holes, which on TOAT Machine's white fill left 63 mm2 of bare
+    # fabric where the art has only the halo round the letters.
+    keep_counters = bool(flags_extra.get("growth_keeps_gaps")) or not keep_between
     # `cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick "K-Line box
     # + gear flags"; comment at the field): a fill's growth keeps out of its
     # own outline's inlets.
@@ -1318,7 +1328,8 @@ def resolve_overlaps(
             if keep_gaps and grown is not None and not grown.is_empty:
                 near = [regions[int(i)] for i in gap_tree.query(poly.buffer(GAP_PROTECT_MM))
                         if regions[int(i)] is not r]
-                grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap)
+                grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap,
+                                   counters=keep_counters)
 
             # `cfg.outline_inlets_kept` (ON, Kent 2026-11-15; `outline_inlets`):
             # a fill's growth stays out of its own outline's inlets (a notch,

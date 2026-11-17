@@ -1,0 +1,65 @@
+{
+ "logo_alpha.png": {
+  "moved": false,
+  "stitches_off": 6213,
+  "stitches_on": 6213,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/drone_render.png": {
+  "moved": false,
+  "stitches_off": 18610,
+  "stitches_on": 18610,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/gradient_ramp_linear.png": {
+  "moved": false,
+  "stitches_off": 10938,
+  "stitches_on": 10938,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/photo_dof_meadow.png": {
+  "moved": false,
+  "stitches_off": 21101,
+  "stitches_on": 21101,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/photo_scene_stub.png": {
+  "moved": false,
+  "stitches_off": 23496,
+  "stitches_on": 23496,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/region_blobs.png": {
+  "moved": false,
+  "stitches_off": 19017,
+  "stitches_on": 19017,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "becker_marine_logo.png": {
+  "moved": false,
+  "stitches_off": 10784,
+  "stitches_on": 10784,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/logo_gaulke_roofing.png": {
+  "moved": false,
+  "stitches_off": 5123,
+  "stitches_on": 5123,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ },
+ "photo/screenshot_phone_ui_golke.jpg": {
+  "moved": false,
+  "stitches_off": 11254,
+  "stitches_on": 11254,
+  "width_mm": 80.0,
+  "garment": "left_chest"
+ }
+}
