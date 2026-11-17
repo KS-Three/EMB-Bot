@@ -2193,11 +2193,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     N and A): a stroke with a free tip run out under itself and sewn back to
     its join. A cut is left only where no walk order buries the hop.
     `cover_hops` (`cfg.lettering_columns_cover_hops`, built OFF 2026-11-17): a
-    needle-down travel (hop, underpath) stretch that lies on none of the
-    letter's sewn satin -- `poly_hop` grows the outline, so it also covers a
-    notch the satin leaves open, and a hop across a c's mouth showed on the
-    garment (the prime grader's Toat beanie pin) -- is cut there: the run
-    breaks, and the needle jumps with a trim over it (`_cut_bare_travel`).
+    needle-down travel (hop, underpath) stretch that leaves the union of the
+    word's artwork and its sewn satin -- page colour in the art, any length,
+    no tolerance -- is cut there. `poly_hop` grows the outline, so it also
+    covers a notch the satin leaves open, and a hop across a c's mouth showed
+    on the garment (the prime grader's Toat beanie pin): the run breaks, and
+    the needle jumps with a trim over it (`_cut_bare_travel`).
     `_walk` (`_edge_walk` only): the walk to sew, in place of the postman's;
     `_feet`, filled with each satin run's ground (by `id`) for `_walk_cost`."""
     _call = dict(locals())
@@ -2744,25 +2745,24 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         if _feet is not None:
             _feet.update(ground_of)
     if cover_hops and sewn:
-        linked = _cut_bare_travel(linked, list(sewn.values()), report,
+        linked = _cut_bare_travel(linked, [poly, *sewn.values()], report,
                                   skip_first="entry_walk_mm" in report)
     return linked, report
 
 
-#: `cover_hops`: a travel segment is bare when more than this much of it lies
-#: off the ground of every satin leg of the letter (grown by `_BARE_GROUND_MM`,
-#: a thread's reach past its rail)
-_BARE_MAX_MM = 0.3
-_BARE_GROUND_MM = 0.1
+#: `cover_hops`: no tolerance. A travel segment is cut when ANY of it leaves
+#: the union of the word's artwork and its own sewn satin (page colour in the
+#: art); float dust below this is not a length
+_PAGE_DUST_MM = 1e-9
 
 
 def _cut_bare_travel(linked: list[StitchRun], grounds: list, report: dict,
-                     skip_first: bool = False, ground_mm: float = _BARE_GROUND_MM) -> list[StitchRun]:
+                     skip_first: bool = False) -> list[StitchRun]:
     """`cover_hops`: every needle-down travel run of the letter, broken where
     a segment lies on none of its sewn satin; the piece after a break begins
     with a jump and a trim, so the needle crosses that fabric lifted, not
     sewn. The entry walk (`skip_first`) is the satin tier's own and stays."""
-    ground = unary_union(grounds).buffer(ground_mm)
+    ground = unary_union(grounds)
     out: list[StitchRun] = []
     dirty = False                      # a bare stretch was dropped since the last run kept
 
@@ -2779,7 +2779,7 @@ def _cut_bare_travel(linked: list[StitchRun], grounds: list, report: dict,
             continue
         pieces: list[list[tuple[float, float]]] = [[r.points[0]]]
         for a, b in zip(r.points, r.points[1:]):
-            if LineString([a, b]).difference(ground).length > _BARE_MAX_MM:
+            if LineString([a, b]).difference(ground).length > _PAGE_DUST_MM:
                 report["bare_hops_cut"] = report.get("bare_hops_cut", 0) + 1
                 pieces.append([b])
             else:
