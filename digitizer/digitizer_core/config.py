@@ -608,7 +608,12 @@ class PipelineConfig:
     # width or tolerance number: the channel is the one `keep_lines` already
     # found, and a review `stitched` still wins. False is the engine as it
     # was, byte for byte. Tests: `tests/test_page_line_front.py`.
-    page_line_open: bool = False
+    # **ON since 2026-11-17** (Kent, shown ORIGINAL | BEFORE | AFTER of the
+    # Gaulke roof, told that only the two Gaulke runs move out of 35 and that
+    # our hairline is thinner than the pro's because widening it needs a
+    # sew-out: "Flip ON (Recommended)"). `page_line_front` stays OFF. False is
+    # the engine as it was; PRE_FLIP (PAGE_LINE_OPEN_2026_11_17_OFF) pins it.
+    page_line_open: bool = True
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on

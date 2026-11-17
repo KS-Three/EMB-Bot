@@ -1148,6 +1148,12 @@ PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
 COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
 PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
+# `page_line_open` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER of the Gaulke
+# roof: "Flip ON (Recommended)"): the art's thin white line stays bare fabric
+# instead of sewing as a white satin bar. Only Gaulke moves (2 of 35 runs).
+# `tests/test_page_line_front.py` names the flag itself.
+PAGE_LINE_OPEN_2026_11_17_OFF = {"page_line_open": False}
+PRE_FLIP.update(PAGE_LINE_OPEN_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

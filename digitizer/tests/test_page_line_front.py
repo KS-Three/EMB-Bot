@@ -73,8 +73,8 @@ def gaulke():
     garment, width, art = pb.JOBS[slug][0], float(pb.JOBS[slug][1]), pb.resolve(pb.JOBS[slug][2])
     if not art.exists():
         pytest.skip("gaulke art not in this checkout")
-    off = pro_pair.digitize(art, width, garment, None)
-    on = pro_pair.digitize(art, width, garment, {"page_line_front": True})
+    off = pro_pair.digitize(art, width, garment, {"page_line_open": False})
+    on = pro_pair.digitize(art, width, garment, {"page_line_open": False, "page_line_front": True})
     return off, on
 
 
@@ -99,8 +99,10 @@ def test_gaulke_off_is_the_default_and_on_moves_the_white_first(gaulke):
 
 # --- `cfg.page_line_open` (built OFF 2026-11-17): the line stays bare fabric ---
 
-def test_open_default_is_off():
-    assert PipelineConfig().page_line_open is False
+def test_open_default_is_on_and_front_stays_off():
+    """Kent 2026-11-17: "Flip ON (Recommended)" for page_line_open; page_line_front stays OFF."""
+    assert PipelineConfig().page_line_open is True
+    assert PipelineConfig().page_line_front is False
 
 
 @pytest.fixture(scope="module")
@@ -110,7 +112,7 @@ def gaulke_open():
     garment, width, art = pb.JOBS[slug][0], float(pb.JOBS[slug][1]), pb.resolve(pb.JOBS[slug][2])
     if not art.exists():
         pytest.skip("gaulke art not in this checkout")
-    return pro_pair.digitize(art, width, garment, {"page_line_open": True})
+    return pro_pair.digitize(art, width, garment, None)      # the shipped default
 
 
 def test_gaulke_open_leaves_the_roof_gap_unsewn(gaulke, gaulke_open):
@@ -132,9 +134,9 @@ def test_a_review_stitched_override_still_wins():
     garment, width, art = pb.JOBS[slug][0], float(pb.JOBS[slug][1]), pb.resolve(pb.JOBS[slug][2])
     if not art.exists():
         pytest.skip("gaulke art not in this checkout")
-    first = pro_pair.digitize(art, width, garment, {"page_line_open": True})
+    first = pro_pair.digitize(art, width, garment, None)
     sid = next(r.shape_id for r in first.result.regions if r.meta.get("page_line_open"))
-    cfg = pro_pair.config(width, garment, {"page_line_open": True})
+    cfg = pro_pair.config(width, garment, None)
     import dataclasses
     cfg = dataclasses.replace(cfg, shape_overrides={sid: {"stitched": True}})
     from digitizer_core.pipeline import finish_generation

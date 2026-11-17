@@ -78,6 +78,7 @@ the OLDEST lines whole to the archive.
 - [Outline fonts on demand](outline-fonts-on-demand-2026-11-06.md) — Kent 11-06: TTF/OTF fonts sewn by the service via the Column lane (POST /lettering), 21 OFL families, `outline:<key>`; 07-24 ruling = browser trace
 - [Outline frame guard](outline-frame-guard-2026-11-14.md) — k_line's red box is a field, not an outline: holder/holes area 1.0x+ keeps it a field; ticked ON 11-15 with a combined-check STOP, pending
 - [Outline inlets kept](outline-inlets-2026-11-14.md) — 'shape detail lost' 18 pins: 9 satin ends (apex/flat-ends lanes), 3 an outline inlet the polygon keeps and thread sews over (gear teeth, beak, notch); `outline_inlets_kept` OFF
+- [Page line](page-line-open-2026-11-17.md) — Kent 11-17: `page_line_open` ON, the art's thin white line stays bare fabric as in the pro's one-thread DST; only Gaulke moves; hairline thinner than pro's (pull comp)
 - [Pen stroke](pen-stroke-2026-11-13.md) — drag draws a Column/Line; Join tick built OFF (Kent 11-13): touching Columns sew as one path, own touch rule not the glyph's; same-colour shapes still stop
 - [Point-touch split](point-touch-split-2026-11-14.md) — NSYNC's star touching the N at one point made one region and a satin fan; split under 0.15 mm into bodies; ticked ON 11-15, pending
 - [Prime grader](prime-grader-2026-11-17.md) — Kent 11-17: session eye is the grader (tools/prime_grader.py, nightly); first run weak vs old pins (kappa 0.29 n 6); `color_cap_least_loss` ON (Drone blue)
