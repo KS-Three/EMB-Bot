@@ -72,5 +72,49 @@ did not import there while CI's later 3.12 stayed green. Now one
 `ExitStack` (PR #1615, `tests/test_with_nesting.py`). Add a scope as one
 `_enter(...)` line; `floor_scopes` no longer needs to fold two.
 
-**Not fixed, seen again:** small lettering on an arc sews fat and fuses
-(Forest Service's DEPARTMENT, 4.5 mm caps); NOAA / EPA ring text.
+**"Fat, fused small text" was a lost letter, not fat thread (Kent's pick of
+next fault, 11-17).** Forest Service's DEPARTMENT at 80 mm: letters 6.5 mm on
+0.97 mm strokes, art gaps 0.43 mm median, needle gaps 0.51: the engine does
+not push the letters together. What reads wrong is the M sewn as an H. The
+traced outline is right (three concave corners: two bays, one notch). The
+junction rules take no cut (no edge runs on through the solid band where
+stems and diagonals merge, no convex apex faces the corners), the second
+look ("again") splits it once, each half sews along its stem and the V's
+point is bare. None of eight built-OFF lettering flags moves it (apex_cut,
+judge_entry_free, absorb_unsewn, rail_pair_bars, flare_top_fold,
+lean_flat_ends, reading_order, edge_walk_judge_off_walk).
+
+**Built OFF: `cfg.extra["lettering_columns_neck_cuts"]`**
+(`outline_cut._neck_cuts`, `neck_cuts_scope`; `tests/test_neck_cuts.py`). Two
+concave corners no junction cut touches, at most `NECK_MAX_W` 1.25 stroke
+widths apart, joined where the segment stays inside the letter; a corner may
+take two. The lane sews the letter both ways and keeps the neck cut only on
+`columns.absorb_gains` (more cover, no more spill). 26 designs (the ten
+Commons logos, 16 repo logos at 80 mm): 24 byte-identical; Forest Service
+24,223 -> 24,250 stitches, trims 41 -> 42 (the M reads as an M, FOREST's T
+loses a stray diagonal at its joint); USGS 7,887 -> 7,898, trims 19 both
+(tagline a and d change, read about the same). Cost: the M's stems sew as
+two columns each (5 columns, was 2). Not run: the `scratch_kent` corpus.
+
+**Kent 2026-11-17 on all three flags: "Paired check first".** None flips
+until the pro-paired jobs are run with all three ON against OFF and he has
+seen art | before | after for every job that moves. It has to run on his
+machine (`scratch_kent/`; his EMB-Bot folder is not offered to cloud
+sessions): `python -m tools.pro_intake --list`, then `tools.pro_pair --job
+SLUG` twice per job, the ON arm with `--set extra.KEY=true` for each of
+`dark_ink_refuse_ground_gaps`, `group_consistent_fill_angle_split_ground`,
+`lettering_columns_neck_cuts`; a job that moves is re-run one flag at a
+time to say which moved it. Look at the real Becker jobs for the bare A
+counter named above.
+
+**N and A joints (Kent's next pick, 11-17): looked, nothing built.** A
+contact sheet of the 36 Forest Service letters at 80 mm (outline + satin
+runs per letter): every letter covers 0.97 or more of itself, and after the
+M no letter has a missing stroke. The N sews stem, diagonal, stem with the
+diagonal run through both joints; the A two legs and a bar. That is the
+`apex_pro` / `apex_pro_joints` construction Kent ruled ON 11-15. What
+roughness is left is that construction at 6.5 mm, so a change needs his
+pins on a picture or the pro's file for lettering this size, not another
+rule from here.
+
+**Not fixed, seen again:** NOAA / EPA ring text.

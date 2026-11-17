@@ -3405,6 +3405,17 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 if satin_cover(runs3, poly) >= cover + SMALL_BOLD_PLAIN_GAIN:
                     runs, report = runs3, report3
                     report["small_bold_plain"] = 1
+    from .outline_cut import neck_cuts_applied, neck_cuts_armed
+    if neck_cuts_armed():
+        # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF): the letter
+        # sewn again with its necks cut (`outline_cut._neck_cuts`), kept only
+        # if it covers more of the letter for no more thread outside it
+        with neck_cuts_applied():
+            runs_n, report_n = sew()
+        if ([r.points for r in runs_n] != [r.points for r in runs]
+                and absorb_gains(runs, runs_n, poly)):
+            runs, report = runs_n, report_n
+            report["neck_cuts"] = 1
     return runs, report
 
 

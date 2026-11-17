@@ -410,6 +410,82 @@ APEX_SHOULDER_FAR = 0.36
 APEX_STEM_DEPTH = 0.4          # a cut this far toward the tip retries at the crotch (`_apex_stems`)
 
 
+# `neck_cuts` (`cfg.extra["lettering_columns_neck_cuts"]`, 2026-11-17, built
+# OFF). A heavy M at small size: its two diagonals and both stems run together
+# into one solid band, the bays rise to it from below and the notch drops to
+# it from above, and the V's point hangs under the band. The junction rules
+# take no cut there -- no edge runs on through the band ("through", "ext")
+# and no convex apex faces the corners ("mitre") -- so the letter is one
+# piece, the second look splits it once and each half sews along its stem:
+# the V's point is left bare and the M reads as an H (US Forest Service
+# shield at 80 mm, DEPARTMENT's M, 6.8 mm tall on 1.17 mm strokes: three
+# concave corners, 0.96 and 1.16 W apart, no cut).
+# ON, a NECK is cut: two concave corners no junction cut touches, no further
+# apart than `NECK_MAX_W` stroke widths, joined where the segment stays
+# inside the letter. A corner may take two necks (the M's notch joins both
+# bay corners), shortest first, none crossing another cut. The lane sews the
+# letter both ways and keeps the neck cut only if it covers more of the
+# letter for no more thread outside it (`columns.absorb_gains`), so a letter
+# the necks do not help sews as it does OFF. A candidate, not a fabric
+# constant: layout, judged by eye.
+_NECK_ARMED: contextvars.ContextVar[bool] = contextvars.ContextVar("neck_cuts_armed", default=False)
+_NECK_APPLY: contextvars.ContextVar[bool] = contextvars.ContextVar("neck_cuts_apply", default=False)
+NECK_MAX_W = 1.25
+
+
+@contextlib.contextmanager
+def neck_cuts_scope(on: bool):
+    """`cfg.extra["lettering_columns_neck_cuts"]` for the length of a plan
+    (`pipeline.plan_stitches`): arms the lane's second sew, nothing else."""
+    token = _NECK_ARMED.set(bool(on))
+    try:
+        yield
+    finally:
+        _NECK_ARMED.reset(token)
+
+
+@contextlib.contextmanager
+def neck_cuts_applied():
+    """The lane's second sew: `_letter_columns` adds `_neck_cuts` inside."""
+    token = _NECK_APPLY.set(True)
+    try:
+        yield
+    finally:
+        _NECK_APPLY.reset(token)
+
+
+def neck_cuts_armed() -> bool:
+    return _NECK_ARMED.get() and not _NECK_APPLY.get()
+
+
+def _neck_cuts(poly: Polygon, W: float, cuts: list, reflex: list) -> list:
+    """The neck cuts of `poly` (see `_NECK_ARMED`), as (p, q, "neck", L)."""
+    def touched(p):
+        return any(math.hypot(p[0] - e[0], p[1] - e[1]) < 0.25 * W for c in cuts for e in (c[0], c[1]))
+
+    free = [r["p"] for r in reflex if not touched(r["p"])]
+    pairs = []
+    for i, p in enumerate(free):
+        for q in free[i + 1:]:
+            L = math.hypot(q[0] - p[0], q[1] - p[1])
+            if 0.25 * W <= L <= NECK_MAX_W * W and _inside(poly, p, q):
+                pairs.append((L, p, q))
+    lines = [LineString([c[0], c[1]]) for c in cuts]
+    count: dict = {}
+    out = []
+    for L, p, q in sorted(pairs):
+        if count.get(p, 0) >= 2 or count.get(q, 0) >= 2:
+            continue
+        seg = LineString([p, q])
+        if any(seg.crosses(k) for k in lines):
+            continue
+        lines.append(seg)
+        count[p] = count.get(p, 0) + 1
+        count[q] = count.get(q, 0) + 1
+        out.append((p, q, "neck", L))
+    return out
+
+
 # `apex_guard` (`cfg.extra["lettering_columns_apex_guard"]`, 2026-11-14,
 # built OFF; read only while `apex_cut` is on). The corpus table
 # (`docs/apex-cut-corpus-2026-11-14.md`, 43 designs) found apex_cut better on
@@ -3628,6 +3704,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         return LetterCut(poly, W, [], [], [])
     W = stroke_width(poly)
     cuts, _reflex, _convex = find_cuts(poly, W)
+    if _NECK_APPLY.get():       # `neck_cuts` (built OFF): the lane's second sew only
+        cuts = cuts + _neck_cuts(poly, W, cuts, _reflex)
     # An E or an F: the stem line through its slot backs replaces every
     # junction-rule cut that ends on that line (those slice the stem
     # crosswise) or crosses it.
