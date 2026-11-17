@@ -1,6 +1,6 @@
 ---
 name: underfill-ground-guard-2026-11-16
-description: silhouette_underfill_ground_guard built OFF 11-16 — a ring whose host would jump ahead of the ground bordering its outer edge reads no ring; NASA insignia 80-150 mm white sewed under the blue ground (orbit buried, stars gone); 22 paired jobs unmoved; flip is Kent's
+description: silhouette_underfill_ground_guard ON 11-16 (Kent "Flip ON") — a ring whose host would jump ahead of the ground bordering its outer edge reads no ring; NASA insignia 80-150 mm white sewed under the blue ground (orbit buried, stars gone); 22 paired jobs unmoved; flip is Kent's
 metadata:
   type: project
 ---
@@ -24,10 +24,15 @@ The ring hosted itself and `apply` moved the WHOLE white layer ahead of the
 blue layer, the ground the weld lies on. 4,246 mm2 of blue then sewed over
 every white shape.
 
-**Fix (`silhouette_underfill_ground_guard`, built OFF, PR on
-`claude/underfill-ground-guard`):** a ring whose host would move ahead of
-layers bordering `GROUND_EDGE_MIN` (0.5) of the ring's OUTER edge reads no
-ring (`_on_jumped_ground`). A host that does not move is never asked.
+**Fix (`silhouette_underfill_ground_guard`, PR #1608; ON since Kent's "Flip
+ON" 2026-11-16, from the art | before | after sheets):** a ring that holds
+next to nothing (holes under `GROUND_HELD_MAX`, 0.15, of its outline) and
+whose host would move ahead of layers bordering `GROUND_EDGE_MIN` (0.5) of
+its OUTER edge reads no ring (`_on_jumped_ground`). A host that does not move
+is never asked. The held test was added at the flip: the Fremont patch art's
+white panel (raw config, 80 mm) is bordered 0.78 by the black round it and
+is a real silhouette (holes 0.27, 107 letters); the NASA welds hold
+0.03-0.07.
 
 **Measured:**
 
@@ -44,8 +49,8 @@ ring (`_on_jumped_ground`). A host that does not move is never asked.
 **Why:** the under-fill's layer move is global and its evidence is local; a
 counter is enough to reorder a whole thread.
 
-**How to apply:** the flip is Kent's, from the art | before | after pictures.
-Left open on the same logo, not built: the orbit sews at the satin floor
+**How to apply:** `tests/conftest.py` UNDERFILL_GUARD_2026_11_16_OFF pins the
+old default. Left open on the same logo, not built: the orbit sews at the satin floor
 (about 1.5 mm for a 0.6 mm line); a 1.8 mm2 re-snapped red piece in the first
 A's counter sews as its own fourth colour block; the round star dots under
 1 mm are dropped by stage 3 (Kent 11-15: tiny marks not built, see

@@ -1,4 +1,4 @@
-"""A ring that lies ON a ground is no silhouette (`cfg.silhouette_underfill_ground_guard`, built OFF 2026-11-16).
+"""A ring that lies ON a ground is no silhouette (`cfg.silhouette_underfill_ground_guard`, ON since 2026-11-16).
 
 The under-fill moves its host's whole thread layer ahead of every colour the
 ring holds, on the evidence of the ring alone. On the NASA insignia at 100 mm
@@ -89,8 +89,9 @@ def _md5(blocks) -> str:
     return hashlib.md5(json.dumps(rows).encode()).hexdigest()
 
 
-def test_flag_is_built_off():
-    assert PipelineConfig().silhouette_underfill_ground_guard is False
+def test_flag_default_is_on():
+    # ON since 2026-11-16 (Kent, from the art | before | after sheets: "Flip ON")
+    assert PipelineConfig().silhouette_underfill_ground_guard is True
 
 
 def test_the_defect_a_weld_on_its_ground_reads_as_a_ring_and_jumps_the_ground():
@@ -150,6 +151,27 @@ def test_a_neighbour_on_a_short_stretch_of_the_edge_is_not_a_ground():
     assert _ids(su.plan(wrapped)) == [("Sweld", "Sweld", [])]
 
 
+def test_a_lettered_ground_inside_a_frame_keeps_its_underfill():
+    """The Fremont patch art's shape: a white panel holding a row of black
+    letters, a black frame round it, black first in the layer order. The
+    frame borders all of the panel's outer edge, and the panel is still the
+    silhouette its letters make it (holes over `GROUND_HELD_MAX` of its
+    outline): the guard does not ask, and white moves under the black."""
+    panel = box(10, 10, 70, 40)
+    letters = [box(14 + 9 * i, 16, 20 + 9 * i, 34) for i in range(6)]       # 648 of 1,800 mm2
+    # the frame in two pieces, so it is no ring of its own (the art's is cut too)
+    halves = [box(4, 4, 40, 46).difference(panel), box(40, 4, 76, 46).difference(panel)]
+    regs = ([_reg(f"Sframe{i}", h, BLUE, 0) for i, h in enumerate(halves)]
+            + [_reg("Spanel", _holed(panel, *letters), WHITE, 1)]
+            + [_reg(f"Sl{i}", p, BLUE, 0) for i, p in enumerate(letters)])
+    held = sum(p.area for p in letters) / panel.area
+    assert held > su.GROUND_HELD_MAX
+    rings = [r for r in su.plan(regs, ground_guard=True) if r[0].shape_id == "Spanel"]
+    assert rings and rings == [r for r in su.plan(regs) if r[0].shape_id == "Spanel"]
+    ring, host, _o, _m, inner = rings[0]
+    assert su._on_jumped_ground(ring, host, inner, regs)          # bordered all round, and kept
+
+
 def test_a_host_that_does_not_move_is_never_asked():
     """The weld already sews first (layer 0, the blue after it): accepting
     the ring moves nothing, so what borders it is not read."""
@@ -189,7 +211,8 @@ def test_on_a_panel_with_riders_reads_as_before():
     on garment keeps its riders, its panel and its outlines with the guard ON."""
     from tests.test_silhouette_underfill_panels import OUTLINES, panel
     kw = dict(silhouette_underfill=True, sew_enclosed_white=True, silhouette_underfill_panels=True)
-    off = su.apply_cfg(panel(), (), PipelineConfig(**kw), OUTLINES)
+    off = su.apply_cfg(panel(), (), PipelineConfig(silhouette_underfill_ground_guard=False, **kw),
+                       OUTLINES)
     on = su.apply_cfg(panel(), (), PipelineConfig(silhouette_underfill_ground_guard=True, **kw),
                       OUTLINES)
     assert on == off

@@ -83,7 +83,7 @@ from .stage6_border import (EDGE_CAP_BUDGET_PCT,
                             EDGE_CAP_OVER_BUDGET_ACTIONS, border_runs,
                             keyline_band, keyline_rest, keyline_runs,
                             outline_holes, ring_has_room, run_outline, silhouette_cap,
-                            underfill_rim_after)
+                            underfill_rim_after, UNDERFILL_RIM_WIDTH_MM)
 from .stage6_contour import contour_fill
 from .stage6_detail import detail_runs
 # Imported under another name: `hairline_runs` is already this module's count
@@ -3647,7 +3647,8 @@ def sequence(
             border_later[_p.shape_id] = _p.visible_geom
     # Every region's edge, for `cfg.border_by_size_fabric_edges`'s seam test
     sewn_geoms = ({_p.shape_id: _p.visible_geom for _p in planned}
-                  if cfg.border_by_size_fabric_edges else {})
+                  if (cfg.border_by_size_fabric_edges
+                      or cfg.silhouette_underfill_rim_fabric_edges) else {})
     # `_owned_by_later`'s buffered edges, built once per shape for this call
     # (`_edge_band`; speed only -- the owl asked 157 seams of 26 shapes)
     seam_bands: dict = {}
@@ -5080,8 +5081,25 @@ def sequence(
             # A stripe field's fill gets no rim: its bands cover the long
             # edges and its ends are cut, as the bands' are (`STRIPE_HOST_KEY`).
             if cfg.silhouette_underfill_rim and not p.region.meta.get(STRIPE_HOST_KEY):
+                # `cfg.silhouette_underfill_rim_fabric_edges`: the rim skips
+                # every stretch of the host's visible outline that another
+                # sewn shape shares, earlier or later, by the size ring's
+                # seam band and threshold (`border_by_size_fabric_edges`)
+                rim_omit = rim_outline = None
+                if (cfg.silhouette_underfill_rim_fabric_edges and runs
+                        and p.region.meta.get(UNDERFILL_KEY) is not None):
+                    _vis = p.visible_geom
+                    _parts = [Polygon(g.exterior) for g in getattr(_vis, "geoms", [_vis])
+                              if g.geom_type == "Polygon" and not g.is_empty]
+                    if _parts:
+                        rim_outline = unary_union(_parts)
+                        rim_omit, _ = _owned_by_later(
+                            rim_outline,
+                            {k: g for k, g in sewn_geoms.items() if k != p.shape_id},
+                            2.0 * UNDERFILL_RIM_WIDTH_MM, eps_mm=2.0 * cfg.simplify_tol_mm)
                 runs, report = underfill_rim_after(p, runs, report, trim_at_mm=trim_at,
-                                                   underlay=satin_underlay != "none")
+                                                   underlay=satin_underlay != "none",
+                                                   omit=rim_omit, outline=rim_outline)
             thin += int(filled and report["too_thin"])
             jumps += report["jumps"]
             as_run += report.get("as_run", 0)

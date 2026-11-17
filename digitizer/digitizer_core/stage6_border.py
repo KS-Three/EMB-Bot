@@ -1497,7 +1497,8 @@ def underfill_rim_runs(outline, shape_id: str, *, entry: tuple[float, float] | N
 
 
 def underfill_rim_after(p, runs: list[StitchRun], report: dict, *, trim_at_mm: float,
-                        underlay: bool) -> tuple[list[StitchRun], dict]:
+                        underlay: bool, omit=None, outline=None
+                        ) -> tuple[list[StitchRun], dict]:
     """`cfg.silhouette_underfill_rim`: a sewn shape's runs, with the rim
     (`underfill_rim_runs`) after them when the shape is a ring hosting its own
     under-fill -- `silhouette_underfill` tagged it with the outline it fills
@@ -1510,13 +1511,31 @@ def underfill_rim_after(p, runs: list[StitchRun], report: dict, *, trim_at_mm: f
     Nor a host sewn as shade bands (the blend tier: a region riding the
     design's ramp): one thread all the way round a sweep crosses every shade
     it fades through (`test_stage6_blend`'s riding region; 2026-10-27, when
-    the recipe went to every job)."""
+    the recipe went to every job).
+
+    `omit` (`cfg.silhouette_underfill_rim_fabric_edges`, with `outline`: the
+    host's VISIBLE outline, holes closed): the stretches of that outline
+    another sewn shape shares (`stage7_sequence._owned_by_later`'s band).
+    The rim then sews as `border_runs`' open arcs on the rest of the outline,
+    at the rim's width, and not at all where nothing is left. None: the
+    closed loop, as before."""
     from .silhouette_underfill import UNDERFILL_KEY, UNDERFILL_OF_KEY
     meta = p.region.meta
     if (meta.get(UNDERFILL_KEY) is None or meta.get(UNDERFILL_OF_KEY) != p.shape_id
             or not runs or p.polygon.is_empty
             or any(getattr(r, "shade_thread_index", None) is not None for r in runs)):
         return runs, report
+    if omit is not None and outline is not None and not outline.is_empty:
+        rim, rep = border_runs(outline, p.shape_id, entry=runs[-1].points[-1],
+                               trim_at_mm=trim_at_mm, style="auto",
+                               width_mm=UNDERFILL_RIM_WIDTH_MM, omit=omit)
+        if rep["empty"]:
+            return runs, report
+        report = dict(report)
+        report["jumps"] = report.get("jumps", 0) + rep["jumps"]
+        report["underfill_rim_loops"] = rep["loops"] + rep["bean_loops"]
+        report["underfill_rim_arcs"] = rep["arcs"] + rep["bean_arcs"]
+        return runs + rim, report
     rim, rep = underfill_rim_runs(p.polygon, p.shape_id, entry=runs[-1].points[-1],
                                   trim_at_mm=trim_at_mm, underlay=underlay)
     if rep["empty"]:

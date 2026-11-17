@@ -114,6 +114,14 @@ LETTER_HOST_INSET_W = 0.5
 #: band, at 0.00. No ring between 0.00 and 0.86: the middle of the gap, not
 #: a fitted number.
 GROUND_EDGE_MIN = 0.5
+#: ... and only a ring that HOLDS next to nothing is refused: its holes under
+#: this share of its outline. A lettered ground inside a frame is bordered
+#: from outside too (the Fremont patch art's white panel, 0.78 of its edge on
+#: the black round it) and is still the silhouette its 107 letters make it:
+#: its holes are 0.27 of its outline, the paired jobs' rings 0.23-0.69. The
+#: insignia's welds, letters with a counter, read 0.03-0.07, and a pro preview
+#: photo's (`reference/becker_chest_small...jpg`) 0.04. The middle of that gap.
+GROUND_HELD_MAX = 0.15
 
 #: every tag a lettering lane reads a shape by: a lettering RING (an O round
 #: a dot) is the lettering lane's, never a silhouette
@@ -396,9 +404,10 @@ def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False):
     """-> [(ring, host, outline, merged ids, inner shapes)] for every ring
     this reads, the biggest first; a shape serves one ring at most.
 
-    `ground_guard` (`cfg.silhouette_underfill_ground_guard`): a ring whose
-    host would move ahead of the ground it lies on is no silhouette
-    (`_on_jumped_ground`) and reads no ring; its shapes stay free for another
+    `ground_guard` (`cfg.silhouette_underfill_ground_guard`): a ring that
+    holds next to nothing (holes under `GROUND_HELD_MAX` of its outline) and
+    whose host would move ahead of the ground it lies on (`_on_jumped_ground`)
+    is no silhouette and reads no ring; its shapes stay free for another
     ring. False: as before.
 
     A shape of the under-fill's colour that inner shapes of other colours
@@ -464,7 +473,8 @@ def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False):
                 reach = unary_union([loops.buffer(-inset)]
                                     + [Polygon(h) for h in ring.polygon.interiors])
                 outline = outline.intersection(reach)
-        if ground_guard and _on_jumped_ground(ring, host, inner, regions):
+        if (ground_guard and holes < GROUND_HELD_MAX * (holes + ring.polygon.area)
+                and _on_jumped_ground(ring, host, inner, regions)):
             continue
         out.append((ring, host, outline, merged, inner))
         used.update({ring.shape_id, host.shape_id, *(r.shape_id for r in inner)})

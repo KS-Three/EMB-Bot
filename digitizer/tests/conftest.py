@@ -1033,6 +1033,12 @@ PRE_FLIP.update(FRAME_GUARD_2026_11_15_OFF)
 # `tests/test_outline_follow_shape.py` names the flag itself.
 FOLLOW_SHAPE_2026_11_16_OFF = {"border_from_outline_follow_shape": False}
 PRE_FLIP.update(FOLLOW_SHAPE_2026_11_16_OFF)
+# `silhouette_underfill_ground_guard` (Kent 2026-11-16, "Flip ON"; built OFF
+# the same day): a ring whose host would move ahead of the ground bordering
+# its outer edge reads no ring. `tests/test_underfill_ground_guard.py` names
+# the flag itself.
+UNDERFILL_GUARD_2026_11_16_OFF = {"silhouette_underfill_ground_guard": False}
+PRE_FLIP.update(UNDERFILL_GUARD_2026_11_16_OFF)
 # `point_touch_split` (Kent 2026-11-15, ticked ON; promoted from cfg.extra): `tests/test_point_touch.py`.
 POINT_TOUCH_2026_11_15_OFF = {"point_touch_split": False}
 PRE_FLIP.update(POINT_TOUCH_2026_11_15_OFF)

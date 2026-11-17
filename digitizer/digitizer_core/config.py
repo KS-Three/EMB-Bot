@@ -2571,7 +2571,7 @@ class PipelineConfig:
     # (`silhouette_underfill_panels` + `sew_enclosed_white` +
     # `border_from_outline`). OFF: never read, byte for byte.
     underfill_untagged_riders: bool = False
-    # `silhouette_underfill_ground_guard` (2026-11-16, BUILT OFF): a ring that
+    # `silhouette_underfill_ground_guard` (built OFF 2026-11-16): a ring that
     # lies ON a ground is no silhouette. The under-fill moves its host's whole
     # thread layer ahead of every colour the ring holds, on the evidence of the
     # ring alone. On the NASA insignia at 100 mm (960 px Commons PNG) the white
@@ -2584,11 +2584,18 @@ class PipelineConfig:
     # under-fill off 23,290 and 33). ON: a ring whose host would move ahead of
     # layers that border `silhouette_underfill.GROUND_EDGE_MIN` of the ring's
     # OUTER edge reads no ring (`_on_jumped_ground`); the insignia's reads
-    # 1.00. A silhouette's outside is garment, and a host that does not move
-    # is never asked. Read only with `silhouette_underfill`. Layout: Kent's
+    # 1.00. Only a ring that holds next to nothing is asked (holes under
+    # `GROUND_HELD_MAX` of its outline: the insignia's 0.03-0.07, a real
+    # silhouette's 0.23 and up), so a lettered ground inside a frame keeps
+    # its under-fill, and a host that does not move is never asked either.
+    # Read only with `silhouette_underfill`. Layout: Kent's
     # call from the renders. OFF: never read, byte for byte.
     # Tests: `tests/test_underfill_ground_guard.py`.
-    silhouette_underfill_ground_guard: bool = False
+    # **ON since 2026-11-16** (Kent 2026-11-16, from the art | before | after
+    # sheets at 100 and 120 mm: "Flip ON"). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP (UNDERFILL_GUARD_2026_11_16_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    silhouette_underfill_ground_guard: bool = True
     # `keyline_fold_slivers` (BUILT OFF 2026-10-26, the MFab recipe's trims,
     # `docs/mfab-recipe-trims-2026-10-26.md`; read only with
     # `sew_enclosed_white`): a sewn white field's slivers fold back into it
@@ -7290,6 +7297,23 @@ class PipelineConfig:
     # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill_rim: bool = True
+    # `silhouette_underfill_rim_fabric_edges` (2026-11-16, BUILT OFF): the rim
+    # above sews only where the host's outline meets bare fabric. It was read
+    # off MFab's band and Fremont's ground, whose outlines ARE the design's
+    # edge; since the recipe went to every job (2026-10-27) it also closes
+    # round hosts that lie among other sewn shapes. US National Park Service
+    # arrowhead (Commons PNG, 75 mm): the orange ground hosts its own
+    # under-fill and its 1.75 mm rim ran along the tree and the mountain, a
+    # raised orange halo round a tree the art draws with none; the green
+    # ground's rim did the same from the other side. ON, the rim skips every
+    # stretch of the host's visible outline that another sewn shape shares,
+    # earlier or later, by `border_by_size_fabric_edges`' seam band and
+    # threshold (twice the rim's width), and sews the rest as open arcs
+    # (`stage6_border.border_runs`); an outline no shape shares keeps the
+    # closed loop, byte for byte. Read only with `silhouette_underfill_rim`.
+    # Layout: Kent's call from the renders. OFF: never read.
+    # Tests: `tests/test_underfill_rim_fabric_edges.py`.
+    silhouette_underfill_rim_fabric_edges: bool = False
     # A script word sews as the pen wrote it (2026-10-26, built OFF; Kent:
     # "Measure, then build OFF"; `script_strokes.py`). A joined or italic word
     # the letter door refuses (aspect over its 1.4 ceiling, a cluster of one)
