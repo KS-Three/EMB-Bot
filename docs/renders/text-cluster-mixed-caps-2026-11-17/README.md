@@ -85,3 +85,16 @@ pictures above stand.
 **Totals (second run):** 9 + 9 pro rows + 26 fixtures = 44 designs; 7 moved (the 3 TOAT rows are one artwork, plus 3
 fixtures and `mfab_lc`), every mover pictured. By eye: 3 better (all TOAT), **0 worse**, 4 no visible change
 (`drone_render`, `repro_gradient_white_icon`, `golke screenshot`, `mfab_lc`).
+
+---
+
+# Flip withdrawn, 2026-11-17: the gradient icon's bands were tagged as lettering
+
+Kent's "Flip ON" was given on "none worse across 44". With the flag ON as the default, CI's digitizer shard 1/6
+failed `tests/test_borders_last.py::test_repro_fixture_border_satin_sews_after_its_cone_s_fills`: on
+`repro_gradient_white_icon` (90 mm) six of the icon's own gradient shapes (a 645 mm2 ramp body, a 258 and a 114 mm2
+band, three slivers of 34-83 mm2) were tagged as LETTERING by the mixed-height pass and left the satin/fill ladder,
+which reordered a block (a satin at rank (1,3) sewed before a fill of its own cone at (1,4)).
+`repro_icon_shapes_tagged_as_lettering.png` draws them (red). **The census above called this design "no visible
+change", and it was: the sewn picture hid a wrong tag.** The test caught what the eye did not. The flip is reverted;
+the flag is built OFF again. A bound on what the pass may admit is a separate follow-up.
