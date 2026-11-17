@@ -163,3 +163,20 @@ def test_a_fill_with_no_angle_of_its_own_keeps_the_angle_it_sewed_at():
 def test_off_hands_stage_7_no_angle_for_a_free_fill():
     planned, _w = resolve_overlaps([_r(box(0, 0, 20, 6), "F", tier="fill")], PIQUE, PipelineConfig(overlap_mm=0.25, **INLETS_2026_11_15_OFF))
     assert planned[0].stitch_angle_deg is None
+
+
+def test_between_mode_keeps_the_gap_but_not_a_shapes_own_hole():
+    """`growth_keeps_gaps_between` (built OFF): two shapes' gap is kept as
+    `growth_keeps_gaps` keeps it, but a fill's own hole is grown over as OFF."""
+    gap = 1.0
+    def gap_scene():
+        return [_fill(box(0, 0, 10, 8), "A", thread=0, layer=0),
+                _fill(box(10 + gap, 0, 20, 8), "B", thread=1, layer=1)]
+    on = _plan(gap_scene(), growth_keeps_gaps_between=True)
+    assert on["A"].distance(on["B"]) >= gap - 1e-6
+    assert _md5(on) == _md5(_plan(gap_scene(), growth_keeps_gaps=True))
+
+    art = box(0, 0, 11, 8).difference(box(5, 2, 6.8, 5))
+    off = _plan([_fill(art)])["F"]
+    between = _plan([_fill(art)], growth_keeps_gaps_between=True)["F"]
+    assert between.wkb == off.wkb, "no shapes near: the hole is grown over as before"

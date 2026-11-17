@@ -1202,6 +1202,19 @@ def _polygonal(g):
     return g
 
 
+def _zigzag_near_counter(stations: list, poly: Polygon, clear_mm: float) -> bool:
+    """`cfg.small_print_floor`: does the zigzag these stations sew (rail to
+    rail, station to station) come within `clear_mm` of one of the letter's
+    counters? False for a letter with no counter."""
+    if not poly.interiors or len(stations) < 1:
+        return False
+    path = [p for a, b in stations for p in (a, b)]
+    if len(path) < 2:
+        return False
+    line = LineString(path)
+    return any(Polygon(r).distance(line) <= clear_mm for r in poly.interiors)
+
+
 def _clear_counters(a_pts, b_pts, poly: Polygon, clear_mm: float,
                     min_cross_mm: float) -> tuple[list, list]:
     """`cfg.small_print_floor`: every penetration that lands within
@@ -2218,6 +2231,10 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     for col in columns:
         col_pull = pull_mm if pull_of is None else pull_of(column_width(col))
         a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold, pull_keep)
+        # `cfg.small_print_floor`: read where the rails land BEFORE the hold
+        # below moves them (held, they sit exactly the clearance off)
+        near_counter = (counter_clear_mm > 0
+                        and _zigzag_near_counter(list(zip(a_pts, b_pts)), cpoly, counter_clear_mm))
         if counter_clear_mm > 0:
             a_pts, b_pts = _clear_counters(a_pts, b_pts, cpoly, counter_clear_mm, min_cross_mm)
         # Short stitches on the inside of a bend (`satinplay.js` pullShort;
@@ -2229,9 +2246,17 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
         # short-stitched (lettering-thickness-fremont-2026-10-06).
         guarded = (_inside_stagger(a_pts, b_pts) if inside_stagger    # the pro's inside
                    else _short_stitch_guard(a_pts, b_pts))
-        if counter_clear_mm > 0:
+        if near_counter:
             # Small print: no zigzag stitch over a counter
             # (`_counter_safe_pieces`); one column may sew as several.
+            # Only a column whose zigzag comes within the clearance of a
+            # counter: any other takes the path below, with its floors
+            # (`thin_floor`, `_STROKE_FLOOR`, `_RING_FLOOR`), exactly as it
+            # sews with the flag off. Until 2026-11-17 EVERY column of a
+            # floored letter came here, and a piece under the cross floor
+            # was dropped instead of sewn at the floor: SBA's subtitle at 90
+            # mm (2.6 mm letters) lost each t's crossbar, an m's first arch
+            # and an r's arm -- letters with no counter at all.
             pieces, dropped = _counter_safe_pieces(guarded, cpoly, min_cross_mm,
                                                    counter_clear_mm)
             report["thin_crosses"] += dropped
@@ -3241,6 +3266,31 @@ def counter_hold_polygon(poly: Polygon, counters) -> Polygon:
     return Polygon(poly.exterior.coords, rings)
 
 
+def small_bold_pull_cap(stroke_mm: float, reach_floor: bool = False) -> float:
+    """The most pull a small-bold letter's rails take: `SMALL_BOLD_PULL_FRAC`
+    of its stroke width.
+
+    `reach_floor` (`cfg.extra["small_bold_pull_reaches_floor"]`, built OFF
+    2026-11-17): ... but never so little that the SEWN stroke (the stroke
+    plus the pull on both rails) falls under one satin cross
+    (`machine.SATIN_MIN_CROSS_MM`). The share was read on bold letters. On a
+    light face it starves the column: HHS's ring text at 90 mm has 0.29-0.34
+    mm strokes, the cap gave 0.045 mm of pull, the sewn stroke came to 0.39
+    mm, and `column_runs` dropped the crosses as under the floor ("SFRVICFS";
+    three letters covered 0.55-0.74 of themselves, 0.82-1.0 with the
+    fabric's pull). ON, a stroke under the floor takes its whole shortfall on
+    EACH rail, not half: the stroke width is the letter's median, and its
+    hairlines are thinner still (half the shortfall landed the median stroke
+    exactly on the floor and HHS's hairlines stayed under it, measured).
+    Strokes of 0.435 mm and up are untouched (0.15 W is already the larger
+    there). The caller still takes the lesser of this and the fabric's own
+    pull. No new constant."""
+    cap = SMALL_BOLD_PULL_FRAC * stroke_mm
+    if reach_floor:
+        cap = max(cap, machine.SATIN_MIN_CROSS_MM - stroke_mm)
+    return cap
+
+
 def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             spacing_mm: float = machine.SATIN_SPACING_MM,
                             split_above_mm: float | None = None,
@@ -3267,6 +3317,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             pull_keep=None,
                             edge_walk_judge_off: bool = False,
                             judge_entry_free: bool = False,
+                            small_bold_pull_floor: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3334,7 +3385,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             _RAILS_MEMO.reset(token)
 
     if small_bold:
-        pull_mm = min(pull_mm, SMALL_BOLD_PULL_FRAC * stroke_width(poly))
+        pull_mm = min(pull_mm, small_bold_pull_cap(stroke_width(poly), small_bold_pull_floor))
     pull_of = None
     if pull_by_stroke:
         fabric_pull, cap = pull_mm, pull_mm      # the preset's, or small_bold's share

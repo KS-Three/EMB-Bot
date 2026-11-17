@@ -209,6 +209,15 @@ def apply_enclosed_white(regions, thread_indices: list[int], cfg, chart,
         if ov.get("thread_index") is None:
             t = chosen if chosen is not None else (
                 white if r.meta.get("enclosed_colour_unknown") else r.thread_index)
+            # `cfg.enclosed_white_keeps_known_colour` (built OFF): a KNOWN
+            # colour clearly unlike the chosen thread keeps its own thread
+            # (a black band round white letters stays black, not white).
+            if (chosen is not None
+                    and getattr(cfg, "enclosed_white_keeps_known_colour", False)
+                    and not r.meta.get("enclosed_colour_unknown")
+                    and chart.delta_e(int(r.thread_index), int(chosen))
+                    > cfg.enclosed_by_garment_de00):
+                t = r.thread_index
             r.thread_index = int(t)
             r.thread_number = chart[int(t)].number
         sewn.append(r)
