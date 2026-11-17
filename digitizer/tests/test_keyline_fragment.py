@@ -23,6 +23,12 @@ def _nearest(lab) -> int:
 
 
 LIGHT, DARK, MID = _nearest([82, 0, 0]), _nearest([25, 0, 0]), _nearest([55, 0, 0])
+BLACK, NEAR_LIGHT = _nearest([0, 0, 0]), _nearest([79.5, 0, 0])
+
+
+def ink():
+    """The design's own darkest ink, far off: the sliver below is not it."""
+    return _r("ink", box(30, 0, 36, 10), BLACK)
 
 
 def _r(sid: str, poly: Polygon, thread: int, **meta) -> Region:
@@ -35,9 +41,9 @@ def letter() -> Region:
 
 
 def test_a_dark_sliver_on_one_edge_of_a_light_letter_is_dropped():
-    regions = [letter(), _r("sliver", box(1, 10, 4, 10.4), DARK)]   # 3 mm x 0.4 mm under the foot
+    regions = [letter(), ink(), _r("sliver", box(1, 10, 4, 10.4), DARK)]   # 3 mm x 0.4 mm under the foot
     assert drop_keyline_fragments(regions, CHART) == ["sliver"]
-    assert [r.shape_id for r in regions] == ["letter"]
+    assert [r.shape_id for r in regions] == ["letter", "ink"]
 
 
 def test_a_whole_keyline_stays():
@@ -81,3 +87,33 @@ def test_counters_and_enclosed_background_are_never_dropped():
 
 def test_the_flag_is_off_by_default():
     assert PipelineConfig().keyline_fragment_drop is False
+
+
+def test_a_thin_band_in_a_hole_of_its_host_is_drawn_art():
+    # To a T's speed lines: dark bands lying INSIDE the white fill
+    host = Polygon(box(0, 0, 20, 10).exterior.coords, [box(2, 4.8, 8, 5.2).exterior.coords])
+    regions = [_r("fill", host, LIGHT), ink(), _r("speed", box(2, 4.8, 8, 5.2), DARK)]
+    assert drop_keyline_fragments(regions, CHART) == []
+
+
+def test_the_designs_darkest_ink_is_drawn_not_a_remnant():
+    # Golden Tee's black shadow under the flag tip, on a light body
+    regions = [letter(), _r("shadow", box(1, 10, 4, 10.4), BLACK)]
+    assert drop_keyline_fragments(regions, CHART) == []
+
+
+def test_a_darkest_ink_piece_the_trace_rescued_is_still_a_remnant():
+    regions = [letter(), _r("noise", box(1, 10, 4, 10.4), BLACK, rescued_small_shape=True)]
+    assert drop_keyline_fragments(regions, CHART) == ["noise"]
+
+
+def test_a_sliver_barely_darker_than_its_host_is_not_a_keyline():
+    regions = [letter(), ink(), _r("sliver", box(1, 10, 4, 10.4), NEAR_LIGHT)]
+    assert drop_keyline_fragments(regions, CHART) == []
+
+
+def test_a_band_wider_than_a_hairline_in_the_art_is_drawn():
+    # Golden Tee's black bar under the F's arm: 15 source pixels wide
+    thin = lambda: [letter(), ink(), _r("bar", box(1, 10, 4, 10.4), DARK)]
+    assert drop_keyline_fragments(thin(), CHART, mm_per_src_px=0.4 / 15) == []          # 15 px
+    assert drop_keyline_fragments(thin(), CHART, mm_per_src_px=0.4 / 1.5) == ["bar"]    # 1.5 px
