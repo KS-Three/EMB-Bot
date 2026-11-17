@@ -31,7 +31,13 @@ Cost, measured on the first run: about 950,000 tokens (nine readers at about
    pictures yourself, and do not open `docs/prime-grader/latest.json` or any
    scorecard before step 4. For each item id in `kit.json`, start one
    subagent (all in one message, so they run together) with exactly this
-   brief, `<ID>` and `<D>` filled in:
+   brief, `<ID>` and `<D>` filled in. **Set `model` on every one of these
+   calls to the worker model Kent's 2026-11-02 ruling names** (memory
+   `agents-cheap-models-2026-11-02`); a call that leaves it unset inherits
+   the session's own model, which that ruling forbids. The first run
+   (2026-11-17) left it unset by mistake, so its card was read by a
+   different model than every later one: do not read a move between that
+   card and the next as the engine's.
 
    > You are a blind grader of ONE machine-embroidery render. Work only in
    > `digitizer/`.

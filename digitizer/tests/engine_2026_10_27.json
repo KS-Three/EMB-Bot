@@ -375,6 +375,7 @@
  "stage0_scale_relative_grad": false,
  "regular_structure": false,
  "bevel_ring_fold": false,
+ "color_cap_least_loss": false,
  "lettering_columns_apex_pro": false,
  "lettering_columns_apex_pro_joints": false,
  "lettering_columns_corner_fold_cap_flared": false,
