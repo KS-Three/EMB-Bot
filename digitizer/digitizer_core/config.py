@@ -1539,18 +1539,27 @@ class PipelineConfig:
     # was not in front of him, so the default stays False until it is
     # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
     merge_chroma_guard: bool = False
-    # `keyline_fragment_drop` (built OFF 2026-11-17; Kent on the Drone render:
-    # "The P,R & C should not have the dark stitch lines on them"). The art's
-    # chrome letters carry a hairline dark edge; a few mm of it survive stage
-    # 2 as their own dark regions on the P, R and C of PRECISION and each sews
-    # as a short dark satin bar on a light letter. ON, a dark band (two laid
-    # threads wide at most) lying along under a quarter of ONE lighter
-    # shape's outline goes to the page (`keyline_fragment.py`). A whole
-    # keyline, a drop shadow and a line between two shapes stay. Ratios only,
-    # no fabric constant: gate 1 does not apply. A DESIGN CHANGE: the default
-    # is Kent's, with pictures. False never loads the module. Tests:
-    # `tests/test_keyline_fragment.py`.
-    keyline_fragment_drop: bool = False
+    # `keyline_fragment_drop` (ON since 2026-11-17; built OFF the same day.
+    # Kent on the Drone render: "The P,R & C should not have the dark stitch
+    # lines on them"; shown ORIGINAL | BEFORE | AFTER, `docs/renders/
+    # keyline-fragment-2026-11-17/`, told 2 of 35 runs move and the 3 px bound
+    # rests on three examples: "Flip ON (Recommended)"). The art's chrome
+    # letters carry a hairline dark edge; a few mm of it survive stage 2 as
+    # their own dark regions on the P, R and C of PRECISION, each sewn as a
+    # short dark satin bar on a light letter (the C's only with
+    # `merge_chroma_guard` ON). A band goes to the page
+    # (`keyline_fragment.py`) only when ALL four hold: (1) it lies on its
+    # host's OUTER outline, not in a hole of it (To a T's speed lines); (2) it
+    # is not the design's darkest ink in its own art ink (Golden Tee's
+    # shadow); (3) it is darker than its host by more than
+    # `bevel_fold.DARKEST_L_TOL`; (4) it is a hairline in the art, at most
+    # `HAIRLINE_SRC_PX` (3.0) source pixels wide (CAVEAT: Drone remnants are
+    # 1.3-1.9 px and Golden Tee's bar 15, so 3.0 rests on three examples).
+    # Ratios and source pixels only, no fabric constant: gate 1 does not
+    # apply. False never loads the module. Tests:
+    # `tests/test_keyline_fragment.py`; OFF arm
+    # `KEYLINE_FRAGMENT_2026_11_17_OFF` in `tests/conftest.py`.
+    keyline_fragment_drop: bool = True
     # Thin bars kept whole (built OFF 2026-11-14, Kent's five To a T pins on
     # the speed lines: "Missing top bar", "Gap/Jump in the line", "Gap in the
     # line") (`fine_bar.apply_fine_bar_survive`). A straight dark bar the art
