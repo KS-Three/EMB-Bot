@@ -4273,6 +4273,24 @@ class PipelineConfig:
     # False: the lane's output is final, as before, byte for byte. Flipping it
     # is Kent's.
     lettering_columns_cover_handback: bool = False
+    # Under `lettering_columns`, a text-cluster member that is an OUTLIER of its
+    # cluster and whose ORDINARY ribbon verdict (`classify_ribbon` at the
+    # design's satin ceiling, none of the lettering split's infinite ceiling)
+    # is fill is not sewn by the Column lane: it takes the ladder's route as
+    # if it had never been a cluster member, its cluster tags kept for every
+    # other reader (2026-11-16, built OFF). Outlier = its dt_p90 is at least
+    # `stage7_sequence.RIBBON_HANDBACK_OUTLIER` (1.6) times the median of its
+    # cluster's lane members, in a cluster of 3 or more. Why the outlier test:
+    # the plain fill-verdict rule took 31 real bold letters (Becker, Visa,
+    # Canon, USGS) out of the lane with the 8 it was for; real letters reach
+    # 1.30 of their cluster's median, Adidas' smallest slanted bar (adopted
+    # into the wordmark's cluster, a 12 mm split satin with slits, a fill
+    # alone) reads 2.01. Texaco's disc wedges (1.43-1.53) deliberately stay.
+    # A candidate resting on one logo. `photo_width_floor` (a thin ribbon that
+    # earned satin) stays in the lane.
+    # False: the lane's routing is today's, byte for byte. Flipping it is
+    # Kent's. Tests: `tests/test_lettering_ribbon_handback.py`.
+    lettering_columns_ribbon_handback: bool = False
     # ONE lettering tagger (`digitizer_core/words.py`, L1 of the lettering-
     # lane architecture, `docs/lettering-architecture-rd-2026-10-07.md` §5,
     # failure E). ON, `words.tag_words` finds each line of lettering once --

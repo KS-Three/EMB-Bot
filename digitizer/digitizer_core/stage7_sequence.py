@@ -51,6 +51,7 @@ from __future__ import annotations
 import functools
 import heapq
 import math
+import statistics
 from dataclasses import replace
 
 import numpy as np
@@ -110,7 +111,8 @@ from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import classify_ribbon, is_small_solid, satin_shape, small_solid_satin
+from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, satin_shape,
+                           small_solid_satin)
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
 from .detail_spokes import spoke_runs
@@ -284,15 +286,88 @@ def depth_sort_layers(regions, thread_indices: list[int], chart) -> list[int]:
     return [thread_indices[L] for L in order]
 
 
-def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float
-                       ) -> tuple[float, bool, bool]:
+# `cfg.lettering_columns_ribbon_handback`'s outlier test (2026-11-16, CANDIDATES
+# resting on one logo). Measured on 14 jobs / 178 Column-lane members: a real
+# bold letter reaches at most 1.30 of its text cluster's median dt_p90 (Becker),
+# the Adidas bar reads 2.01; 1.6 is the geometric middle. Texaco's disc wedges
+# (1.43-1.53) deliberately stay in the lane. A cluster with fewer than
+# `RIBBON_HANDBACK_MIN_CLUSTER` lane members has no median worth the name.
+RIBBON_HANDBACK_OUTLIER = 1.6
+RIBBON_HANDBACK_MIN_CLUSTER = 3
+RIBBON_OUTLIER_KEY = "ribbon_handback_outlier"
+
+
+def stamp_ribbon_outliers(regions, cfg: PipelineConfig) -> None:
+    """Once per design: stamp `RIBBON_OUTLIER_KEY` on each Column-lane member
+    (`is_lettering`, tier auto) whose dt_p90 (`_dt_stats`, the number
+    `classify_ribbon` gates on) is at least `RIBBON_HANDBACK_OUTLIER` times
+    the median of its text cluster's lane members. Off, or the lane off:
+    nothing is read or written."""
+    if not (cfg.lettering_columns_ribbon_handback and cfg.lettering_columns and cfg.satin):
+        return
+    clusters: dict = {}
+    for r in regions:
+        meta = r.meta
+        if meta is None or str(meta.get("tier", "auto")).lower() != "auto" or not is_lettering(r, cfg):
+            continue
+        key = word_key(r, cfg)
+        if key is None or r.polygon is None or r.polygon.geom_type != "Polygon":
+            continue
+        meta.pop(RIBBON_OUTLIER_KEY, None)
+        stats = _dt_stats(r.polygon)
+        if stats is not None:
+            clusters.setdefault(key, []).append((r, stats.p90_mm))
+    for members in clusters.values():
+        if len(members) < RIBBON_HANDBACK_MIN_CLUSTER:
+            continue
+        med = statistics.median(p for _r, p in members)
+        for r, p in members:
+            if med > 0 and p >= RIBBON_HANDBACK_OUTLIER * med:
+                r.meta[RIBBON_OUTLIER_KEY] = True
+
+
+def _ribbon_handback(region, cfg: PipelineConfig, satin_max_mm: float,
+                     design_class: str) -> bool:
+    """`cfg.lettering_columns_ribbon_handback` (2026-11-16, built OFF): is this
+    Column-lane member a SOLID OUTLIER of its cluster, not a ribbon? True when
+    the lane would take it (`is_lettering`, tier auto), it was stamped an
+    outlier (`stamp_ribbon_outliers`: dt_p90 at least 1.6x its cluster's
+    median) AND `classify_ribbon`, asked as for any untagged shape (the
+    design's ceiling, `cfg.satin_per_stroke`, none of the lettering split's
+    open ceiling), says fill. Such a shape sews down the ladder as if never a
+    cluster member; its tags stay. `photo_width_floor` (a ribbon that earned
+    satin but is too thin) is not a solid and stays. Off, False without
+    reading anything else."""
+    if not (cfg.lettering_columns_ribbon_handback and cfg.lettering_columns and cfg.satin):
+        return False
+    if str((region.meta or {}).get("tier", "auto")).lower() != "auto" or not is_lettering(region, cfg):
+        return False
+    if not region.meta.get(RIBBON_OUTLIER_KEY):
+        return False
+    v = classify_ribbon(region.polygon, satin_max_mm,
+                        design_class=design_class,
+                        per_stroke=cfg.satin_per_stroke,
+                        polygon_axis=cfg.satin_polygon_axis,
+                        area_weighted=cfg.classify_area_weighted,
+                        floor_applies=satin_floor_applies(cfg, design_class),
+                        vote=satin_fill_vote(cfg),
+                        hysteresis=satin_fill_hysteresis(cfg))
+    return not v.satin and v.reason != "photo_width_floor"
+
+
+def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float,
+                       design_class: str | None = None) -> tuple[float, bool, bool]:
     """-> (width ceiling, per-stroke rung, fold guard) for THIS region: the
     design's under `machine.satin_ceiling_mm` for every shape, and no
     ceiling at all -- the per-stroke rung on, the fold guard on -- for a
     text-cluster member under `cfg.satin_lettering_split` (plan step 4,
     2026-09-19: split, never fill, for lettering). One helper, so the
     borders-last predicate, the classifier call and the emitter agree on
-    what a letter is admitted at."""
+    what a letter is admitted at. `design_class` (given by the sites that
+    route on the verdict) lets `cfg.lettering_columns_ribbon_handback` hand a
+    solid member the ordinary ceiling; None, or the flag off, is as before."""
+    if design_class is not None and _ribbon_handback(region, cfg, satin_max_mm, design_class):
+        return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
     if cfg.satin_lettering_split and is_text(region, cfg):
         return math.inf, True, True
     if cfg.monoline_script_satin and monoline_stroke(region, cfg, satin_max_mm):
@@ -414,9 +489,11 @@ def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
     return moved
 
 
-def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
+def _border_by_size_width(region, cfg: PipelineConfig, untagged: bool = False) -> float | None:
     """`cfg.border_by_size` (2026-10-23): the pro's border width for this
     shape, or None when the rule does not read it. -> width in mm.
+    `untagged` (`cfg.lettering_columns_ribbon_handback`, 2026-11-16): the
+    shape is a handed-back solid and is read as no letter; False, as before.
 
     Reads a non-lettering shape on the auto tier with no per-shape `border`
     intent whose smallest dimension (`_min_dim_mm`) is at or over
@@ -433,7 +510,7 @@ def _border_by_size_width(region, cfg: PipelineConfig) -> float | None:
     meta = region.meta or {}
     if str(meta.get("tier", "auto")).lower() != "auto" or meta.get("border") is not None:
         return None
-    if is_lettering(region, cfg):
+    if is_lettering(region, cfg) and not untagged:
         return None
     # `cfg.group_consistent_border_by_size`: its line's verdict, when the
     # line moved it (`tag_border_by_size_groups`)
@@ -531,13 +608,15 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
         return False        # L3: the word sews on the run tier
     if tier == "auto" and wt in ("satin", "widened") and cfg.satin:
         return True         # L3: the word sews satin, every letter of it
-    if tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg):
+    if (tier == "auto" and cfg.lettering_columns and cfg.satin and is_lettering(region, cfg)
+            and not _ribbon_handback(region, cfg, satin_max_mm, design_class)):
         return True         # a Column letter (`cfg.lettering_columns`): satin on its artwork outline
     if tier == "auto" and cfg.script_strokes and cfg.satin and script_word(region, cfg):
         return True         # a script word (`cfg.script_strokes`): pen-stroke columns
-    if tier == "auto" and _border_by_size_width(region, cfg) is not None:
+    if tier == "auto" and _border_by_size_width(
+            region, cfg, _ribbon_handback(region, cfg, satin_max_mm, design_class)) is not None:
         return False        # `cfg.border_by_size`: a big shape is a fill under a border, never whole satin
-    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm)
+    satin_max_mm, per_stroke, _fold = _satin_ceiling_for(region, cfg, satin_max_mm, design_class)
     return (tier == "auto" and cfg.satin
             and classify_ribbon(region.polygon, satin_max_mm,
                                 design_class=design_class,
@@ -3188,6 +3267,9 @@ def sequence(
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
                       if cfg.underlay else "none")
     satin_max = satin_ceiling_mm(cfg)
+    # `cfg.lettering_columns_ribbon_handback`: each cluster's outliers, once
+    # for the design (off: nothing is read)
+    stamp_ribbon_outliers([_pr.region for _pr in planned], cfg)
     trim_at = fabric.trim_at_mm
     # Cap sew order (cfg.cap_center_out, default OFF — config.py's block has
     # the craft argument and the lane-split history). Resolved once per call:
@@ -3728,7 +3810,8 @@ def sequence(
                                                         cfg.border_width_mm)}
                              if ring_room else {}))[0]:
             border_later[_p.shape_id] = _p.visible_geom
-        elif (_border_by_size_width(_p.region, cfg) is not None
+        elif (_border_by_size_width(
+                _p.region, cfg, _ribbon_handback(_p.region, cfg, satin_max, design_class)) is not None
               and not cfg.border_by_size_fabric_edges):
             # A size ring owns its seams only with fabric-edges OFF. ON, it
             # skips every seam with another sewn region, so counting it as a
@@ -4179,7 +4262,8 @@ def sequence(
             # `cfg.lettering_columns_cover_handback`: True while this shape is
             # sewn down the ladder as the lane's trial alternative
             # (`handback_trying`); the ladder then reads it as untagged.
-            handed_back = p.shape_id in handback_trying
+            handed_back = (p.shape_id in handback_trying
+                           or _ribbon_handback(p.region, cfg, satin_max, design_class))
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
                     and not handed_back and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
@@ -4323,7 +4407,7 @@ def sequence(
             # Widened lettering is classified on the polygon it will sew —
             # `p.polygon`, the compensated column — see `widened_lettering`.
             classify_poly = p.polygon if widened_lettering(p.region) else p.region.polygon
-            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max)
+            shape_max, shape_per_stroke, shape_fold = _satin_ceiling_for(p.region, cfg, satin_max, design_class)
             ribbon = (classify_ribbon(classify_poly, shape_max,
                                       design_class=design_class,
                                       per_stroke=shape_per_stroke,
@@ -4408,7 +4492,8 @@ def sequence(
             # pro's border instead (the border block below adds the ring);
             # the prediction `_sews_satin` says the same, so seam ownership
             # and borders-last already treat it as a fill. None when off.
-            by_size_width = _border_by_size_width(p.region, cfg)
+            by_size_width = _border_by_size_width(
+                p.region, cfg, _ribbon_handback(p.region, cfg, satin_max, design_class))
             if tier == "satin" or word_satin or (ribbon is not None and ribbon.satin and not rides_ramp
                                                  and by_size_width is None):
                 # The house cross angle (2026-08-26). Per-shape intent beats
