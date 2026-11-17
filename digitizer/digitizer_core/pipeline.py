@@ -1081,7 +1081,9 @@ def build_generation(
             if r.meta.get("layer") in q.dark_ink_labels:
                 r.meta["dark_ink"] = True
         if cfg.dark_ink_bean:
-            bean_dark_ink(regions, by_width=cfg.dark_ink_bean_by_width)
+            bean_dark_ink(regions, by_width=cfg.dark_ink_bean_by_width,
+                          # built OFF 2026-11-17: a stroke's ground is the innermost shape under it
+                          innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
     resnap_warnings = revalidate_threads(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),
@@ -2444,7 +2446,8 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # `cfg.dark_ink_bean`: the strokes sew after the ground they are written
     # on, or stage 5 buries them under it.
     if cfg.dark_ink_bean:
-        stitched_regions = ink_after_ground(stitched_regions)
+        stitched_regions = ink_after_ground(
+            stitched_regions, innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in

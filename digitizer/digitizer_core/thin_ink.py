@@ -620,18 +620,31 @@ def _thread_de00(a: int, b: int) -> float:
     return float(deltaE_ciede2000(la, lb)[0])
 
 
-def _ground_of(stroke, grounds):
+def _ground_of(stroke, grounds, innermost: bool = False):
     """The shape `stroke` is written on: the one whose OUTLINE (holes
     ignored -- the stroke sits in a hole it cut) covers most of it, at
-    least half; else None."""
+    least half; else None.
+
+    `innermost` (`cfg.extra["dark_ink_ground_innermost"]`, built OFF
+    2026-11-17): among the outlines that cover the stroke equally, the
+    SMALLEST. Outlines nest -- a seal's field holds its ring, the ring holds
+    the lettering -- so every one of them covers a letter whole, and the
+    first in list order won. The US Coast Guard seal at 90 mm: its 25 navy
+    ring letters named the aqua field as their ground, not the white ring
+    they stand on, so `ink_after_ground` left them where they were, the
+    white ring sewed after them and the whole ring text was buried (thread
+    under thread: "UNITED STATES COAST GUARD 1790" gone). False: the first
+    of equals, as before."""
     from shapely.geometry import Polygon
 
-    best, best_a = None, 0.0
+    best, best_a, best_size = None, 0.0, 0.0
     for g in grounds:
         shell = Polygon(g.polygon.exterior) if isinstance(g.polygon, Polygon) else g.polygon
         a = shell.intersection(stroke.polygon).area
-        if a > best_a:
-            best, best_a = g, a
+        if a > best_a + (1e-9 if innermost else 0.0):
+            best, best_a, best_size = g, a, shell.area
+        elif innermost and best is not None and abs(a - best_a) <= 1e-9 and shell.area < best_size:
+            best, best_size = g, shell.area
     return best if best is not None and best_a >= 0.5 * stroke.polygon.area else None
 
 
@@ -648,7 +661,7 @@ def _ground_of(stroke, grounds):
 DARK_INK_BEAN_MAX_WIDTH_MM = 1.5 * machine.SATIN_MIN_CROSS_MM
 
 
-def bean_dark_ink(regions, by_width: bool = False) -> int:
+def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> int:
     """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
     ground, the way the reference digitizer sews a drawn line
     (`bean_rule`). Each `meta["dark_ink"]` region gets its polygon's
@@ -687,7 +700,7 @@ def bean_dark_ink(regions, by_width: bool = False) -> int:
             if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
                     or not isinstance(r.polygon, Polygon)):
                 continue
-            g = _ground_of(r, grounds)
+            g = _ground_of(r, grounds, innermost)
             if g is None or r.polygon.length <= 0:
                 continue
             widths.setdefault((g.shape_id, r.thread_index), []).append(
@@ -699,7 +712,7 @@ def bean_dark_ink(regions, by_width: bool = False) -> int:
         if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
                 or not isinstance(r.polygon, Polygon)):
             continue
-        g = _ground_of(r, grounds)
+        g = _ground_of(r, grounds, innermost)
         if g is None:
             continue
         if by_width:
@@ -751,7 +764,7 @@ def settle_dark_ink_bean(regions) -> int:
     return kept
 
 
-def ink_after_ground(regions):
+def ink_after_ground(regions, innermost: bool = False):
     """`cfg.dark_ink_bean`, at plan time: a bean stroke (`bean_dark_ink`)
     whose ground (`_ground_of`) sews in the same or a later layer moves to
     a layer of its own right after the ground's -- the shape
@@ -768,7 +781,7 @@ def ink_after_ground(regions):
                and r.polygon is not None]
     to: dict[str, tuple] = {}
     for b in ink:
-        g = _ground_of(b, grounds)
+        g = _ground_of(b, grounds, innermost)
         if g is not None and g.meta["layer"] >= b.meta["layer"]:
             to[b.shape_id] = ("ink", g.meta["layer"], b.thread_index)
     if not to:
