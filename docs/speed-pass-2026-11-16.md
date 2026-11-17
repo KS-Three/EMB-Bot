@@ -83,6 +83,27 @@ the button is live, stop the clock when the canvas caption shows the stitches:
 
 n = 1 per cell. Nothing outside the engine explains a wait over a minute.
 
+**Would a cloud host be faster? (Kent, 2026-11-16; measured 2026-11-17.)** A
+cloud session ran the same three pro jobs on its own machine, two runs each,
+nothing else running. Table as that session reported it, pasted by Kent; its
+CPU model, core count and whether tesseract was present did not come with it.
+
+| job | cloud run 1 | cloud run 2 | laptop idle | cloud / laptop | stitches cloud / laptop |
+|---|---:|---:|---:|---:|---|
+| Becker | 10.0 s | 10.3 s | 13.0 s | 0.77-0.79 | 16,249 / 16,239 |
+| MFab | 21.3 s | 25.4 s | 27.6 s | 0.77-0.92 | 20,846 / 20,846 |
+| Golden Tee | 49.7 s | 51.5 s | 38.4 s | 1.29-1.34 | 13,613 / 13,619 |
+
+- **Not a speed fix.** That class of cloud machine is a fifth faster on the
+  two lettering jobs and a third slower on Golden Tee.
+- **Golden Tee's loss is in generation** (27.6 and 31.3 s against 19.9 on the
+  laptop); its plan step is close (22.1 and 20.2 against 18.5). Why is not
+  established.
+- **Stitch counts agree within 10**, so both machines did the same work; the
+  md5s differ, as they do between platforms.
+- A fast-core host is not measured. What a server does give is a clock no
+  other session slows.
+
 ## The first write-up (wall seconds at 1.4 GHz; shares and md5 still hold)
 
 **Answer.**

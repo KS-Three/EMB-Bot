@@ -41,8 +41,13 @@ quality trade, Kent's call.
 
 **Parked.** Kent, 2026-11-16, after the idle-laptop and Studio numbers: "Park
 speed". Do not propose speed work (the four jobs over 25 s, fewer passes)
-until he reopens it. He then asked whether hosting in the cloud would be
-faster; not measured.
+until he reopens it.
+
+**Cloud is not a speed fix (measured 2026-11-17, a cloud session's machine,
+two runs each):** Becker 10.0-10.3 s against the idle laptop's 13.0, MFab
+21.3-25.4 against 27.6, Golden Tee 49.7-51.5 against 38.4 (its generation
+slower, cause not established). Stitch counts within 10 of the laptop's. A
+fast-core host is not measured; a server's gain is a clock nothing else slows.
 
 **Why:** he read over a minute as a reason customers leave.
 
