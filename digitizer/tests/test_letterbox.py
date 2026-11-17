@@ -303,3 +303,47 @@ def test_both_loaders_agree_in_both_states():
         a, _ = classify_load(path, flag)
         b, _ = prep_load(path, flag)
         assert np.array_equal(a, b), f"loaders disagree with flag={flag}"
+
+
+# --- A transparent band is the page, not a bar (2026-11-17) ------------------
+#
+# The CDC logo from Commons: a blue panel over a TRANSPARENT strip that holds
+# the black tagline. RGB under alpha 0 is black, so the strip read as 147
+# uniform black rows -- a letterbox bar -- and the tagline was cropped off
+# before stage 1 saw it. A transparent band that holds opaque pixels is the
+# page under artwork; an EMPTY transparent bar is still stripped.
+def _panel_over_transparent_tagline():
+    """A 300 x 400 image: an opaque blue panel (rows 0-239) over a
+    transparent strip (rows 240-299) with opaque black 'lettering' in it.
+    RGB is black wherever alpha is 0, as PNG encoders leave it."""
+    rgb = np.zeros((300, 400, 3), np.uint8)
+    alpha = np.zeros((300, 400), np.uint8)
+    rgb[:240] = (20, 90, 170)
+    alpha[:240] = 255
+    for x in range(40, 360, 40):                 # black bars standing in for letters
+        alpha[255:285, x:x + 12] = 255           # rgb already black
+    return rgb, alpha
+
+
+def test_the_fixture_reads_as_a_bar_on_colour_alone():
+    """The premise: on RGB alone the transparent strip IS detected as a bar.
+    If this stops holding the test below proves nothing."""
+    rgb, _alpha = _panel_over_transparent_tagline()
+    assert detect_letterbox(rgb)[1] > 0
+
+
+def test_a_transparent_band_is_not_stripped():
+    rgb, alpha = _panel_over_transparent_tagline()
+    out, out_a = strip_letterbox(rgb, alpha)
+    assert out.shape == rgb.shape and out_a.shape == alpha.shape
+    assert out is rgb and out_a is alpha
+
+
+def test_an_opaque_bar_under_an_alpha_channel_is_still_stripped():
+    """A screenshot saved with an alpha channel that is opaque everywhere is
+    still a screenshot: its bars go."""
+    rgb, _alpha = _panel_over_transparent_tagline()
+    rgb[240:] = 0                                 # a solid black bar, no lettering
+    alpha = np.full(rgb.shape[:2], 255, np.uint8)
+    out, out_a = strip_letterbox(rgb, alpha)
+    assert out.shape[0] < rgb.shape[0] and out_a.shape == out.shape[:2]
