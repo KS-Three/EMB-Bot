@@ -23,7 +23,7 @@ from digitizer_core.adapter import plan_to_design
 from digitizer_core.pipeline import gate_underfill_for_photo
 from digitizer_core.preflight import run_preflight
 
-from .conftest import TESTDATA
+from .conftest import LOGO_BATCH_2026_11_16_OFF, TESTDATA
 
 # pin-rides-defaults: the logo md5s are the live engine on purpose; they prove the gate moved no logo,
 # and a later flip that moves them re-pins them (tools.ci_repin).
@@ -81,7 +81,12 @@ def test_meadow_gated_has_no_density_stacked(monkeypatch):
 
 
 def test_meadow_with_the_photo_flag_is_todays_stacked_plan(monkeypatch):
-    cls, n, codes = _meadow(monkeypatch, silhouette_underfill_photo=True)
+    # the old arm as it was when the gate was built: the 2026-11-16 rim flip
+    # (`silhouette_underfill_rim_fabric_edges`, Kent "Flip both ON") drops the
+    # bands' rims along their seams, 21,437 -> 20,502 on this row, so it is
+    # pinned off here. This test is about the gate, not the rim.
+    cls, n, codes = _meadow(monkeypatch, silhouette_underfill_photo=True,
+                            **LOGO_BATCH_2026_11_16_OFF)
     assert cls == "photo_scene"
     assert "DENSITY_STACKED" in codes
     assert n == pytest.approx(21437, rel=0.01)
