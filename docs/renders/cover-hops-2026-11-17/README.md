@@ -35,3 +35,28 @@ design). Each picture is ORIGINAL | BEFORE | AFTER.
 
 None got worse by eye. The cost is 8 more trims over the 9 jobs, 4 of them on
 Tires where nothing shows.
+
+## The 26 fixtures (`tools.corpus_scorecard.FIXTURES`), OFF vs ON
+
+Studio request at 80 mm, `garment_id` `left_chest` (`fremont_triage.studio_request(80.0)`),
+compared by md5 of `design["stitches"]`. **6 of 26 moved, all 6 pictured** (`fx_*_zoom.png`
+at the changed stitches, `fx_*_full.png` whole design; ORIGINAL | BEFORE | AFTER). None worse by eye.
+
+| fixture | trims OFF -> ON | by eye |
+|---|---|---|
+| becker_marine_logo | 13 -> 14 | no visible change (321 stitches differ, thread order in the N and I) |
+| photo/logo_bridge_bar | 16 -> 18 | **better**: a thin bare diagonal at the top left of the crop is gone |
+| photo/logo_gaulke_roofing | 17 -> 18 | no visible change (3 stitches) |
+| photo/logo_golden_tee | 53 -> 55 | no visible change (7 stitches) |
+| photo/screenshot_phone_ui_golke | 124 -> 125 | no visible change (37 stitches) |
+| photo/summit_badge | 41 -> 41 | no visible change (4 stitches; the fixture's art is a texture, so its ORIGINAL panel says nothing) |
+
+The 20 others are byte-identical. Trims over the six movers: +7.
+The ORIGINAL panel is placed by the grader's registration, so on the photo fixtures it is a guide only.
+
+## Where the 0.3 mm comes from
+It is a new number, not a reused constant: `_BARE_MAX_MM` 0.3 (a segment is bare when more than
+this much of it lies off the satin) and `_BARE_GROUND_MM` 0.1 / 0.2 (the thread's reach past a rail
+polygon; 0.2 is half the 0.4 mm thread, as `_APEX_EXIT_MM` uses). They set where thread lies in the
+stitch stream, not how fabric behaves under it, so I read them as layout geometry, not a sew-out
+constant. They are not tuned: 0.3 was the first value tried and nothing was swept.
