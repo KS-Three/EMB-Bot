@@ -1,4 +1,4 @@
-"""`cfg.small_text_reset_tight_word_space` (built OFF 2026-11-16): the re-set's
+"""`cfg.small_text_reset_tight_word_space` (built OFF, ON since 2026-11-16, Kent): the re-set's
 word-space floor read at 0.35 of the cap, not 0.5.
 
 Measured: the USAID tagline "FROM THE AMERICAN PEOPLE" (cap 3.23 mm, median
@@ -34,8 +34,10 @@ def _n(gaps_caps, tight):
     return len(st._words(_spans(gaps_caps), CAP, tight=tight))
 
 
-def test_default_is_off():
-    assert PipelineConfig().small_text_reset_tight_word_space is False
+def test_default_is_on_since_2026_11_16_and_the_pre_flip_dict_pins_it_off():
+    from .conftest import TIGHT_WORD_SPACE_2026_11_16_OFF
+    assert PipelineConfig().small_text_reset_tight_word_space is True
+    assert PipelineConfig(**TIGHT_WORD_SPACE_2026_11_16_OFF).small_text_reset_tight_word_space is False
 
 
 def test_the_tight_floor_is_a_third_of_the_cap_and_under_the_old_one():
