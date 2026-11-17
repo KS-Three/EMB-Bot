@@ -24,16 +24,21 @@ Picture: `docs/renders/becker-marine-caps-2026-11-17/marine_original_ours_pro.pn
   the grader's pin reads a limit of how a block letter this size is threaded,
   one the professional shares.
 
-## Where ours really is worse (a different mechanism, left alone)
+## What is ours, and what is not
 
-Not the cap, and not what this lane was asked to fix, but visible in the same
-picture: the M's left diagonal is a thin sliver with its own angle, the R's bowl
-is several wedges, and the E's lower half is a fan from one point at about
-(93, 59) mm where his is a plain bottom arm. The three OFF lettering flags
-(`lettering_columns_apex_cut`, `_cover_handback`, `_connectors_buried`) plus
-`satin_junction_square` were each run on this design: **0 pixels differ** from
-the default, so none of them reaches these. A fix would need a new
-mechanism at the junction of stem, diagonal and arm; it is a separate item.
+- **The E's bottom-left fan is his construction too** (corrected same day: this
+  doc first said his foot was a plain arm, which is wrong). On a close crop of
+  both, he fans the stem's level crosses round that corner into the foot, as
+  `docs/apex-pro-construction-2026-11-14.md` section 6 records (8 of 8 corners
+  read; Kent's "nice corner", Becker pin #14, and `lettering_columns_corner_fold`
+  is ON for it). Ours differs in degree only: the fan starts higher on the
+  stem and sweeps wider. That is a tuning of a shipped, Kent-approved
+  construction, not a missing mechanism, so no flag was built.
+- **The M's thin left-diagonal sliver and the R's bowl wedges** read as ours
+  by eye against his M and R. Not traced here.
+- `lettering_columns_apex_cut`, `_cover_handback`, `_connectors_buried` and
+  `satin_junction_square` each render **0 pixels different** from the default
+  on this design, so none of them reaches any of the above.
 
 Measured 2026-11-17, `tools.prime_grader capture` on main `796123f2`, 16,249
 stitches in every arm.
