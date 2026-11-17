@@ -700,10 +700,16 @@ def vectorize(
         # densify reads no raster, so the resolution gate does not apply.
         densify = (densify_px > 0.0 and not sub_detail
                    and _wide_enough_to_refine(shell_px, p.px_per_mm))
+        # `curve_chord_stage4_spare_text`: the rings as they were before the
+        # densify, kept beside it so the pipeline can hand them back to a shape
+        # that text tagging then claims (`pipeline._restore_text_polygons`).
+        spare = densify and bool(cfg.curve_chord_stage4_spare_text)
+        shell_pre_px = shell_px
         if densify:
             shell_px = densify_curves(shell_px, outer_src.reshape(-1, 2), densify_px,
                                       densify_guard)
         shell = _to_mm(shell_px, cx, cy, p.px_per_mm)
+        holes_pre: list = []
 
         holes = []
         small_counters: list = []      # `cfg.small_print_floor`: holes the floor drops
@@ -722,11 +728,14 @@ def vectorize(
                 h_px = _refine_curves(hole_src.reshape(-1, 2).astype(np.float64),
                                       h_px.astype(np.float64), eps, curve_turn,
                                       accepted=hole_acc, resolution_gated=resolution_gated)
+            h_pre_px = h_px
             if densify and _wide_enough_to_refine(h_px, p.px_per_mm):
                 h_px = densify_curves(h_px, hole_src.reshape(-1, 2), densify_px, densify_guard)
             ring = _to_mm(h_px, cx, cy, p.px_per_mm)
             if Polygon(ring).area >= (small_hole_mm2 if sub_detail else min_area_mm2):
                 holes.append(ring)
+                if spare:
+                    holes_pre.append(_to_mm(h_pre_px, cx, cy, p.px_per_mm))
             elif record_counters:
                 if small_print:
                     # `cfg.small_print_floor`: the counter's own ring, not
@@ -740,6 +749,11 @@ def vectorize(
                 small_counters.append(ring)
 
         poly = Polygon(shell, holes)
+        pre_wkb = None
+        if spare and poly.is_valid:
+            pre = Polygon(_to_mm(shell_pre_px, cx, cy, p.px_per_mm), holes_pre)
+            if pre.is_valid:
+                pre_wkb = pre.wkb
         # A self-intersecting ring does not repair into ONE shape. Where the
         # boundary crossed itself the repair pinches the mask into several
         # disjoint polygons — all of them the same mask, the same colour, the
@@ -806,6 +820,8 @@ def vectorize(
                     "tips": [[round(float(x), 4), round(float(y), 4)] for x, y in t_mm],
                     "host_layer": int(spoked["host_layer"]),
                 }
+            if pre_wkb is not None and part is poly and not coverage:
+                meta["pre_densify_wkb"] = pre_wkb
             if covered:
                 meta["coverage_edges"] = True
             elif outer_share is not None:

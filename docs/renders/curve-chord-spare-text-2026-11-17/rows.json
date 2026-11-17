@@ -1,0 +1,98 @@
+[
+ {
+  "slug": "becker_hat_large",
+  "off": 16249,
+  "on": 16305,
+  "trims": [
+   17,
+   17
+  ],
+  "moved": true,
+  "changed_px_share": 0.0008
+ },
+ {
+  "slug": "gaulke_roofing_hat",
+  "off": 7392,
+  "on": 7448,
+  "trims": [
+   33,
+   34
+  ],
+  "moved": true
+ },
+ {
+  "slug": "hotel_fremont_hat",
+  "off": 16054,
+  "on": 15976,
+  "trims": [
+   31,
+   26
+  ],
+  "moved": true,
+  "changed_px_share": 0.0659
+ },
+ {
+  "slug": "mfab_hat",
+  "off": 20846,
+  "on": 20738,
+  "trims": [
+   26,
+   25
+  ],
+  "moved": true,
+  "changed_px_share": 0.005
+ },
+ {
+  "slug": "precision_drone",
+  "off": 14182,
+  "on": 13970,
+  "trims": [
+   99,
+   92
+  ],
+  "moved": true,
+  "changed_px_share": 0.1364
+ },
+ {
+  "slug": "tires_hat_3d",
+  "off": 4544,
+  "on": 4500,
+  "trims": [
+   3,
+   4
+  ],
+  "moved": true
+ },
+ {
+  "slug": "goldentee_hat",
+  "off": 13613,
+  "on": 14951,
+  "trims": [
+   49,
+   50
+  ],
+  "moved": true
+ },
+ {
+  "slug": "toat_machine_hat",
+  "off": 17430,
+  "on": 17427,
+  "trims": [
+   20,
+   20
+  ],
+  "moved": true,
+  "changed_px_share": 0.0002
+ },
+ {
+  "slug": "toat_beanie",
+  "off": 17357,
+  "on": 17357,
+  "trims": [
+   24,
+   24
+  ],
+  "moved": true,
+  "changed_px_share": 0.0001
+ }
+]
