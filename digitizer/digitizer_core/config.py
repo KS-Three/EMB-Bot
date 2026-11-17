@@ -3430,6 +3430,13 @@ class PipelineConfig:
     # on every logo, not only the fan letters, and the render is Kent's.
     # Off, byte-identical. Tests: `tests/test_satin_tip_corner_gate.py`.
     satin_tip_corner_gate: bool = False
+    # `satin_thin_arm_stop` (2026-11-17, prime grader: Toat Machine's M, both
+    # stem tops). A thin arm (a script hairline) ending at a node at least
+    # twice its own width stops at the blob's edge: it neither runs INTO the
+    # node (`satin_junction_stack`, part B) nor takes a tip cap, so the thick
+    # stem's crosses cover the joint alone instead of a fan piled over them.
+    # Built OFF. Off, byte-identical. Tests: `tests/test_satin_thin_arm_stop.py`.
+    satin_thin_arm_stop: bool = False
     # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
     # the 2026-09-03 mechanism left open). A stroke that loses crosses to
     # `SATIN_MIN_CROSS_MM` and whose MEDIAN cross is under the hairline line
