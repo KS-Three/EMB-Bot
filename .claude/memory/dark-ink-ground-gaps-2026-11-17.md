@@ -72,5 +72,29 @@ did not import there while CI's later 3.12 stayed green. Now one
 `ExitStack` (PR #1615, `tests/test_with_nesting.py`). Add a scope as one
 `_enter(...)` line; `floor_scopes` no longer needs to fold two.
 
-**Not fixed, seen again:** small lettering on an arc sews fat and fuses
-(Forest Service's DEPARTMENT, 4.5 mm caps); NOAA / EPA ring text.
+**"Fat, fused small text" was a lost letter, not fat thread (Kent's pick of
+next fault, 11-17).** Forest Service's DEPARTMENT at 80 mm: letters 6.5 mm on
+0.97 mm strokes, art gaps 0.43 mm median, needle gaps 0.51: the engine does
+not push the letters together. What reads wrong is the M sewn as an H. The
+traced outline is right (three concave corners: two bays, one notch). The
+junction rules take no cut (no edge runs on through the solid band where
+stems and diagonals merge, no convex apex faces the corners), the second
+look ("again") splits it once, each half sews along its stem and the V's
+point is bare. None of eight built-OFF lettering flags moves it (apex_cut,
+judge_entry_free, absorb_unsewn, rail_pair_bars, flare_top_fold,
+lean_flat_ends, reading_order, edge_walk_judge_off_walk).
+
+**Built OFF: `cfg.extra["lettering_columns_neck_cuts"]`**
+(`outline_cut._neck_cuts`, `neck_cuts_scope`; `tests/test_neck_cuts.py`). Two
+concave corners no junction cut touches, at most `NECK_MAX_W` 1.25 stroke
+widths apart, joined where the segment stays inside the letter; a corner may
+take two. The lane sews the letter both ways and keeps the neck cut only on
+`columns.absorb_gains` (more cover, no more spill). 26 designs (the ten
+Commons logos, 16 repo logos at 80 mm): 24 byte-identical; Forest Service
+24,223 -> 24,250 stitches, trims 41 -> 42 (the M reads as an M, FOREST's T
+loses a stray diagonal at its joint); USGS 7,887 -> 7,898, trims 19 both
+(tagline a and d change, read about the same). Cost: the M's stems sew as
+two columns each (5 columns, was 2). Not run: the `scratch_kent` corpus.
+
+**Not fixed, seen again:** NOAA / EPA ring text; Forest Service's N and A
+joints are still rough.
