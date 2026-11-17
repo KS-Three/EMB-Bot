@@ -1234,6 +1234,10 @@ def build_generation(
                            # 2026-11-16): False, the call as it was
                            **({"tight_word_space": True}
                               if cfg.small_text_reset_tight_word_space else {}),
+                           # a bay the widening filled is cut open again (built OFF
+                           # 2026-11-17): False, the call as it was
+                           **({"keeps_notches": True}
+                              if cfg.small_text_reset_keeps_notches else {}),
                            # traced stroke + grown away from the near neighbour (W4-04,
                            # ON since 2026-10-26): False, the call as it was word for word
                            **({"grow_away": True} if cfg.small_text_reset_grow_away else {}))

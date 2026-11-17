@@ -1053,9 +1053,14 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                        one_baseline: bool = False,
                        ground_ring: bool = False,
                        bean_follows: bool = False,
-                       tight_word_space: bool = False) -> list[dict]:
+                       tight_word_space: bool = False,
+                       keeps_notches: bool = False) -> list[dict]:
     """Enlarge, in place, every line of lettering under `cap_mm`. See the
     module docstring. -> one report row per text cluster it considered.
+
+    `keeps_notches` (`cfg.small_text_reset_keeps_notches`, built OFF
+    2026-11-17; comment at `NOTCH_SHARE_T`): a bay of a re-set letter the
+    widening has filled is cut back open. False: byte for byte.
 
     `tight_word_space` (`cfg.small_text_reset_tight_word_space`, built OFF
     2026-11-16; comment at `WORD_SPACE_CAP_TIGHT`): a gap of 0.35 of the cap
@@ -1165,6 +1170,7 @@ def enlarge_small_text(regions: list[Region], p: Prep, *, cap_mm: float,
                 "mid": (hull.bounds[1] + hull.bounds[3]) / 2.0,
                 **({"all": clusters[cid]} if one_baseline else {}),
                 **({"tight_word_space": True} if tight_word_space else {}),
+                **({"keeps_notches": True} if keeps_notches else {}),
             })
         except Exception as exc:  # fail open: never take the pipeline down
             row["skipped"] = f"error:{type(exc).__name__}"
@@ -1396,6 +1402,69 @@ def _widen_keep_counters(poly: Polygon, widen: float):
             or len(out.interiors) < len(poly.interiors):
         return poly
     return out
+
+
+# KEEP A SHALLOW NOTCH OPEN (`cfg.small_text_reset_keeps_notches`, built OFF
+# 2026-11-17, Kent's logo trial). PLACEHOLDER VALUES, set from the census.
+NOTCH_SHARE_T = 0.5
+NOTCH_MIN_AREA_MM2 = 0.15
+NOTCH_MARGIN_MM = 0.12
+NOTCH_SLIVER_MM = 0.04
+
+
+def _notch_census(moved: Polygon, final: Polygon) -> list[dict]:
+    """The bays of `moved` (the re-set letter before widening): each connected
+    piece of its convex hull minus the letter, with `area`, the `share` of it
+    the widened `final` covers, and its depth (mm, from the hull edge)
+    before and after the widening."""
+    if not isinstance(moved, Polygon) or moved.is_empty:
+        return []
+    hull = Polygon(moved.exterior).convex_hull
+    edge = hull.exterior
+    rows = []
+    for bay in _polys(hull.difference(Polygon(moved.exterior))):
+        if bay.area <= 0:
+            continue
+        left = bay.difference(final)
+        mouth = bay.exterior.intersection(edge)     # the hull edge the bay opens on
+        if mouth.is_empty:
+            mouth = edge
+        depth = max(mouth.distance(Point(c)) for c in bay.exterior.coords)
+        depth_after = max((mouth.distance(Point(c)) for q in _polys(left) for c in q.exterior.coords),
+                          default=0.0)
+        rows.append({"bay": bay, "area": float(bay.area),
+                     "share": float(1.0 - left.area / bay.area),
+                     "depth": float(depth), "depth_after": float(depth_after)})
+    return rows
+
+
+def _keep_notches(moved: Polygon, final: Polygon) -> Polygon:
+    """`final` (`moved` widened) with each bay of `moved` the widening took
+    more than `NOTCH_SHARE_T` of, and of at least `NOTCH_MIN_AREA_MM2`,
+    cut open again: the bay inset by `NOTCH_MARGIN_MM` is taken out of the
+    widened letter, so the strokes round that notch widen outward only. Fails
+    open: a result that is not one valid polygon, or that lost a counter,
+    leaves `final`."""
+    try:
+        cut = [r["bay"] for r in _notch_census(moved, final)
+               if r["area"] >= NOTCH_MIN_AREA_MM2 and r["share"] > NOTCH_SHARE_T]
+        if not cut:
+            return final
+        keep = [q for b in cut for q in _polys(b.buffer(-NOTCH_MARGIN_MM)) if q.area > 0]
+        if not keep:
+            return final
+        out = final.difference(unary_union(keep))
+        # an opening takes off the spikes the cut leaves at the mouth
+        out = out.buffer(-NOTCH_SLIVER_MM / 2.0).buffer(NOTCH_SLIVER_MM / 2.0)
+        parts = sorted((q for q in _polys(out) if q.area > 0), key=lambda q: -q.area)
+        if not parts or sum(q.area for q in parts[1:]) > 0.02 * parts[0].area:
+            return final
+        out = parts[0]
+        if not out.is_valid or len(out.interiors) < len(final.interiors):
+            return final
+        return out
+    except Exception:  # fail open
+        return final
 
 
 # KEEP EACH BAY'S MOUTH OPEN (`cfg.small_text_bay_mouth`, W3-02,
@@ -1890,6 +1959,8 @@ def _reset_apply(regions: list[Region], line: list[dict], bars: list[Region],
             final = _widen_keep_counters(moved, widen)
             if not isinstance(final, Polygon) or not final.is_valid or final.is_empty:
                 continue
+            if it.get("keeps_notches"):
+                final = _keep_notches(moved, final)
             _keep_traced(r, traced_in)
             r.polygon = final
             r.area_mm2 = float(final.area)

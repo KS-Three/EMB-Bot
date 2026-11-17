@@ -4693,6 +4693,16 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_small_text_tight_word_space.py`.
     small_text_reset_tight_word_space: bool = True
+    # A re-set letter's open notch kept open (built OFF 2026-11-17, Kent's
+    # logo trial). The re-set widens each stroke by ~0.24 mm; that guards a
+    # letter's HOLES only, so the M's open top V (USAID's tagline at 100 mm,
+    # notch 0.42 cap deep, 1.09 mm wide) filled in and "FROM" sewed "FROH",
+    # "AMERICAN" "AHERICAN". True: a bay of the letter as scaled that the
+    # widening took more than `small_text.NOTCH_SHARE_T` of is cut open again
+    # (`_keep_notches`), so the strokes round it widen outward only. False:
+    # the re-set as it was, byte for byte. Tests:
+    # `tests/test_small_text_reset_notches.py`.
+    small_text_reset_keeps_notches: bool = False
     # The hand-over (`small_text.HANDOVER_RATIO`, built OFF 2026-11-14 as
     # `cfg.extra["small_text_handover"]`): a line just over the re-set's
     # cutoff (0.9 to 1.15 caps) gets the true-size retrace too, and its own
