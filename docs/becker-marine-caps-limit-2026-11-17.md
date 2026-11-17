@@ -6,8 +6,12 @@ of vertical stitches over a horizontally stitched stem with a visible seam;
 this repeats on the A, R, N and E tops." **Verdict: not a fault to fix. The
 professional sews the same cap.** No engine change; nothing built.
 
-Picture: `docs/renders/becker-marine-caps-2026-11-17/marine_original_ours_pro.png`
-(original | ours at main `796123f2` | the professional's file, same frame).
+Pictures: `docs/renders/becker-marine-caps-2026-11-17/marine_original_ours.png`
+(original | ours at main `796123f2`), and the professional's file in the same
+frame in the picture already committed at
+`docs/renders/big-letter-construction-2026-10-24/marine_102_art_off_pro.png`
+(original | ours then | pro; no new render of his file is committed here, per
+Kent's 2026-10-27 ruling).
 
 ## What the eye sees
 
