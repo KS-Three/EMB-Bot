@@ -226,3 +226,37 @@ def test_column_lane_leaves_counters_alone():
         (i0, o0), (i1, o1) = split_counts(off), split_counts(on)
         assert i1 == i0
         assert o1 > o0
+
+
+# --------------------------------------------- curve_chord_stage4_spare_text
+def test_spare_text_default_off_and_no_meta_leak(tmp_path):
+    from digitizer_core import PipelineConfig
+    from digitizer_core.pipeline import run_stages
+    assert PipelineConfig().curve_chord_stage4_spare_text is False
+    png = _disc_png(tmp_path, 1260, 700)
+    a = run_stages(png, _cfg(curve_chord_mm=0.4, curve_chord_stage4=True))
+    b = run_stages(png, _cfg(curve_chord_mm=0.4, curve_chord_stage4=True,
+                             curve_chord_stage4_spare_text=True))
+    # no text on the page: the spare changes nothing and is not left in meta
+    assert [r.polygon.wkb for r in a.regions] == [r.polygon.wkb for r in b.regions]
+    assert all("pre_densify_wkb" not in r.meta for r in b.regions)
+
+
+def test_spare_text_hands_a_tagged_shape_its_pre_densify_polygon_back():
+    from shapely.geometry import Polygon as P
+    from digitizer_core.pipeline import _restore_text_polygons
+    from digitizer_core.regions import Region
+    dense, plain = _circle(10.0, 96), _circle(10.0, 12)
+
+    def region(tagged):
+        meta = {"pre_densify_wkb": P(plain).wkb}
+        if tagged:
+            meta["text_candidate"] = True
+        return Region(shape_id="S", polygon=P(dense), thread_index=0, thread_number="0",
+                      area_mm2=P(dense).area, meta=meta)
+
+    text, other = region(True), region(False)
+    _restore_text_polygons([text, other])
+    assert text.polygon.equals(P(plain)) and text.area_mm2 == P(plain).area
+    assert other.polygon.equals(P(dense))
+    assert "pre_densify_wkb" not in text.meta and "pre_densify_wkb" not in other.meta
