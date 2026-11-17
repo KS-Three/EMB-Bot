@@ -39,3 +39,7 @@ Compared by md5 of `design["stitches"]`: **17 of 26 moved, 17 pictured** in `fix
 **No visible change by eye:** bg_uncertain (11245 -> 11220), photo/drone_render (+558), photo/enthusiast_logo (+2), photo_chrome_specular (+368), photo_dof_meadow (+352), photo_owl_pale (+133), photo_scene_stub (+1327), photo_sunset_backlit (-28), photo/region_blobs (+88), logo_script_tires (+2), photo/logo_golden_tee (+295), photo/logo_hotel_fremont (12648 -> 12648, same count), photo/screenshot_phone_ui_golke (-74).
 
 Reading: the flag is not safe to flip for all designs: summit_badge gets a visible artefact. Cause not traced.
+
+## Pointer for whoever picks this up (untested idea, not built)
+
+`growth_keeps_gaps_between` already runs only the between-shapes branch of `_kept_gaps` (a shape's own holes are off in this mode), so MFab's 39 new holes come from that same branch: the lens between the base fill and many small neighbouring shapes. Gaulke's gap is two large shapes (sun fill, roof) facing each other along a long straight-ish edge. A scope that would hold it and leave MFab's alone is a size gate on the pair: keep the lens only when both shapes are large (e.g. each over a few hundred mm2) or the facing edge is long (a few mm). Not measured: it needs the same 9-job and 26-fixture sweep before anyone trusts it, and `summit_badge`'s sliver (cause not traced) may sit outside it.
