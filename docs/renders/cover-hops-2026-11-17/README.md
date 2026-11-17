@@ -60,3 +60,15 @@ this much of it lies off the satin) and `_BARE_GROUND_MM` 0.1 / 0.2 (the thread'
 polygon; 0.2 is half the 0.4 mm thread, as `_APEX_EXIT_MM` uses). They set where thread lies in the
 stitch stream, not how fabric behaves under it, so I read them as layout geometry, not a sew-out
 constant. They are not tuned: 0.3 was the first value tried and nothing was swept.
+
+## Tried and not kept: the no-tolerance rule (2026-11-17)
+Rule: cut a travel segment when ANY of it leaves the union of the word's artwork and its sewn
+satin (no length, no thread reach). It keeps the Toat beanie cure (both bars gone) but moves
+every design and adds far more trims than the 0.3 mm rule:
+- 9 pro jobs: 9 moved (0.3 mm rule: 5); trims OFF 302 -> 323 (0.3 mm rule: 310).
+  Per job OFF / 0.3 rule / no-tolerance: Becker 17/18/20, Gaulke 33/33/37, Drone 99/100/104,
+  Tires 3/7/9, Toat beanie 24/26/28, Golden Tee 49/49/48, Fremont, MFab, Toat hat 31, 26, 20 unchanged.
+- 26 fixtures: 9 moved (0.3 mm rule: 6); trims 849 -> 863 (0.3 mm rule: 856).
+Cause: hops ending on a rail pushed out by the pull lie off the art by construction, so a zero
+tolerance cuts them; the 0.3 / 0.1 / 0.2 mm numbers are what keep those. Not pictured (stopped on
+the trim count); the code is in the history of #1636 and reverted.
