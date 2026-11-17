@@ -16,4 +16,4 @@
 | precision_drone | 14182 -> 15165 | no visible change | 16575 |
 | goldentee_hat | 13613 -> 13899 | no visible change | 13899 |
 
-Nothing is worse by eye. Catch: MFab (+6%), Drone (+7%) and Golden Tee (+2%) gain stitches with no visible gain at this size; the extra thread is where the flag holds gaps between shapes open (growth that used to cover them is withheld, so more rows). Whether those gaps open on cloth is a sew-out matter (gate 1); these place growth, they do not size it.
+Nothing is worse by eye. Catch: MFab (+6%), Drone (+7%) and Golden Tee (+2%) gain stitches with no visible gain at this size. I have not traced where the extra stitches go (the by-eye pictures show no difference). Whether those gaps open on cloth is a sew-out matter (gate 1); these place growth, they do not size it.
