@@ -2148,6 +2148,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 apex_crosses: list | None = None,
                 connectors_buried: bool = False,
                 edge_walk: bool = False,
+                cover_hops: bool = False,
                 pull_keep=None,
                 _walk: list | None = None,
                 _feet: dict | None = None,
@@ -2204,6 +2205,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     come -- the professional's order at every join read (Becker's MARINE E,
     N and A): a stroke with a free tip run out under itself and sewn back to
     its join. A cut is left only where no walk order buries the hop.
+    `cover_hops` (`cfg.lettering_columns_cover_hops`, built OFF 2026-11-17): a
+    needle-down travel (hop, underpath) stretch that lies on none of the
+    letter's sewn satin -- `poly_hop` grows the outline, so it also covers a
+    notch the satin leaves open, and a hop across a c's mouth showed on the
+    garment (the prime grader's Toat beanie pin) -- is cut there: the run
+    breaks, and the needle jumps with a trim over it (`_cut_bare_travel`).
     `_walk` (`_edge_walk` only): the walk to sew, in place of the postman's;
     `_feet`, filled with each satin run's ground (by `id`) for `_walk_cost`."""
     _call = dict(locals())
@@ -2761,7 +2768,61 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                                    _CONNECTOR_WIDTHS * W, walk, shape_id, report)
         if _feet is not None:
             _feet.update(ground_of)
+    if cover_hops and sewn:
+        linked = _cut_bare_travel(linked, list(sewn.values()), report,
+                                  skip_first="entry_walk_mm" in report)
     return linked, report
+
+
+#: `cover_hops`: a travel segment is bare when more than this much of it lies
+#: off the ground of every satin leg of the letter (grown by `_BARE_GROUND_MM`,
+#: a thread's reach past its rail)
+_BARE_MAX_MM = 0.3
+_BARE_GROUND_MM = 0.1
+
+
+def _cut_bare_travel(linked: list[StitchRun], grounds: list, report: dict,
+                     skip_first: bool = False, ground_mm: float = _BARE_GROUND_MM) -> list[StitchRun]:
+    """`cover_hops`: every needle-down travel run of the letter, broken where
+    a segment lies on none of its sewn satin; the piece after a break begins
+    with a jump and a trim, so the needle crosses that fabric lifted, not
+    sewn. The entry walk (`skip_first`) is the satin tier's own and stays."""
+    ground = unary_union(grounds).buffer(ground_mm)
+    out: list[StitchRun] = []
+    dirty = False                      # a bare stretch was dropped since the last run kept
+
+    def keep(run: StitchRun) -> None:
+        nonlocal dirty
+        if dirty and out and math.dist(out[-1].points[-1], run.points[0]) > 1e-9:
+            run.jump, run.trim = True, True
+        dirty = False
+        out.append(run)
+
+    for k, r in enumerate(linked):
+        if r.kind != stitches.TRAVEL or len(r.points) < 2 or (k == 0 and skip_first):
+            keep(r)
+            continue
+        pieces: list[list[tuple[float, float]]] = [[r.points[0]]]
+        for a, b in zip(r.points, r.points[1:]):
+            if LineString([a, b]).difference(ground).length > _BARE_MAX_MM:
+                report["bare_hops_cut"] = report.get("bare_hops_cut", 0) + 1
+                pieces.append([b])
+            else:
+                pieces[-1].append(b)
+        if len(pieces) == 1:
+            keep(r)
+            continue
+        dirty = True
+        for i, pc in enumerate(pieces):
+            if len(pc) < 2:
+                continue
+            piece = StitchRun(points=pc, kind=r.kind, shape_id=r.shape_id,
+                              jump=r.jump if i == 0 else True, trim=r.trim if i == 0 else True)
+            keep(piece)
+            dirty = True
+        # the run after the last piece is reached from where that piece ended
+        dirty = True
+    return out
 
 
 def _trail_legs(circuit, spans) -> list[dict]:
@@ -3251,6 +3312,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             inside_stagger: bool = False,
                             connectors_buried: bool = False,
                             edge_walk: bool = False,
+                            cover_hops: bool = False,
                             corner_fold_apex_side: bool = False,
                             pull_keep=None,
                             edge_walk_judge_off: bool = False,
@@ -3362,6 +3424,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"connectors_buried": True} if connectors_buried else {}),
                   # `cfg.lettering_columns_connectors_edge_walk`: the walk that buries its hops
                   **({"edge_walk": True} if edge_walk else {}),
+                  # `cfg.lettering_columns_cover_hops`: no travel across bare fabric
+                  **({"cover_hops": True} if cover_hops else {}),
                   # `cfg.satin_push_keeps_gaps`: the push kept out of bays and gaps
                   **({"pull_keep": pull_keep} if pull_keep is not None else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
@@ -3387,7 +3451,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         # OFF's walk Gaulke's hat "&" takes a cut with a hairline slit at its
         # waist that buried's avoids, and Bukit Asam's 3 mm script "d" reads
         # less legibly. Kent rules it from the sheet.
-        judge_kw = {k: v for k, v in run_kw.items() if k != "edge_walk"}
+        judge_kw = {k: v for k, v in run_kw.items() if k not in ("edge_walk", "cover_hops")}
         if edge_walk and not edge_walk_judge_off:
             judge_kw = {**judge_kw, "connectors_buried": True}
         # `judge_entry_free` (`cfg.extra["lettering_columns_judge_entry_free"]`,
