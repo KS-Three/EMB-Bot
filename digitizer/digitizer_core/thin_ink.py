@@ -547,7 +547,8 @@ def merge_thin_ink(a: ThinInk | None, b: ThinInk | None) -> ThinInk | None:
                    dark=a.dark + (b.dark if a.dark == len(a.spools) else 0))
 
 
-def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray) -> ThinInk | None:
+def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray,
+                      own_ground: bool = False) -> ThinInk | None:
     """The components of `dark` that the merge folded into their ground, as
     a population of their own; None when every one survived.
 
@@ -557,7 +558,13 @@ def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray)
     (kept on their contrast, as on every run before this flag) and are left
     exactly as they are. A component whose majority label is a ground's (the
     pot's: 0.4% of that label inside the letter), or whose pixels the
-    quantiser read already owns (none left in `base_valid`), is absorbed."""
+    quantiser read already owns (none left in `base_valid`), is absorbed.
+
+    `own_ground` (`cfg.flat_dark_ink_own_ground`): a component is absorbed
+    only when its majority label is also the majority label of the ground
+    AROUND it (`_dark_ring`'s foreground pixels). A thin dark piece the
+    quantiser labelled correctly, ringed by another colour, survived. A
+    component with no foreground ring pixels answers as before."""
     n, cc, stats, _ = cv2.connectedComponentsWithStats(dark.mask.astype(np.uint8), connectivity=8)
     totals = np.bincount(merged[base_valid].astype(np.int64)) if base_valid.any() else np.zeros(1, np.int64)
     keep = np.zeros_like(dark.mask)
@@ -571,6 +578,11 @@ def absorbed_dark_ink(dark: ThinInk, merged: np.ndarray, base_valid: np.ndarray)
             own = float(np.count_nonzero(inside == label)) / float(totals[label])
             if own >= 0.5:
                 continue
+            if own_ground:
+                ring, _n, _g = _dark_ring(merged, base_valid, comp, by, bx)
+                if ring is not None and ring.size and \
+                        int(np.bincount(ring.astype(np.int64)).argmax()) != label:
+                    continue
         keep[crop] |= comp
     if not keep.any():
         return None
@@ -790,7 +802,9 @@ def carve_flat_dark_ink(p: Prep, cfg: PipelineConfig, q):
     dark = find_dark_thin_ink(p, cfg, labelled)
     if dark is None:
         return q
-    absorbed = absorbed_dark_ink(dark, q.labels, labelled)
+    absorbed = absorbed_dark_ink(
+        dark, q.labels, labelled,
+        own_ground=bool(getattr(cfg, "flat_dark_ink_own_ground", False)))
     if absorbed is None:
         return q
     base_k = len(q.thread_indices)

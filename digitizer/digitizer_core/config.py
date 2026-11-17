@@ -1289,6 +1289,26 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_flat_light_text_runs.py`.
     flat_light_text_runs: bool = True
+    # `flat_dark_ink_own_ground` (built OFF 2026-11-16): the flat dark-ink
+    # carve takes only strokes their own ground absorbed. `absorbed_dark_ink`
+    # calls a dark component absorbed when the label most of its pixels carry
+    # is not mostly inside it; that was written for strokes the quantiser
+    # folded into the ground they are drawn on (tan small text labelled as the
+    # white patch round it). It misfires on a thin dark piece the quantiser
+    # labelled correctly whose label is large elsewhere. On the US Forest
+    # Service shield (960 px PNG, 80 mm, left chest) the letter counters and
+    # the wedges between yellow letters are dark green, ringed by yellow and
+    # carrying the green field's label; they read "absorbed", were carved out,
+    # re-snapped to another chart thread ("Green Dust") and sewn as 13 run
+    # shapes in a third colour block on a two-colour logo (90.5% of the carved
+    # pixels on the field's own label, 48% within 2 px of yellow, 5% of
+    # green). The NPS arrowhead (75 mm) gains a 121-stitch block the same way.
+    # ON: a component whose majority label differs from the majority label of
+    # its ring (`_dark_ring`, foreground pixels) is treated as survived; no
+    # foreground ring pixels keeps the old answer. No new constant.
+    # Read only with `flat_light_text_runs`. OFF: never read, byte for byte.
+    # Tests: `tests/test_flat_dark_ink_own_ground.py`.
+    flat_dark_ink_own_ground: bool = False
     # The figure's page-edge FRINGE neither votes in the palette fit nor
     # survives as slivers (built OFF 2026-11-03, Kent on the Pooh pot: "a hole
     # in the honey jar"). The anti-alias blend between a dark outline and the

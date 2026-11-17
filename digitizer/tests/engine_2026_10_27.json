@@ -127,6 +127,7 @@
  "fine_bars_satin": true,
  "flat_outline_max_mm": 0.8,
  "flat_light_text_runs": false,
+ "flat_dark_ink_own_ground": false,
  "flat_page_fringe_exclude": false,
  "flat_page_fringe_px": 2,
  "flat_page_fringe_soft_ramp": false,
