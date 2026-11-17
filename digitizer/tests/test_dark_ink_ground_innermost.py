@@ -74,3 +74,28 @@ def test_the_letter_moves_to_sew_after_its_ring_only_with_the_flag():
 def test_flag_is_off_by_default():
     from digitizer_core import PipelineConfig
     assert not (PipelineConfig().extra or {}).get("dark_ink_ground_innermost")
+
+
+def test_only_a_stroke_the_flag_alone_moved_is_tagged_for_the_angle_pin():
+    """Stage 5 pins the fill angle of a ground whose letters THIS flag
+    re-ordered, and of no other (`thin_ink.REORDERED_KEY`): a ground that was
+    already sewn through with the flag off must keep the angle it has. A pin
+    on every dark-ink ground turned NOAA's white ring 90 deg (2026-11-17)."""
+    from digitizer_core.thin_ink import REORDERED_KEY
+
+    # the seal: plain finds the field (earlier layer, no move); innermost
+    # finds the ring (later layer) and moves the letter -> tagged
+    on = {r.shape_id: r for r in ink_after_ground(list(_seal()), innermost=True)}
+    assert on["letter"].meta.get(REORDERED_KEY) == "ring"
+    assert REORDERED_KEY not in on["ring"].meta and REORDERED_KEY not in on["field"].meta
+
+    # flag off: nothing is tagged
+    off = ink_after_ground(list(_seal()))
+    assert all(REORDERED_KEY not in r.meta for r in off)
+
+    # a letter whose ONLY covering outline is its ring moves with the flag
+    # off too, so the flag changed nothing for it: not tagged
+    _field, ring, letter = _seal()
+    alone = {r.shape_id: r for r in ink_after_ground([ring, letter], innermost=True)}
+    assert alone["letter"].meta["layer"] > alone["ring"].meta["layer"]
+    assert REORDERED_KEY not in alone["letter"].meta

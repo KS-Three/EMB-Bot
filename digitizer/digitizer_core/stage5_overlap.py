@@ -1181,15 +1181,15 @@ def resolve_overlaps(
         if best is not None:
             ground_under.setdefault(best.shape_id, []).append(b_.polygon)
     ground_under = {k: unary_union(v).buffer(0.1) for k, v in ground_under.items()}
-    # `cfg.extra["dark_ink_ground_innermost"]` (built OFF): the grounds of
-    # DARK-INK bean strokes only, for the angle pin below. `ground_under`
-    # goes on to take silhouette-underfill hosts and more, and a pin on those
-    # moved 18 of 46 designs (measured 2026-11-17), customer logos among them.
-    dark_ink_grounds = (
-        {g.shape_id for g in regions if g.shape_id in ground_under
-         and any(b_.meta.get("dark_ink") and b_.meta.get("bean_letter_spines")
-                 and b_.meta.get("dark_ink_ground") == g.shape_id for b_ in regions)}
-        if (cfg.extra or {}).get("dark_ink_ground_innermost") else set())
+    # `cfg.extra["dark_ink_ground_innermost"]` (built OFF): the grounds whose
+    # bean strokes that flag ALONE re-ordered (`thin_ink.REORDERED_KEY`), for
+    # the angle pin below. Not every entry of `ground_under`: it also holds
+    # silhouette-underfill hosts (a pin on all of them moved 18 of 46 designs,
+    # customer logos among them), and a ground that was already sewn through
+    # with the flag off must keep the angle it has (NOAA's white ring turned
+    # its rows 90 deg under a pin on every dark-ink ground). No tag, empty.
+    dark_ink_grounds = {b_.meta["dark_ink_ground_reordered"] for b_ in regions
+                        if b_.meta.get("dark_ink_ground_reordered")} & set(ground_under)
     # `cfg.silhouette_underfill` (built OFF): a ring's host sews the ring's
     # outline, holes closed, under everything inside it -- the same path, so
     # its footprint stays its artwork and nothing sewn later is clipped by

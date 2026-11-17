@@ -764,6 +764,12 @@ def settle_dark_ink_bean(regions) -> int:
     return kept
 
 
+#: On a bean stroke `ink_after_ground` moved ONLY because of
+#: `cfg.extra["dark_ink_ground_innermost"]`: the shape id of the ground it now
+#: sews after. Stage 5 pins that ground's fill angle and no other. Internal.
+REORDERED_KEY = "dark_ink_ground_reordered"
+
+
 def ink_after_ground(regions, innermost: bool = False):
     """`cfg.dark_ink_bean`, at plan time: a bean stroke (`bean_dark_ink`)
     whose ground (`_ground_of`) sews in the same or a later layer moves to
@@ -780,10 +786,17 @@ def ink_after_ground(regions, innermost: bool = False):
     grounds = [r for r in regions if not r.meta.get("dark_ink") and r.meta.get("stitched", True)
                and r.polygon is not None]
     to: dict[str, tuple] = {}
+    reordered: dict[str, str] = {}      # stroke id -> the ground `innermost` alone found for it
     for b in ink:
         g = _ground_of(b, grounds, innermost)
         if g is not None and g.meta["layer"] >= b.meta["layer"]:
             to[b.shape_id] = ("ink", g.meta["layer"], b.thread_index)
+            if innermost:
+                plain = _ground_of(b, grounds)
+                if plain is None or plain.meta["layer"] < b.meta["layer"]:
+                    # only the innermost reading moved this stroke: stage 5's
+                    # angle pin is for its ground and no other (`REORDERED_KEY`)
+                    reordered[b.shape_id] = g.shape_id
     if not to:
         return regions
     order = sorted({r.meta["layer"] for r in regions})
@@ -793,7 +806,8 @@ def ink_after_ground(regions, innermost: bool = False):
 
     def layer_of(r):
         return renum[to.get(r.shape_id, r.meta["layer"])]
-    return [replace(r, meta={**r.meta, "layer": layer_of(r)})
+    return [replace(r, meta={**r.meta, "layer": layer_of(r),
+                             **({REORDERED_KEY: reordered[r.shape_id]} if r.shape_id in reordered else {})})
             for _i, r in sorted(enumerate(regions), key=lambda t: (layer_of(t[1]), t[0]))]
 
 
