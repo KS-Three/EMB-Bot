@@ -1,5 +1,6 @@
-"""`cfg.text_cluster_mixed_caps` (built OFF 2026-11-17): a line set in two cap
-heights is still a word.
+"""`cfg.text_cluster_mixed_caps` (built OFF 2026-11-17, ON since 2026-11-17 by
+Kent's flip, "Flip ON (Recommended)"): a line set in two cap heights is still a
+word.
 
 The TOAT badge's "To A T" (hat, 89.5 mm): two T's 11.9 mm tall, an o 7.2 mm and
 an A 7.7 mm. The letter door links two glyphs only within `LETTER_HEIGHT_RATIO`
@@ -83,11 +84,11 @@ def test_a_group_that_tagged_keeps_its_members_on():
     assert _tags(base) == _tags(on)
 
 
-def test_the_config_field_defaults_off_and_the_frozen_engine_pins_it():
+def test_the_config_field_defaults_on_and_the_frozen_engine_pins_it_off():
     import json
     from pathlib import Path
     from digitizer_core import PipelineConfig
-    assert PipelineConfig().text_cluster_mixed_caps is False
+    assert PipelineConfig().text_cluster_mixed_caps is True
     pinned = json.loads((Path(__file__).parent / "engine_2026_10_27.json").read_text(encoding="utf-8"))
     assert pinned["text_cluster_mixed_caps"] is False
 
