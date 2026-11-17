@@ -690,7 +690,20 @@ def _ground_of(stroke, grounds):
     return best if best is not None and best_a >= 0.5 * stroke.polygon.area else None
 
 
-def bean_dark_ink(regions) -> int:
+# `cfg.dark_ink_bean_by_width`'s gate: a dark-ink GROUP (same ground, same
+# thread) whose median mean stroke width (2 x area / perimeter) is under this
+# sews as a bean; at or over it, as satin. Half again the Column lane's cross
+# floor: a stroke needs that to carry a satin column. Census 2026-11-16, 550
+# strokes over 53 designs, group medians: THIN 0.26-0.65 mm (NOAA 0.46, USAID
+# seal 0.31-0.50, FEMA seal 0.33-0.59, Hotel Fremont tan text and rope 0.42,
+# Pooh 0.26-0.36, Energy Star 0.46-0.48, a Commons lettering fixture
+# 0.40-0.50); BOLD 0.80-1.39 (EPA 0.91, Hotel Fremont black 0.80, Bridge BAR
+# 1.33-1.39, one FEMA stroke 0.91). It sits in the measured gap 0.65-0.80; a
+# layout threshold judged from renders, not a cloth constant.
+DARK_INK_BEAN_MAX_WIDTH_MM = 1.5 * machine.SATIN_MIN_CROSS_MM
+
+
+def bean_dark_ink(regions, by_width: bool = False) -> int:
     """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
     ground, the way the reference digitizer sews a drawn line
     (`bean_rule`). Each `meta["dark_ink"]` region gets its polygon's
@@ -708,7 +721,13 @@ def bean_dark_ink(regions) -> int:
     sits within `BEAN_MAX_GROUND_DE00` of the ground's. Above it the ink is
     designed lettering that only the superpixel mean absorbed -- the Fremont
     wordmark, Black on White at 100 dE00, sewed as hairline skeletons ON --
-    and sews as it did. Returns the number of strokes tagged."""
+    and sews as it did. Returns the number of strokes tagged.
+
+    `by_width` (`cfg.dark_ink_bean_by_width`): contrast is replaced by
+    WIDTH. The strokes on one ground in one thread are a group; the group's
+    median mean width (2 x area / perimeter) under
+    `DARK_INK_BEAN_MAX_WIDTH_MM` beans every member, at or over it none,
+    whatever the contrast. Ground, spines and keys as above."""
     from shapely.geometry import Polygon
 
     from .beanletters import BEAN_LETTER_KEY
@@ -716,13 +735,32 @@ def bean_dark_ink(regions) -> int:
     from .textcluster import _skeleton_chains_mm
 
     grounds = [r for r in regions if not r.meta.get("dark_ink") and r.polygon is not None]
+    group_bean: dict = {}
+    if by_width:
+        widths: dict = {}
+        for r in regions:
+            if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
+                    or not isinstance(r.polygon, Polygon)):
+                continue
+            g = _ground_of(r, grounds)
+            if g is None or r.polygon.length <= 0:
+                continue
+            widths.setdefault((g.shape_id, r.thread_index), []).append(
+                2.0 * float(r.polygon.area) / float(r.polygon.length))
+        group_bean = {k: float(np.median(v)) < DARK_INK_BEAN_MAX_WIDTH_MM
+                      for k, v in widths.items()}
     tagged = 0
     for r in regions:
         if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
                 or not isinstance(r.polygon, Polygon)):
             continue
         g = _ground_of(r, grounds)
-        if g is None or _thread_de00(r.thread_index, g.thread_index) > BEAN_MAX_GROUND_DE00:
+        if g is None:
+            continue
+        if by_width:
+            if not group_bean.get((g.shape_id, r.thread_index), False):
+                continue
+        elif _thread_de00(r.thread_index, g.thread_index) > BEAN_MAX_GROUND_DE00:
             continue
         field = build_shape_field(r.polygon)
         spines = _skeleton_chains_mm(field) if field is not None else []

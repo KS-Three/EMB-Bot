@@ -1245,6 +1245,27 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
     dark_ink_bean: bool = True
+    # `dark_ink_bean_by_width` (BUILT OFF 2026-11-16): which dark-ink strokes
+    # sew as a bean is decided by WIDTH, not thread contrast. Contrast stood
+    # in for "pen line versus designed lettering" and gets real lettering
+    # backwards. NOAA's emblem ring text (Commons PNG, 90 mm): strokes 0.46 mm
+    # wide, contrast 66.8, over the 50.0 gate, so satin, and the Column lane
+    # drops crosses under its 0.5 mm cross floor: 7 of 52 ring letters lose
+    # strokes (forced to bean, every letter is whole). EPA's seal ring text
+    # (90 mm): bold strokes 0.91 mm wide, contrast 44.9, under the gate, so
+    # thin bean lines for bold lettering: all 22 measured letters have under
+    # 0.8 of their area sewn (bean off: whole satin letters, Kent: "the
+    # United States is a huge improvement"). ON: the strokes on one ground in
+    # one thread are a group; its median mean width (2 x area / perimeter)
+    # under `thin_ink.DARK_INK_BEAN_MAX_WIDTH_MM` (0.75 mm = 1.5 x the cross
+    # floor) beans every member, at or over it none, whatever the contrast.
+    # Census of 550 dark-ink strokes over 53 designs, group median widths:
+    # THIN 0.26-0.65 mm (NOAA 0.46, USAID seal, FEMA seal, Fremont tan text
+    # and rope, Pooh, Energy Star), BOLD 0.80-1.39 mm (EPA 0.91, Fremont
+    # black, Bridge BAR); nothing between 0.65 and 0.80. Read only with
+    # `dark_ink_bean`. Layout: Kent's call from the renders. OFF: never read,
+    # byte for byte. Tests: `tests/test_dark_ink_bean_by_width.py`.
+    dark_ink_bean_by_width: bool = False
     # A dark-ink carve (`keep_dark_thin_strokes`) under stage 3's detail floor
     # is kept for the lettering path instead of absorbed into its ground
     # (built OFF 2026-11-03, Kent on the Pooh pot: "a lettering rescue from
