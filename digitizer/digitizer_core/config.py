@@ -3453,18 +3453,25 @@ class PipelineConfig:
     # node (`satin_junction_stack`, part B) nor takes a tip cap, so the thick
     # stem's crosses cover the joint alone instead of a fan piled over them.
     # Off, byte-identical. Tests: `tests/test_satin_thin_arm_stop.py`.
-    # **ON since 2026-11-17** (Kent, shown ORIGINAL | BEFORE | AFTER for the
-    # To a T hat, its close-up and the two slightly-worse fixtures: "Flip ON
-    # (Recommended)"). Moves 15 of 35 runs (6 of 9 pro jobs, 9 of 26
-    # fixtures): Toat Machine hat and beanie lose both M stem-top fans, Golden
-    # Tee, the white-icon fixture and the owl are cleaner; scene_stub (a small
-    # cluster of crossing blocks at one spot) and phone_ui_golke (a small pale
-    # sliver inside black) are SLIGHTLY WORSE
-    # (`docs/renders/thin-arm-stop-2026-11-17/`). False is the engine as it
-    # was; PRE_FLIP (THIN_ARM_STOP_2026_11_17_OFF) pins it False. The first
-    # build raised MARINE 80's bare artwork 2.8 -> 6.8 mm2 (Kent had not seen
-    # it); `stage6_satin.satin_shape_judged` now keeps the flag on a shape only
-    # where it leaves no more bare artwork than the flag off (MARINE: 2.8).
+    # **ON since 2026-11-17**, in two steps. Kent first, shown ORIGINAL | BEFORE
+    # | AFTER for the To a T hat, its close-up and the two slightly-worse
+    # fixtures: "Flip ON (Recommended)". The first build then raised Becker
+    # MARINE 80's bare artwork 2.8 -> 6.8 mm2 (`ARTWORK_UNCOVERED`; thin arms
+    # at a leg's foot and a slab stopped short of the artwork's end), which he
+    # had not seen. THE GUARD: `stage6_satin.satin_shape_judged` sews each
+    # flagged shape both ways and keeps the flag on that shape only if it leaves
+    # at most 0.3 mm2 more bare artwork than the flag off (the crown cover's
+    # `_uncovered_patches` and floors); no ratio, angle or ribbon-cover test
+    # separated MARINE from the Toat M. COST: a shape whose ON run differs is
+    # sewn twice (the OFF arm is memoized); wall-clock per pro job is in the PR
+    # body. Shown the MARINE zoom and the guard, Kent answered "Re-arm, flip ON
+    # (Recommended)". Moves 15 of 35 runs (6 of 9 pro jobs, 9 of 26 fixtures):
+    # Toat Machine hat and beanie lose both M stem-top fans, Golden Tee, the
+    # white-icon fixture and the owl are cleaner; scene_stub (one small cream
+    # gap) and phone_ui_golke (a small pale sliver inside black) are SLIGHTLY
+    # WORSE (`docs/renders/thin-arm-stop-2026-11-17/`). MARINE 80 reads 2.8
+    # both ways. False is the engine as it was; PRE_FLIP
+    # (THIN_ARM_STOP_2026_11_17_OFF) pins it False.
     satin_thin_arm_stop: bool = True
     # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
     # the 2026-09-03 mechanism left open). A stroke that loses crosses to
