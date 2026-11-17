@@ -1,0 +1,53 @@
+"""rope_band OFF | ON over the committed pro jobs: a labelled ORIGINAL | BEFORE | AFTER
+picture for every design the flag moves (Kent 2026-11-16 ruling), plus `sweep.json`.
+
+  python -m tools.rope_band_sweep --out ../docs/renders/rope-band-2026-11-17
+"""
+from __future__ import annotations
+
+import argparse
+import hashlib
+import json
+import sys
+from pathlib import Path
+
+DIGITIZER = Path(__file__).resolve().parent.parent
+if str(DIGITIZER) not in sys.path:
+    sys.path.insert(0, str(DIGITIZER))
+
+
+def main(argv=None) -> int:
+    import cv2
+    from digitizer_core import stitchviz
+    from tools import pro_baseline as pb
+    from tools import pro_pair as pp
+    from tools import prime_grader
+    ap = argparse.ArgumentParser()
+    ap.add_argument("--out", required=True)
+    ap.add_argument("--only", nargs="*")
+    a = ap.parse_args(argv)
+    out = Path(a.out)
+    out.mkdir(parents=True, exist_ok=True)
+    rows = {}
+    for slug in (a.only or prime_grader.population()):
+        garment, width, art = pb.JOBS[slug][0], float(pb.JOBS[slug][1]), pb.resolve(pb.JOBS[slug][2])
+        d0 = pp.digitize(art, width, garment)
+        d1 = pp.digitize(art, width, garment, extra={pp.EXTRA_PREFIX + "rope_band": True})
+        h = [hashlib.md5(json.dumps(d.design, sort_keys=True, default=str).encode()).hexdigest()
+             for d in (d0, d1)]
+        n = [len(d.design["stitches"]) for d in (d0, d1)]
+        moved = h[0] != h[1]
+        rows[slug] = {"moved": moved, "stitches_off": n[0], "stitches_on": n[1], "width_mm": width}
+        print(slug, "MOVED" if moved else "same", n, flush=True)
+        if moved:
+            ppm = 20.0
+            imgs = [pp._label(pp._scaled(pp._art_ink(art), width, ppm, cv2.INTER_AREA), "ORIGINAL"),
+                    pp._label(stitchviz.render_design(d0.design, px_per_mm=ppm), "BEFORE (rope_band OFF)"),
+                    pp._label(stitchviz.render_design(d1.design, px_per_mm=ppm), "AFTER (rope_band ON)")]
+            cv2.imwrite(str(out / f"{slug}.png"), pp._hstack(imgs))
+    (out / "sweep.json").write_text(json.dumps(rows, indent=1), encoding="utf-8")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
