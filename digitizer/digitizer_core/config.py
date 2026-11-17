@@ -1519,7 +1519,7 @@ class PipelineConfig:
     # (`docs/renders/prime-fixes-2026-11-17/`). False is the engine as it
     # was; PRE_FLIP (COLOR_CAP_LEAST_LOSS_2026_11_17_OFF) pins it False.
     color_cap_least_loss: bool = True
-    # `merge_chroma_guard` (built 2026-11-17, the prime grader's Precision
+    # `merge_chroma_guard` (built OFF 2026-11-17, the prime grader's Precision
     # Drone: "the blue sky ... is sewn solid black"). The photo/gradient
     # lane's region merge weighs edges in CIEDE2000, which calls a vivid dark
     # blue and black 21-23 apart, under the 26 threshold: the Drone's black
@@ -1529,13 +1529,16 @@ class PipelineConfig:
     # lane: the default is Kent's, with before | after pictures. No fabric
     # constant: gate 1 does not apply. False is the merge bit for bit. Tests:
     # `tests/test_merge_chroma_guard.py`.
-    # **ON since 2026-11-17** (Kent, shown ORIGINAL | BEFORE | AFTER for both
-    # runs it moves: "Flip ON (Recommended)"). 2 of 35 runs move, compared
-    # stitch by stitch: Precision Drone's hat job (+7% stitches) and
-    # `drone_render` at 80 mm (+13%), both gaining the blue sky and water
-    # (`docs/renders/merge-chroma-guard-2026-11-17/`). False is the merge as
-    # it was; PRE_FLIP (MERGE_CHROMA_GUARD_2026_11_17_OFF) pins it False.
-    merge_chroma_guard: bool = True
+    # **Still OFF. A flip was approved and WITHDRAWN the same day (2026-11-17).**
+    # Kent said "Flip ON (Recommended)" on a sweep that showed 2 of 35 runs
+    # moving at the Studio request (both Drone runs, both better). The suite
+    # then showed the flag moves more than that under other configs: stage-2
+    # goldens for `photo_subject_stub` and `enthusiast_logo`, blocking
+    # THREAD_MATCH_POOR findings 1 -> 3 on `logo_golden_tee` and 3 -> 4 on
+    # `drone_render`, and a new forbid-gap finding on `drone_render`. That
+    # was not in front of him, so the default stays False until it is
+    # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
+    merge_chroma_guard: bool = False
     # `keyline_fragment_drop` (built OFF 2026-11-17; Kent on the Drone render:
     # "The P,R & C should not have the dark stitch lines on them"). The art's
     # chrome letters carry a hairline dark edge; a few mm of it survive stage

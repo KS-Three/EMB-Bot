@@ -1148,11 +1148,6 @@ PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
 COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
 PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
-# `merge_chroma_guard` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER for
-# the two Drone runs it moves: "Flip ON (Recommended)"):
-# `tests/test_merge_chroma_guard.py`.
-MERGE_CHROMA_GUARD_2026_11_17_OFF = {"merge_chroma_guard": False}
-PRE_FLIP.update(MERGE_CHROMA_GUARD_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

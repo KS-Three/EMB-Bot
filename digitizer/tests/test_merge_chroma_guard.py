@@ -69,7 +69,4 @@ def test_chroma_gap_needs_one_neutral_and_one_colour():
 def test_off_is_the_weight_it_always_was():
     g = _graph(BLACK, BLUE, False)
     assert "chroma_guard" not in g.graph
-    # Kent 2026-11-17: "Flip ON (Recommended)". The frozen snapshot keeps False.
-    from tests.conftest import PRE_FLIP
-    assert PipelineConfig().merge_chroma_guard is True
-    assert PRE_FLIP["merge_chroma_guard"] is False
+    assert PipelineConfig().merge_chroma_guard is False
