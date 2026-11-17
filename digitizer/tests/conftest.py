@@ -1148,11 +1148,6 @@ PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
 COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
 PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
-# `text_cluster_mixed_caps` (Kent 2026-11-17, shown the To a T hat zooms of the
-# A and the T crossbar, ORIGINAL | BEFORE | AFTER: "Flip ON (Recommended)"):
-# `tests/test_text_cluster_mixed_caps.py`.
-TEXT_CLUSTER_MIXED_CAPS_2026_11_17_OFF = {"text_cluster_mixed_caps": False}
-PRE_FLIP.update(TEXT_CLUSTER_MIXED_CAPS_2026_11_17_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

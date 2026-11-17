@@ -4894,17 +4894,8 @@ class PipelineConfig:
     # _mixed_caps`); a group that tagged keeps its members. The lane then
     # sews the A as the pro does: two level-crossed legs and a short crossbar
     # between them. Layout, not a cloth constant (gate 1). False is the tagger
-    # as it was, byte for byte. A line that tags ONLY through this pass is
-    # marked (`meta["text_cluster_mixed_caps"]`) and sews at its DRAWN size:
-    # `small_text` skips it and `regularize_text_clusters` never redraws it
-    # (the first build's re-set grew a phone screenshot's "Photo" to twice its
-    # size). **ON since 2026-11-17, Kent's flip** (shown the To a T hat zooms of
-    # the A and the T crossbar, ORIGINAL | BEFORE | AFTER, and told that across
-    # 44 designs 3 improve, 4 show no visible change and none is worse: "Flip ON
-    # (Recommended)"). False is the tagger as it was; `tests/conftest.py`
-    # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False.
-    # Tests: `tests/test_text_cluster_mixed_caps.py`.
-    text_cluster_mixed_caps: bool = True
+    # as it was, byte for byte. Tests: `tests/test_text_cluster_mixed_caps.py`.
+    text_cluster_mixed_caps: bool = False
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
