@@ -1,6 +1,6 @@
 ---
 name: logo-batch-2026-11-16
-description: Kent 11-16 autonomy batch, 10 Commons logos — two more flags built OFF (silhouette_underfill_rim_fabric_edges, group_consistent_border_by_size); 6 of 10 designs change, 4 do not; arc small text, AA-blend thread and satin-floor faults seen and NOT fixed
+description: Kent 11-16 autonomy batch, 10 Commons logos — silhouette_underfill_rim_fabric_edges + group_consistent_border_by_size ON (Kent "Flip both ON"); 6 of 10 designs change, 4 do not; arc small text, AA-blend thread and satin-floor faults seen and NOT fixed
 metadata:
   type: project
 ---
@@ -18,7 +18,8 @@ left chest: NASA worm 100 mm, NOAA 90, Forest Service 80, National Park
 Service arrowhead 75, Energy Star 85, EPA seal 90, USGS 100, FEMA 110, Python
 80, recycling symbol 80. None of the art or renders is in the repo.
 
-**Built, both OFF, PR #1608:**
+**Built OFF in PR #1608, ON since Kent's "Flip both ON" the same day (from
+the ten-logo art | before | after sheets):**
 
 - `silhouette_underfill_rim_fabric_edges`: the under-fill host's 1.75 mm satin
   rim skips every stretch of its visible outline another sewn shape shares
@@ -47,7 +48,17 @@ byte-identical. The ground guard itself moved none of the ten.
   are noise at that size.
 - Colour revisits: the arrowhead sews seven blocks for five threads.
 
-**How to apply:** the flip of the two flags is Kent's, from the ten-logo
-art | before | after sheet. A trap from this session: `r.jump` is True on a
+**The flip's corpus check (22 pro-paired jobs, both flags ON vs OFF):** six
+change, all by the rim, all with fewer stitches and none worse by eye --
+Bridge hat 8,554 -> 7,912 and LC 10,956 -> 10,190 (the yellow disc's rim
+against the black ring), To a T Machine hat 18,806 -> 17,430 and beanie
+18,254 -> 17,010, To a T beanie 18,594 -> 17,357 (the white ground's rim
+against the black frame, which had shown outside it), Precision Drone
+14,771 -> 14,186 (trims 96 -> 99). Sixteen are byte-identical, MFab and
+Fremont among them: their rims stand on fabric. The group pass moved one
+shape on Golden Tee with no change in stitches.
+
+**How to apply:** `tests/conftest.py` LOGO_BATCH_2026_11_16_OFF pins the old
+defaults. A trap from this session: `r.jump` is True on a
 real run reached by a jump, so a per-kind stitch census that skips
 `r.jump` runs loses whole borders.

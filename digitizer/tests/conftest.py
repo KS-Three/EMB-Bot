@@ -1039,6 +1039,15 @@ PRE_FLIP.update(FOLLOW_SHAPE_2026_11_16_OFF)
 # the flag itself.
 UNDERFILL_GUARD_2026_11_16_OFF = {"silhouette_underfill_ground_guard": False}
 PRE_FLIP.update(UNDERFILL_GUARD_2026_11_16_OFF)
+# `silhouette_underfill_rim_fabric_edges` and `group_consistent_border_by_size`
+# (Kent 2026-11-16, "Flip both ON", from the ten-logo art | before | after
+# sheets; both built OFF the same day): the under-fill rim sews only on
+# fabric edges, and the size ring is decided once per line of like shapes.
+# `tests/test_underfill_rim_fabric_edges.py` and
+# `tests/test_group_border_by_size.py` name the flags themselves.
+LOGO_BATCH_2026_11_16_OFF = {"silhouette_underfill_rim_fabric_edges": False,
+                             "group_consistent_border_by_size": False}
+PRE_FLIP.update(LOGO_BATCH_2026_11_16_OFF)
 # `point_touch_split` (Kent 2026-11-15, ticked ON; promoted from cfg.extra): `tests/test_point_touch.py`.
 POINT_TOUCH_2026_11_15_OFF = {"point_touch_split": False}
 PRE_FLIP.update(POINT_TOUCH_2026_11_15_OFF)

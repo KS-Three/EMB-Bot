@@ -1,4 +1,4 @@
-"""The under-fill rim sews only on fabric edges (`cfg.silhouette_underfill_rim_fabric_edges`, built OFF 2026-11-16).
+"""The under-fill rim sews only on fabric edges (`cfg.silhouette_underfill_rim_fabric_edges`, ON since 2026-11-16).
 
 `silhouette_underfill_rim` closes one satin loop round the host's whole
 outline. It was read off MFab's band and Fremont's ground, whose outlines are
@@ -20,8 +20,9 @@ from shapely.geometry import LineString, Point, box
 from digitizer_core import PipelineConfig, stitches
 from tests.test_silhouette_underfill import _md5, _reg, _sew, mfab
 
-RIM = dict(silhouette_underfill=True, silhouette_underfill_rim=True)
-ON = dict(silhouette_underfill_rim_fabric_edges=True, **RIM)
+RIM = dict(silhouette_underfill=True, silhouette_underfill_rim=True,
+           silhouette_underfill_rim_fabric_edges=False)
+ON = {**RIM, "silhouette_underfill_rim_fabric_edges": True}
 #: the band's right edge, x = 60, where the neighbour abuts it
 SEAM = LineString([(60, 2), (60, 22)])
 LEFT = LineString([(0, 2), (0, 22)])
@@ -48,8 +49,9 @@ def _rim_points(blocks, near, reach=1.2):
     return out
 
 
-def test_flag_is_built_off():
-    assert PipelineConfig().silhouette_underfill_rim_fabric_edges is False
+def test_flag_default_is_on():
+    # ON since 2026-11-16 (Kent, from the ten-logo sheets: "Flip both ON")
+    assert PipelineConfig().silhouette_underfill_rim_fabric_edges is True
 
 
 def test_the_defect_the_rim_runs_along_a_neighbour():
@@ -80,4 +82,4 @@ def test_read_only_with_the_rim():
     regs = with_neighbour()
     no_rim = dict(silhouette_underfill=True, silhouette_underfill_rim=False)
     assert (_md5(_sew(regs, silhouette_underfill_rim_fabric_edges=True, **no_rim)[1])
-            == _md5(_sew(regs, **no_rim)[1]))
+            == _md5(_sew(regs, silhouette_underfill_rim_fabric_edges=False, **no_rim)[1]))
