@@ -2113,6 +2113,12 @@ class PipelineConfig:
     # "&" sewed cleaner and the "p" opened a seam, the same unpredictable
     # answer `outline_redraw_native` got.
     curve_chord_stage4: bool = False
+    # With `curve_chord_stage4` (built OFF 2026-11-17): a shape text tagging
+    # then claims gets its pre-densify polygon back, so the flag moves script
+    # and logo edges only and the Column lane's cuts on lettering stay as OFF
+    # sews them (the split `curve-facets-2026-11-14` asked for). Tires' r and e
+    # are one shape the tagger refuses, so they keep the densify.
+    curve_chord_stage4_spare_text: bool = False
     # The run tier's outline with its curve vertices cut before it is
     # sampled (`stage6_border._soften_ring`; MASTER_SCOPE defect 46, Law 37's
     # direction-change score). Built OFF 2026-10-08: it moves only

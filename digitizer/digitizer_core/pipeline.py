@@ -1264,6 +1264,7 @@ def build_generation(
     # `cfg.lettering_min_column_mm` (plan §4d): the SEWN column floor, so the
     # artwork radius is the floor less the pull stage 5 will add back. None
     # is today's pass, byte for byte.
+    _restore_text_polygons(regions)
     regularize_text_clusters(regions, p, min_column_mm=cfg.lettering_min_column_mm,
                              pull_mm=fabric_for(cfg).pull_comp_mm)
 
@@ -1478,6 +1479,18 @@ def _with_garment_reading(prep_warnings: list[dict], cfg: PipelineConfig,
         w["sewn_by_garment"] = int(n_sewn)
         out.append(w)
     return out
+
+
+def _restore_text_polygons(regions) -> None:
+    """`cfg.curve_chord_stage4_spare_text`: a text-tagged shape gets the polygon
+    stage 4 traced before its curve densify; every other shape drops the
+    spare. No spare recorded (flag OFF): nothing happens."""
+    from shapely import wkb
+    for r in regions:
+        pre = r.meta.pop("pre_densify_wkb", None)
+        if pre is not None and r.meta.get("text_candidate"):
+            r.polygon = wkb.loads(pre)
+            r.area_mm2 = float(r.polygon.area)
 
 
 def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> PipelineResult:
