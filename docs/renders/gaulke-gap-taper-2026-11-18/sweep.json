@@ -140,9 +140,9 @@
    ],
    "runs_delta": {
     "travel": 29,
+    "fill": 56,
     "border": 1,
-    "underlay": 3,
-    "fill": 56
+    "underlay": 3
    }
   },
   {
@@ -167,8 +167,8 @@
    ],
    "runs_delta": {
     "travel": 1,
-    "underlay": -2,
-    "fill": 9
+    "fill": 9,
+    "underlay": -2
    }
   },
   {
@@ -284,9 +284,9 @@
    ],
    "runs_delta": {
     "travel": -2,
+    "fill": 2,
     "border": -2,
-    "underlay": 1,
-    "fill": 2
+    "underlay": 1
    }
   },
   {
@@ -311,9 +311,9 @@
    ],
    "runs_delta": {
     "travel": 56,
+    "fill": 129,
     "satin": 2,
-    "underlay": 1,
-    "fill": 129
+    "underlay": 1
    }
   },
   {
@@ -360,9 +360,9 @@
    ],
    "runs_delta": {
     "travel": 64,
+    "fill": 222,
     "border": 1,
-    "underlay": -5,
-    "fill": 222
+    "underlay": -5
    }
   },
   {
@@ -387,9 +387,9 @@
    ],
    "runs_delta": {
     "travel": 26,
+    "fill": 79,
     "border": -1,
-    "underlay": 3,
-    "fill": 79
+    "underlay": 3
    }
   },
   {
@@ -461,9 +461,9 @@
    ],
    "runs_delta": {
     "travel": 70,
+    "fill": 289,
     "satin": 1,
-    "underlay": 7,
-    "fill": 289
+    "underlay": 7
    }
   },
   {
@@ -510,8 +510,8 @@
    ],
    "runs_delta": {
     "travel": 21,
-    "satin": 3,
-    "fill": 23
+    "fill": 23,
+    "satin": 3
    }
   },
   {
@@ -583,8 +583,8 @@
    ],
    "runs_delta": {
     "travel": 6,
-    "underlay": 1,
-    "fill": 26
+    "fill": 26,
+    "underlay": 1
    }
   },
   {
@@ -766,8 +766,8 @@
    ],
    "runs_delta": {
     "travel": 4,
-    "underlay": 1,
-    "fill": 1
+    "fill": 1,
+    "underlay": 1
    }
   },
   {
@@ -842,9 +842,9 @@
    ],
    "runs_delta": {
     "travel": 29,
+    "fill": 119,
     "satin": 1,
-    "underlay": 4,
-    "fill": 119
+    "underlay": 4
    }
   },
   {
@@ -891,9 +891,9 @@
    ],
    "runs_delta": {
     "travel": -1,
+    "fill": 1,
     "satin": 2,
-    "underlay": 2,
-    "fill": 1
+    "underlay": 2
    }
   },
   {
@@ -943,8 +943,8 @@
    ],
    "runs_delta": {
     "travel": 97,
-    "underlay": 2,
-    "fill": 340
+    "fill": 340,
+    "underlay": 2
    }
   },
   {
@@ -969,8 +969,8 @@
    ],
    "runs_delta": {
     "travel": 58,
-    "underlay": 11,
-    "fill": 145
+    "fill": 145,
+    "underlay": 11
    }
   },
   {
@@ -1335,9 +1335,9 @@
    ],
    "runs_delta": {
     "travel": -2,
+    "fill": 2,
     "border": -2,
-    "underlay": 1,
-    "fill": 2
+    "underlay": 1
    }
   },
   {
@@ -1428,8 +1428,8 @@
    ],
    "runs_delta": {
     "travel": 11,
-    "underlay": -1,
-    "fill": 30
+    "fill": 30,
+    "underlay": -1
    }
   },
   {
@@ -1498,9 +1498,9 @@
    ],
    "runs_delta": {
     "travel": 11,
+    "fill": 17,
     "satin": 1,
-    "underlay": 11,
-    "fill": 17
+    "underlay": 11
    }
   },
   {
@@ -1802,8 +1802,8 @@
    ],
    "runs_delta": {
     "travel": 1,
-    "underlay": 1,
-    "fill": 1
+    "fill": 1,
+    "underlay": 1
    }
   },
   {
@@ -2500,9 +2500,9 @@
    ],
    "runs_delta": {
     "travel": 11,
+    "fill": 14,
     "satin": -2,
-    "underlay": 4,
-    "fill": 14
+    "underlay": 4
    }
   },
   {
@@ -3052,6 +3052,1006 @@
    "stitches": [
     17100,
     17099
+   ],
+   "trims": [
+    19,
+    19
+   ],
+   "jumps": [
+    32,
+    32
+   ],
+   "needle_up_mm": [
+    267.9,
+    267.9
+   ],
+   "runs_delta": {}
+  }
+ ],
+ "gtaper": [
+  {
+   "name": "becker_marine_logo.png",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    10953,
+    10926
+   ],
+   "trims": [
+    12,
+    12
+   ],
+   "jumps": [
+    14,
+    14
+   ],
+   "needle_up_mm": [
+    370.7,
+    298.2
+   ],
+   "runs_delta": {
+    "travel": -3,
+    "satin": -1,
+    "underlay": -1
+   }
+  },
+  {
+   "name": "bg_uncertain.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    11515,
+    11515
+   ],
+   "trims": [
+    3,
+    3
+   ],
+   "jumps": [
+    4,
+    4
+   ],
+   "needle_up_mm": [
+    79.8,
+    79.8
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "logo_alpha.png",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    6259,
+    6253
+   ],
+   "trims": [
+    7,
+    8
+   ],
+   "jumps": [
+    9,
+    10
+   ],
+   "needle_up_mm": [
+    164.1,
+    171.4
+   ],
+   "runs_delta": {
+    "travel": -1
+   }
+  },
+  {
+   "name": "logo_script_tires.png",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    2652,
+    2654
+   ],
+   "trims": [
+    4,
+    4
+   ],
+   "jumps": [
+    5,
+    5
+   ],
+   "needle_up_mm": [
+    67.9,
+    68.0
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "logo_whitebg.png",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    6781,
+    6660
+   ],
+   "trims": [
+    8,
+    8
+   ],
+   "jumps": [
+    10,
+    10
+   ],
+   "needle_up_mm": [
+    203.2,
+    209.3
+   ],
+   "runs_delta": {
+    "travel": 6,
+    "fill": 3,
+    "underlay": 3
+   }
+  },
+  {
+   "name": "photo/drone_render.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    18168,
+    18168
+   ],
+   "trims": [
+    114,
+    114
+   ],
+   "jumps": [
+    147,
+    147
+   ],
+   "needle_up_mm": [
+    2015.5,
+    2015.5
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/enthusiast_logo.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    2338,
+    2338
+   ],
+   "trims": [
+    7,
+    7
+   ],
+   "jumps": [
+    32,
+    32
+   ],
+   "needle_up_mm": [
+    112.1,
+    112.1
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/fur_ramp.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    7094,
+    7094
+   ],
+   "trims": [
+    7,
+    7
+   ],
+   "jumps": [
+    8,
+    8
+   ],
+   "needle_up_mm": [
+    165.5,
+    165.5
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/gradient_ramp_linear.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    10925,
+    10925
+   ],
+   "trims": [
+    5,
+    5
+   ],
+   "jumps": [
+    6,
+    6
+   ],
+   "needle_up_mm": [
+    104.7,
+    104.7
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/gradient_ramp_radial.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    18277,
+    18277
+   ],
+   "trims": [
+    5,
+    5
+   ],
+   "jumps": [
+    6,
+    6
+   ],
+   "needle_up_mm": [
+    163.6,
+    163.6
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/logo_bridge_bar.jpg",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    10437,
+    10436
+   ],
+   "trims": [
+    18,
+    18
+   ],
+   "jumps": [
+    26,
+    26
+   ],
+   "needle_up_mm": [
+    214.1,
+    214.1
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/logo_gaulke_roofing.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    4822,
+    4822
+   ],
+   "trims": [
+    15,
+    15
+   ],
+   "jumps": [
+    45,
+    45
+   ],
+   "needle_up_mm": [
+    151.4,
+    151.4
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/logo_golden_tee.jpg",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    11603,
+    11603
+   ],
+   "trims": [
+    58,
+    58
+   ],
+   "jumps": [
+    78,
+    78
+   ],
+   "needle_up_mm": [
+    680.6,
+    680.6
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/logo_hotel_fremont.webp",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    11831,
+    11831
+   ],
+   "trims": [
+    28,
+    28
+   ],
+   "jumps": [
+    102,
+    102
+   ],
+   "needle_up_mm": [
+    373.2,
+    373.2
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/photo_chrome_specular.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    36403,
+    36403
+   ],
+   "trims": [
+    94,
+    94
+   ],
+   "jumps": [
+    124,
+    124
+   ],
+   "needle_up_mm": [
+    1972.5,
+    1972.5
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/photo_dof_meadow.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    21705,
+    21705
+   ],
+   "trims": [
+    59,
+    59
+   ],
+   "jumps": [
+    143,
+    143
+   ],
+   "needle_up_mm": [
+    942.5,
+    942.5
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/photo_grass_macro.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    3939,
+    3939
+   ],
+   "trims": [
+    12,
+    12
+   ],
+   "jumps": [
+    17,
+    17
+   ],
+   "needle_up_mm": [
+    254.3,
+    254.3
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/photo_owl_pale.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    24417,
+    24417
+   ],
+   "trims": [
+    7,
+    7
+   ],
+   "jumps": [
+    8,
+    8
+   ],
+   "needle_up_mm": [
+    114.2,
+    114.2
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/photo_scene_stub.png",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    21505,
+    21805
+   ],
+   "trims": [
+    83,
+    87
+   ],
+   "jumps": [
+    97,
+    100
+   ],
+   "needle_up_mm": [
+    1499.4,
+    1480.6
+   ],
+   "runs_delta": {
+    "travel": 3,
+    "fill": 12,
+    "satin": 1,
+    "underlay": 8
+   }
+  },
+  {
+   "name": "photo/photo_subject_stub.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    3145,
+    3145
+   ],
+   "trims": [
+    0,
+    0
+   ],
+   "jumps": [
+    1,
+    1
+   ],
+   "needle_up_mm": [
+    0,
+    0
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/photo_sunset_backlit.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    26258,
+    26258
+   ],
+   "trims": [
+    105,
+    105
+   ],
+   "jumps": [
+    335,
+    335
+   ],
+   "needle_up_mm": [
+    1568.7,
+    1568.7
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/region_blobs.png",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    18802,
+    18786
+   ],
+   "trims": [
+    26,
+    25
+   ],
+   "jumps": [
+    32,
+    31
+   ],
+   "needle_up_mm": [
+    449.9,
+    439.0
+   ],
+   "runs_delta": {
+    "travel": -1,
+    "underlay": 2
+   }
+  },
+  {
+   "name": "photo/repro_gradient_white_icon.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    22538,
+    22538
+   ],
+   "trims": [
+    13,
+    13
+   ],
+   "jumps": [
+    16,
+    16
+   ],
+   "needle_up_mm": [
+    407.1,
+    407.1
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/screenshot_phone_ui_golke.jpg",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    10801,
+    10801
+   ],
+   "trims": [
+    117,
+    117
+   ],
+   "jumps": [
+    266,
+    266
+   ],
+   "needle_up_mm": [
+    2382.5,
+    2382.5
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "photo/summit_badge.png",
+   "kind": "fix",
+   "moved": true,
+   "stitches": [
+    28526,
+    28507
+   ],
+   "trims": [
+    39,
+    38
+   ],
+   "jumps": [
+    69,
+    69
+   ],
+   "needle_up_mm": [
+    1008.3,
+    971.6
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "ribbon_curve.png",
+   "kind": "fix",
+   "moved": false,
+   "stitches": [
+    1007,
+    1007
+   ],
+   "trims": [
+    0,
+    0
+   ],
+   "jumps": [
+    1,
+    1
+   ],
+   "needle_up_mm": [
+    0,
+    0
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "becker_beanie",
+   "kind": "job",
+   "moved": true,
+   "stitches": [
+    13653,
+    13675
+   ],
+   "trims": [
+    13,
+    13
+   ],
+   "jumps": [
+    15,
+    15
+   ],
+   "needle_up_mm": [
+    385.0,
+    310.5
+   ],
+   "runs_delta": {
+    "travel": -1,
+    "satin": -1,
+    "underlay": -1
+   }
+  },
+  {
+   "name": "becker_chest_small",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    10156,
+    10156
+   ],
+   "trims": [
+    9,
+    9
+   ],
+   "jumps": [
+    13,
+    13
+   ],
+   "needle_up_mm": [
+    303.5,
+    303.5
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "becker_hat_large",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    16246,
+    16246
+   ],
+   "trims": [
+    19,
+    19
+   ],
+   "jumps": [
+    20,
+    20
+   ],
+   "needle_up_mm": [
+    489.6,
+    489.6
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "becker_hat_small",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    10319,
+    10319
+   ],
+   "trims": [
+    10,
+    10
+   ],
+   "jumps": [
+    14,
+    14
+   ],
+   "needle_up_mm": [
+    306.3,
+    306.3
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "becker_lc_large",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    14802,
+    14802
+   ],
+   "trims": [
+    13,
+    13
+   ],
+   "jumps": [
+    14,
+    14
+   ],
+   "needle_up_mm": [
+    213.8,
+    213.8
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "gaulke_roofing_beanie",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    7124,
+    7124
+   ],
+   "trims": [
+    23,
+    23
+   ],
+   "jumps": [
+    49,
+    49
+   ],
+   "needle_up_mm": [
+    277.1,
+    277.1
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "gaulke_roofing_hat",
+   "kind": "job",
+   "moved": true,
+   "stitches": [
+    6618,
+    6576
+   ],
+   "trims": [
+    30,
+    29
+   ],
+   "jumps": [
+    47,
+    50
+   ],
+   "needle_up_mm": [
+    341.0,
+    293.9
+   ],
+   "runs_delta": {
+    "travel": -3,
+    "fill": 2,
+    "underlay": 2
+   }
+  },
+  {
+   "name": "gaulke_roofing_lc",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    5379,
+    5379
+   ],
+   "trims": [
+    23,
+    23
+   ],
+   "jumps": [
+    45,
+    45
+   ],
+   "needle_up_mm": [
+    219.6,
+    219.6
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "goldentee_hat",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    10583,
+    10583
+   ],
+   "trims": [
+    51,
+    51
+   ],
+   "jumps": [
+    72,
+    72
+   ],
+   "needle_up_mm": [
+    644.9,
+    644.9
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "hotel_fremont_hat",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    15167,
+    15167
+   ],
+   "trims": [
+    29,
+    29
+   ],
+   "jumps": [
+    65,
+    65
+   ],
+   "needle_up_mm": [
+    377.2,
+    377.2
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "hotel_fremont_patch",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    14165,
+    14165
+   ],
+   "trims": [
+    22,
+    22
+   ],
+   "jumps": [
+    64,
+    64
+   ],
+   "needle_up_mm": [
+    398.6,
+    398.6
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "mfab_hat",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    20564,
+    20564
+   ],
+   "trims": [
+    24,
+    24
+   ],
+   "jumps": [
+    33,
+    33
+   ],
+   "needle_up_mm": [
+    741.9,
+    741.9
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "mfab_lc",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    17570,
+    17570
+   ],
+   "trims": [
+    19,
+    19
+   ],
+   "jumps": [
+    29,
+    29
+   ],
+   "needle_up_mm": [
+    504.9,
+    504.9
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "precision_drone",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    13966,
+    13966
+   ],
+   "trims": [
+    101,
+    101
+   ],
+   "jumps": [
+    135,
+    135
+   ],
+   "needle_up_mm": [
+    1557.2,
+    1557.2
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "tires_hat_3d",
+   "kind": "job",
+   "moved": false,
+   "stitches": [
+    4644,
+    4644
+   ],
+   "trims": [
+    7,
+    7
+   ],
+   "jumps": [
+    8,
+    8
+   ],
+   "needle_up_mm": [
+    71.3,
+    71.3
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "toat_beanie",
+   "kind": "job",
+   "moved": true,
+   "stitches": [
+    17193,
+    17126
+   ],
+   "trims": [
+    27,
+    24
+   ],
+   "jumps": [
+    35,
+    35
+   ],
+   "needle_up_mm": [
+    233.6,
+    241.8
+   ],
+   "runs_delta": {
+    "travel": -3,
+    "satin": -1,
+    "underlay": -1
+   }
+  },
+  {
+   "name": "toat_machine_beanie",
+   "kind": "job",
+   "moved": true,
+   "stitches": [
+    16862,
+    16860
+   ],
+   "trims": [
+    18,
+    18
+   ],
+   "jumps": [
+    31,
+    31
+   ],
+   "needle_up_mm": [
+    323.6,
+    323.6
+   ],
+   "runs_delta": {}
+  },
+  {
+   "name": "toat_machine_hat",
+   "kind": "job",
+   "moved": true,
+   "stitches": [
+    17100,
+    17100
    ],
    "trims": [
     19,

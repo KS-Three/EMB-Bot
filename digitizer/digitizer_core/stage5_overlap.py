@@ -883,6 +883,8 @@ GAP_SEWABLE_MM = 0.5
 #: the ledger's at-risk band; past it the pull's 2 x 0.3-0.4 mm leaves the gap
 #: readable
 GAP_PROTECT_MM = 2.0
+#: `growth_keeps_gaps_between_taper_mm`: the growth ramp is cut in this many steps
+_TAPER_STEPS = 4
 
 
 def _inscribed_width(poly: Polygon) -> float:
@@ -896,7 +898,8 @@ def _inscribed_width(poly: Polygon) -> float:
 
 
 def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float,
-               counters: bool = True, min_pair_mm2: float = 0.0, min_gap_mm: float = 0.0):
+               counters: bool = True, min_pair_mm2: float = 0.0, min_gap_mm: float = 0.0,
+               taper_mm: float = 0.0):
     """`growth_keeps_gaps`: `grown` less the bare fabric `r` must leave as the
     art drew it (comment at `GAP_SEWABLE_MM`). `others`: the shapes near `r`;
     `later`: what sews after `r` (a counter it fills is a seam, not bare).
@@ -924,7 +927,19 @@ def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float,
     if not keep:
         return grown
     bare = unary_union(keep).difference(all_art)
-    return grown if bare.is_empty else grown.difference(bare).union(poly)
+    if bare.is_empty:
+        return grown
+    if taper_mm <= 0:
+        return grown.difference(bare).union(poly)
+    # `growth_keeps_gaps_between_taper_mm`: growth ramps back to the full pull over
+    # this length from the held gap instead of stepping (a 0.4 mm notch in the edge)
+    pull = max(0.0, reach - 0.0)
+    out = poly
+    n = _TAPER_STEPS
+    for j in range(1, n + 1):
+        ring = poly.buffer(pull * j / n).intersection(grown)
+        out = out.union(ring.difference(bare.buffer(taper_mm * j / n)))
+    return out.union(poly)
 
 
 def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
@@ -1013,6 +1028,8 @@ def resolve_overlaps(
     # are both at least this big (mm2). Absent or 0: every pair, as #1630.
     min_pair_mm2 = (float(flags_extra.get("growth_keeps_gaps_between_min_mm2") or 0.0)
                     if keep_between else 0.0)
+    taper_mm = (float(flags_extra.get("growth_keeps_gaps_between_taper_mm") or 0.0)
+                if keep_between else 0.0)
     min_gap_mm = (float(flags_extra.get("growth_keeps_gaps_between_min_gap_mm") or 0.0)
                   if keep_between else 0.0)   # holds only a gap at least this wide (mm)
     # `cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick "K-Line box
@@ -1364,7 +1381,8 @@ def resolve_overlaps(
                 near = [regions[int(i)] for i in gap_tree.query(poly.buffer(GAP_PROTECT_MM))
                         if regions[int(i)] is not r]
                 grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap,
-                                   counters=keep_counters, min_pair_mm2=min_pair_mm2, min_gap_mm=min_gap_mm)
+                                   counters=keep_counters, min_pair_mm2=min_pair_mm2, min_gap_mm=min_gap_mm,
+                                   taper_mm=taper_mm)
 
             # `cfg.outline_inlets_kept` (ON, Kent 2026-11-15; `outline_inlets`):
             # a fill's growth stays out of its own outline's inlets (a notch,
