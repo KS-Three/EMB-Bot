@@ -119,6 +119,18 @@ RESEEDED = {
     ("hotel_fremont_patch", "trims"): (28, "#1565 Flip PR 2 (Kent 2026-11-15), the small-text re-set flags; "
                                            "re-captured pinned 2026-11-15 (CI 43772829964: 20 -> 28)"),
 }
+#: The 2026-11-18 re-seed (PR #1646, capture run 44241180150 on main 5068c36d, after Kent's "Accept after one fresh
+#: capture (Recommended)"): the three rows it moves. Pinned at the values that capture read, same tolerance as every row.
+RESEEDED.update({
+    ("gaulke_roofing_hat", "trims"): (30, "page_line_open ON (#1633, Kent 2026-11-17): the roof's white line is "
+                                          "left bare fabric, 32 -> 30; capture 44241180150"),
+    ("hotel_fremont_patch", "trims"): (19, "rope_band ON (#1632, Kent 2026-11-17): the rope sews as one band, "
+                                           "28 -> 19; capture 44241180150"),
+    ("mfab_lc", "needle_up_mm"): (523.9, "441.0 -> 523.9 mm in capture 44241180150 (468.5 in the earlier capture "
+                                         "44205663556 on 3edc5011; about 1 mm of the first step is "
+                                         "lettering_columns_cover_hops; the rest, and the second step, are NOT traced: "
+                                         "mfab_lc is not among the jobs of docs/tripwire-trace-2026-11-18.md)"),
+})
 
 
 def test_the_doc_rows_are_todays_ledger_baselines():
