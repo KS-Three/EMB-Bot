@@ -74,3 +74,29 @@ Read from the pro's `Machine beanie.PES` (in `Embroidery Files.zip`), cross chai
 - What is left that the pro does not show: the end-on-stroke overlaps (cause 1, built OFF above, only
   marginal) and the h arch / e crossbar crossings, which need a per-crossing rule (which stroke sews
   last, the other stops at its edge), not a turn rule. Not started.
+
+## Addendum 2: what the pro does AT the crossings, and `lettering_columns_junction_align` (OFF, not recommended)
+
+Same file, same method (numbers only). Overlap of the word's sewn columns, total and the part at crosses
+more than 30 degrees apart: pro 11.9 and **1.55 mm2**; ours beanie 14.8 and **9.5**, hat 19.8 and **19.2**.
+The pro overlaps as much as we do, but a joining stroke's last crosses are turned to the through
+stroke's angle (its overlap pairs 57x61, 62x64, 62x71, 79x82 are all at 0 turned mm2); nobody stops at an
+edge and nobody double-covers at a turned angle. So our turned overlap IS a departure, and the fix the
+measurement supports is a TURN, not the cut built first.
+
+Built (OFF, `cfg.extra["lettering_columns_junction_align"]`, `end_overlap.align_columns`): the end
+stations of a stroke that ENDS on another's body (the longer column wholly; a shorter one along its body
+only, as the h's hairline ends in the stem) rotate about their middle, length kept and clipped to the
+art, to that column's cross angle, easing in over 4 stations. On the plan: turned-cross overlap beanie
+8.96 -> 4.45 mm2 (19 stations turned), hat 19.25 -> 15.87 (14). Stitches beanie 17,258 -> 17,134, hat 17,153
+-> 17,153; trims, jumps unchanged; needle-up beanie +26.6 mm; hat `coverage_max` 7.19 -> 7.68 (WORSE),
+beanie `coverage_p95` 6.04 -> 5.97. Pictures (OFF over ON, the word):
+`docs/renders/end-overlap-2026-11-18/*junction_align*`. By eye at print size the hat's h junction is a
+touch smoother and the beanie is hardly changed: **not clearly better, left OFF, no sweep run** (about 90
+minutes for a flag nobody should flip).
+
+What is left, and why a turn does not reach it: the hat's 5.95 mm2 (cols 3 x 5) is the h's hairline
+running ALONG the stem's body for 11 stations (hairline stations 32-43 over stem stations 13-22), a
+through-run neither end of which is a junction. The pro's equivalent pair (57 x 103) overlaps 1.95 mm2.
+That is the skeleton routing the hairline down the merged ink (the wedge cap's ground), so the fix is in
+the route (leave the stem at the first station past the merge), not in the cross angle.

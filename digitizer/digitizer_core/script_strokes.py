@@ -1160,6 +1160,10 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # station lying over a longer stroke at a turned cross goes (`end_overlap`)
     if end_overlap.armed():
         cols, _cut = end_overlap.cut_columns(cols)
+    # `cfg.extra["lettering_columns_junction_align"]` (built OFF): the same end
+    # stations turn to the longer stroke's cross angle instead (the pro's way)
+    if end_overlap.align_armed():
+        cols, _turned = end_overlap.align_columns(cols, poly)
     kw = dict(trim_at_mm=trim_at_mm, spacing_mm=spacing_mm, split_above_mm=split_above_mm,
               pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
               **({"inside_connectors": True} if inside_connectors else {}),
@@ -1175,6 +1179,8 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 cols = wedge_cap.cap_columns(cols)
             if end_overlap.armed():
                 cols, _cut = end_overlap.cut_columns(cols)
+            if end_overlap.align_armed():
+                cols, _turned = end_overlap.align_columns(cols, poly)
             patches = _patches(poly, cols, spacing_mm, pull_mm)
     # the patches first, so the strokes lie over their edges; then the
     # strokes as one walk from where the patches left the needle
