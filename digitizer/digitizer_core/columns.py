@@ -2251,6 +2251,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 inside_connectors: bool = False,
                 counter_poly: Polygon | None = None,
                 thin_floor: bool = False,
+                thin_floor_all: bool = False,
                 pull_of=None,
                 short_columns: bool = False,
                 inside_stagger: bool = False,
@@ -2385,6 +2386,13 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             # floor about their own middles -- a dropped one opens the ring
             kept = _floor_ring_crosses(guarded, min_cross_mm, col.kind == "ring")
             report["ring_floored"] = report.get("ring_floored", 0) + 1
+        elif thin_floor_all and len(guarded) >= 3 and len(kept) < len(guarded):
+            # `whole_letter_floor` (built OFF): every thin cross of the
+            # column at the floor -- an E cut as ONE column round its stem
+            # and both hairline arms keeps most of its crosses (the stem's),
+            # so neither rule below reaches the arms
+            kept = _floor_crosses(guarded, min_cross_mm)
+            report["floored_all"] = report.get("floored_all", 0) + 1
         elif thin_floor and len(guarded) >= 3 and (
                 len(kept) < 3 or (_STROKE_FLOOR.get() and 2 * len(kept) < len(guarded))):
             # a whole piece under the floor (a serif, a bar): sewn at the
@@ -3427,6 +3435,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             edge_walk_judge_off: bool = False,
                             judge_entry_free: bool = False,
                             small_bold_pull_floor: bool = False,
+                            stroke_floor_lost_stroke: bool = False,
+                            whole_letter_floor: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3587,11 +3597,13 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         from .column_lean import lean_columns
         return lean_columns(cols, text_lean_deg, spacing_mm, letter=lpoly)
 
-    def sew(plain: bool = False, **extra):
+    def sew(plain: bool = False, floor_all: bool = False, **extra):
         lk, rk = lc_kw, run_kw
         if plain:           # the lane's own construction, small_bold's pull kept
             lk = {k: v for k, v in lc_kw.items() if k != "small_bold"}
             rk = {k: v for k, v in run_kw.items() if k != "thin_floor"}
+            if floor_all:   # `whole_letter_floor`: its thin crosses at the floor
+                rk = {**rk, "thin_floor_all": True}
         cut = letter_columns(poly, pitch_mm=spacing_mm, **lk, **extra)
         runs, report = sew_cut(cut.columns, cut.cuts, cut.unsewn, cut.poly, rk)
         if cut.before_absorb is not None:
@@ -3629,6 +3641,21 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 if satin_cover(runs3, poly) >= cover + SMALL_BOLD_PLAIN_GAIN:
                     runs, report = runs3, report3
                     report["small_bold_plain"] = 1
+                    cover = satin_cover(runs, poly)
+            if cover < SMALL_BOLD_COVER_MIN and whole_letter_floor:
+                # `cfg.extra["lettering_columns_whole_letter_floor"]` (built
+                # OFF 2026-11-18): the ladder is spent and the letter is
+                # still not whole. The lane's own cut once more, with EVERY
+                # thin cross at the floor, kept only if it makes the letter
+                # whole. Marine Corps emblem at 90 mm, a 4.4 mm serif E: the
+                # small-bold cut sews its stem and middle arm (cover 0.84);
+                # the plain cut runs one column round the stem and both
+                # 0.3 mm arms, whose crosses the floor-less plain sew drops,
+                # so it gained nothing and the E read as an F.
+                runs4, report4 = sew(plain=True, floor_all=True)
+                if satin_cover(runs4, poly) >= SMALL_BOLD_COVER_MIN:
+                    runs, report = runs4, report4
+                    report["whole_letter_floor"] = 1
     from .outline_cut import neck_cuts_applied, neck_cuts_armed
     if neck_cuts_armed():
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF): the letter
@@ -3667,11 +3694,35 @@ def _stroke_floor_judged(args: dict) -> tuple[list[StitchRun], dict]:
         return runs, report
     with stroke_floor_scope(False):
         runs0, report0 = lettering_columns_shape(**args)
-    if ([r.points for r in runs] == [r.points for r in runs0]
-            or not handback_wins(runs0, runs, args["poly"], rule="net", underlay=True)):
+    if [r.points for r in runs] == [r.points for r in runs0]:
         return runs0, report0
+    if not handback_wins(runs0, runs, args["poly"], rule="net", underlay=True):
+        if not (args.get("stroke_floor_lost_stroke")
+                and stroke_floor_restores(runs0, runs, args["poly"])):
+            return runs0, report0
+        report["stroke_floor_lost_stroke"] = 1
     report["stroke_floor_kept"] = 1
     return runs, report
+
+
+def stroke_floor_restores(unfloored: list[StitchRun], floored: list[StitchRun],
+                          poly: Polygon) -> bool:
+    """`cfg.extra["stroke_floor_keeps_lost_strokes"]` (built OFF 2026-11-18):
+    the floored sew is kept, whatever the "net" rule says, when the unfloored
+    sew leaves the letter not whole (satin cover under
+    `SMALL_BOLD_COVER_MIN`) and the floored sew makes it whole.
+
+    The "net" rule asks the floor to add more thread inside the letter than
+    outside it. A hairline stroke is narrower than the thread, so sewn at
+    the floor it always adds more outside than in, the rule refuses it and
+    the stroke sews nothing. The Marine Corps emblem at 90 mm, a 4.4 mm
+    serif face: the S lost its top curve (cover 0.69 -> 1.00 floored, spill
+    0.59 -> 1.26: refused) and a C everything but its back (0.61 -> 1.00,
+    spill 0.34 -> 1.41: refused). A letter that is whole without the floor
+    is still judged "net" alone: Commons Bukit's e (0.92 -> 0.98) stays
+    refused."""
+    return (satin_cover(unfloored, poly) < SMALL_BOLD_COVER_MIN
+            <= satin_cover(floored, poly))
 
 
 def satin_cover(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> float:

@@ -648,6 +648,84 @@ def _ground_of(stroke, grounds, innermost: bool = False):
     return best if best is not None and best_a >= 0.5 * stroke.polygon.area else None
 
 
+THIN_LETTER_KEY = "thin_letter_after_ground"
+# The ground's pull allowance reaches into a letter from both edges: 2 x pull.
+# A line moves when that is a third or more of its median stroke.
+THIN_LETTER_PULLS = 6.0
+
+
+def thin_letters_after_ground(regions):
+    """`cfg.extra["thin_letters_after_ground"]` (built OFF 2026-11-18): the
+    lettering of one thread written on one ground, sewn BEFORE that ground,
+    moves to a layer of its own right after the ground's when the ground's
+    pull allowance from both edges takes a third or more of the letters'
+    median stroke (`stitchwidth`: measured width under `THIN_LETTER_PULLS`
+    x the pull it adds back).
+
+    The Commerce seal at 90 mm: 44 white ring letters on 1.0-1.3 mm strokes
+    sew first (white is the first thread) and the blue ring fills round them
+    afterwards. Each fill row is laid 0.3 mm long at both ends for the
+    fabric's pull, so about half of every stroke is under blue thread and
+    the bold ring text reads as hairlines. Sewn after the ring, stage 5 runs
+    the ring under the letters instead and they sew on top at full width.
+
+    The ground is the INNERMOST outline that covers the letter
+    (`_ground_of`). The line is judged whole -- a per-letter test split
+    Commerce's ring text into fat and hairline letters -- on its tagged
+    letters (`text_cluster_id`); the same thread's other narrow shapes on
+    that ground (an untagged letter, a star) move with them. Nothing to
+    move: the input list itself."""
+    from dataclasses import replace
+    from statistics import median
+
+    from .stitchwidth import MEASURED_KEY, PULL_KEY
+
+    def narrow(r):
+        return (r.meta.get(MEASURED_KEY) and r.meta.get(PULL_KEY)
+                and float(r.meta[MEASURED_KEY]) < THIN_LETTER_PULLS * float(r.meta[PULL_KEY]))
+
+    cands = [r for r in regions if r.meta.get("stitched", True) and not r.meta.get("dark_ink")
+             and r.polygon is not None and r.meta.get(MEASURED_KEY) and r.meta.get(PULL_KEY)]
+    if not any(r.meta.get("text_cluster_id") for r in cands):
+        return regions
+    ids = {r.shape_id for r in cands if r.meta.get("text_cluster_id")}
+    # A ground is a FILL: its rows are what the pull allowance lengthens. A
+    # shape that is itself a narrow column (a letter, a rope strand, a bead)
+    # is not one -- the Agriculture seal's cream highlights inside its yellow
+    # letters and grey beads jumped on top of them (trims 284 -> 416).
+    grounds = [r for r in regions if r.shape_id not in ids and r.meta.get("stitched", True)
+               and r.polygon is not None and not narrow(r)]
+    lines: dict[tuple, list] = {}
+    for b in cands:
+        g = _ground_of(b, [g_ for g_ in grounds if g_ is not b and g_.thread_index != b.thread_index],
+                       innermost=True)
+        if g is not None and g.meta["layer"] > b.meta["layer"]:
+            lines.setdefault((g.shape_id, g.meta["layer"], b.thread_index), []).append(b)
+    to: dict[str, tuple] = {}
+    for (_gid, g_layer, thread), members in lines.items():
+        tagged = [r for r in members if r.meta.get("text_cluster_id")]
+        if not tagged:
+            continue
+        pull = float(tagged[0].meta[PULL_KEY])
+        if median(float(r.meta[MEASURED_KEY]) for r in tagged) >= THIN_LETTER_PULLS * pull:
+            continue
+        for r in members:
+            if narrow(r):
+                to[r.shape_id] = ("thin", g_layer, thread)
+    if not to:
+        return regions
+    order = sorted({r.meta["layer"] for r in regions})
+    for key in sorted(set(to.values()), key=lambda k: (k[1], k[2]), reverse=True):
+        order.insert(order.index(key[1]) + 1, key)
+    renum = {L: i for i, L in enumerate(order)}
+
+    def layer_of(r):
+        return renum[to.get(r.shape_id, r.meta["layer"])]
+    return [replace(r, meta={**r.meta, "layer": layer_of(r),
+                             **({THIN_LETTER_KEY: True} if r.shape_id in to else {})})
+            for _i, r in sorted(enumerate(regions), key=lambda t: (layer_of(t[1]), t[0]))]
+
+
 # `cfg.dark_ink_bean_by_width`'s gate: a dark-ink GROUP (same ground, same
 # thread) whose median mean stroke width (2 x area / perimeter) is under this
 # sews as a bean; at or over it, as satin. Half again the Column lane's cross
