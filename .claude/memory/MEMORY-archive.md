@@ -311,3 +311,6 @@ live index; new archive lines go at the bottom.
 - [Big-size speed](big-size-speed-2026-11-11.md) — 300 mm: hoist 320 -> 26 s (STRtree over parts), build fns 241 -> 51 s; 198 mm plan 539 -> 431 s (angle scan in numpy, bridge memo); md5 same; no exact cut over 25 s left
 - [Defect-marks sitting 2](defect-marks-sitting-2-2026-11-11.md) — 21 Commons logos, 115 pins, hold-out for the letter reader: frozen rule found pins on 1 logo (26/30 vs 0.13) = no verdict; his words moved to extra in-fill, inconsistency, missing, flow
 - [Edge-fault reader](edge-fault-reader-2026-11-10.md) — edge_wobble flag locations vs Kent's 20 smooth-edge pins: 0.60 vs chance 0.49 at 3 mm, CI crosses 0 = not shown; harness `fault_reader_harness.py` reusable; next reader closed/merged letters
+- [Kent's judging rubric](kent-judging-rubric-2026-11-07.md) — his 22 reasons: lettering follows pen strokes, smooth curves, straight uprights, no blobs; first picks noisy; phase B judge FAILED (#1363)
+- [Compare ends on regenerate](compare-ends-on-regenerate-2026-11-08.md) — Kent 11-08 "Keep as is": Compare view (#1345) is an Original sub-mode, a regeneration ends it; don't build survival
+- [Foreman merge/push findings](foreman-merge-push-findings-2026-11-08.md) — 62 PRs 11-07/08: squash branches refuse `branch -d`; test.fail() expected; empty log != green; fix-lane branch needs a finding index
