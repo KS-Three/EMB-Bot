@@ -448,9 +448,37 @@ OFF_LINE_DOT_WIDTH = (0.6, 1.5)
 OFF_LINE_DOT_CENTRE = 0.15
 
 
-def off_line_marks(regions) -> list[str]:
+def mates_on_one_row(mates) -> bool:
+    """Do `mates` sit on ONE horizontal row: the spread of their vertical
+    centres within `textcluster.SAME_LINE_SPREAD` of the tallest of them?
+    The rule `textcluster._on_one_line` reads a row by, on the mates alone
+    (the candidate mark is off the row by definition)."""
+    from .textcluster import SAME_LINE_SPREAD
+    cys = [(t.polygon.bounds[1] + t.polygon.bounds[3]) / 2.0 for t in mates]
+    tallest = max(t.polygon.bounds[3] - t.polygon.bounds[1] for t in mates)
+    return max(cys) - min(cys) <= SAME_LINE_SPREAD * tallest
+
+
+def off_line_marks(regions, single_only: bool = False, row_only: bool = False) -> list[str]:
     """Shape ids of text-cluster members `cfg.lettering_columns_off_line_mark`
-    refuses (see above)."""
+    refuses (see above).
+
+    `single_only` (`cfg.lettering_columns_off_line_mark_single_only`, built
+    OFF 2026-11-18 and ON the same day, Kent's ruling): a cluster in which MORE THAN ONE member reads as off-line
+    marks none. The test reads "stacked on a mate, no row-mate" on
+    axis-aligned boxes, which is also every letter down the side of a ring:
+    the DEA seal at 90 mm had 11 of its 50 ring letters marked ("DRU", "MENT",
+    "ISTR"), each set to the fill tier, and they sewed bold beside their bean
+    line-mates; the Supreme Court seal the same. A mark is one stray shape
+    in a row of letters (MFab's: 1 of its cluster); several in one cluster is
+    text set on a curve.
+
+    `row_only` (`cfg.extra["off_line_mark_row_only"]`, built OFF 2026-11-18):
+    a member is a mark only when its mates sit on one row
+    (`mates_on_one_row`). "Off the line" needs a line: with `single_only`
+    ON, ten seals still had ONE ring letter marked, each in a cluster whose
+    centres spread 1.3 to 14 letter heights; MFab's mark sits beside three
+    mates on one row (0.7 to 0.8 with the mark counted)."""
     import statistics
     groups: dict[str, list] = {}
     for r in regions:
@@ -459,9 +487,12 @@ def off_line_marks(regions) -> list[str]:
             groups.setdefault(str(cid), []).append(r)
     out: list[str] = []
     for members in groups.values():
+        found: list[str] = []
         for r in members:
             mates = [t for t in members if t is not r]
             if len(mates) < OFF_LINE_MIN_MATES:
+                continue
+            if row_only and not mates_on_one_row(mates):
                 continue
             bb = r.polygon.bounds
             h, w = bb[3] - bb[1], bb[2] - bb[0]
@@ -493,12 +524,14 @@ def off_line_marks(regions) -> list[str]:
                 if tw > 0 and OFF_LINE_DOT_WIDTH[0] <= w / tw <= OFF_LINE_DOT_WIDTH[1] \
                         and abs((bb[0] + bb[2]) / 2 - (tb[0] + tb[2]) / 2) <= OFF_LINE_DOT_CENTRE * tw:
                     continue
-                out.append(r.shape_id)
+                found.append(r.shape_id)
                 break
+        if not (single_only and len(found) > 1):
+            out.extend(found)
     return out
 
 
-def tag_off_line_marks(regions) -> int:
+def tag_off_line_marks(regions, single_only: bool = False, row_only: bool = False) -> int:
     """Write `meta["lettering_off_line"] = True` on every `off_line_marks`
     shape and, where its tier is still `auto`, `meta["tier"] = "fill"`;
     returns how many. Called only under `cfg.lettering_columns_off_line_mark`,
@@ -510,7 +543,7 @@ def tag_off_line_marks(regions) -> int:
     onto the white legs. It is a 12 mm^2 wedge with a pointed tail, 4.3 mm
     across at the wing, and one tatami fill sews it as one blade with the
     point and the crescent top the art has."""
-    ids = set(off_line_marks(regions))
+    ids = set(off_line_marks(regions, single_only, row_only))
     for r in regions:
         if r.shape_id in ids:
             r.meta["lettering_off_line"] = True

@@ -1176,6 +1176,11 @@ PRE_FLIP.update(PAGE_LINE_OPEN_2026_11_17_OFF)
 # `tests/test_off_line_mark.py`.
 OFF_LINE_MARK_2026_11_18_OFF = {"lettering_columns_off_line_mark": False}
 PRE_FLIP.update(OFF_LINE_MARK_2026_11_18_OFF)
+# `lettering_columns_off_line_mark_single_only` (Kent 2026-11-18, shown ART |
+# BEFORE | AFTER for the DEA and Supreme Court seals and six more: "Ship as a
+# fix, ON (Recommended)"): `tests/test_off_line_mark.py`.
+OFF_LINE_SINGLE_2026_11_18_OFF = {"lettering_columns_off_line_mark_single_only": False}
+PRE_FLIP.update(OFF_LINE_SINGLE_2026_11_18_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}

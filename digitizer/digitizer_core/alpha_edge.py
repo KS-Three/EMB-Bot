@@ -13,7 +13,30 @@ import numpy as np
 from .config import work_grid_px_per_mm
 
 
-def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0) -> np.ndarray:
+#: `cfg.extra["alpha_extend_keeps_interior"]` (built OFF 2026-11-18). How far
+#: inside the foreground (alpha > 127, stage 1's rule) a pixel must sit to
+#: count as the artwork's own colour whatever its alpha: past the reach of an
+#: anti-aliased edge. Source pixels, the size of the Lanczos4 kernel's half
+#: (`extend_opaque_colour`'s own list); no fabric number.
+INTERIOR_KEY = "alpha_extend_keeps_interior"
+INTERIOR_EDGE_PX = 4
+
+
+def interior_opaque(alpha: np.ndarray) -> np.ndarray:
+    """Foreground pixels at least `INTERIOR_EDGE_PX` inside the foreground:
+    the artwork's own colour, not an edge blend, whatever alpha they carry.
+    The HUD seal's white disc is alpha 253 (77% of its foreground); read as
+    non-opaque, the whole disc took the colour of the nearest alpha-255
+    pixel and stage 0 measured that smear (`tonal_frac` 0.65, a flat logo
+    classed gradient)."""
+    fg = (alpha > 127).astype(np.uint8)
+    k = 2 * INTERIOR_EDGE_PX + 1
+    return cv2.erode(fg, np.ones((k, k), np.uint8), borderType=cv2.BORDER_CONSTANT,
+                     borderValue=0) > 0
+
+
+def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0,
+                         keep_interior: bool = False) -> np.ndarray:
     """Every non-opaque pixel takes the RGB of its NEAREST opaque pixel; alpha
     is untouched and the input is not.
 
@@ -53,6 +76,8 @@ def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0) ->
     the kernels reach and the backdrop where they do not.
     """
     opaque = (alpha >= 255).astype(np.uint8)
+    if keep_interior:       # `INTERIOR_KEY`: a nearly opaque plateau keeps its own colour
+        opaque = (opaque.astype(bool) | interior_opaque(alpha)).astype(np.uint8)
     if opaque.all() or not opaque.any():
         return rgb
     dist, labels = cv2.distanceTransformWithLabels(
@@ -63,6 +88,14 @@ def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0) ->
     filled = rgb[src[..., 0], src[..., 1], :3]
     if max_px > 0:
         within = dist <= float(max_px)
+        if keep_interior:
+            # the halo is measured from the ARTWORK's edge, as it is when the
+            # edge itself is opaque: the interior starts `INTERIOR_EDGE_PX`
+            # further in, and a halo counted from there would stop short of
+            # the edge and leave the junk beside it
+            fg = (alpha > 127).astype(np.uint8)
+            if fg.any() and not fg.all():
+                within = (cv2.distanceTransform(1 - fg, cv2.DIST_L2, 3) <= float(max_px)) & (opaque == 0)
         out[within, :3] = filled[within]
     else:
         out[..., :3] = filled

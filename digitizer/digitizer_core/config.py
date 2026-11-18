@@ -1585,6 +1585,13 @@ class PipelineConfig:
     # `drone_render`, and a new forbid-gap finding on `drone_render`. That
     # was not in front of him, so the default stays False until it is
     # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
+    # 2026-11-18 sweep (76 runs, `docs/renders/merge-chroma-guard-2026-11-18/`):
+    # at the shipped configs ONLY the Drone moves; golden_tee and bridge_bar
+    # move only at old pinned test configs. The guard now also needs both
+    # sides >= `stage2_photo_segment.CHROMA_GUARD_MIN_PX` (1000) px: that
+    # spares background node 0 and tiny fragments, and ends the Bridge Bar
+    # mover, but leaves golden_tee and the Drone's own pins. Not a flip
+    # candidate yet: the Drone's gain costs trims and stacked-thread area.
     merge_chroma_guard: bool = False
     # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
     # Precision Drone: "the lower left propeller is a thick black slab ...
@@ -4619,6 +4626,25 @@ class PipelineConfig:
     # False. False writes no key and reads none. Tests:
     # `tests/test_off_line_mark.py`.
     lettering_columns_off_line_mark: bool = True
+    # `lettering_columns_off_line_mark` marks ONE stray shape in a row of
+    # letters; a cluster with more than one off-line member marks none
+    # (`columns.off_line_marks(single_only=)`; built OFF 2026-11-18 as
+    # `cfg.extra["off_line_mark_single_only"]`, #1677). **ON since 2026-11-18,
+    # Kent's ruling**: shown ART | BEFORE | AFTER for eight of the designs it
+    # changes, "Ship as a fix, ON (Recommended)". The mark's test ("stacked
+    # on a mate, no row-mate", on axis-aligned boxes) is also every letter
+    # down the SIDE of a ring: the DEA seal at 90 mm had 11 of its 50 ring
+    # letters set to the fill tier and sewn bold beside their bean
+    # line-mates, the Supreme Court seal the same. 74 designs (six Commons
+    # logo batches, 16 repo logos): 20 change, 54 identical; MFab hat and LC
+    # keep their one mark each. DEA 33,788 -> 33,640 stitches, trims 36 both.
+    # Catches: only DEA and Supreme Court were read closely; a ring where
+    # exactly ONE letter of a cluster reads off-line still has it marked;
+    # the `scratch_kent` paired corpus was not run. Promoted from `cfg.extra`
+    # so the default can be ON. False is the rule as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_off_line_mark.py`.
+    lettering_columns_off_line_mark_single_only: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
     # axis is a tangle: `columns.is_drawing_fragment`, junctions plus free
     # ends of the pruned skeleton >= `columns.ICON_GUARD_MIN_NODES` (24).
