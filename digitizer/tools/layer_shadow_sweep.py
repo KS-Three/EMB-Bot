@@ -1,4 +1,4 @@
-"""`cap_merged_layer_home` and `shadow_to_page` OFF vs ON over every committed pro
+"""`cap_merged_layer_home` and `shadow_to_page` (ON since 2026-11-18; the arms name both fields) OFF vs ON over every committed pro
 job (`tools.tripwire.committed_jobs`, every placement) and the 26
 `corpus_scorecard.FIXTURES` (2026-11-18).
 
@@ -21,9 +21,10 @@ import sys
 import time
 from pathlib import Path
 
-ARMS = {"OFF": {}, "A": {"extra.cap_merged_layer_home": True},
-        "B": {"extra.shadow_to_page": True},
-        "AB": {"extra.cap_merged_layer_home": True, "extra.shadow_to_page": True}}
+ARMS = {"OFF": {"cap_merged_layer_home": False, "shadow_to_page": False},
+        "A": {"cap_merged_layer_home": True, "shadow_to_page": False},
+        "B": {"cap_merged_layer_home": False, "shadow_to_page": True},
+        "AB": {"cap_merged_layer_home": True, "shadow_to_page": True}}
 
 
 def jobs() -> dict[str, tuple[str, float, str]]:
@@ -91,7 +92,7 @@ def run_job(key: str, out: Path) -> dict:
     rec: dict = {"key": key, "width_mm": width, "garment": garment}
     try:
         t = time.time()
-        ds = {a: pp.digitize(art, width, garment, e or None) for a, e in ARMS.items()}
+        ds = {a: pp.digitize(art, width, garment, e) for a, e in ARMS.items()}
         rec["secs"] = round(time.time() - t, 1)
         rec["md5"] = {a: _md5(d.design) for a, d in ds.items()}
         rec["moved"] = {a: rec["md5"][a] != rec["md5"]["OFF"] for a in ("A", "B", "AB")}

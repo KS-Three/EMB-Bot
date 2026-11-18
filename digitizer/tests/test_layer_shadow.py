@@ -12,6 +12,7 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.regions import Region
 from digitizer_core.stage4_vectorize import rehome_cap_merged_regions
 from digitizer_core.threads import chart_for
+from tests.conftest import LAYER_SHADOW_2026_11_18_OFF
 
 CHART = chart_for(PipelineConfig())
 
@@ -41,12 +42,25 @@ def test_nothing_moves_onto_a_cone_no_layer_declares_or_for_a_step_region():
     assert a.meta["layer"] == 4 and b.meta["layer"] == 4
 
 
-def test_both_flags_are_cfg_extra_keys_default_off():
-    assert not (PipelineConfig().extra or {}).get("cap_merged_layer_home")
-    assert not (PipelineConfig().extra or {}).get("shadow_to_page")
+def test_both_flags_are_typed_fields_on_since_kents_flip():
+    assert PipelineConfig().cap_merged_layer_home is True
+    assert PipelineConfig().shadow_to_page is True
 
 
-def test_golden_tee_with_the_flags_on():
+def test_the_pre_flip_arm_and_the_engine_snapshot_pin_both_off():
+    from tests.conftest import ENGINE_2026_10_27, LAYER_SHADOW_2026_11_18_OFF
+    cfg = PipelineConfig(**LAYER_SHADOW_2026_11_18_OFF)
+    assert cfg.cap_merged_layer_home is False and cfg.shadow_to_page is False
+    snap = dict(ENGINE_2026_10_27)
+    assert snap["cap_merged_layer_home"] is False and snap["shadow_to_page"] is False
+
+
+def test_the_caller_dict_in_extra_is_untouched_by_the_defaults():
+    from dataclasses import replace
+    assert replace(PipelineConfig(), extra={"k": True}).extra == {"k": True}
+
+
+def test_golden_tee_with_the_flags():
     """Through the Studio request at the pro's size: OFF is the engine, A puts the
     black under the gold (one black block, not two), B drops the grey fringe."""
     from tools import pro_pair as pp
@@ -57,10 +71,13 @@ def test_golden_tee_with_the_flags_on():
     def grey(d):
         return sum(r.area_mm2 for r in d.result.regions if r.thread_number == "0124")
 
-    off = pp.digitize(art, width, garment)
-    a = pp.digitize(art, width, garment, {"extra.cap_merged_layer_home": True})
-    b = pp.digitize(art, width, garment, {"extra.shadow_to_page": True})
-    blacks = lambda d: sum(1 for x in d.plan.blocks if x.thread_number == "0020")
-    assert blacks(off) == 2 and blacks(a) == 1
-    assert grey(b) < 0.5 * grey(off)
+    def blacks(d):
+        return sum(1 for x in d.plan.blocks if x.thread_number == "0020")
+
+    off = pp.digitize(art, width, garment, LAYER_SHADOW_2026_11_18_OFF)
+    a = pp.digitize(art, width, garment, {**LAYER_SHADOW_2026_11_18_OFF, "cap_merged_layer_home": True})
+    b = pp.digitize(art, width, garment, {**LAYER_SHADOW_2026_11_18_OFF, "shadow_to_page": True})
+    on = pp.digitize(art, width, garment)            # the Studio default: both ON
+    assert blacks(off) == 2 and blacks(a) == 1 and blacks(on) == 1
+    assert grey(b) < 0.5 * grey(off) and grey(on) < 0.5 * grey(off)
     assert grey(a) == grey(off)

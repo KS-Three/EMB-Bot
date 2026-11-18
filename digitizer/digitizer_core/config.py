@@ -1520,6 +1520,39 @@ class PipelineConfig:
     # light shading in counters go to the page, darkest-ink bands (the tee's
     # shadow) are drawn and stay: Golden Tee 3 threads, as he sews it.
     bevel_ring_fold: bool = False
+    # `cap_merged_layer_home` and `shadow_to_page` (built OFF 2026-11-18 as
+    # `cfg.extra` keys, #1681; the prime grader's Golden Tee hat, Bad, `ruins`:
+    # "black outline stitches pile over the yellow/orange fills so the O
+    # counter and the L and F are barely readable; a grey shadow fringe is
+    # sewn under the word that the art has only as a soft blur").
+    # * `cap_merged_layer_home`: the colour cap folds the art's teal bevel onto
+    #   black but leaves it on its quantize layer (6, last), so it sews AFTER
+    #   the gold and caps it. ON, a cap-merged region that is a BAND (mean
+    #   width 2A/P <= 0.8 mm) in a DARK thread (L* <= 35) sews at the layer
+    #   that declares its new spool (`stage4_vectorize.rehome_cap_merged_regions`).
+    # * `shadow_to_page`: `bevel_fold` pass 1 alone (a band of the art's own
+    #   page colour lying on the page and hugging one side of the art, which
+    #   stage 2 made of a soft blur, goes to the page). Redundant under
+    #   `bevel_ring_fold`, which runs it first.
+    # **ON since 2026-11-18, Kent's flip, both**, shown the six pictures
+    # (ORIGINAL | BEFORE | AFTER, `docs/renders/golf-layer-shadow-2026-11-18/`)
+    # and told 5 of 44 runs move: "Flip both ON (Recommended)". The catch he
+    # was given: the red keylines still sew heavy, so GOLF reads red-edged and
+    # is not as flat as a professional's; the two Drones change ORDER only (+2
+    # to +3 jumps, none by eye); the phone screenshot's battery icon fills
+    # green; the Golden Tee hat sews 52 -> 54 trims. **Meant ON together:**
+    # `logo_golden_tee.jpg` bare thread is 0.71 mm with the order flag alone
+    # and 0.31 with both (0.51 OFF). The rule rests on dark bands <= 0.8 mm and
+    # L* <= 35, tuned on this set (a wider or mid-tone version re-ordered the
+    # Drone's 109 shapes and Summit's); NOT sewn on cloth. Gate 1 does not
+    # apply: the band's sewn width (1.0-1.3 mm against the art's 0.33-0.64) is
+    # the satin floor plus pull and is untouched; only the order moved. The
+    # tripwire ledger's goldentee and drone rows move at the next capture.
+    # False is the engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin both False. Tests:
+    # `tests/test_layer_shadow.py`.
+    cap_merged_layer_home: bool = True
+    shadow_to_page: bool = True
     # `color_cap_least_loss` (built 2026-11-17, the prime grader's first
     # scorecard: Precision Drone "no blue thread anywhere"). The colour cap
     # keeps the N threads with the most sewn area, so several near-identical

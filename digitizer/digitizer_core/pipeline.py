@@ -1133,19 +1133,19 @@ def build_generation(
             from . import cap_fuse
             cap_fuse.apply(regions)
 
-    # `cfg.extra["cap_merged_layer_home"]` (built OFF 2026-11-18, the prime
+    # `cfg.cap_merged_layer_home` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key; the prime
     # grader's Golden Tee: "black outline stitches pile over the yellow/orange
     # fills"): a region the cap folded onto another spool sews at that spool's
-    # layer, not the one of the ink it was traced in. Off: no call, no change.
-    if (getattr(cfg, "extra", None) or {}).get("cap_merged_layer_home"):
+    # layer, not the one of the ink it was traced in. False: no call, no change.
+    if cfg.cap_merged_layer_home:
         rehome_cap_merged_regions(regions, list(q.thread_indices), chart_for(cfg))
 
-    # `cfg.extra["shadow_to_page"]` (built OFF 2026-11-18, Golden Tee's grey
+    # `cfg.shadow_to_page` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key; Golden Tee's grey
     # fringe): `bevel_fold`'s pass 1 alone -- a band of the art's own page
     # colour lying on the page and hugging one side of the art is a drop
     # shadow, and goes to the page. Redundant under `bevel_ring_fold`, which
     # runs it first.
-    if ((getattr(cfg, "extra", None) or {}).get("shadow_to_page") and not cfg.bevel_ring_fold
+    if (cfg.shadow_to_page and not cfg.bevel_ring_fold
             and classification.class_ not in PHOTO_CLASSES):
         from .bevel_fold import apply_bevel_fold
         apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices),
