@@ -1,0 +1,17 @@
+import numpy as np,sys
+sys.path.insert(0,'.')
+from tools.curve_facets import edge_points
+D='/tmp/claude-0/-home-user-EMB-Bot/0e404ab2-2f6c-5ffc-8f2b-bcbb6590a3b6/scratchpad/'
+ours=np.load(D+'P2.npy'); pro=np.load(D+'pro.npy')
+pro=np.column_stack([pro[:,0]+57.07, 23.1+pro[:,1]])
+def line(E):
+    c=E.mean(0);u,s,vt=np.linalg.svd(E-c);n=vt[1];r=(E-c)@n
+    return len(E),round(float(np.sqrt((r**2).mean())),3),round(float(abs(r).max()),3)
+# probes on straight edges: wing/roof edges, E stems, I/N stems
+probes=[(34,24.0),(34,29.8),(36,27.2),(41,25.9),(47.5,36),(57.0,34.3),(62,34),(48,31.8),(70,37)]
+for at in probes:
+    row=[]
+    for n,p in (('ours',ours),('pro',pro)):
+        E=edge_points([((0,0,0),p)],at,1.2)
+        row.append((n,line(E) if len(E)>=5 else None))
+    print(at,row)
