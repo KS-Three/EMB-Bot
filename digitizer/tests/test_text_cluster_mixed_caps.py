@@ -118,3 +118,52 @@ def test_the_small_text_steps_leave_a_marked_line_at_its_drawn_size():
         r.meta["text_cluster_id"] = "c"
     clusters = {"c": plain}
     assert st._drawn_size_only(clusters) is clusters         # unmarked: the same object back
+
+
+def test_a_pile_of_shapes_with_no_two_alike_never_starts_a_row():
+    """The gradient icon's bands (0 of 11 candidates pair at 0.8 on
+    `repro_gradient_white_icon`): heights 12.0 / 9.3 / 7.2 chain at 0.6 (0.78,
+    0.77) but no two are within 0.8 of each other, so no row is a line."""
+    shapes = [_t(0.0, h=12.0), _t(10.0, h=9.3), _t(20.0, h=7.2)]
+    regions = [Region(f"S{i}", p, 3, "3", p.area) for i, p in enumerate(shapes)]
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    assert not any(_tags(regions).values()), _tags(regions)
+    assert not any(r.meta.get("text_cluster_mixed_caps") for r in regions)
+
+
+def test_a_row_with_one_pair_still_tags_and_the_pair_helper_reads_the_normal_link():
+    regions = _row()
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    assert all(_tags(regions).values())
+    cands = [c for c in tc._letter_candidates(_row())]
+    assert tc._has_letter_pair(cands, tc.threads.CHART)
+    assert not tc._has_letter_pair(cands[:1], tc.threads.CHART)
+
+
+def test_a_member_off_the_line_is_dropped_and_the_row_keeps_its_cure():
+    """TOAT's beanie row with the i-dot of "Machine" (a fifth member 1.26 of
+    the tallest below the line): the dot is cut off, the four letters tag."""
+    shapes = [_t(0.0), _o(10.0), _a(19.0), _t(28.0)]
+    dot = box(38.0, 22.0, 41.0, 25.0)           # far below the row, similar stroke
+    regions = [Region(f"S{i}", p, 3, "3", p.area) for i, p in enumerate(shapes + [dot])]
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    tags = _tags(regions)
+    assert all(tags[f"S{i}"] for i in range(4)), tags
+    assert not tags["S4"], tags
+
+
+def test_a_group_that_is_not_on_one_line_never_tags():
+    """The icon's shape: a pair of twin bars plus others scattered over the
+    height (spread 1.83): no line, no row."""
+    shapes = [box(0, 0, 3.4, 19.1), box(30, 0, 33.4, 19.0), box(10, 30, 29, 33.4), box(12, 5, 30, 25)]
+    regions = [Region(f"S{i}", p, 3, "3", p.area) for i, p in enumerate(shapes)]
+    tc.detect_text_clusters(regions, None, part_touching=True, mixed_caps=True)
+    assert not any(r.meta.get("text_cluster_mixed_caps") for r in regions)
+
+
+def test_on_one_line_reads_a_ratio_of_the_rows_own_geometry():
+    row = [tc._Candidate(region=r, height_mm=r.polygon.bounds[3] - r.polygon.bounds[1], width_mm=1.0,
+                         stroke_mean_mm=1.0, stroke_cv=0.1, cx=0.0,
+                         cy=(r.polygon.bounds[1] + r.polygon.bounds[3]) / 2) for r in _row()]
+    assert tc._on_one_line(row) == row
+    assert tc._on_one_line(row[:2]) == []                 # under MIN_CLUSTER_MEMBERS

@@ -25,3 +25,10 @@ the tests that read tags run before a flip question, not only pictures.** Flip
 reverted; the bound (admit only what the door's own glyph test admits, and need a
 tagged or pairable letter in the row) is the follow-up. Pictures:
 `docs/renders/text-cluster-mixed-caps-2026-11-17/`. Related: [[prime-grader-2026-11-17]].
+
+**Follow-up 11-18 (bound, `mixed-caps-bound-2026-11-18`):** a mixed row must hold a pair
+`_linked` at the normal 0.8 (`_has_letter_pair`). Flag-ON run of 156 relevant test
+files: no guard breach (`test_borders_last` passes). But `repro_gradient_white_icon`
+at 80 mm still tags 4 shapes (two twin 19 mm frame bars pair at 0.8), and the beanie's
+i-dot joins the TOAT row. TOAT's row is on one line (centre spread 0.19 of the tallest),
+the icon's group is not (1.83): a "same line" rule would split them, not built.
