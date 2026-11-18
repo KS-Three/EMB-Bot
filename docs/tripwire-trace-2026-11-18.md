@@ -54,3 +54,29 @@ These figures are agreement with one professional's files (stitch-type and direc
 cuts, hops and needle-up mm). Each flip above was shown to Kent as before | after pictures. A kappa that falls while the picture got
 better is possible, and this trace does not say which of the two is true for any mover; it says which flag moved it.
 Single-flag arms were run on cloud Linux numbers locally; the committed ledger would still come from the capture dispatch.
+
+## Separate arm: `satin_thin_arm_stop` (#1635) ON vs OFF on current main
+
+#1635 merged after the capture, so it is not in the ledger and is not in any arm above (those ran on `49be98e6`, which is comparable with
+capture 3edc5011). One extra pair of arms on a tree that has it: the default (ON) against `satin_thin_arm_stop` forced OFF, same six jobs,
+same method. The OFF arm reproduces the ledger's figures, so the comparison is clean. Of 36 figure readings: 14 unchanged, 14 better, 8 worse
+(`mfab_hat` has no row in this list: unchanged).
+
+| job | figure | OFF (= ledger) | ON | |
+|---|---|---|---|---|
+| precision_drone | stitches | 13947 | 13864 | better -83 |
+| precision_drone | hops / trims / needle-up mm | 136 / 94 / 1551.6 | 137 / 95 / 1558.6 | worse +1 / +1 / +7.0 |
+| precision_drone | stitch-type kappa / direction kappa | 0.346 / 0.083 | 0.352 / 0.082 | better +0.006 / worse -0.001 |
+| toat_beanie | stitches / trims / hops / needle-up mm | 17389 / 24 / 32 / 245.1 | 17233 / 23 / 31 / 237.8 | all better |
+| toat_beanie | stitch-type kappa | 0.359 | 0.365 | better +0.006 |
+| toat_machine_beanie | stitches | 17030 | 16919 | better -111 |
+| toat_machine_beanie | stitch-type kappa / direction kappa | 0.280 / 0.361 | 0.276 / 0.365 | worse -0.004 / better +0.004 |
+| toat_machine_hat | stitches | 17314 | 17207 | better -107 |
+| toat_machine_hat | needle-up mm / trims | 257.7 / 19 | 262.7 / 20 | worse +5.0 / +1 |
+| toat_machine_hat | stitch-type kappa / direction kappa | 0.343 / 0.676 | 0.347 / 0.679 | better +0.004 / +0.003 |
+| goldentee_hat | stitches | 10686 | 10583 | better -103 |
+| goldentee_hat | stitch-type kappa / direction kappa | 0.813 / 0.323 | 0.806 / 0.331 | worse -0.007 / better +0.008 |
+
+Every one of the six jobs sews 83-156 fewer stitches ON. The worse readings are small (1 cut or hop, 5-7 mm of needle-up, a kappa
+within 0.007). Wrong-way moves against the tripwire's 0.00 tolerance are: precision_drone hops, trims, needle-up and direction kappa;
+toat_machine_beanie stitch-type kappa; toat_machine_hat needle-up and trims; goldentee_hat stitch-type kappa.
