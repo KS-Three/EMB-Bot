@@ -1542,6 +1542,36 @@ def rehome_resnapped_regions(regions: list[Region],
     return moved
 
 
+def rehome_cap_merged_regions(regions: list[Region],
+                              layer_threads: list[int]) -> int:
+    """`cfg.extra["cap_merged_layer_home"]` (built OFF 2026-11-18). A region the
+    colour cap folded onto another spool (`meta["color_cap_merged_from"]`)
+    keeps the layer of the art ink it was traced in, so it sews with that
+    ink's position, not its new spool's. Golden Tee's GOLF: the teal bevel
+    (quantize layer 6, last) is folded onto black, whose spool sews at layer 1,
+    so the black sews AFTER the gold and over it. -> how many moved.
+
+    Same rule as `rehome_resnapped_regions` (the earliest layer that DECLARES
+    the new cone; never a step region; nothing moves onto a cone no layer
+    declares), keyed on the cap's own stamp instead of the re-snap's.
+    Stage 5 then plans the overlap against the order actually sewn: the part
+    of the band the later fill shares with it is cut from the band, so the
+    fill covers the band's floor-width excess instead of the band capping it."""
+    home: dict[int, int] = {}
+    for layer, thread in enumerate(layer_threads):
+        home.setdefault(thread, layer)
+    moved = 0
+    for r in regions:
+        if "color_cap_merged_from" not in r.meta or r.meta.get("step_key"):
+            continue
+        target = home.get(r.thread_index)
+        if target is None or target == r.meta["layer"]:
+            continue
+        r.meta["layer"] = target
+        moved += 1
+    return moved
+
+
 def garment_sews_enclosed(p: Prep, cfg: PipelineConfig) -> tuple[bool, float | None]:
     """Do this design's border-flood holes sew on the garment `cfg` names?
     -> (sews, ΔE00 between the background colour and the garment).

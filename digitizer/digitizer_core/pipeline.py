@@ -64,7 +64,7 @@ from .stage3_segment import (
     resolve_small_regions,
 )
 from .stage4_vectorize import (art_thread_errors, enforce_color_cap, garment_sews_enclosed,
-                               rehome_resnapped_regions, revalidate_threads,
+                               rehome_cap_merged_regions, rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
 from .beanletters import hold_bean_counters, tag_bean_letters
@@ -1132,6 +1132,24 @@ def build_generation(
         if cfg.color_cap_fuse_split_tones:
             from . import cap_fuse
             cap_fuse.apply(regions)
+
+    # `cfg.extra["cap_merged_layer_home"]` (built OFF 2026-11-18, the prime
+    # grader's Golden Tee: "black outline stitches pile over the yellow/orange
+    # fills"): a region the cap folded onto another spool sews at that spool's
+    # layer, not the one of the ink it was traced in. Off: no call, no change.
+    if (getattr(cfg, "extra", None) or {}).get("cap_merged_layer_home"):
+        rehome_cap_merged_regions(regions, list(q.thread_indices))
+
+    # `cfg.extra["shadow_to_page"]` (built OFF 2026-11-18, Golden Tee's grey
+    # fringe): `bevel_fold`'s pass 1 alone -- a band of the art's own page
+    # colour lying on the page and hugging one side of the art is a drop
+    # shadow, and goes to the page. Redundant under `bevel_ring_fold`, which
+    # runs it first.
+    if ((getattr(cfg, "extra", None) or {}).get("shadow_to_page") and not cfg.bevel_ring_fold
+            and classification.class_ not in PHOTO_CLASSES):
+        from .bevel_fold import apply_bevel_fold
+        apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices),
+                         only_shadows=True)
 
     # `cfg.bevel_ring_fold` (built OFF 2026-11-13, Kent's Golden Tee "too
     # busy"): shading the pro flattens -- a drop shadow on the page, a ramp
