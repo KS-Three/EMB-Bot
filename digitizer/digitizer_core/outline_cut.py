@@ -327,22 +327,14 @@ def r_bowl_scope(on: bool):
 def _bowl_cuts(poly: Polygon, W: float, cuts: list, reflex: list) -> list:
     """`r_bowl`: replace a stem-head `butt` (or `mitre`) cut with the pro's R cuts, or return
     `cuts` unchanged when the letter is not that shape. One counter; a `butt` cut up from a
-    hole vertex (`_butt_mitres` found the stem). Adds (1) the slab line, level, a third of the
-    way down the counter's height, left of the counter and right of it, (2) the leg's line,
-    from the reflex vertex on the far side of the bowl below the counter to the notch vertex
-    beside the stem's `through` cut."""
+    hole vertex (`_butt_mitres` found the stem). Adds the leg's line, from the reflex vertex on
+    the far side of the bowl below the counter to the notch vertex beside the stem's `through`
+    cut. The stem sews to its top as block_butt has it; the rest is the bowl band and the leg."""
     holes = list(poly.interiors)
     if len(holes) != 1 or not any(c[2] == "butt" for c in cuts):
         return cuts
     H = Polygon(holes[0])
     hx0, hy0, hx1, hy1 = H.bounds
-    ys = hy0 + 0.3 * (hy1 - hy0)
-    xs0, _, xs1, _ = poly.bounds
-    row = LineString([(xs0 - 1.0, ys), (xs1 + 1.0, ys)]).intersection(poly)
-    segs = [g for g in getattr(row, "geoms", [row]) if g.geom_type == "LineString" and g.length > 0.3 * W]
-    if len(segs) != 2:
-        return cuts
-    slab = [(g.coords[0], g.coords[-1], "through", g.length) for g in segs]
     # the leg: the reflex vertex below the counter and right of its middle, the notch vertex beside the stem
     through = [c for c in cuts if c[2] == "through"]
     if not through:
@@ -367,37 +359,43 @@ def _bowl_cuts(poly: Polygon, W: float, cuts: list, reflex: list) -> list:
     if not _inside(poly, rv, nv) or math.dist(rv, nv) > 1.4 * W:
         return cuts
     leg = (rv, nv, "through", math.dist(rv, nv))
-    return [c for c in cuts if c[2] not in ("butt", "mitre")] + slab + [leg]
+    return cuts + [leg]            # the stem's `butt` cut stays: no slab (slabs are a whole-word question)
+
+
+BOWL_INNER_INSET_MM = 0.5       # a bowl cross starts this far off the counter's edge (see `_bowl_column`)
 
 
 def _bowl_column(piece: Polygon, hole: Polygon, W: float, pitch_mm: float) -> Column | None:
-    """`r_bowl`: the band round a counter as ONE column whose crosses lie along the
-    rays from the counter's centre (the pro's bowl: crosses normal to the wall, turning
-    round the counter), instead of the rails' pairing, which gathers them on the
-    counter's nearest corner. None when the rays do not cover the band."""
+    """`r_bowl`: the band round a counter as ONE column whose crosses lie along rays from the
+    counter's centre at EVEN angular steps (the pro's bowl: 134-176 deg of sweep, crosses normal
+    to the wall), each starting `BOWL_INNER_INSET_MM` off the counter's edge. The inset is the
+    pro's: his counter is 9.85 mm2 against the art's 6.63 because his bowl crosses stop short of
+    it (his cross 4.4 mm over a 5.3 mm wall), where ours stop on the edge and the pull's push
+    takes the counter down to 3-4. Digitizing geometry, not the pull constant. The step is the
+    pitch at the band's far edge. None when the rays do not cover the band."""
     c = hole.centroid
     cx, cy = c.x, c.y
     far = 4.0 * W + max(piece.bounds[2] - piece.bounds[0], piece.bounds[3] - piece.bounds[1])
-    hb = hole.exterior
-    ring = LineString(list(hb.coords))
+    r_out = max(math.dist((cx, cy), q) for q in piece.exterior.coords)
 
     def cross(th):
         d = (math.cos(th), math.sin(th))
-        ray = LineString([(cx, cy), (cx + d[0] * far, cy + d[1] * far)])
-        seg = ray.intersection(piece)
+        seg = LineString([(cx, cy), (cx + d[0] * far, cy + d[1] * far)]).intersection(piece)
         parts = [g for g in getattr(seg, "geoms", [seg]) if g.geom_type == "LineString" and g.length > 0.2]
         if not parts:
             return None
         g = min(parts, key=lambda g: math.dist(g.coords[0], (cx, cy)))
         a, b = g.coords[0], g.coords[-1]
-        if math.dist(a, (cx, cy)) > 1.5 * W or math.dist(a, b) < 0.5 * W:   # the band starts at the counter's edge
+        if math.dist(a, (cx, cy)) > 1.5 * W:         # the band starts at the counter's edge
+            return None
+        a = (a[0] + d[0] * BOWL_INNER_INSET_MM, a[1] + d[1] * BOWL_INNER_INSET_MM)
+        if math.dist(a, b) < 0.4 * W:
             return None
         return a, b
 
-    st = []
-    th = -math.pi
-    step = math.radians(0.5)
+    step = pitch_mm / max(r_out, 1.0)
     run = []
+    th = -math.pi
     while th < math.pi:
         x = cross(th)
         if x is not None:
@@ -405,7 +403,6 @@ def _bowl_column(piece: Polygon, hole: Polygon, W: float, pitch_mm: float) -> Co
         th += step
     if len(run) < 6:
         return None
-    # one contiguous sweep: split where the angle jumps, keep the longest
     groups, cur = [], [run[0]]
     for a, b in zip(run, run[1:]):
         if b[0] - a[0] > 1.5 * step:
@@ -413,20 +410,12 @@ def _bowl_column(piece: Polygon, hole: Polygon, W: float, pitch_mm: float) -> Co
             cur = []
         cur.append(b)
     groups.append(cur)
-    grp = max(groups, key=len)
-    # the sweep may run through +-pi: it is one arc either way
-    out, last = [], None
-    for th, (a, b) in grp:
-        far_end = max((a, b), key=lambda q: math.dist(q, (cx, cy)))       # the outer rail moves at the pitch
-        if last is None or math.dist(far_end, last) >= pitch_mm:
-            out.append((a, b))
-            last = far_end
+    out = [x for _t, x in max(groups, key=len)]
     if len(out) < 6:
         return None
-    # the arc must not be a bare strip of the band: the crosses cover it
     from shapely.ops import unary_union
     reach = unary_union([LineString([a, b]).buffer(0.2) for a, b in out])
-    if piece.difference(reach).area > 0.12 * piece.area:
+    if piece.difference(reach.union(hole.buffer(BOWL_INNER_INSET_MM + 0.05))).area > 0.12 * piece.area:
         return None
     return Column(stations=out, piece=piece, kind="curved", axis=None, width_mm=W,
                   rail_a=[a for a, _ in out], rail_b=[b for _, b in out])
@@ -3547,8 +3536,8 @@ def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                               width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],
                               dropped_mm=dropped)
     if bowl:
-        col = (_bowl_column_normal(piece, _MEMO.get()["bowl_hole"], W, pitch_mm)
-               or _bowl_column(piece, _MEMO.get()["bowl_hole"], W, pitch_mm))
+        col = (_bowl_column(piece, _MEMO.get()["bowl_hole"], W, pitch_mm)
+               or _bowl_column_normal(piece, _MEMO.get()["bowl_hole"], W, pitch_mm))
         if col is not None:
             return col
     r = rails(piece, cut_lines, W)
@@ -4249,9 +4238,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         memo["bowl_piece"] = _bowl_band(poly, pieces)      # `r_bowl`: the band round the counter sews as a curve
         memo["bowl_hole"] = Polygon(poly.interiors[0])
         rest = [g for g in pieces if g.wkb != memo["bowl_piece"]]
-        if len(pieces) == 4 and len(rest) == 3:     # slab, stem, leg: the pro's crosses (level on the leg, upright on the slab)
-            memo["bowl_axes"] = {min(rest, key=lambda g: g.centroid.y).wkb: (1.0, 0.0),
-                                 max(rest, key=lambda g: g.centroid.y).wkb: (0.0, 1.0)}
+        if len(pieces) == 3 and len(rest) == 2:     # stem, band, leg: the leg's crosses level, the pro's
+            memo["bowl_axes"] = {max(rest, key=lambda g: g.centroid.y).wkb: (0.0, 1.0)}
     # a cut that only shaves off a scrap is not a junction: take it back out
     apex = _APEX_CUT.get()
     while cuts:

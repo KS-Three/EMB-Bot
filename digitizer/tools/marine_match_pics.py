@@ -62,6 +62,7 @@ def main(argv=None) -> int:
     ap.add_argument("--ppm", type=float, default=20.0)
     ap.add_argument("--width", type=float, help="the design's width in mm in place of the job's (Becker at 114)")
     ap.add_argument("--tag", default="", help="appended to each file name (e.g. _114mm)")
+    ap.add_argument("--letters", type=int, nargs="*", help="keep only these letters in the strips (0 M, 1 A, 2 R, 3 I, 4 N, 5 E)")
     ap.add_argument("--kent-dir", type=Path)
     a = ap.parse_args(argv)
     import json
@@ -98,12 +99,14 @@ def main(argv=None) -> int:
         # per letter
         gray = cv2.cvtColor(word[0], cv2.COLOR_BGR2GRAY) if word[0].ndim == 3 else word[0]
         spans = letter_spans(gray)
+        if a.letters:
+            spans = [spans[i] for i in a.letters]
         strips = []
         for p in word:
             p3 = p if p.ndim == 3 else cv2.cvtColor(p, cv2.COLOR_GRAY2BGR)
             tiles = []
             for x0, x1 in spans:
-                t = p3[:, max(0, x0 - 10): x1 + 22]
+                t = p3[:, max(0, x0 - 10): x1 + 70]
                 tiles.append(cv2.resize(t, None, fx=2, fy=2, interpolation=cv2.INTER_LINEAR))
             hh = max(t.shape[0] for t in tiles)
             tiles = [cv2.copyMakeBorder(t, 0, hh - t.shape[0], 0, 10, cv2.BORDER_CONSTANT, value=(235, 235, 235)) for t in tiles]

@@ -63,29 +63,31 @@ def test_off_is_the_block_butt_cut_byte_for_byte():
     assert [c.kind for c in a.columns] == ["straight", "straight"]        # stem, bowl + leg (block_butt alone)
 
 
-def test_on_the_r_is_slab_stem_bowl_leg():
+def test_on_the_r_is_stem_bowl_leg_and_no_slab():
     lc = _cut("R", True)
     kinds = sorted(c.kind for c in lc.columns)
-    assert kinds == ["curved", "straight", "straight", "straight"]
+    assert kinds == ["curved", "straight", "straight"]
     assert not lc.unsewn
+    assert not [k for k in lc.cuts if k[2] == "through" and abs(k[0][1] - k[1][1]) < 0.05]     # no level slab cut
     bowl = next(c for c in lc.columns if c.kind == "curved")
-    assert 40 < oc.pivot_sweep(bowl.stations) < 100   # the crosses turn from the right wall's to the floor's round one corner
-    assert len(bowl.stations) > 25
-    from shapely.geometry import LineString
-    hole = Polygon(_poly("R").interiors[0])
-    assert not any(LineString(st).intersection(hole).length > 0.05 for st in bowl.stations)   # none across the counter
-    levels = [c for c in lc.columns if c.kind == "straight" and _cross_angle(c.stations) < 3]
-    uprights = [c for c in lc.columns if c.kind == "straight" and _cross_angle(c.stations) > 87]
-    assert len(levels) == 2 and len(uprights) == 1    # stem and leg level, the slab upright
+    levels = [c for c in lc.columns if c.kind == "straight"]
+    assert all(_cross_angle(c.stations) < 3 for c in levels)       # stem and leg level, as block_butt's stem and the pro's leg
+    assert len(bowl.stations) > 50
 
 
-def test_on_the_bowl_crosses_stay_in_the_letter_and_cover_its_band():
+def test_on_the_bowl_sweeps_round_the_counters_centre_in_even_steps_and_clears_its_edge():
     lc = _cut("R", True)
     bowl = next(c for c in lc.columns if c.kind == "curved")
-    from shapely.geometry import LineString
-    from shapely.ops import unary_union
-    reach = unary_union([LineString([a, b]).buffer(0.2) for a, b in bowl.stations])
-    assert bowl.piece.difference(reach).area < 0.12 * bowl.piece.area
+    hole = Polygon(_poly("R").interiors[0])
+    cx, cy = hole.centroid.x, hole.centroid.y
+    ang = [math.atan2((a[1] + b[1]) / 2 - cy, (a[0] + b[0]) / 2 - cx) for a, b in bowl.stations]
+    steps = [abs(y - x) for x, y in zip(ang, ang[1:])]
+    assert max(steps) < 2.0 * (sorted(steps)[len(steps) // 2]) + 1e-9           # even angular steps
+    assert math.degrees(abs(ang[-1] - ang[0])) > 150                            # his bowl sweeps 134-176 deg
+    # every cross starts off the counter's edge (the inset along the ray, less across an oblique edge), none across it
+    from shapely.geometry import LineString, Point
+    assert all(hole.exterior.distance(Point(a)) >= 0.2 for a, _b in bowl.stations)
+    assert not any(LineString(st).intersection(hole).length > 0.05 for st in bowl.stations)
 
 
 @pytest.mark.parametrize("name", ["E", "N"])

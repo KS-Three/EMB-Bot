@@ -86,7 +86,9 @@ def _resolve_art(row: dict, scratch: Path | None) -> Path:
 
 def arms(flag: str, sets: dict, on=True, off=False) -> dict[str, dict]:
     """The two `extra` dicts handed to `pro_pair.digitize`."""
-    return {"off": {**sets, flag: off}, "on": {**sets, flag: on}}
+    # a comma-separated `--flag a,b,c` flips the whole set together (2026-11-18, the MARINE match's three-flag question)
+    names = [f for f in flag.split(",") if f]
+    return {"off": {**sets, **{n: off for n in names}}, "on": {**sets, **{n: on for n in names}}}
 
 
 # ------------------------------------------------------------------ one run
