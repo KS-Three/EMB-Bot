@@ -983,8 +983,13 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
                 width_mm: float | None = None,
                 density_mm: float | None = None,
                 omit=None,
-                role: str = stitches.ROLE_BORDER) -> tuple[list[StitchRun], dict]:
+                role: str = stitches.ROLE_BORDER,
+                corner_radius_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """Outline the VISIBLE part of one shape. -> (runs, report).
+
+    `corner_radius_mm` is the radius the ring's corners are relaxed by
+    (`round_inward`); None is `machine.BORDER_CORNER_RADIUS_MM`, byte for
+    byte. Only the size ring passes it (`cfg.border_by_size_tight_corner`).
 
     `visible` is stage 5's grown polygon with everything that sews after it
     subtracted — see `PlannedRegion.visible_geom`. It is the geometry a person
@@ -1030,7 +1035,7 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
     try:
         return _border_runs(visible, shape_id, entry=entry, trim_at_mm=trim_at_mm,
                             style=style, width=width, density=density, omit=omit,
-                            role=role, report=report)
+                            role=role, report=report, corner_radius_mm=corner_radius_mm)
     finally:
         # In a `finally` so a cancel at one of the checkpoints below cannot
         # leave this shape's unsewn-area memo for the next job's first shape.
@@ -1040,8 +1045,11 @@ def border_runs(visible, shape_id: str, *, entry: tuple[float, float] | None,
 
 def _border_runs(visible, shape_id: str, *, entry, trim_at_mm: float, style: str,
                  width: float, density: float, omit, role: str,
-                 report: dict) -> tuple[list[StitchRun], dict]:
+                 report: dict,
+                 corner_radius_mm: float | None = None) -> tuple[list[StitchRun], dict]:
     """`border_runs`' body, once its arguments are checked."""
+    corner_r = (machine.BORDER_CORNER_RADIUS_MM if corner_radius_mm is None
+                else float(corner_radius_mm))
     half = width / 2.0
     inset = _centre_inset(half)
     # A zigzag holds `density` between consecutive penetrations on the SAME
@@ -1062,7 +1070,7 @@ def _border_runs(visible, shape_id: str, *, entry, trim_at_mm: float, style: str
     cursor = entry
     for part in parts:
         deadline.check("border")
-        rounded = round_inward(part, machine.BORDER_CORNER_RADIUS_MM, step)
+        rounded = round_inward(part, corner_r, step)
         for host in _parts(rounded):
             deadline.check("border")
             # Can a centreline live in here at all?

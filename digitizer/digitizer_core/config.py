@@ -4502,6 +4502,22 @@ class PipelineConfig:
     # is the engine as it was; PRE_FLIP (CORNER_LOSS_2026_11_17_OFF) pins it
     # False. The other 43 census jobs are byte-identical.
     border_by_size_corner_loss: bool = True
+    # `border_by_size_tight_corner` (Kent 2026-11-17 logo trial, pro corner
+    # measured on Becker; built OFF): the size ring is built on the shape with
+    # its corners relaxed 0.5 mm (`machine.BORDER_BY_SIZE_CORNER_RADIUS_MM`)
+    # instead of 2.1, so the sewn silhouette keeps a near-sharp corner: four
+    # flat 10 mm squares no longer sew as cushions, block letters no longer
+    # read bevelled. The pro still rings sharp shapes (26 of 46 >= 6 mm), so
+    # the ring stays and only its corner changes. Measured on Becker's badge
+    # and block letters (13 corners, three widths of one artwork): the pro's
+    # outer needle points recede from the corner by an equivalent radius of
+    # 0.47 mm (median), ours 2.32; ring width 2.19 straight / 2.25 at the
+    # corner, ours 2.4 / 1.59. By-size rings ONLY: keyline/outline loops and
+    # `border_from_outline*` keep 2.1. `border_by_size_corner_loss` still
+    # reads its loss at 2.1 mm, so a small sharp square still gets no ring.
+    # Off, byte-identical. Layout: Kent's call from the renders.
+    # Tests: `tests/test_border_by_size_tight_corner.py`.
+    border_by_size_tight_corner: bool = False
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

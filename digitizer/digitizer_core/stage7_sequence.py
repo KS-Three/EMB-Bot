@@ -5129,6 +5129,11 @@ def sequence(
                     style=style,
                     width_mm=border_width_mm,
                     omit=omit,
+                    # `cfg.border_by_size_tight_corner`: the size ring only
+                    corner_radius_mm=(machine.BORDER_BY_SIZE_CORNER_RADIUS_MM
+                                      if report.get("border_by_size")
+                                      and getattr(cfg, "border_by_size_tight_corner", False)
+                                      else None),
                 )
                 report["jumps"] += b_report["jumps"]
                 report["bordered"] = b_report["loops"] + b_report["arcs"]
