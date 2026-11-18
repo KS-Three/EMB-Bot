@@ -58,3 +58,34 @@ def test_a_column_with_no_stations_names_nothing():
 def test_flag_is_off_by_default():
     from digitizer_core import PipelineConfig
     assert not (PipelineConfig().extra or {}).get("lettering_columns_sew_dropped_branch")
+
+
+# --- `cfg.extra["lettering_columns_sew_dropped_hairline"]` (built OFF 2026-11-18)
+# A dropped branch that is a HAIRLINE stroke. Sewn without a floor its crosses
+# are dropped; sewn at the floor it adds more thread outside the ink than in,
+# and the "net" judge refuses it. The DIA seal at 90 mm, the N of UNITED: both
+# 0.3 mm stems took no stitch (cover 0.70; with the branches floored 1.00,
+# spill 0.52 -> 1.11: refused). ON, the branches sew at the floor and the
+# result is kept when the letter is not whole without it and whole with it.
+
+def test_the_hairline_judge_is_the_whole_letter_rule():
+    """The same rule `stroke_floor_keeps_lost_strokes` reads, on the same
+    measure: not whole before, whole after."""
+    from digitizer_core import stitches
+    from digitizer_core.columns import SMALL_BOLD_COVER_MIN, satin_cover, stroke_floor_restores
+    from digitizer_core.stitches import StitchRun
+    letter = box(0.0, 0.0, 1.0, 4.0)
+
+    def zig(y1):
+        pts = [((0.0 if i % 2 == 0 else 1.0), round(0.2 * i, 4)) for i in range(int(y1 / 0.2) + 1)]
+        return [StitchRun(points=pts, kind=stitches.SATIN, shape_id="L")]
+
+    part, whole = zig(2.4), zig(4.0)
+    assert satin_cover(part, letter) < SMALL_BOLD_COVER_MIN <= satin_cover(whole, letter)
+    assert stroke_floor_restores(part, whole, letter)
+    assert not stroke_floor_restores(whole, whole, letter)
+
+
+def test_the_hairline_flag_is_off_by_default():
+    from digitizer_core import PipelineConfig
+    assert not (PipelineConfig().extra or {}).get("lettering_columns_sew_dropped_hairline")

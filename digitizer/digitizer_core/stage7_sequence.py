@@ -4393,6 +4393,10 @@ def sequence(
                     # sews nothing, is cut and sewn in the lane
                     **({"dropped_branch": True}
                        if (cfg.extra or {}).get("lettering_columns_sew_dropped_branch") else {}),
+                    # `cfg.extra["lettering_columns_sew_dropped_hairline"]` (built OFF
+                    # 2026-11-18): the same for a hairline stroke joined at one end
+                    **({"dropped_hairline": True}
+                       if (cfg.extra or {}).get("lettering_columns_sew_dropped_hairline") else {}),
                     # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
                     **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),

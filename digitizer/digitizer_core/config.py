@@ -1268,6 +1268,28 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
     dark_ink_bean: bool = True
+    # The lettering of one thread written on one ground, sewn BEFORE that
+    # ground, moves to a layer right after it when the line's median stroke
+    # is under `thin_ink.THIN_LETTER_PULLS` (6) x the pull the ground's rows
+    # add back (1.8 mm at 0.3) (`thin_ink.thin_letters_after_ground`; built
+    # OFF 2026-11-18 as `cfg.extra["thin_letters_after_ground"]`, #1658).
+    # **ON since 2026-11-18, Kent's flip**: he first ruled "Add to paired
+    # check"; shown ART | BEFORE | AFTER for the three designs it changes of
+    # 82 and asked whether to change that ruling, "Flip ON now". White is
+    # the first thread, so white ring letters sewed first and the ring's fill
+    # rows, laid long at both ends for pull, covered about half of each
+    # stroke: the Commerce seal's bold ring text read as hairlines
+    # (39,010 -> 39,221 stitches, trims 114 -> 100) and the ATF seal's whole
+    # ring line was lost (45,593 -> 45,335, trims 122 -> 116); AmeriCorps
+    # 31,849 -> 31,347, trims 36 -> 21. 82 designs (seven Commons logo
+    # batches, 16 repo logos): those three change, 79 do not. Catches: one
+    # more thread block on each design it moves; the 6 x pull limit is a
+    # layout candidate, not a sewn number; the `scratch_kent` paired corpus
+    # was not run. Promoted from `cfg.extra` so the default can be ON. False
+    # is the engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_thin_letters_after_ground.py`.
+    thin_letters_after_ground: bool = True
     # `dark_ink_bean_by_width` (built OFF 2026-11-16): which dark-ink strokes
     # sew as a bean is decided by WIDTH, not thread contrast. Contrast stood
     # in for "pen line versus designed lettering" and gets real lettering
