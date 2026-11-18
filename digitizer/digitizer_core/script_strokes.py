@@ -1148,7 +1148,7 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     still cut routed under satin to come (`bury_hops`)."""
     from .columns import column_runs
     from .monoline import bury_hops, clear_finished_underlay
-    from . import wedge_cap
+    from . import end_overlap, wedge_cap
     cols, strokes, grid = script_columns(poly, spacing_mm, ink)
     if not cols:
         return [], {"empty": True, "too_thin": False, "jumps": 0}
@@ -1156,6 +1156,10 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # wedge is the meeting stroke's to sew, not the stem's (`wedge_cap`)
     if wedge_cap.armed():
         cols = wedge_cap.cap_columns(cols)
+    # `cfg.extra["lettering_columns_end_overlap_cut"]` (built OFF): an end
+    # station lying over a longer stroke at a turned cross goes (`end_overlap`)
+    if end_overlap.armed():
+        cols, _cut = end_overlap.cut_columns(cols)
     kw = dict(trim_at_mm=trim_at_mm, spacing_mm=spacing_mm, split_above_mm=split_above_mm,
               pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
               **({"inside_connectors": True} if inside_connectors else {}),
@@ -1169,6 +1173,8 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             cols, strokes, grid, crowded = again, a_strokes, a_grid, True
             if wedge_cap.armed():
                 cols = wedge_cap.cap_columns(cols)
+            if end_overlap.armed():
+                cols, _cut = end_overlap.cut_columns(cols)
             patches = _patches(poly, cols, spacing_mm, pull_mm)
     # the patches first, so the strokes lie over their edges; then the
     # strokes as one walk from where the patches left the needle
