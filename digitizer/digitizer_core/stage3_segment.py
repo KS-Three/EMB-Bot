@@ -44,6 +44,9 @@ from .warnings_codes import (
 # and this many CIELAB L lighter than the region it would be absorbed into.
 LIGHT_THIN_ASPECT = 4.0
 LIGHT_THIN_DL = 30.0
+# ... and at least this many mm2 (the 4-design sweep: the kept highlights were 0.77-1.69,
+# the two harmful or invisible specks 0.19).
+LIGHT_THIN_MIN_MM2 = 0.5
 
 
 @dataclass
@@ -1149,7 +1152,8 @@ def resolve_small_regions(
             # edge on its black), not a sliver OF it. Kept as an isolated one is.
             by0, bx0, by1, bx1 = box
             bh, bw = by1 - by0, bx1 - bx0
-            if max(bh, bw) >= LIGHT_THIN_ASPECT * max(1, min(bh, bw)):
+            if (areas[i] >= LIGHT_THIN_MIN_MM2 * px_per_mm ** 2
+                    and max(bh, bw) >= LIGHT_THIN_ASPECT * max(1, min(bh, bw))):
                 mine, theirs = colour(i), colour(best)
                 if mine is not None and theirs is not None and float(mine[0] - theirs[0]) >= LIGHT_THIN_DL:
                     rescued.append(i)
