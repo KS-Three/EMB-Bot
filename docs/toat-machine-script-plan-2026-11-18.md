@@ -54,3 +54,23 @@ U-turn fan are unchanged. **Not clearly better, so left OFF.** Beanie needle-up 
   rail's radius; neither is built. The h's top cap (hat) is in neither list: it is the wedge-cap
   note's separate fault.
 - The speed lines are closed as a thread limit, per the brief.
+
+## Addendum: causes 2 and 3 against the professional's file (numbers only; nothing of the pro's committed)
+
+Read from the pro's `Machine beanie.PES` (in `Embroidery Files.zip`), cross chains by
+`tools.script_flow.columns_of`, block 2. No render and no stitch data of it is committed.
+
+- **U-turn fans (cause 2) are not a departure from the pro.** Fastest 60-degree rotation of the cross
+  in a column, stations and mid-path arc: ours beanie 4-7 stations over 1.3-2.2 mm (cols 11, 2, 9, 10,
+  3, 12), hat 4-7 over 1.1-2.4 mm; the pro's long columns 3-11 stations over 0.8-2.0 mm. The pro keeps
+  ONE column through a hairpin: col 71 (122 crosses) turns its cross 29 -> 176 degrees over 56 crosses,
+  col 79 (197 crosses) 148 -> 11 degrees, cross length 1.5-3.0 mm and never pinched. Same rotation
+  rate, same one-column construction. The scorecard marks the fans at nitpick level on the hat; my
+  "biggest visible fault" above was wrong. **No split or inner-rail cap was built: the measurement does
+  not support one.**
+- **Long joined columns (cause 3) are the pro's construction too.** The word's pro columns run 122, 143
+  and 197 crosses; ours are MORE split (13 columns for "achine" against roughly 8 pro columns).
+  Splitting further is the wrong direction; the e's crossbar pile-up is a crossing, not a column count.
+- What is left that the pro does not show: the end-on-stroke overlaps (cause 1, built OFF above, only
+  marginal) and the h arch / e crossbar crossings, which need a per-crossing rule (which stroke sews
+  last, the other stops at its edge), not a turn rule. Not started.
