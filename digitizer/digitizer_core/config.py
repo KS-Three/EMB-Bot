@@ -4659,7 +4659,12 @@ class PipelineConfig:
     # the rule (auto tier, not lettering, the reach test) is the rule's own.
     # Read only with `border_by_size`. Layout, not a cloth constant. False,
     # byte-identical (tests/test_round_dot_ring.py).
-    round_dot_ring: bool = False
+    # **ON since 2026-11-18** (Kent, shown ORIGINAL | BEFORE | AFTER of the
+    # Tires dot, 1 of 35 runs moves: "Flip ON (Recommended)"). Whether a 1.5 mm
+    # ring on a 5.7 mm dot holds on cloth is a sew-out question (ROADMAP gate
+    # 1), untested. False is the engine as it was; PRE_FLIP
+    # (ROUND_DOT_RING_2026_11_18_OFF) pins it False.
+    round_dot_ring: bool = True
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

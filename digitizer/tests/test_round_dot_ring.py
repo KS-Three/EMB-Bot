@@ -50,8 +50,14 @@ def _disc(d_mm):
     return Point(0, 0).buffer(d_mm / 2.0, quad_segs=32)
 
 
-def test_flag_defaults_off():
-    assert PipelineConfig().round_dot_ring is False
+def test_flag_default_is_on():
+    # Kent 2026-11-18, from the Tires dot ORIGINAL | BEFORE | AFTER: "Flip ON (Recommended)"
+    assert PipelineConfig().round_dot_ring is True
+
+
+def test_the_pre_flip_dict_pins_it_off():
+    from .conftest import ROUND_DOT_RING_2026_11_18_OFF
+    assert PipelineConfig(**ROUND_DOT_RING_2026_11_18_OFF).round_dot_ring is False
 
 
 def test_constants_sit_on_the_census_band():
@@ -70,7 +76,7 @@ def test_round_solid_reads_discs_not_squares_or_rings():
 
 def test_off_reads_the_dot_as_no_ring():
     reg = _region(_disc(5.7))
-    assert _border_by_size_width(reg, PipelineConfig()) is None
+    assert _border_by_size_width(reg, PipelineConfig(round_dot_ring=False)) is None
 
 
 def test_on_rings_a_round_dot_at_the_4_to_6_band_width():
@@ -85,16 +91,17 @@ def test_on_leaves_the_rest_of_the_rule_alone():
     assert _border_by_size_width(_region(_disc(5.7), tier="fill"), cfg) is None   # per-shape intent
     # over 6 mm the rule reads it with or without the flag, at the same width
     big = _region(_disc(8.0))
-    assert _border_by_size_width(big, cfg) == _border_by_size_width(big, PipelineConfig()) == 2.1
+    assert _border_by_size_width(big, cfg) == _border_by_size_width(big, PipelineConfig(round_dot_ring=False)) == 2.1
 
 
 def test_off_plan_is_byte_identical_to_the_default():
     poly = _disc(5.7)
-    assert _md5(_runs(poly, round_dot_ring=False)) == _md5(_runs(poly))
+    # OFF, a 5.7 mm dot is read by no ring at all: the plan is the one with the size rule off
+    assert _md5(_runs(poly, round_dot_ring=False)) == _md5(_runs(poly, round_dot_ring=False, border_by_size=False))
 
 
 def test_on_sews_the_dot_as_fill_plus_a_border_ring():
-    kinds_off = {str(r.kind) for r in _runs(_disc(5.7))}
+    kinds_off = {str(r.kind) for r in _runs(_disc(5.7), round_dot_ring=False)}
     kinds_on = {str(r.kind) for r in _runs(_disc(5.7), **ON)}
     assert "border" not in kinds_off
     assert "border" in kinds_on and "fill" in kinds_on
