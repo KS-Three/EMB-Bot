@@ -48,6 +48,35 @@ E/R join is the same. **Worse:**
 * At the V the outer loop's crosses still turn with the band's normal (they bunch in the
   notch); the pro's stay near-square to the band. Closer than before, not the pro's.
 
+## ALL 18 tripwire jobs (every placement) + the 26 fixtures, OFF vs ON (director 11-18, final build)
+
+44 runs by stitch md5: **6 moved, 38 byte-identical.** The 35-run table above missed four
+(second placements of the same artwork). Needle-up = the straight gap the needle flies at each
+lift (`pro_baseline.needle_up`'s rule, from the design's stitch list).
+
+| run | stitches | trims | jumps | needle-up mm |
+|---|---|---|---|---|
+| becker_hat_large | 16,246 -> 16,246 | 19 -> 20 | 20 -> 21 | 489.6 -> **672.5** |
+| becker_hat_small | 10,319 -> 9,851 | 10 -> **18** | 14 -> 23 | 306.3 -> 319.0 |
+| becker_chest_small | 10,156 -> 9,698 | 9 -> **16** | 13 -> 21 | 303.5 -> 292.5 |
+| becker_beanie | 13,653 -> 13,330 | 13 -> **19** | 15 -> 21 | 385.0 -> 375.0 |
+| mfab_lc | 17,570 -> **18,467** | 19 -> 23 | 29 -> 33 | 504.9 -> 586.6 |
+| fx_becker_marine_logo (80 mm) | 10,826 -> 10,459 | 13 -> 19 | 14 -> 20 | 380.4 -> 362.9 |
+
+(becker_lc_large and the other 38 do not move.) All six pictured: `<run>.png`, `<run>_closeup.png`.
+
+**By eye, worse first:**
+* **becker_hat_small**: ON draws a white (bare) curved sliver across the top of the K where the
+  stem top meets the band (overview, AFTER, K top), and the band edge is rougher; trims 10 -> 18.
+* becker_chest_small, becker_beanie: same family as the small hat (trims +7 / +6).
+* becker_hat_large: needle-up travel +183 mm (more lifts between far pieces), trims +1.
+* **mfab_lc**: +897 stitches (+5%), +4 trims, +82 mm needle-up; no visible change at print size
+  (the white keyline reads the same). The gate was met by the LC placement's letters and stems.
+* The 102 mm and 80 mm Becker pictures above stand: one stem column, one continuous band.
+
+**Conclusion of this sweep: not ready to flip.** The small placements (76-80 mm) gain trims and one
+visible bare sliver; the grader's design (102 mm) gains the clean stem at +183 mm of needle-up.
+
 ## Related tests with the flag forced ON (227 files, final build)
 
 3,985 passed, 4 failed. With the flag OFF (the default) all pass. The 4:
