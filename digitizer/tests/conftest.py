@@ -1227,6 +1227,12 @@ PRE_FLIP.update(WHOLE_LETTER_FLOOR_2026_11_18_OFF)
 # `tests/test_wedge_cap.py`.
 STEM_WEDGE_CAP_2026_11_18_OFF = {"lettering_columns_stem_wedge_cap": False}
 PRE_FLIP.update(STEM_WEDGE_CAP_2026_11_18_OFF)
+# `cap_merged_layer_home` + `shadow_to_page` (Kent 2026-11-18, shown the six
+# ORIGINAL | BEFORE | AFTER pictures of Golden Tee's GOLF, the 80 mm fixture,
+# the phone screenshot and both Drones, 5 of 44 move: "Flip both ON
+# (Recommended)"): `tests/test_layer_shadow.py`.
+LAYER_SHADOW_2026_11_18_OFF = {"cap_merged_layer_home": False, "shadow_to_page": False}
+PRE_FLIP.update(LAYER_SHADOW_2026_11_18_OFF)
 # `lettering_columns_block_butt` (Kent 2026-11-18, shown the MARINE word at all
 # five Becker placements, told it replaces his 11-14 E corner fold on heavy block
 # letters: "Flip on, but make sure the MARINE strokes match the pros. These

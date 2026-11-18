@@ -401,5 +401,7 @@
  "page_line_open": false,
  "enclosed_white_keeps_known_colour": false,
  "lettering_columns_stem_wedge_cap": false,
+ "cap_merged_layer_home": false,
+ "shadow_to_page": false,
  "lettering_columns_block_butt": false
 }

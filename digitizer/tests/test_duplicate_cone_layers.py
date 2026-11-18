@@ -43,7 +43,7 @@ from digitizer_core.stage3_segment import merge_duplicate_cone_layers
 from digitizer_core.threads import CHART
 from digitizer_core.warnings_codes import DUPLICATE_CONE_LAYERS_MERGED
 
-from .conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, cfg
+from .conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, LAYER_SHADOW_2026_11_18_OFF, cfg
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 DRONE = TESTDATA / "photo" / "drone_render.png"
@@ -364,15 +364,20 @@ def test_on_the_shipped_engine_the_fold_still_saves_stops_revisits_and_flying(
 @pytest.fixture(scope="module")
 def drone_presnap_off():
     # ...and before the flag ends/seam trio (ON 2026-11-17, Kent), which also
-    # makes the strict xfail below XPASS: same reason, same hold.
+    # makes the strict xfail below XPASS: same reason, same hold. And before
+    # `cap_merged_layer_home` + `shadow_to_page` (ON 2026-11-18, Kent): the
+    # Drone's cap-merged dark bands re-layer (72 shapes), the shape no longer
+    # doubles, the xfail XPASSes (strict, CI shard 3/6): same reason, same hold.
     return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False,
-                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF))
+                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF,
+                               **LAYER_SHADOW_2026_11_18_OFF))
 
 
 @pytest.fixture(scope="module")
 def drone_presnap_on():
     return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
-                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF))
+                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF,
+                               **LAYER_SHADOW_2026_11_18_OFF))
 
 
 @pytest.mark.xfail(strict=True, reason=(

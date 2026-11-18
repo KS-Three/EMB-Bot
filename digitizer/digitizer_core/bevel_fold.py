@@ -233,11 +233,12 @@ class _Graph:
         return g.boundary.difference(unary_union(near).buffer(self.touch)).length
 
 
-def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
+def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None, only_shadows: bool = False) -> dict:
     """Fold shadows, tone splits and bevel bands (module note). Mutates
     `regions` (removes folded regions, grows their parents); -> a report.
     `layer_threads`: the quantize-time layer -> cone list, so a re-threaded
-    region moves to the layer that sews its new cone."""
+    region moves to the layer that sews its new cone. `only_shadows`
+    (`cfg.extra["shadow_to_page"]`, 2026-11-18): run pass 1 alone and return."""
     ipm = float(getattr(p, "input_px_per_mm", 0.0) or 0.0) or float(p.px_per_mm)
     touch = max(0.02, TOUCH_SRC_PX / ipm)
     eps = touch / 2.0
@@ -298,6 +299,9 @@ def apply_bevel_fold(regions, p, cfg, chart, layer_threads=None) -> dict:
                                       "area_mm2": round(r.area_mm2, 2), "width_mm": round(_width(g), 3)})
         for i in sorted(drop, reverse=True):
             del regions[i]
+
+    if only_shadows:
+        return report
 
     # ---- 2. tone merge ----------------------------------------------------
     graph = _Graph(regions, touch)

@@ -1542,6 +1542,55 @@ def rehome_resnapped_regions(regions: list[Region],
     return moved
 
 
+#: `rehome_cap_merged_regions`: the widest band (mm, mean width 2A/P) it moves
+#: (= `bevel_fold.BAND_MAX_MM`: two 40 wt threads)
+CAP_MERGED_BAND_MAX_MM = 0.8
+#: ... and only onto a thread this dark (CIELAB L*; `bevel_fold.DARK_L_MAX`)
+CAP_MERGED_DARK_L_MAX = 35.0
+
+
+def rehome_cap_merged_regions(regions: list[Region],
+                              layer_threads: list[int], chart=None) -> int:
+    """`cfg.extra["cap_merged_layer_home"]` (built OFF 2026-11-18). A region the
+    colour cap folded onto another spool (`meta["color_cap_merged_from"]`)
+    keeps the layer of the art ink it was traced in, so it sews with that
+    ink's position, not its new spool's. Golden Tee's GOLF: the teal bevel
+    (quantize layer 6, last) is folded onto black, whose spool sews at layer 1,
+    so the black sews AFTER the gold and over it. -> how many moved.
+
+    Same rule as `rehome_resnapped_regions` (the earliest layer that DECLARES
+    the new cone; never a step region; nothing moves onto a cone no layer
+    declares), keyed on the cap's own stamp instead of the re-snap's.
+    Stage 5 then plans the overlap against the order actually sewn: the part
+    of the band the later fill shares with it is cut from the band, so the
+    fill covers the band's floor-width excess instead of the band capping it."""
+    home: dict[int, int] = {}
+    for layer, thread in enumerate(layer_threads):
+        home.setdefault(thread, layer)
+    moved = 0
+    for r in regions:
+        if "color_cap_merged_from" not in r.meta or r.meta.get("step_key"):
+            continue
+        # a BAND only (mean width 2A/P <= `bevel_fold.BAND_MAX_MM`, two laid
+        # threads): a bevel / keyline sliver is what sews wider than the art
+        # and caps its neighbour. First version moved every cap-merged region
+        # and re-layered the Drone's grey fields (109 shapes) and Summit's.
+        per = r.polygon.length
+        if per <= 0 or 2.0 * r.area_mm2 / per > CAP_MERGED_BAND_MAX_MM:
+            continue
+        # ... in a DARK thread (L* <= CAP_MERGED_DARK_L_MAX): the dark under-edge
+        # sewn over a lighter fill is the fault. Bands in a mid tone (the
+        # Drone's orange, Summit's violet) only had their order shuffled.
+        if chart is not None and float(chart.lab[r.thread_index][0]) > CAP_MERGED_DARK_L_MAX:
+            continue
+        target = home.get(r.thread_index)
+        if target is None or target == r.meta["layer"]:
+            continue
+        r.meta["layer"] = target
+        moved += 1
+    return moved
+
+
 def garment_sews_enclosed(p: Prep, cfg: PipelineConfig) -> tuple[bool, float | None]:
     """Do this design's border-flood holes sew on the garment `cfg` names?
     -> (sews, ΔE00 between the background colour and the garment).
