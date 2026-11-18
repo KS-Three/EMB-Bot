@@ -96,8 +96,8 @@ def test_only_curved_columns_and_the_same_list_when_nothing_changes():
 
 def test_cap_columns_caps_the_stem_beside_a_covering_sibling():
     stem = _stem()
-    tail = Column(stations=[((-1.6, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
-                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.4)
+    tail = Column(stations=[((-1.4, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
+                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.2)
     out = W.cap_columns([stem, tail])
     assert out[1] is tail
     assert _width(out[0], 19) < _width(stem, 19) - 0.5
@@ -107,8 +107,8 @@ def test_a_thicker_sibling_never_takes_the_wedge_and_the_hairline_is_not_capped(
     """The hairline that crosses the stem keeps the ground it crosses; only the
     thicker column gives a wedge up, and only to a thinner one."""
     stem = _stem()
-    tail = Column(stations=[((-1.6, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
-                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.4)
+    tail = Column(stations=[((-1.4, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
+                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.2)
     out = W.cap_columns([tail, stem])               # the order the lane happens to hand them in
     assert out[0] is tail
     assert _width(out[1], 19) < _width(stem, 19) - 0.5
@@ -137,3 +137,14 @@ def test_a_capped_runs_end_is_re_spaced_not_notched():
     new, n = W.cap_column(kinked, box(-3.0, 4.5, 0.0, 11.0))
     steps = [math.dist(new.stations[i][0], new.stations[i - 1][0]) for i in range(8, 20)]
     assert min(steps) > 0.3, steps
+
+
+def test_a_sibling_over_the_hairline_share_takes_no_wedge():
+    """Bridge's g-to-e link: two nearly parallel strokes, the sibling 0.65 of the column, is not a hairline join."""
+    stem = _stem()                                                   # median cross 2.3
+    wide_sib = Column(stations=[((-2.0, 4.6 + 0.4 * i), (-0.5, 4.6 + 0.4 * i)) for i in range(15)],
+                      piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.5)   # 1.5 / 2.3 = 0.65
+    assert W.cap_columns([stem, wide_sib])[0] is stem
+    hair = Column(stations=[((-1.4, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
+                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.2)       # 1.2 / 2.3 = 0.52
+    assert W.cap_columns([stem, hair])[0] is not stem

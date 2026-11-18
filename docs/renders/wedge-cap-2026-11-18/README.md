@@ -39,3 +39,20 @@ spot), `toat_machine_hat_word.png` (the word "achine", the three stacked).
 - A push ramp in `stage6_satin._push_rails` (the first guess at the seam, the held push easing in over four stations)
   was built and DROPPED: the re-spacing alone clears the h, and the ramp reached every lane column, moving 18 of 35
   runs with cover losses of up to 0.046 (Gaulke's `S93841276` 1.0000 -> 0.9537, Drone's `S95978c7e` bare 1.109 -> 1.337 mm2).
+
+## Follow-up, 2026-11-18: every placement swept, and the rule bounded to hairline joins
+
+**Sweep widened to all 18 tripwire jobs (every placement: both Becker, Gaulke, Fremont, MFAB, Tires, Drone, Golden Tee, the three To a T jobs) plus the 26 fixtures = 44 runs, OFF vs ON by stitch md5, on `main` after the merge.**
+Two move: `toat_machine_hat` and `fx_photo_logo_bridge_bar`. 42 are byte-identical, `toat_machine_beanie`, `toat_beanie` and `mfab_lc` included.
+
+| mover | stitches | trims | jumps | needle-up mm |
+|---|---|---|---|---|
+| `toat_machine_hat` | 17,102 -> 17,100 | 19 -> 19 | 32 -> 32 | 267.9 -> 267.9 |
+| `fx_photo_logo_bridge_bar` | 10,830 -> 10,810 | 17 -> 15 | 26 -> 24 | 224.9 -> 206.0 |
+
+Bridge's g-to-e link was read as a wedge because its covering sibling is 0.65 of the column's width and runs nearly parallel
+(2 degrees); the h's covering sibling is a real hairline join (0.49, 45 degrees). The sibling share bound `THINNER` is now
+0.6 (was 0.85): a sibling takes a wedge only when it is a hairline join. At 0.6 the hat is byte-identical to the 0.85 rule
+(the h keeps its whole gain) and Bridge is byte-identical to OFF. 0.55 gives the same two results. What it gives up on
+Bridge: the e's cleaner bowl and the 2 trims / 19 mm of needle-up that the wider rule saved there. A narrower rule can only
+give a wedge to fewer columns, so the 42 runs that were identical stay identical.
