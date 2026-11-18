@@ -1,0 +1,16 @@
+import numpy as np,sys
+sys.path.insert(0,'.')
+from tools.curve_facets import edge_points,curve_read
+D='/tmp/claude-0/-home-user-EMB-Bot/0e404ab2-2f6c-5ffc-8f2b-bcbb6590a3b6/scratchpad/'
+ours=np.load(D+'P2.npy'); pro=np.load(D+'pro.npy')
+pro=np.column_stack([pro[:,0]+57.07, 23.1+pro[:,1]])
+for name,pts in (('ours',ours),('pro',pro)):
+    rows=[]
+    for x in np.arange(5,110,1.5):
+        for y in np.arange(30,47.5,1.5):
+            E=edge_points([((0,0,0),pts)],(x,y),1.0)
+            if len(E)<6: continue
+            r=curve_read(E)
+            if 2.0<=r['radius_mm']<=10 and r['off_circle_mm']<0.15: rows.append(r)
+    o=np.array([r['off_circle_mm'] for r in rows]);t=np.array([r['turn_std'] for r in rows]);sp=np.array([r['spacing_mm'] for r in rows])
+    print(name,len(rows),'off_circle med/p90',np.median(o).round(3),np.percentile(o,90).round(3),'turn_std med/p90',np.median(t).round(2),np.percentile(t,90).round(2),'spacing',np.median(sp).round(3))

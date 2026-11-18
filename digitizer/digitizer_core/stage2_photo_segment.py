@@ -2986,7 +2986,8 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
         # and `cfg.detail_spokes` for a mark's "another colour than its host".
         lab_img=true_lab if (keep_counters or (cfg.small_dot_rung
                                                and cfg.small_dot_rung_lettering)
-                             or cfg.detail_spokes) else None,
+                             or cfg.detail_spokes
+                             or getattr(cfg, "light_thin_stroke_keep", False)) else None,
         keep_counters=keep_counters,
         # `cfg.open_cored_counters`, the caller's gate (gradient logos) and
         # the caller's mask (`pipeline.cored_counter_core`: stage 1's
