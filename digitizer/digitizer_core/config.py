@@ -4718,6 +4718,27 @@ class PipelineConfig:
     # is the engine as it was; PRE_FLIP (CORNER_LOSS_2026_11_17_OFF) pins it
     # False. The other 43 census jobs are byte-identical.
     border_by_size_corner_loss: bool = True
+    # A round dot sews round (2026-11-18, built OFF; prime grader pin on
+    # `tires_hat_3d`, the i's dot: "flat spots at top and bottom and a
+    # jutting last stitch ... faceted rather than a round dot"). A 5.7 mm
+    # dot is over the hat's 5.0 satin ceiling, so it sews as tatami rows, and
+    # the rows' ends make the edge: a short first and last row (the flat top
+    # and bottom), a different end on every row, one stub of a last stitch.
+    # The pro's size rule rings a 4-6 mm fill 29% of the time and the ring is
+    # a drawn column, so its edge follows the outline (`border_by_size`,
+    # `machine.BORDER_BY_SIZE_WIDTH_MM`: 1.5 mm at 4-6). ON, `border_by_size`
+    # reads a ROUND compact solid (no hole, circularity at or over
+    # `machine.ROUND_DOT_MIN_CIRCULARITY`) from `machine.ROUND_DOT_MIN_DIM_MM`
+    # (4.0, the lower edge of that band) instead of 6.0; every other test of
+    # the rule (auto tier, not lettering, the reach test) is the rule's own.
+    # Read only with `border_by_size`. Layout, not a cloth constant. False,
+    # byte-identical (tests/test_round_dot_ring.py).
+    # **ON since 2026-11-18** (Kent, shown ORIGINAL | BEFORE | AFTER of the
+    # Tires dot, 1 of 35 runs moves: "Flip ON (Recommended)"). Whether a 1.5 mm
+    # ring on a 5.7 mm dot holds on cloth is a sew-out question (ROADMAP gate
+    # 1), untested. False is the engine as it was; PRE_FLIP
+    # (ROUND_DOT_RING_2026_11_18_OFF) pins it False.
+    round_dot_ring: bool = True
     # Small print: keep a letter's COUNTERS open (2026-10-12, Kent asked
     # about fine print; `tools/small_print.py`). Measured on the Column lane
     # at 2.5-12 mm caps, the worst small-lettering defect at 3-4 mm is the

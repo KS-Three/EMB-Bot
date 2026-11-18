@@ -1193,6 +1193,10 @@ PRE_FLIP.update(ROPE_BAND_2026_11_17_OFF)
 # `tests/test_keyline_fragment.py`.
 KEYLINE_FRAGMENT_2026_11_17_OFF = {"keyline_fragment_drop": False}
 PRE_FLIP.update(KEYLINE_FRAGMENT_2026_11_17_OFF)
+# `round_dot_ring` (Kent 2026-11-18, shown ORIGINAL | BEFORE | AFTER of the Tires
+# dot: "Flip ON (Recommended)"): `tests/test_round_dot_ring.py`.
+ROUND_DOT_RING_2026_11_18_OFF = {"round_dot_ring": False}
+PRE_FLIP.update(ROUND_DOT_RING_2026_11_18_OFF)
 # `text_cluster_mixed_caps` (Kent 2026-11-18, shown the To a T hat overlay of
 # the shapes it tags and the zoom of the A: "Flip ON (Recommended)"):
 # `tests/test_text_cluster_mixed_caps.py`.
