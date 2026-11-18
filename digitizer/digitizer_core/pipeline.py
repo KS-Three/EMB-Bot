@@ -1125,6 +1125,12 @@ def build_generation(
             count_enclosed=(garment_sews_enclosed(p, cfg)[0]
                             or bool(cfg.sew_enclosed_white)),
             least_loss=cfg.color_cap_least_loss)
+        # `cfg.color_cap_fuse_split_tones` (built OFF 2026-11-18): a letter
+        # the palette cut in two tones, both folded onto one spool by the cap,
+        # sews as one shape, and the text taggers below see the whole letter.
+        if cfg.color_cap_fuse_split_tones:
+            from . import cap_fuse
+            cap_fuse.apply(regions)
 
     # `cfg.bevel_ring_fold` (built OFF 2026-11-13, Kent's Golden Tee "too
     # busy"): shading the pro flattens -- a drop shadow on the page, a ramp
@@ -1363,6 +1369,12 @@ def build_generation(
     if cfg.lettering_columns_ink_link and not cfg.lettering_words:
         from .columns import tag_ink_strays
         tag_ink_strays(regions, chart_for(cfg))
+    # A text-cluster member off its cluster's line is not a letter
+    # (`cfg.lettering_columns_off_line_mark`, built OFF 2026-11-18). OFF: never
+    # called, no key written.
+    if cfg.lettering_columns_off_line_mark:
+        from .columns import tag_off_line_marks
+        tag_off_line_marks(regions)
 
     # Regular structure (`cfg.regular_structure`, built OFF 2026-11-13): what
     # the art repeats becomes one shape repeated -- congruent shapes on a
@@ -2227,6 +2239,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
     from .outline_cut import neck_cuts_scope
+    from .wedge_cap import wedge_cap_scope
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2265,6 +2278,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
         _enter(neck_cuts_scope(bool((cfg.extra or {}).get("lettering_columns_neck_cuts"))))
+        # `cfg.extra["lettering_columns_stem_wedge_cap"]` (built OFF 2026-11-18), the same way
+        _enter(wedge_cap_scope(bool((cfg.extra or {}).get("lettering_columns_stem_wedge_cap"))))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))

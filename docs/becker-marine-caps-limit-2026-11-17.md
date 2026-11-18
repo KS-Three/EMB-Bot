@@ -1,5 +1,11 @@
 # Becker MARINE: the cap over each letter is the art, not our fault (2026-11-17)
 
+> **CORRECTED the same day: this verdict did not hold.** The cap was new on
+> main since the apex_pro family flip of 2026-11-15 (#1583), and ours overhangs
+> the A and the R where the professional's stays inside the letter. Kent read
+> it as a regression and reverted the three flags:
+> `docs/apex-family-revert-2026-11-17.md`. What follows is the note as written.
+
 Prime grader pin (`L_becker_hat_large`, 102 x 65 mm hat, scorecard
 `docs/prime-grader/scorecard-2026-11-17.md`): "the top of the M is a separate cap
 of vertical stitches over a horizontally stitched stem with a visible seam;

@@ -1092,6 +1092,14 @@ PRE_FLIP.update(RING_ROOM_2026_11_15_OFF)
 # `counter_fan_satin` (same ruling), a field since: `tests/test_counter_fan.py`.
 COUNTER_FAN_2026_11_15_OFF = {"counter_fan_satin": False}
 PRE_FLIP.update(COUNTER_FAN_2026_11_15_OFF)
+# The apex_pro family below is OFF AGAIN since 2026-11-17 (Kent: "Revert all
+# three", on the whole-word MARINE picture), so these three dicts now equal the
+# default. They stay: a test that spreads one keeps meaning "the cut as it was".
+# A number pinned on main between the flip and the revert (2026-11-15 to 11-17)
+# was read with the three ON: spread APEX_FAMILY_2026_11_15_ON for it.
+APEX_FAMILY_2026_11_15_ON = {"lettering_columns_apex_pro": True,
+                             "lettering_columns_apex_pro_joints": True,
+                             "lettering_columns_corner_fold_cap_flared": True}
 # `lettering_columns_apex_pro` ("Flip all three ON", Kent 2026-11-15, the apex_pro family): `tests/test_column_apex_pro.py`.
 APEX_PRO_2026_11_15_OFF = {"lettering_columns_apex_pro": False}
 PRE_FLIP.update(APEX_PRO_2026_11_15_OFF)
@@ -1143,6 +1151,10 @@ PRE_FLIP.update(RIBBON_HANDBACK_2026_11_16_OFF)
 # `tests/test_border_by_size_corner_loss.py`.
 CORNER_LOSS_2026_11_17_OFF = {"border_by_size_corner_loss": False}
 PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
+# `enclosed_white_keeps_known_colour` (Kent 2026-11-17, LEGO sheet: "Flip ON
+# (Recommended)"): `tests/test_enclosed_white_known_colour.py`.
+ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF = {"enclosed_white_keeps_known_colour": False}
+PRE_FLIP.update(ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF)
 # `color_cap_least_loss` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER for
 # the two designs it moves, Precision Drone and the phone screenshot: "Flip ON
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
@@ -1158,6 +1170,12 @@ PRE_FLIP.update(THIN_ARM_STOP_2026_11_17_OFF)
 # `tests/test_page_line_front.py` names the flag itself.
 PAGE_LINE_OPEN_2026_11_17_OFF = {"page_line_open": False}
 PRE_FLIP.update(PAGE_LINE_OPEN_2026_11_17_OFF)
+# `lettering_columns_off_line_mark` (Kent 2026-11-18, shown the MFab Hat ORIGINAL |
+# BEFORE | AFTER: "Flip ON (Recommended)"): MFab's pointed mark at the M's inner
+# V sews as fill, not crossing lane satin. Only MFab moves (1 of 35 runs).
+# `tests/test_off_line_mark.py`.
+OFF_LINE_MARK_2026_11_18_OFF = {"lettering_columns_off_line_mark": False}
+PRE_FLIP.update(OFF_LINE_MARK_2026_11_18_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
@@ -1179,6 +1197,20 @@ PRE_FLIP.update(ROPE_BAND_2026_11_17_OFF)
 # `tests/test_keyline_fragment.py`.
 KEYLINE_FRAGMENT_2026_11_17_OFF = {"keyline_fragment_drop": False}
 PRE_FLIP.update(KEYLINE_FRAGMENT_2026_11_17_OFF)
+# `round_dot_ring` (Kent 2026-11-18, shown ORIGINAL | BEFORE | AFTER of the Tires
+# dot: "Flip ON (Recommended)"): `tests/test_round_dot_ring.py`.
+ROUND_DOT_RING_2026_11_18_OFF = {"round_dot_ring": False}
+PRE_FLIP.update(ROUND_DOT_RING_2026_11_18_OFF)
+# `text_cluster_mixed_caps` (Kent 2026-11-18, shown the To a T hat overlay of
+# the shapes it tags and the zoom of the A: "Flip ON (Recommended)"):
+# `tests/test_text_cluster_mixed_caps.py`.
+TEXT_CLUSTER_MIXED_CAPS_2026_11_18_OFF = {"text_cluster_mixed_caps": False}
+PRE_FLIP.update(TEXT_CLUSTER_MIXED_CAPS_2026_11_18_OFF)
+# `color_cap_fuse_split_tones` (Kent 2026-11-18, shown ORIGINAL | BEFORE | AFTER
+# for Precision Drone's THERMAL and the Drone render: "Flip ON (Recommended)"):
+# `tests/test_cap_fuse.py`.
+COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF = {"color_cap_fuse_split_tones": False}
+PRE_FLIP.update(COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
