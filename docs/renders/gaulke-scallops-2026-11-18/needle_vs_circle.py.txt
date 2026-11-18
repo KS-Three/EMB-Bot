@@ -1,0 +1,12 @@
+import numpy as np,sys
+sys.path.insert(0,'.')
+from tools.curve_facets import edge_points,curve_read
+D='/tmp/claude-0/-home-user-EMB-Bot/0e404ab2-2f6c-5ffc-8f2b-bcbb6590a3b6/scratchpad/'
+ours=np.load(D+'P2.npy'); pro=np.load(D+'pro.npy')
+pro=np.column_stack([pro[:,0]+57.07, 23.1+pro[:,1]])
+for name,pts in (('ours',ours),('pro',pro)):
+    print(name)
+    for at in ((6.6,36.5),(11.5,31.4),(11.5,41.6),(35.5,38.0),(28.0,31.4),(39.0,40.6),(45.0,40.6)):
+        E=edge_points([((0,0,0),pts)],at,1.5)
+        r=curve_read(E)
+        print(' ',at,{k:round(v,3) if isinstance(v,float) else v for k,v in r.items()})
