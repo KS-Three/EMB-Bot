@@ -551,6 +551,75 @@ def keyline_regions(regions, outline_ids, cfg, ink=None, *, sewn_only: bool = Tr
         if ring_area < machine.OUTLINE_REACH_FRAC * sum(r.polygon.area for r in sewn):
             continue
         out |= taken
+    if (getattr(cfg, "extra", None) or {}).get(BETWEEN_FILLS_KEY):
+        out |= _dividing_lines(regions, out, ring, limit, width)
+    return out
+
+
+# `cfg.extra["keyline_bean_between_fills"]` (built OFF 2026-11-18). The gate
+# above is per THREAD: a thread's rings are a bean only when the thread
+# draws nearly nothing but keyline (To-a-T Machine's black frame, which the
+# pro borders, shares its ink with the lettering). The Air Force seal at 90
+# mm: its outer band is gold between three black rings drawn 0.38-0.50 mm
+# wide, and black also draws the ring text and the eagle, so the gate passes
+# the thread by and each ring sews as a 1.51 mm satin (`OUTLINE_WIDTH_MM`'s
+# floor), sewn after the gold: the gold band all but disappears under black.
+# ON, a hairline ring with a sewn shape of ANOTHER thread along most of BOTH
+# its edges is a dividing line the art drew between two colours, and sews as
+# the keyline bean whatever else its thread draws. A frame with the page on
+# one side (To-a-T's) is not one. `DIVIDING_EDGE_SHARE`: how much of each
+# edge must carry a neighbour; a ratio of the ring's own outline, no fabric
+# number.
+# NOT SOLVED (2026-11-18): the fields beside such a line change shape when it
+# moves to the end of the sew order, and a round field's row angle is a near
+# tie. The Air Force seal's white lettering ring turns its rows 145 -> 55 deg
+# (same thread; the render shades it grey). Three pins were tried and none
+# held it: the angle of the ring's own grown shape (55), of the shape stage 5
+# hands it (10), and of a plan made without the lines (stage 5 believes that
+# ring is satin, and with that lifted still 55). The ring carries
+# `lettering_group`; its angle is probably set there.
+BETWEEN_FILLS_KEY = "keyline_bean_between_fills"
+DIVIDING_EDGE_SHARE = 0.5
+
+
+def _dividing_lines(regions, taken: set[str], ring, limit, width) -> set[str]:
+    """`BETWEEN_FILLS_KEY`: the hairline rings (`ring`, measured at or under
+    the block's hairline width, no blob) not in `taken` that have a sewn
+    shape of another thread along at least `DIVIDING_EDGE_SHARE` of their
+    outer edge AND of their inner edge."""
+    from shapely.geometry import LineString, Polygon
+    from shapely.ops import unary_union
+    from shapely.strtree import STRtree
+
+    from .stage6_hairline import _BLOB_FACTOR
+
+    sewn = [r for r in regions if r.meta.get("stitched", True)
+            and r.polygon is not None and not r.polygon.is_empty]
+    if not sewn:
+        return set()
+    tree = STRtree([r.polygon for r in sewn])
+    out: set[str] = set()
+    for r in regions:
+        if r.shape_id in taken or not ring(r) or not isinstance(r.polygon, Polygon):
+            continue
+        lim = limit(r)
+        m = width(r, lim)
+        if (m is None or m["width_p95_mm"] > _BLOB_FACTOR * lim
+                or keyline_width_mm(r.polygon) > lim):
+            continue
+        near = [sewn[i] for i in tree.query(r.polygon.buffer(0.2))
+                if sewn[i] is not r and sewn[i].thread_index != r.thread_index]
+        if not near:
+            continue
+        beside = unary_union([n.polygon for n in near]).buffer(0.2)
+
+        def carried(edge) -> bool:
+            line = LineString(edge.coords)
+            return line.length > 0 and line.intersection(beside).length >= DIVIDING_EDGE_SHARE * line.length
+
+        inner = max(r.polygon.interiors, key=lambda h: h.length)
+        if carried(r.polygon.exterior) and carried(inner):
+            out.add(r.shape_id)
     return out
 
 

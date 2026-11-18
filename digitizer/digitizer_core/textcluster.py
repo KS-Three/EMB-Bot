@@ -1327,6 +1327,50 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
 # constant. The filter is not this bound but the line: a refused glyph is
 # only ever ADOPTED into a line the door already found.
 CONTRAST_STROKE_CV_MAX = 0.70
+# Two guards, both from the first run over 66 designs (2026-11-18), where the
+# bare rule adopted the FBI seal's ring of stars into a row of stars the door
+# had already tagged (and the lane sewed them worse) and pieces of the
+# Justice seal's rope into its ring text:
+# `CONTRAST_BETWEEN_DEG`: a refused glyph is offered only when it sits
+# between two door candidates (`_between`), their directions from it at
+# least this far apart. `CONTRAST_TWIN_TOL`: a regrown line more than half
+# one shape repeated is ornament, not a word (`_repeats`). Layout ratios.
+CONTRAST_BETWEEN_DEG = 120.0
+CONTRAST_TWIN_TOL = 0.06
+
+
+def _between(c: _Candidate, door: list[_Candidate], chart) -> bool:
+    """Does `c` sit BETWEEN two door candidates it links to: two of them, on
+    all `_linked` terms, whose directions from `c` open at least
+    `CONTRAST_BETWEEN_DEG`? A letter inside a word has a letter on each
+    side; a rope strand or an ornament beside a line has the line on one."""
+    near = [m for m in door if m.region.shape_id != c.region.shape_id
+            and _linked(c, m, LETTER_HEIGHT_RATIO, chart)]
+    cos_max = math.cos(math.radians(CONTRAST_BETWEEN_DEG))
+    for i, a in enumerate(near):
+        ax, ay = a.cx - c.cx, a.cy - c.cy
+        la = math.hypot(ax, ay)
+        for b in near[i + 1:]:
+            bx, by = b.cx - c.cx, b.cy - c.cy
+            lb = math.hypot(bx, by)
+            if la > 0 and lb > 0 and (ax * bx + ay * by) / (la * lb) <= cos_max:
+                return True
+    return False
+
+
+def _repeats(group: list[_Candidate]) -> bool:
+    """Is `group` a row of one shape repeated: does its largest class of
+    look-alikes (area and aspect each within `CONTRAST_TWIN_TOL`) hold more
+    than half of it? A word repeats letters, never mostly one; a ring of
+    stars is one shape all round."""
+    best = 0
+    for a in group:
+        aa, ra = a.region.polygon.area, a.width_mm / a.height_mm
+        n = sum(1 for b in group
+                if abs(b.region.polygon.area - aa) <= CONTRAST_TWIN_TOL * aa
+                and abs(b.width_mm / b.height_mm - ra) <= CONTRAST_TWIN_TOL * ra)
+        best = max(best, n)
+    return 2 * best > len(group)
 
 
 def _adopt_contrast(groups: list[list[_Candidate]], cands: list[_Candidate],
@@ -1337,10 +1381,13 @@ def _adopt_contrast(groups: list[list[_Candidate]], cands: list[_Candidate],
     it. A component that holds NO group is dropped, so contrast glyphs never
     make a line of their own; one that holds two joins them (the refused E
     and F were the gap between "DEPARTMENT OF D" and "NSE"). A regrown
-    component `blobs` calls a row of shapes leaves its groups as they were.
+    component `blobs` calls a row of shapes, or that is one shape repeated
+    (`_repeats`), leaves its groups as they were. Only a refused glyph that
+    sits between two door candidates is offered (`_between`).
     Order-independent: `_cluster` is, and groups are matched by membership."""
     have = {c.region.shape_id for c in cands}
-    extra = [c for c in contrast if c.region.shape_id not in have]
+    extra = [c for c in contrast
+             if c.region.shape_id not in have and _between(c, cands, chart)]
     if not groups or not extra:
         return groups
     regrown = _cluster(cands + extra, LETTER_HEIGHT_RATIO, chart)
@@ -1350,7 +1397,8 @@ def _adopt_contrast(groups: list[list[_Candidate]], cands: list[_Candidate],
     for g in groups:
         homes = {home.get(c.region.shape_id) for c in g}
         i = next(iter(homes)) if len(homes) == 1 else None
-        if i is None or blobs(regrown[i]) or len(regrown[i]) == len(g):
+        if (i is None or blobs(regrown[i]) or len(regrown[i]) == len(g)
+                or _repeats(regrown[i])):
             out.append(g)
             continue
         if i in used:
