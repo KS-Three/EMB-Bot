@@ -78,6 +78,7 @@ the OLDEST lines whole to the archive.
 - [Outline-body guard](outline-body-guard-2026-11-14.md) — group_consistent_outline_body (ON 11-14): width tie-break needs > MARGIN; redraw had tipped MFab 113.5's small line to bodies on 3.4% (riders 12 -> 0); AHORA decided by ink, kept
 - [Outline frame guard](outline-frame-guard-2026-11-14.md) — k_line's red box is a field, not an outline: holder/holes area 1.0x+ keeps it a field; ticked ON 11-15 with a combined-check STOP, pending
 - [Outline inlets kept](outline-inlets-2026-11-14.md) — 'shape detail lost' 18 pins: 9 satin ends (apex/flat-ends lanes), 3 an outline inlet the polygon keeps and thread sews over (gear teeth, beak, notch); `outline_inlets_kept` OFF
+- [Outline loop split shared](outline-loop-split-shared-2026-11-18.md) — Becker B/E stem covered by two face loops; `outline_loop_split_shared` OFF cuts crosses at the shared line; 3 of 35 move, none worse; top V still a fan
 - [Page line](page-line-open-2026-11-17.md) — Kent 11-17: `page_line_open` ON, the art's thin white line stays bare fabric as in the pro's one-thread DST; only Gaulke moves; hairline thinner than pro's (pull comp)
 - [Pen stroke](pen-stroke-2026-11-13.md) — drag draws a Column/Line; Join tick built OFF (Kent 11-13): touching Columns sew as one path, own touch rule not the glyph's; same-colour shapes still stop
 - [Point-touch split](point-touch-split-2026-11-14.md) — NSYNC's star touching the N at one point made one region and a satin fan; split under 0.15 mm into bodies; ticked ON 11-15, pending
@@ -99,8 +100,8 @@ the OLDEST lines whole to the archive.
 - [Small-text hand-over](small-text-handover-2026-11-14.md) — ProSeal's 4.01 mm cap line fell between restore and re-set; retrace 0.9-1.25 caps at true size; Kent 11-15 "Flip both ON", pending
 - [Space fault reader](space-fault-reader-2026-11-12.md) — bays/gaps filled vs 44 letter pins: +0.32 over pick, CI [+0.22,+0.47] = shown, not a hold-out; 1112 replication = no verdict (2 of 9 items pinned)
 - [Speck prune](speck-prune-2026-11-14.md) — missing/invented pins traced: kanji in-fill (29) cured on main; low_poly 7 black dots = stage-3 rescue keeping hairline crossings; `speck_prune` OFF cures 7/7
-- [Stacked PR trap](stacked-pr-auto-merge-trap-2026-11-06.md) — #1259 stacked on #1255's head with auto-merge armed merged INTO that branch after #1255 landed (deleteBranchOnMerge off, no retarget); base follow-ups on main, never arm a stacked PR
 
+- [Stacked PR trap](stacked-pr-auto-merge-trap-2026-11-06.md) — #1259 stacked on #1255's head with auto-merge armed merged INTO that branch after #1255 landed (deleteBranchOnMerge off, no retarget); base follow-ups on main, never arm a stacked PR
 - [Starter pack sourcing](starter-pack-sourcing-2026-11-10.md) — Kent 11-10: 12 designs, strict CC0/PD-mark art digitized by EMB-Bot itself; no open stitch files, commission or CC-BY; no logos; provenance per design
 - [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball flat + monarch borders_last off SHIPPED 11-12; "drift" was a width slip: re-digitize at the original target, not manifest width_mm
 - [Stroke bridge keep](stroke-bridge-keep-2026-11-14.md) — arabic stems = stage-3 absorb of same-ink crumbs; keep a chain bridging two hosts; pin 2 cured, pin 3 not; ticked ON 11-15, pending
@@ -112,4 +113,3 @@ the OLDEST lines whole to the archive.
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha
 - [Under-fill ground guard](underfill-ground-guard-2026-11-16.md) — ON (Kent 11-16): a ring on the ground it would jump reads no ring; NASA orbit + stars back
 - [Z joints, rail-pair bars](z-joints-rail-pair-2026-11-14.md) — and_pizza Z fanned at one joint: its top bar read CURVED (coherence 0.46, spine bent); `rail_pair_bars` (extra, OFF) reads two long parallel rails as a bar; guard still refuses Z tips
-- [Outline loop split shared](outline-loop-split-shared-2026-11-18.md) — Becker B/E stem covered by two face loops; `outline_loop_split_shared` OFF cuts crosses at the shared line; 3 of 35 move, none worse; top V still a fan
