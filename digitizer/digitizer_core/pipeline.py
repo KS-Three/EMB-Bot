@@ -2279,8 +2279,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
         _enter(neck_cuts_scope(bool((cfg.extra or {}).get("lettering_columns_neck_cuts"))))
-        # `cfg.extra["lettering_columns_stem_wedge_cap"]` (built OFF 2026-11-18), the same way
-        _enter(wedge_cap_scope(bool((cfg.extra or {}).get("lettering_columns_stem_wedge_cap"))))
+        # `cfg.lettering_columns_stem_wedge_cap` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key)
+        _enter(wedge_cap_scope(cfg.lettering_columns_stem_wedge_cap))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))

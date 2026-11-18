@@ -1,4 +1,4 @@
-"""`cfg.extra["lettering_columns_stem_wedge_cap"]` (built OFF 2026-11-18).
+"""`cfg.lettering_columns_stem_wedge_cap` (built OFF 2026-11-18, ON since the same day, Kent: "Flip ON (Recommended)").
 
 Toat Machine's "h" (prime grader): the stem is one `curved` column whose cross
 runs 2.3 mm up the stem, 3.2-3.4 mm for ten stations where the c's tail and
@@ -148,3 +148,23 @@ def test_a_sibling_over_the_hairline_share_takes_no_wedge():
     hair = Column(stations=[((-1.4, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
                   piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.2)       # 1.2 / 2.3 = 0.52
     assert W.cap_columns([stem, hair])[0] is not stem
+
+
+def test_the_flag_is_a_field_on_by_default_and_pinned_off_in_the_pre_flip_set():
+    import json
+    from pathlib import Path
+    from digitizer_core import PipelineConfig
+    from tests.conftest import PRE_FLIP, STEM_WEDGE_CAP_2026_11_18_OFF
+    assert PipelineConfig().lettering_columns_stem_wedge_cap is True
+    assert STEM_WEDGE_CAP_2026_11_18_OFF == {"lettering_columns_stem_wedge_cap": False}
+    assert PRE_FLIP["lettering_columns_stem_wedge_cap"] is False
+    engine = json.loads((Path(__file__).parent / "engine_2026_10_27.json").read_text(encoding="utf-8"))
+    assert engine["lettering_columns_stem_wedge_cap"] is False
+
+
+def test_the_plan_scope_reads_the_field():
+    """`plan_stitches` enters `wedge_cap_scope(cfg.lettering_columns_stem_wedge_cap)`."""
+    import inspect
+    from digitizer_core import pipeline
+    src = inspect.getsource(pipeline)
+    assert "wedge_cap_scope(cfg.lettering_columns_stem_wedge_cap)" in src

@@ -1216,6 +1216,12 @@ PRE_FLIP.update(COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF)
 # `tests/test_whole_letter_floor.py`.
 WHOLE_LETTER_FLOOR_2026_11_18_OFF = {"lettering_columns_whole_letter_floor": False}
 PRE_FLIP.update(WHOLE_LETTER_FLOOR_2026_11_18_OFF)
+# `lettering_columns_stem_wedge_cap` (Kent 2026-11-18, shown ORIGINAL | BEFORE |
+# AFTER of Toat Machine's h, close-up and word, and told the rule is bounded
+# to a hairline join so only the hat moves of 44 runs: "Flip ON (Recommended)"):
+# `tests/test_wedge_cap.py`.
+STEM_WEDGE_CAP_2026_11_18_OFF = {"lettering_columns_stem_wedge_cap": False}
+PRE_FLIP.update(STEM_WEDGE_CAP_2026_11_18_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

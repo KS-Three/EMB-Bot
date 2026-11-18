@@ -397,5 +397,6 @@
  "lettering_columns_whole_letter_floor": false,
  "page_line_front": false,
  "page_line_open": false,
- "enclosed_white_keeps_known_colour": false
+ "enclosed_white_keeps_known_colour": false,
+ "lettering_columns_stem_wedge_cap": false
 }
