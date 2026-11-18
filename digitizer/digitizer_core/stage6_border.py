@@ -661,11 +661,50 @@ def _pivot_ring(ring_pts: list[tuple[float, float]],
     return (out_p, out_n) if added else None
 
 
+# `outline_loop_split_shared` (`cfg.outline_loop_split_shared`, 2026-11-18, built
+# OFF): where two holes of one outline stand less than two loop widths apart
+# (BECKER's black stem between the B and the E, the join between every pair of
+# letters), each hole's loop took the whole stem, so the two columns ran side by
+# side over it and met in a knot at the dip (prime grader, Becker large, pin
+# x 21 y 8.5). The professional's file sews the stem once. With the flag each
+# loop's crosses stop at the line the two holes share (the point as near the
+# other hole as its own, `SPLIT_LAP_MM` past it so no bare thread shows): the
+# columns butt, the stem is covered once, and the join is a seam instead of a
+# pile. A cross the split would shorten below the satin floor keeps its whole
+# length (a stem under two floors wide is covered by both loops as before).
+SPLIT_LAP_MM = 0.2
+
+
+def _split_cross(px: float, py: float, nx: float, ny: float, w: float, shared) -> float:
+    """`w` cut where the cross passes the line its hole shares with another
+    (`SPLIT_LAP_MM` past it). `shared` is (own ring, other rings, zone): the
+    zone is the other rings grown by more than any cross reaches, so a cross
+    outside it is never cut. A cut under `SATIN_MIN_CROSS_MM` is not made."""
+    own, others, zone = shared
+
+    def past(t: float) -> bool:
+        pt = Point(px + nx * t, py + ny * t)
+        return others.distance(pt) - own.distance(pt) < -SPLIT_LAP_MM
+
+    if w <= 0.0 or not zone.intersects(Point(px + nx * w, py + ny * w)):
+        return w
+    if not past(w):
+        return w
+    lo, hi = 0.0, w
+    for _ in range(9):
+        mid = 0.5 * (lo + hi)
+        if past(mid):
+            hi = mid
+        else:
+            lo = mid
+    return lo if lo >= machine.SATIN_MIN_CROSS_MM else w
+
+
 def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
                 width: float, inside, entry: tuple[float, float] | None,
                 k_tan: int, overlap_stitches: int | None = None,
-                clamp=None, exact: bool = False, mitre: bool = False
-                ) -> tuple[list[tuple[float, float]], int, int]:
+                clamp=None, exact: bool = False, mitre: bool = False,
+                shared=None) -> tuple[list[tuple[float, float]], int, int]:
     """One closed circuit as a satin column. -> (points, crosses, clamped).
 
     Closure overlap is `machine.BORDER_CLOSURE_OVERLAP_MM` (a distance) unless
@@ -681,6 +720,9 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
     `cfg.border_from_outline`'s loop on a keyline thinner than the pro's
     width keeps the keyline's full width, where the steps cost up to 15%.
     False is every other caller, unchanged.
+
+    `shared` (`cfg.outline_loop_split_shared`): see `_split_cross`. None is
+    every loop as it was.
 
     `mitre` (`cfg.outline_loop_mitre`, `keyline_runs`' loops): the far rail
     kept at the satin pitch through convex turns (`_pivot_ring`), the near
@@ -717,6 +759,8 @@ def _satin_loop(ring_pts: list[tuple[float, float]], total: float, step: float,
             nx, ny = normals[i]
         if exact:
             w = _exact_cross(px, py, nx, ny, width, clamp)
+            if shared is not None:
+                w = _split_cross(px, py, nx, ny, w, shared)
             q = (px + nx * w, py + ny * w)
         else:
             q, w = _clamped_cross(px, py, nx, ny, width, clamp)
@@ -1225,7 +1269,8 @@ def _looped_holes(band) -> list[Polygon]:
 def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | None,
                  trim_at_mm: float, width_mm: float | None = None,
                  density_mm: float | None = None,
-                 underlay: bool = False, holes=None) -> tuple[list[StitchRun], dict]:
+                 underlay: bool = False, holes=None,
+                 split_shared: bool = False, bridge_guides=None) -> tuple[list[StitchRun], dict]:
     """A keyline band as one satin loop round each of its holes. -> (runs,
     report).
 
@@ -1271,6 +1316,9 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
     runs: list[StitchRun] = []
     cursor = entry
     chain = _LOOP_CHAIN.get()
+    # `split_shared` (`cfg.outline_loop_split_shared`): each ring's neighbours
+    ring_lines = ({id(r[0]): LineString(r[0]) for r in rings}
+                  if split_shared and exact and len(rings) > 1 else None)
     while rings:
         deadline.check("keyline")
         if cursor is None:
@@ -1280,6 +1328,11 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
                 round(LineString(rings[j][0]).distance(Point(cursor)), 6), j))
         coords, width, own_pts = rings.pop(i)
         half = width / 2.0
+        shared = None
+        if ring_lines is not None:
+            others = unary_union([ln for k, ln in ring_lines.items() if k != id(coords)])
+            shared = (ring_lines[id(coords)], others,
+                      others.buffer(width + SPLIT_LAP_MM + 0.1))
         if own_pts:
             ring_pts, total, n = own_pts, LineString(coords).length, len(own_pts)
         else:
@@ -1299,14 +1352,15 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         # `cfg.outline_loop_mitre` (built OFF): the letter's convex corners mitred
         pts, crosses, clamped = _satin_loop(ring_pts, total, total / n, width, side,
                                             start_at, k_tan, clamp=clamp, exact=exact,
-                                            mitre=_LOOP_MITRE.get())
+                                            mitre=_LOOP_MITRE.get(), shared=shared)
         walk = None
         if chain and not runs and cursor is not None and len(pts) >= 2:
             # the band's first loop is entered where it was, then walked
             # round under its own satin to the chained start; with no such
             # walk it is the loop as it was
             was = _satin_loop(ring_pts, total, total / n, width, side, cursor, k_tan,
-                              clamp=clamp, exact=exact, mitre=_LOOP_MITRE.get())
+                              clamp=clamp, exact=exact, mitre=_LOOP_MITRE.get(),
+                              shared=shared)
             walk = _walk_into(was[0][0], pts, shape_id) if len(was[0]) >= 2 else None
             if walk is None:
                 pts, crosses, clamped = was
@@ -1324,7 +1378,7 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
                 report["jumps"] += 1
         elif cursor is not None:
             to = walk[0] if walk else pts[0]
-            bridge = travel_path(band, None, cursor, to)
+            bridge = travel_path(band, bridge_guides, cursor, to)
             if bridge is None:
                 d = math.dist(cursor, to)
                 if d >= machine.TINY_STITCH_MM:

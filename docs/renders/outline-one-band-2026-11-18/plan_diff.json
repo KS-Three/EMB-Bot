@@ -1,0 +1,66 @@
+{
+ "becker_hat_large": {
+  "stitches": [
+   16265,
+   16195
+  ],
+  "shapes_same": true,
+  "runs_total": [
+   182,
+   268
+  ],
+  "trims": [
+   19,
+   20
+  ],
+  "jumps": [
+   20,
+   20
+  ],
+  "outline_runs_by_kind_off": {
+   "underlay": 7,
+   "travel": 8,
+   "fill": 4,
+   "satin": 5
+  },
+  "outline_runs_by_kind_on": {
+   "underlay": 7,
+   "travel": 37,
+   "fill": 4,
+   "satin": 56,
+   "run": 1
+  }
+ },
+ "fx_becker_marine_logo": {
+  "stitches": [
+   10672,
+   10403
+  ],
+  "shapes_same": true,
+  "runs_total": [
+   156,
+   195
+  ],
+  "trims": [
+   15,
+   19
+  ],
+  "jumps": [
+   16,
+   22
+  ],
+  "outline_runs_by_kind_off": {
+   "underlay": 6,
+   "travel": 7,
+   "fill": 2,
+   "satin": 5
+  },
+  "outline_runs_by_kind_on": {
+   "underlay": 6,
+   "travel": 16,
+   "fill": 2,
+   "satin": 37,
+   "run": 1
+  }
+ }
+}

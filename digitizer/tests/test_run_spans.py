@@ -232,7 +232,15 @@ def test_the_design_cap_keeps_its_own_role_through_the_border_emitter(becker):
     assert cap, "this fixture is supposed to sew a cap"
     assert {s["role"] for s in cap} == {st.ROLE_EDGE_CAP}
     # It really did come through the satin emitter, so the collision was live.
-    assert any(s["kind"] == st.BORDER for s in cap)
+    # With `outline_one_band` ON the outline's own outer-ring loop sews the edge
+    # the cap's satin arcs would have covered, so the cap yields there and keeps
+    # only its bean: the arc gate sees the edge already sewn (Becker at 80 mm:
+    # uncovered area 10.5 -> 3.1 mm2, worst patch 3.3 -> 1.8, so nothing is
+    # bare; `docs/renders/outline-one-band-2026-11-18/design_cap_edge_OFF_ON.png`).
+    # The role assertion above is the contract and holds either way; the
+    # emitter assertion needs a satin arc to exist.
+    if not PipelineConfig().outline_one_band:
+        assert any(s["kind"] == st.BORDER for s in cap)
 
 
 def test_stock_config_marks_no_border_at_all(enthusiast):

@@ -3609,6 +3609,31 @@ class PipelineConfig:
     # both ways. False is the engine as it was; PRE_FLIP
     # (THIN_ARM_STOP_2026_11_17_OFF) pins it False.
     satin_thin_arm_stop: bool = True
+    # `outline_loop_split_shared` (2026-11-18, prime grader: Becker large's
+    # outline between the B and the E, pin x 21 y 8.5 -- "the satin columns
+    # overlap in a thick knot"; Kent pinned the border 11-10, "the stitches
+    # don't flow together"). `border_from_outline` sews one satin loop round
+    # each hole of the outline, every cross cut at the loop's width; where two
+    # holes stand under two widths apart the stem between them is covered by
+    # BOTH loops, side by side, and the two columns pile into a knot at the
+    # dip. The professional's file sews the stem once and butts it to the
+    # border. With this on each loop's crosses stop at the line the two holes
+    # share (`stage6_border._split_cross`), so the columns butt. A cross the
+    # cut would leave under the satin floor keeps its length. Built OFF: the
+    # flip is Kent's, judged on the before / after pictures
+    # (`docs/renders/outline-loop-split-shared-2026-11-18/`). Off,
+    # byte-identical. Tests: `tests/test_outline_loop_split_shared.py`.
+    outline_loop_split_shared: bool = False
+    # `outline_one_band` (2026-11-18, prime grader / Kent 11-10 "the border
+    # around this logo should be smooth"): an outline whose band is shared by
+    # two or more bodies and has stems between them (BECKER) is sewn the way
+    # the professional's Becker file is -- each stem a satin column of its own
+    # first, then ONE loop on the band's outer ring last, so the border passes
+    # the dip between two letters as one band (`outline_band`). Single-body
+    # bands and bands without a stem are untouched. Built OFF: the flip is
+    # Kent's, judged on the before / after pictures
+    # (`docs/renders/outline-one-band-2026-11-18/`). Off, byte-identical.
+    outline_one_band: bool = False
     # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
     # the 2026-09-03 mechanism left open). A stroke that loses crosses to
     # `SATIN_MIN_CROSS_MM` and whose MEDIAN cross is under the hairline line

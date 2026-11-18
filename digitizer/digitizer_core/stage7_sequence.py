@@ -98,6 +98,7 @@ from .stage6_hairline import hairline_runs as hairline_tier_runs
 from .stage6_hairline import HairlineSet
 from .art_outline import shaped_stations, shaped_width_mm
 from .shaped_band import shaped_band_runs
+from .outline_band import one_band_runs
 from .keyline_bean import body_limits as keyline_body_limits
 from .keyline_bean import held as keyline_held
 from .keyline_bean import keyline_bean_runs, keyline_regions
@@ -4222,11 +4223,24 @@ def sequence(
                     # a shaped band's needle is locked to its teeth
                     loop_holes =([(h, w, shaped_stations(art, h, machine.BORDER_DENSITY_MM))
                                    for h, w in rings] if shaped_band else rings)
+                    if cfg.outline_one_band and not shaped_band:
+                        b_runs, b_report = one_band_runs(
+                            art, rings, p.shape_id,
+                            entry=o_runs[-1].points[-1] if o_runs else entry,
+                            trim_at_mm=trim_at, underlay=satin_underlay != "none",
+                            satin_kw={"underlay_style": satin_underlay, "trim_at_mm": trim_at,
+                                      "spacing_mm": satin_spacing_for(p)})
+                        if not b_report["empty"]:
+                            return (o_runs + b_runs,
+                                    {"jumps": o_jumps + b_report["jumps"], "empty": False,
+                                     "outline_loops": b_report["outline_loops"],
+                                     "outline_stems": b_report["stems"]}, False)
                     l_runs, l_report = keyline_runs(
                         art, p.shape_id, reach=o_reach,
                         entry=o_runs[-1].points[-1] if o_runs else entry,
                         trim_at_mm=trim_at, underlay=satin_underlay != "none",
-                        holes=loop_holes)
+                        holes=loop_holes,
+                        split_shared=cfg.outline_loop_split_shared)
                     if not l_report["empty"]:
                         if shaped_band:
                             # ... and the shaped edge itself is drawn: one
