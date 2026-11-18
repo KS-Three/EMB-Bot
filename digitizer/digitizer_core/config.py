@@ -1542,6 +1542,17 @@ class PipelineConfig:
     # (`docs/renders/prime-fixes-2026-11-17/`). False is the engine as it
     # was; PRE_FLIP (COLOR_CAP_LEAST_LOSS_2026_11_17_OFF) pins it False.
     color_cap_least_loss: bool = True
+    # `color_cap_fuse_split_tones` (built OFF 2026-11-18, the prime grader's
+    # Precision Drone: "THERMAL is mushed in the middle, the E-R pair piles
+    # up"). The orange gradient word was cut across the middle into a light and
+    # a deep band (threads 0700 / 0824); the cap folded both onto spool 1305
+    # and left two overlapping shapes per letter (E, R, M, A, L), each with its
+    # own angle and none tagged as lettering. ON, two regions the cap
+    # re-threaded from DIFFERENT threads onto ONE, sharing >= 1 mm of outline,
+    # become one shape right after the cap (`cap_fuse.py`). A DESIGN CHANGE:
+    # the default is Kent's. No fabric constant: gate 1 does not apply. False
+    # is the engine byte for byte. Tests: `tests/test_cap_fuse.py`.
+    color_cap_fuse_split_tones: bool = False
     # `merge_chroma_guard` (built OFF 2026-11-17, the prime grader's Precision
     # Drone: "the blue sky ... is sewn solid black"). The photo/gradient
     # lane's region merge weighs edges in CIEDE2000, which calls a vivid dark

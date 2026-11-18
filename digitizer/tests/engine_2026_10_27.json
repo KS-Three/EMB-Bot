@@ -381,6 +381,7 @@
  "regular_structure": false,
  "bevel_ring_fold": false,
  "color_cap_least_loss": false,
+ "color_cap_fuse_split_tones": false,
  "merge_chroma_guard": false,
  "keyline_fragment_drop": false,
  "lettering_columns_apex_pro": false,
