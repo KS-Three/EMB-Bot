@@ -1101,6 +1101,10 @@ def _boundary_contrast_initial_adjust(rag) -> None:
 # was, bit for bit.
 NEUTRAL_CHROMA = 12.0
 COLOUR_CHROMA = 30.0
+# The guard acts only when BOTH sides are at least this many foreground
+# pixels (the same absolute-pixel style as `AREA_RATIO_MIN_SMALL_PX`). 0 is
+# the unbounded guard of 2026-11-17.
+CHROMA_GUARD_MIN_PX = 1000
 
 
 def _chroma_gap(da, na) -> bool:
@@ -1120,7 +1124,9 @@ def _weight_mean_color(g, src: int, dst: int, n: int) -> dict:
         w = deltaE_ciede2000_1(da, na)
     else:
         w = float(deltaE_ciede2000(da.reshape(1, 3), na.reshape(1, 3))[0])
-    if g.graph.get("chroma_guard") and _chroma_gap(da, na):
+    if (g.graph.get("chroma_guard") and _chroma_gap(da, na)
+            and min(g.nodes[dst].get("fg pixel count", 0),
+                    g.nodes[n].get("fg pixel count", 0)) >= CHROMA_GUARD_MIN_PX):
         w = max(w, MERGE_DELTAE00_THRESH + 1.0)
     # The face-local threshold drop's recompute half — see
     # `_face_local_threshold`. No-face runs never set the attribute, so `w`
