@@ -85,3 +85,15 @@ def test_is_lettering_reads_the_flag_only_when_on():
     assert is_lettering(r, PipelineConfig(lettering_columns_off_line_mark=True, **base)) is False
     plain = _r("N", box(40, 25.5, 45, 32))
     assert is_lettering(plain, PipelineConfig(lettering_columns_off_line_mark=True, **base)) is True
+
+
+def test_far_dot_like_mark_is_not_flagged():
+    # stacked over a mate by x, but 12 mm above it: a tittle whose stem is not in the cluster
+    regs = _line() + [_r("tittle", box(9, 6, 12, 11.5))]
+    assert off_line_marks(regs) == []
+
+
+def test_dot_centred_over_a_narrow_stem_is_not_flagged():
+    stem = _r("stem", box(40, 27, 42, 32))
+    dot = _r("dot", box(40, 20.5, 42, 25.5))              # stem's width, centred, 1.5 mm gap
+    assert off_line_marks(_line() + [stem, dot]) == []

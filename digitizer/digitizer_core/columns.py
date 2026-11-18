@@ -434,6 +434,18 @@ OFF_LINE_MIN_MATES = 3
 OFF_LINE_MIN_HEIGHT_FRAC = 0.5
 OFF_LINE_MIN_OVERLAP = 0.5
 OFF_LINE_MIN_STACK = 0.5
+# Gap to the mate it is stacked on, as a fraction of the mates' median height.
+# MFab's mark is 0.99 mm from the N (0.12 of 8.1); Toat Machine's mark is the
+# tittle of the i in "Machine", 13.6 mm from the nearest member of its cluster
+# (the stem is not one), 2.0 of its mates' height. Two measurements, so a
+# CANDIDATE, not a constant.
+OFF_LINE_MAX_GAP_FRAC = 0.25
+# The classic dot over a stem: about the stem's width, centred over it. Neither
+# measured on a real instance (no design has a tagged stem under a tagged dot);
+# it keeps an i-dot out whenever the stem IS in the cluster. MFab's mark reads
+# 0.73 of the N's width, 0.24 of it off centre, so it is not a dot by this.
+OFF_LINE_DOT_WIDTH = (0.6, 1.5)
+OFF_LINE_DOT_CENTRE = 0.15
 
 
 def off_line_marks(regions) -> list[str]:
@@ -468,8 +480,21 @@ def off_line_marks(regions) -> list[str]:
 
             if any(v_overlap(t) >= OFF_LINE_MIN_OVERLAP for t in mates):
                 continue
-            if any(x_overlap(t) >= OFF_LINE_MIN_STACK for t in mates):
+            # piled on a mate: stacked over it AND close to it (a dot-sized gap
+            # from a letter of the row), and not the classic dot of an i
+            # (about the stem's width, centred over it)
+            for t in mates:
+                if x_overlap(t) < OFF_LINE_MIN_STACK:
+                    continue
+                if r.polygon.distance(t.polygon) > OFF_LINE_MAX_GAP_FRAC * h_med:
+                    continue
+                tb = t.polygon.bounds
+                tw = tb[2] - tb[0]
+                if tw > 0 and OFF_LINE_DOT_WIDTH[0] <= w / tw <= OFF_LINE_DOT_WIDTH[1] \
+                        and abs((bb[0] + bb[2]) / 2 - (tb[0] + tb[2]) / 2) <= OFF_LINE_DOT_CENTRE * tw:
+                    continue
                 out.append(r.shape_id)
+                break
     return out
 
 
