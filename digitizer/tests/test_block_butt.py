@@ -1,4 +1,4 @@
-"""`cfg.extra["lettering_columns_block_butt"]` (2026-11-18, built OFF):
+"""`cfg.lettering_columns_block_butt` (built OFF 2026-11-18 as a `cfg.extra` key, ON since Kent's flip):
 a block letter's strokes sew as straight columns butted at the joins, not
 fanned from a point (`outline_cut._BLOCK_BUTT`).
 
@@ -55,11 +55,11 @@ def test_the_scope_is_off_by_default_and_puts_itself_back():
     assert oc._BLOCK_BUTT.get() is False
 
 
-def test_plan_stitches_sets_it_from_the_extra_key_for_its_own_plan_only(monkeypatch):
+def test_plan_stitches_sets_it_from_the_field_for_its_own_plan_only(monkeypatch):
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: oc._BLOCK_BUTT.get())
-    on = replace(PipelineConfig(), extra={"lettering_columns_block_butt": True})
+    on = PipelineConfig()
     assert pipeline.plan_stitches(None, on) is True
-    assert pipeline.plan_stitches(None, PipelineConfig()) is False
+    assert pipeline.plan_stitches(None, replace(PipelineConfig(), lettering_columns_block_butt=False)) is False
     assert oc._BLOCK_BUTT.get() is False
 
 
