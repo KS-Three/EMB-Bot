@@ -184,10 +184,33 @@ def test_golke_roof_sews_white_with_the_flag_on():
     from tools.eye_pairs.features import base_cfg, digitize_once
     from tools.stroke_colour_probe import _blocks
 
+    # `page_line_open` (ON by default since Kent 2026-11-17) leaves this channel
+    # bare fabric; this test guards keep_lines' white path, still reachable OFF.
     *_, design = digitize_once(TESTDATA / "art/logo_golke_roofing.png",
-                               base_cfg(80.0, "left_chest", two_tone_snap=True))
+                               base_cfg(80.0, "left_chest", two_tone_snap=True,
+                                        page_line_open=False))
     white = sum(n for c, n in _blocks(design) if c.lower() == "#ffffff")
     assert white > 400
+
+
+def test_golke_roof_channel_is_bare_fabric_at_the_default():
+    """The live default (`page_line_open` ON, Kent 2026-11-17: "Flip ON
+    (Recommended)"): the roof's thin white line reaches the plan as NO thread,
+    as in the pro's one-thread Gaulke file, and the black either side still sews."""
+    from tools.eye_pairs.features import base_cfg, digitize_once
+    from tools.stroke_colour_probe import _blocks
+
+    _g, result, _p, design = digitize_once(TESTDATA / "art/logo_golke_roofing.png",
+                                           base_cfg(80.0, "left_chest", two_tone_snap=True))
+    channel = [r for r in result.regions if r.meta.get("page_line_open")]
+    assert channel, "the roof's white line should be read as a page line"
+    assert not any(r.meta.get("stitched") for r in channel)
+    threads = {r.thread_index for r in channel}
+    black = sum(r.area_mm2 for r in result.regions
+                if r.meta.get("stitched") and r.thread_index not in threads)
+    assert black > 20.0
+    white = sum(n for c, n in _blocks(design) if c.lower() == "#ffffff")
+    assert white < 400
 
 
 # --- preflight's thread grader reads the raster the pipeline sewed ----------
