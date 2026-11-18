@@ -18,7 +18,10 @@ letters: the word sewed as one white blob.
 an area whose colour is known (not `enclosed_colour_unknown`) and farther than the
 existing `enclosed_by_garment_de00` (10, CIEDE2000) from the chosen thread keeps its
 own `thread_index`. No new constant. It still SEWS (`sew_enclosed_white` mark, its
-own front layer), the same path as `sew_enclosed_rgb=null`. White page, near-white
+own front layer), the same path as `sew_enclosed_rgb=null`. Only when the chosen
+thread is near white (within 10 dE00 of white; the Studio default): an explicit
+non-white pick recolours known areas as before (narrowed 11-17 after
+`test_sew_enclosed_white` showed red picks losing). White page, near-white
 page and alpha art behave as before.
 
 **What moves.** Census over the 22 corpus jobs and 30 trial logos

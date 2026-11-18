@@ -41,7 +41,8 @@ def _reg(sid, ring, holes=(), *, thread, layer=0, **meta) -> Region:
 
 
 def _cfg(**kw) -> PipelineConfig:
-    return PipelineConfig(sew_enclosed_white=True, sew_enclosed_rgb=(255, 255, 255), **kw)
+    return PipelineConfig(sew_enclosed_white=True,
+                          **{"sew_enclosed_rgb": (255, 255, 255), **kw})
 
 
 def _scene(hole_thread, **hole_meta):
@@ -136,3 +137,24 @@ def test_no_chosen_thread_is_unchanged():
             PipelineConfig(sew_enclosed_white=True, enclosed_white_keeps_known_colour=on), CHART)
         pair.append((out, n, regs[1].thread_index))
     assert pair[0] == pair[1] and pair[1][2] == BLACK_T
+
+
+def test_chosen_white_and_a_dark_known_page_keeps_the_dark_thread():
+    # the LEGO case, under the Studio's own pick
+    regs = _scene(BLACK_T)
+    apply_enclosed_white(regs, [RED_T, BLACK_T], _cfg(sew_enclosed_rgb=(255, 255, 255)), CHART)
+    assert regs[1].thread_index == BLACK_T
+
+
+def test_a_chosen_red_recolours_a_dark_known_page_as_before():
+    # an explicit non-white pick still wins everywhere
+    regs = _scene(BLACK_T)
+    pick = _nearest((200, 20, 20))
+    apply_enclosed_white(regs, [RED_T, BLACK_T], _cfg(sew_enclosed_rgb=(200, 20, 20)), CHART)
+    assert regs[1].thread_index == pick
+
+
+def test_a_chosen_off_white_within_the_band_behaves_as_white():
+    regs = _scene(BLACK_T)
+    apply_enclosed_white(regs, [RED_T, BLACK_T], _cfg(sew_enclosed_rgb=(245, 242, 232)), CHART)
+    assert regs[1].thread_index == BLACK_T
