@@ -4213,7 +4213,8 @@ def sequence(
                         art, p.shape_id, reach=o_reach,
                         entry=o_runs[-1].points[-1] if o_runs else entry,
                         trim_at_mm=trim_at, underlay=satin_underlay != "none",
-                        holes=loop_holes)
+                        holes=loop_holes,
+                        split_shared=cfg.outline_loop_split_shared)
                     if not l_report["empty"]:
                         if shaped_band:
                             # ... and the shaped edge itself is drawn: one
