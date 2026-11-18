@@ -2654,7 +2654,7 @@ def _resample_by_pitch(pts: list[tuple[float, float]], leans: list[float],
 SATIN_HOUSE_MIN_SPAN_DEG = 60.0
 
 
-def _clamp_to_span(house: float, tangent: float) -> float:
+def _clamp_to_span(house: float, tangent: float, min_span_deg: float | None = None) -> float:
     """The cross angle for a stroke running at `tangent` under `house`: the
     house where the stroke can span it within the lean cap, a fading lean
     toward the house past it, its own perpendicular where the house runs
@@ -2668,7 +2668,9 @@ def _clamp_to_span(house: float, tangent: float) -> float:
     """
     ideal = tangent + math.pi / 2.0
     diff = (house - ideal + math.pi / 2.0) % math.pi - math.pi / 2.0
-    limit = math.radians(90.0 - SATIN_HOUSE_MIN_SPAN_DEG)
+    # `min_span_deg` (`column_lean`'s `block_lean`, built OFF): this call's span floor, in place of
+    # `SATIN_HOUSE_MIN_SPAN_DEG`; None is the constant
+    limit = math.radians(90.0 - (SATIN_HOUSE_MIN_SPAN_DEG if min_span_deg is None else min_span_deg))
     if abs(diff) <= limit:
         return house
     lean = limit * (math.pi / 2.0 - abs(diff)) / (math.pi / 2.0 - limit)
