@@ -87,7 +87,8 @@ from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_la
                               depth_sort_layers, sequence, cut_every_jump_step_mm,
                               stamp_ribbon_outliers, tag_border_by_size_groups)
 from .stitches import StitchPlan
-from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean
+from .thin_ink import (bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean,
+                       thin_letters_after_ground)
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     COLOR_CAP_APPLIED,
@@ -2239,6 +2240,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
     from .outline_cut import neck_cuts_scope
+    from .wedge_cap import wedge_cap_scope
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2277,6 +2279,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
         _enter(neck_cuts_scope(bool((cfg.extra or {}).get("lettering_columns_neck_cuts"))))
+        # `cfg.extra["lettering_columns_stem_wedge_cap"]` (built OFF 2026-11-18), the same way
+        _enter(wedge_cap_scope(bool((cfg.extra or {}).get("lettering_columns_stem_wedge_cap"))))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))
@@ -2475,6 +2479,11 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     if cfg.dark_ink_bean:
         stitched_regions = ink_after_ground(
             stitched_regions, innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
+    # `cfg.extra["thin_letters_after_ground"]` (built OFF 2026-11-18): a thin
+    # letter sewn before its ground loses most of its stroke to the ground's
+    # pull allowance; it sews after the ground instead.
+    if (cfg.extra or {}).get("thin_letters_after_ground"):
+        stitched_regions = thin_letters_after_ground(stitched_regions)
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in

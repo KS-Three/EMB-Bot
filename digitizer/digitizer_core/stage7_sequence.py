@@ -516,6 +516,15 @@ def tag_border_by_size_groups(regions, cfg: PipelineConfig) -> int:
     return moved
 
 
+def _is_round_solid(poly) -> bool:
+    """`cfg.round_dot_ring`: a plain polygon with no hole whose circularity
+    (4 pi A / P^2) is at or over `machine.ROUND_DOT_MIN_CIRCULARITY`."""
+    if poly is None or poly.is_empty or poly.geom_type != "Polygon" or poly.interiors:
+        return False
+    perim = float(poly.length)
+    return perim > 0 and 4.0 * math.pi * float(poly.area) / (perim * perim) >= machine.ROUND_DOT_MIN_CIRCULARITY
+
+
 def _border_by_size_width(region, cfg: PipelineConfig, untagged: bool = False) -> float | None:
     """`cfg.border_by_size` (2026-10-23): the pro's border width for this
     shape, or None when the rule does not read it. -> width in mm.
@@ -549,7 +558,11 @@ def _border_by_size_width(region, cfg: PipelineConfig, untagged: bool = False) -
     min_dim = _min_dim_mm(poly)
     if grouped is True:
         min_dim = max(min_dim, machine.BORDER_BY_SIZE_MIN_DIM_MM)
-    if min_dim < machine.BORDER_BY_SIZE_MIN_DIM_MM:
+    floor = machine.BORDER_BY_SIZE_MIN_DIM_MM
+    if (min_dim < floor and getattr(cfg, "round_dot_ring", False)
+            and _is_round_solid(poly)):
+        floor = machine.ROUND_DOT_MIN_DIM_MM      # `cfg.round_dot_ring`
+    if min_dim < floor:
         return None
     width = machine.border_by_size_width_mm(min_dim)
     grow = width + machine.BORDER_HOST_MARGIN_MM
@@ -4363,6 +4376,16 @@ def sequence(
                     # the small-bold pull cap never starves a stroke under one cross
                     **({"small_bold_pull_floor": True}
                        if (cfg.extra or {}).get("small_bold_pull_reaches_floor") else {}),
+                    # `cfg.extra["stroke_floor_keeps_lost_strokes"]` (built OFF
+                    # 2026-11-18): a floored hairline stroke is kept when the
+                    # letter is not whole without it
+                    **({"stroke_floor_lost_stroke": True}
+                       if (cfg.extra or {}).get("stroke_floor_keeps_lost_strokes") else {}),
+                    # `cfg.extra["lettering_columns_whole_letter_floor"]` (built OFF
+                    # 2026-11-18): a small letter the ladder leaves not whole
+                    # sews the plain cut with every thin cross at the floor
+                    **({"whole_letter_floor": True}
+                       if (cfg.extra or {}).get("lettering_columns_whole_letter_floor") else {}),
                     # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
                     **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),

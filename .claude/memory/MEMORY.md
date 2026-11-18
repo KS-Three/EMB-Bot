@@ -16,12 +16,10 @@ the OLDEST lines whole to the archive.
 
 - [Memory archive: through 10-26](MEMORY-archive.md) — NOT auto-loaded: history through 10-15 + standing rulings (fill rows 0.15, DST axis fixed, Ink/Stitch clean-room, Ember teardowns)
 - [Opus team architecture](../../docs/superpowers/plans/2026-10-23-opus-team-architecture.md) — the plan a fresh director runs from: method, state, ranked queue L1-L10 / I1-I6, Kent's open decisions, brief template, traps
-- [No Fable agents](agents-cheap-models-2026-11-02.md) — Kent 11-02 "don't release fable agents, we should be saving on usage": every start_session / Agent passes model (Sonnet default, Haiku read-only); a Fable director dispatches, never spawns Fable
 - [Apex-cut guard](apex-guard-2026-11-14.md) — `apex_guard` OFF: losing tips = hairline or a cut slid to >= 0.9 of the limit; Kent 11-14 withdrew the flip: "I want it exactly like the pros", apex_cut + guard stay OFF
 - [Apex like the pro](apex-pro-2026-11-14.md) — apex_pro family ON 11-15, REVERTED OFF 11-17 (Kent: MARINE's slab caps a regression); pro's cap is narrow, inside the letter; show WHOLE WORDS before a lettering flip
 - [Arc re-set, not shipped](arc-reset-2026-11-14.md) — the pro's x1.2 on Bridge came from redrawing the band and anchor, not from raising arc text (ours 3.875 mm vs cap 4.0); grunge ring 4.84 mm, lineart 8.4 mm; respine read worse; report shipped OFF
 - [Bevel and ring fold](bevel-ring-fold-2026-11-13.md) — `bevel_ring_fold` OFF: Golden Tee GOLF one gold (shadow -> page, ramp -> one thread, <= 0.8 mm bands -> body), Drone ring arcs -> black; keylines kept; design change, Kent picks the default
-- [Big-size speed](big-size-speed-2026-11-11.md) — 300 mm: hoist 320 -> 26 s (STRtree over parts), build fns 241 -> 51 s; 198 mm plan 539 -> 431 s (angle scan in numpy, bridge memo); md5 same; no exact cut over 25 s left
 - [Blend band thread](blend-band-2026-11-14.md) — flat_blend_band_any_scale ON (Kent 11-14 "Flip ON"): JPEG blend rim sewed as a thread on rasters not enlarged; 2 px band, Lab or RGB chord, band pixels to nearest non-band pixel
 - [Size-ring corner loss](border-by-size-corner-loss-2026-11-17.md) — Intel's 7 mm square = cushion under the 2.1 mm ring; `border_by_size_corner_loss` ON 11-17 (Kent "Flip ON") refuses rounding loss > 0.083 (Intel 0.12, next 0.058); 1 of 44 jobs moves
 - [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: a drawn black line re-snapped to grey, not a border; pro borders per patch; both fixes (`resnap_hairline_never_lightens`, fix B) ruled OFF by Kent 11-11
@@ -36,12 +34,10 @@ the OLDEST lines whole to the archive.
 - [Curve facets](curve-facets-2026-11-14.md) — lettering chords = the Column lane's W/16 simplify, not stage 4; `curve_chord_mm` + `curve_chord_stage4` OFF; Tires #0 cured (stage 4), lettering pins not measurable; next = satin end jitter
 - [Dark-ink bean by width](dark-ink-bean-by-width-2026-11-16.md) — `dark_ink_bean_by_width` ON 11-16 (Kent "Flip ON"): bean vs satin by group median width (0.75 mm), not contrast 50; NOAA 0.46 mm lost strokes, EPA 0.91 mm sewed bean; 8 of 16 move
 - [Dark-ink ground gaps](dark-ink-ground-gaps-2026-11-17.md) — `dark_ink_refuse_ground_gaps` OFF: field between light letters read as pen strokes; Forest Service 3 -> 2 threads
-- [Defect-marks sitting 2](defect-marks-sitting-2-2026-11-11.md) — 21 Commons logos, 115 pins, hold-out for the letter reader: frozen rule found pins on 1 logo (26/30 vs 0.13) = no verdict; his words moved to extra in-fill, inconsistency, missing, flow
 - [Digitize time bar](digitize-speed-2026-11-16.md) — Kent 11-16: 15-25 s OK, over a minute not; that was the laptop at 1.4 GHz: idle, 9 jobs 6-38 s; exact cuts -14%, md5 same; more cores 7%, not built; PARKED ("Park speed"); read the clock
 - [Digitized image study](digitized-image-study-2026-11-13.md) — Kent 11-13: 108 pro pictures read by eye, 18 rules; rules 7, 12 MEASURED: pro stacks under ~5.2 mm, adds no outline the art lacks, same as us; no gap found
 - [Director night 11-13](director-night-2026-11-13.md) — no single switch; eye-first gave 11 PRs; agent eye PARTIAL (0.35), now gross-fault judge (Kent 11-14); repeats/fatter disproved; Kent 11-14: 5 flips, edge-walk, apex_cut guard
-- [Edge-fault reader](edge-fault-reader-2026-11-10.md) — edge_wobble flag locations vs Kent's 20 smooth-edge pins: 0.60 vs chance 0.49 at 3 mm, CI crosses 0 = not shown; harness `fault_reader_harness.py` reusable; next reader closed/merged letters
-- [Enclosed keeps known colour](enclosed-known-colour-2026-11-17.md) — `enclosed_white_keeps_known_colour` OFF: black letter band stays black under the white sew thread; 1 of 50 census runs moves (lego 29,407 -> 26,739 st)
+- [Enclosed keeps known colour](enclosed-known-colour-2026-11-17.md) — `enclosed_white_keeps_known_colour` ON (Kent 11-17 "Flip ON"): black letter band stays black under the white sew thread; 1 of 50 census runs moves (lego 29,407 -> 26,739 st)
 - [Eye-first diagnosis](eye-first-diagnosis-2026-11-13.md) — Kent 11-13: trace a bad render by eye beside the ORIGINAL first
 - [Fat-ink ledger](fat-ink-ledger-2026-11-14.md) — width ledger, 7 designs: our thread area = the pro's on Becker/Bridge; width enters at stage-5 fill/column pull + stage-6 satin rails; `pull_comp_along_stitch_only`, `growth_keeps_gaps` built OFF
 - [Fine bars whole](fine-bar-survive-2026-11-14.md) — `fine_bar_survive` OFF: To a T bars split (stages 2-4), kinked (AA sliver), lost at stage 5 (white under-fill covers them); broken bar redrawn from art, kept at stage 5; 5/5 pins fixed by eye
@@ -49,6 +45,7 @@ the OLDEST lines whole to the archive.
 - [Flat ends, pro's construction](flat-ends-pro-2026-11-14.md) — pro edge = cross ends on the line / last cross ON a flat face; text_lean undid the mitre; `lean_flat_ends` (extra, OFF); Becker #10/#11 flat
 - [Flip candidates 11-14](flip-candidates-2026-11-14.md) — inshape_piece_lift ON (Kent 11-14 "Flip ON"): Becker/MFab 13.7-60.6 mm stitches gone, +1-2 trims; apex_cut corpus 25 of 43 moved: 10 better, 4 worse, wants a guard
 - [Flip run 11-15/16](flip-run-2026-11-16.md) — Kent 11-15: 19 of 20 ruled flags ON (#1565-#1599); lean_flat_ends held OFF; 8 built OFF for Kent; nightly tripwire red, re-capture in CI; flat-lane rules reach photos; combined check first
+- [Foreman merge/push findings](foreman-merge-push-findings-2026-11-08.md) — 62 PRs 11-07/08: squash branches refuse `branch -d`; test.fail() expected; empty log != green; fix-lane branch needs a finding index
 - [Foreman wake-up](foreman-wakeup-while-wave-out-2026-11-12.md) — Kent 11-12 "stale for 10 hours": 7 cloud sessions merged while the foreman idled; a wave out = set a wake-up (CronCreate sweep / gh run watch) before ending the turn, delete when empty
 - [Fremont room](fremont-room-2026-11-14.md) — EST 1895 `no_room`: its own white field (0.48 of hull) read as obstacle; `small_text_reset_ground_ring` + `_bean_follows` (spines read at drawn size) OFF: date reads clean at 2x; pro 2.4x
 - [Golden Tee swoosh hairline](goldentee-swoosh-hairline-2026-11-18.md) — pin (10,8): pro sews the outer hairline as ~1.0 mm satin too (ours 1.33); saw teeth = satin end caps; docs only, no flag
@@ -57,6 +54,7 @@ the OLDEST lines whole to the archive.
 - [Inconsistency reader](inconsistency-fault-reader-2026-11-12.md) — unlike siblings: -0.04 vs pick, CI [-0.42,+0.42] = not shown; "colour" feet = fill direction lit
 - [In-fill fault reader](infill-fault-reader-2026-11-11.md) — thread in art-empty spaces (sew_enclosed_white) vs Kent's 36 in-fill pins: per note 0.29 vs candidate-pick null 0.27, CI [-0.31,+0.28] = not shown; finds the region, not which spaces
 - [Jag source](jag-source-2026-11-13.md) — 49 smooth pins by stage: chord facets 18, source px 10, satin construction 21 (ends 14); `outline_redraw_k` 0.75 (Kent 11-14 "Set 0.75", upscaled only)
+- [K3 batch 4](k3-batch4-2026-11-17.md) — 10 more Commons logos: LEGO flag ON; parked: Mastercard ring by design, FROH no measure, no-ring-on-sharp vs pro census (26 of 46 ringed), pro corner 0.47 mm; 4 WIP branches on origin
 - [K3 logo trial](k3-logo-trial-2026-11-16.md) — 30 Commons logos, Sonnet workers + foreman's eye; parked with numbers: dark-ink carve (#1610), Texaco star (one-spine satin, cover check blind), (R) blobs, USAID FROH
 - [Kent's judging rubric](kent-judging-rubric-2026-11-07.md) — his 22 reasons: lettering follows pen strokes, smooth curves, straight uprights, no blobs; first picks noisy; phase B judge FAILED (#1363)
 - [Keyline fragments](keyline-fragment-2026-11-17.md) — Drone's P/R/C dark bars = hairline remnants; `keyline_fragment_drop` 4 conditions, ON 11-17 (Kent "Flip ON"); 2 of 35 runs; 3 px bound = 3 examples
@@ -69,6 +67,7 @@ the OLDEST lines whole to the archive.
 - [Logo batch 2](logo-batch-2-2026-11-17.md) — 10 more Commons logos at 90 mm; CDC tagline cropped (transparent band read as a bar), fixed ON; SBA, HHS text faults seen
 - [Logo batch 11-16](logo-batch-2026-11-16.md) — 10 Commons logos, final before/after only (Kent); rim fabric-edges + group size-ring ON (Kent 11-16); 6 of 22 pro jobs move, none worse; arc text NOT fixed
 - [Logo batch 3](logo-batch-3-2026-11-17.md) — Coast Guard ring text buried; `dark_ink_ground_innermost` OFF; FTC 549 -> 135 s
+- [Logo batch 4](logo-batch-4-2026-11-18.md) — Commerce ring text hairline; `thin_letters_after_ground` OFF, 2 of 56 move
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [MFab counter ring room](mfab-counter-ring-room-2026-11-14.md) — "random stitch" = photo-lane significant border on the A's 3.35 mm counter lightened to a bean loop inside its fill; `border_significant_ring_room` OFF drops it; our satin tier there was worse
 - [Monarch size cliff](monarch-size-cliff-2026-11-13.md) — wing cell lost at 90.50/91.75 mm; hand-back OFF by Kent 11-14: don't flip, don't re-narrow; lane branch-drop is the real fix ("the & was better on": his eye favoured ON)
@@ -91,6 +90,7 @@ the OLDEST lines whole to the archive.
 - [Tight word space](reset-tight-word-space-2026-11-16.md) — USAID "THEAMERICAN": gap 0.484 cap < 0.5 floor; `small_text_reset_tight_word_space` reads 0.35; ON 11-16 (Kent "Flip ON"); 114 gaps, only that one moves, 7/8 jobs identical
 - [Robust-PC sweep](robust-pc-sweep-2026-11-13.md) — 77 images both photo lanes: cutout runs on 14, changes all 14; CI lane = no rembg venv; THREAD_MATCH_POOR false blocks (#1460); tone pass OFF; faulthandler crash = the tool; SAM2 GPU no gain per job
 - [Rope as one band](rope-band-2026-11-17.md) — Fremont rope = ~100 sub-floor blobs each a run loop; pro sews one satin band; `rope_band` ON 11-17 (Kent "Flip ON"); 2 of 35 runs move (Fremont only)
+- [Round dot ring](round-dot-ring-2026-11-18.md) — Tires i dot faceted (tatami ends); `round_dot_ring` ON 11-18 rings round dots from 4 mm; 1 of 35 moves; stroke end (21.5,37) NOT cured, 3 fixes failed
 - [Satin push keeps gaps](satin-push-keeps-gaps-2026-11-14.md) — 23 merged-letter groups traced; rail push held counters not bays/neighbours; `satin_push_keeps_gaps` OFF: Gaulke E 0.10 -> 0.36 at floor 0.5 = pro; floor Kent's pick
 - [Scorecard recapture 11-12](scorecard-recapture-2026-11-12.md) — ruler 292418a8 -> ffefc3b1, run 43253187536: 10/20/8/10/4 -> 8/20/6/10/8, mean 71.9 -> 68.7 FELL; flag-off CI arms name #1301, #1263, #1329, #1378; 1 row part unattributed
 - [Second digitize timing](second-digitize-timing-2026-11-13.md) — 11-12's 44 s = laptop contention (same run 19 -> 55 s as load moved); Cancel held the worker 1.4-5.5 s: seams added in neck splits, letterform priors, keyline -> 0.2 s
@@ -112,4 +112,5 @@ the OLDEST lines whole to the archive.
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha
 - [Under-fill ground guard](underfill-ground-guard-2026-11-16.md) — ON (Kent 11-16): a ring on the ground it would jump reads no ring; NASA orbit + stars back
+- [Wedge cap](wedge-cap-2026-11-18.md) — Toat Machine h stem steps: the Column lane sews a junction wedge into the stem (not satin_stroke); `lettering_columns_stem_wedge_cap` built OFF, 2 of 35 move, bare 0 -> 0
 - [Z joints, rail-pair bars](z-joints-rail-pair-2026-11-14.md) — and_pizza Z fanned at one joint: its top bar read CURVED (coherence 0.46, spine bent); `rail_pair_bars` (extra, OFF) reads two long parallel rails as a bar; guard still refuses Z tips
