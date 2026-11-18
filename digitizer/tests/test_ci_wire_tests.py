@@ -28,6 +28,8 @@ def test_the_pipeline_files_are_out():
 
 def test_it_is_a_small_subset():
     # 60 when the subset was cut (07e7fd5f); 80 since 2026-10-26, when the
-    # 60th wire file (test_flag_ledger: it reads .claude/memory) reached it --
-    # still under a fifth of the 427 test files
-    assert 0 < len(wire_files()) < 80
+    # 60th wire file (test_flag_ledger: it reads .claude/memory) reached it;
+    # 90 since 2026-11-18, when the 80th (test_flag_sweep: it imports
+    # tools.tripwire, which reaches REPO) did -- still under a fifth of the
+    # test files
+    assert 0 < len(wire_files()) < 90
