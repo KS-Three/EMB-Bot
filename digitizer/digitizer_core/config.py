@@ -3624,15 +3624,21 @@ class PipelineConfig:
     # (`docs/renders/outline-loop-split-shared-2026-11-18/`). Off,
     # byte-identical. Tests: `tests/test_outline_loop_split_shared.py`.
     outline_loop_split_shared: bool = False
-    # `outline_one_band` (2026-11-18, prime grader / Kent 11-10 "the border
-    # around this logo should be smooth"): an outline whose band is shared by
-    # two or more bodies and has stems between them (BECKER) is sewn the way
-    # the professional's Becker file is -- each stem a satin column of its own
-    # first, then ONE loop on the band's outer ring last, so the border passes
-    # the dip between two letters as one band (`outline_band`). Single-body
-    # bands and bands without a stem are untouched. Built OFF: the flip is
-    # Kent's, judged on the before / after pictures
-    # (`docs/renders/outline-one-band-2026-11-18/`). Off, byte-identical.
+    # `outline_one_band` (2026-11-18, prime grader / Kent 11-10 "the border around this logo
+    # should be smooth"): an outline whose band is shared by two or more bodies and has stems
+    # between them (BECKER) is sewn the way the professional's Becker file is -- each stem a
+    # satin column of its own first, then ONE loop on the band's outer ring last (`outline_band`).
+    # **NOT A FLIP CANDIDATE AS BUILT** (director 2026-11-18, after the all-placements sweep of
+    # the 18 tripwire jobs + 26 fixtures): 6 of 44 move. The three small Becker placements get
+    # worse (a bare sliver across the K, +6 to +8 trims), Becker large gains +183 mm of needle-up
+    # (round 1; +217 mm round 2), becker_lc_large +361 mm, and `mfab_lc` MOVED in round 1
+    # (+897 stitches, +4 trims) although the gate was meant to exclude MFab, so the gate itself
+    # (two or more bodies and a stem) is wrong there; MFab hat at 30 mm drops a grade B -> C with
+    # it ON (`test_underfill_small_size`). What is worth keeping is the MEASURED CONSTRUCTION: one
+    # fill under the group, one border band over the V, a column per stem, stem first
+    # (`docs/outline-one-band-2026-11-18.md`). Off, byte-identical on all 35 pro/fixture runs.
+    # Tests: `tests/test_outline_one_band.py`. Evidence:
+    # `docs/renders/outline-one-band-2026-11-18/README.md`.
     outline_one_band: bool = False
     # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
     # the 2026-09-03 mechanism left open). A stroke that loses crosses to
