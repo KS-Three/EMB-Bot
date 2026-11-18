@@ -1211,6 +1211,11 @@ PRE_FLIP.update(TEXT_CLUSTER_MIXED_CAPS_2026_11_18_OFF)
 # `tests/test_cap_fuse.py`.
 COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF = {"color_cap_fuse_split_tones": False}
 PRE_FLIP.update(COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF)
+# `lettering_columns_whole_letter_floor` (Kent 2026-11-18, shown art | before |
+# after for the ten designs it changes: "Flip ON now"):
+# `tests/test_whole_letter_floor.py`.
+WHOLE_LETTER_FLOOR_2026_11_18_OFF = {"lettering_columns_whole_letter_floor": False}
+PRE_FLIP.update(WHOLE_LETTER_FLOOR_2026_11_18_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

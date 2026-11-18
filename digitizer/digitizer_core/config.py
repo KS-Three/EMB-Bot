@@ -4402,6 +4402,27 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_stroke_floor.py`.
     lettering_columns_stroke_floor: bool = True
+    # A small letter the small-bold ladder leaves NOT whole (satin cover under
+    # `columns.SMALL_BOLD_COVER_MIN`) sews the lane's plain cut once more with
+    # EVERY thin cross at the 0.5 mm floor, kept only if the letter is then
+    # whole (`columns.lettering_columns_shape`, `column_runs(thin_floor_all=)`;
+    # built OFF 2026-11-18 as `cfg.extra["lettering_columns_whole_letter_floor"]`,
+    # #1658). **ON since 2026-11-18, Kent's flip**: shown art | before | after
+    # for all ten designs it changes and asked what to do with it, he answered
+    # "Flip ON now". Evidence, 56 designs (four Commons logo batches at 75-110
+    # mm and the 16 repo logos at 80 mm): 10 change, 46 identical. The Marine
+    # Corps emblem's serif E read as an F (stem and middle arm sewn, cover
+    # 0.84; the plain cut runs one column round the stem and both 0.3 mm arms,
+    # whose crosses the floor-less plain sew dropped) and reads UNITED STATES /
+    # MARINE CORPS (42,953 -> 43,079 stitches, trims 107 -> 106); Golke Roofing
+    # gains its F's middle arm and L's foot (3,898 -> 3,927); HHS "HF ALTH" ->
+    # HEALTH. Catches: floored arms sew 0.5 mm over thinner ink; the E of
+    # DEPARTMENT on the Veterans Affairs seal is whole but its middle arm
+    # crosses itself; the `scratch_kent` paired corpus was NOT run. Promoted
+    # from `cfg.extra` to a field so the default can be ON. False is the engine
+    # as it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
+    # pin it False. Tests: `tests/test_whole_letter_floor.py`.
+    lettering_columns_whole_letter_floor: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

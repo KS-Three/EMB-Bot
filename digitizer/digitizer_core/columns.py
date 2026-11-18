@@ -2387,7 +2387,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             kept = _floor_ring_crosses(guarded, min_cross_mm, col.kind == "ring")
             report["ring_floored"] = report.get("ring_floored", 0) + 1
         elif thin_floor_all and len(guarded) >= 3 and len(kept) < len(guarded):
-            # `whole_letter_floor` (built OFF): every thin cross of the
+            # `cfg.lettering_columns_whole_letter_floor`: every thin cross of the
             # column at the floor -- an E cut as ONE column round its stem
             # and both hairline arms keeps most of its crosses (the stem's),
             # so neither rule below reaches the arms
@@ -3643,8 +3643,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                     report["small_bold_plain"] = 1
                     cover = satin_cover(runs, poly)
             if cover < SMALL_BOLD_COVER_MIN and whole_letter_floor:
-                # `cfg.extra["lettering_columns_whole_letter_floor"]` (built
-                # OFF 2026-11-18): the ladder is spent and the letter is
+                # `cfg.lettering_columns_whole_letter_floor` (built OFF
+                # 2026-11-18, ON the same day, Kent's flip): the ladder is spent and the letter is
                 # still not whole. The lane's own cut once more, with EVERY
                 # thin cross at the floor, kept only if it makes the letter
                 # whole. Marine Corps emblem at 90 mm, a 4.4 mm serif E: the

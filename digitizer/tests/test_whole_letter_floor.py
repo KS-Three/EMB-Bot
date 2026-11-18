@@ -1,4 +1,5 @@
-"""`cfg.extra["lettering_columns_whole_letter_floor"]` (built OFF 2026-11-18).
+"""`cfg.lettering_columns_whole_letter_floor` (built OFF 2026-11-18 as a `cfg.extra` key; ON
+the same day, Kent's flip: "Flip ON now").
 
 A small serif E: a bold stem with hairline arms. The small-bold cut sews the
 stem and drops the arms; the lane's plain cut runs a column along the arms,
@@ -49,6 +50,10 @@ def test_on_a_letter_already_whole_is_untouched():
     assert [r.points for r in on] == [r.points for r in off]
 
 
-def test_flag_is_off_by_default():
+def test_default_is_on_and_the_pre_flip_engine_pins_it_off():
     from digitizer_core import PipelineConfig
-    assert not (PipelineConfig().extra or {}).get("lettering_columns_whole_letter_floor")
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().lettering_columns_whole_letter_floor is True
+    assert PRE_FLIP["lettering_columns_whole_letter_floor"] is False
+    off = PipelineConfig(**{"lettering_columns_whole_letter_floor": False})
+    assert off.lettering_columns_whole_letter_floor is False
