@@ -111,6 +111,22 @@ Upper wing, left tip. Art tip at x 27.95 mm. The professional's satin runs to th
 (design mm), **0.9 mm long**, and the crosses then lengthen 0.9, 1.0, 1.1, 1.2, 1.3 mm over the next 1.0 mm (one cross about
 every 0.2 mm). The cross never drops under 0.9 mm, the art there is 0.25-0.35 mm wide, and no run stitch carries the tip:
 a longer single stitch at 1.5-2.8 mm is the underlay running out to x 27.4 / 26.1. So the construction is a satin column
-that starts at the art's very tip at full cross width (about 0.6 mm beyond the art's width), not a taper below 0.4 mm. Ours
-starts its first cross (0.9 mm) at x 28.7, 0.75 mm in. A taper flag in this construction would mean the column's first
-station begins at the art's tip with the 0.9 mm cross; not built (stage 6 satin-end work; time).
+that starts at the art's very tip at full cross width (about 0.6 mm beyond the art's width), not a taper below 0.4 mm. Ours starts its first cross (0.9 mm) at x 28.7, 0.75 mm in.
+
+### `satin_tip_floor_cross` (built OFF; leave OFF)
+Cause found: the thin stations are not the problem (the tip station's cross is 0.0 and the next is 1.8 mm); the column's
+**spine** stops 0.75-0.85 mm short of the art's tip (the skeleton is pruned there). The flag extends a FREE end's column along
+its heading to the art's tip, at most 1.5 mm and only where the art runs on at least 0.5 mm past the spine, with crosses
+at `SATIN_MIN_CROSS_MM` (0.5 mm + 1e-6; the floor's value is untouched, gate 1). Absent: byte-identical
+(`tests/test_satin_tip_floor_cross.py`, `tests/engine_2026_10_27.json`).
+- **Gaulke hat:** the upper wing's left tip now starts at x 28.0 mm (art 27.95; OFF 28.7). Picture:
+  `docs/renders/gaulke-wing-tip-2026-11-18/wing_tip_left.jpg`. The tip is still a blunt rounded end (floor cross 0.5 mm + 0.4 mm
+  thread, about the professional's 0.9 mm), not a point.
+- **Sweep, 44 designs** (`sweep.json` keys `tipfloor` at 0.3 mm minimum: 37 move; `tipfloor05` at 0.5 mm: **33 move**): stitches
+  +0.0% to +1.8% (Golden Tee +1.4%, Drone +0.8%, Gaulke hat +0.6%, Becker hat large +0.0%), trims and jumps within 0-3 of OFF
+  (Gaulke fixture trims +2, phone-UI fixture +2), no shape added or dropped except `mfab_lc` (+1). Gaulke hat needle-up falls
+  341 -> 275 mm (a travel run fewer), toat_machine_beanie 324 -> 291 mm.
+- **By eye at print size:** the Gaulke hat's whole picture shows no change (a 0.7 mm tip on a 114 mm design); the Becker hat
+  large and Tires script close-ups show a sub-mm change at a stroke end. Not clearly better, so **no flip question**. Pictured:
+  Gaulke hat, Becker hat large, Tires script, Hotel Fremont hat (`gaulke-wing-tip-2026-11-18/`); the other 29 movers are not
+  pictured because nothing is proposed.

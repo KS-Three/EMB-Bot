@@ -4683,6 +4683,7 @@ def sequence(
                     tip_caps=cfg.satin_tip_caps,
                     tip_corner_gate=cfg.satin_tip_corner_gate,
                     thin_arm_stop=cfg.satin_thin_arm_stop,
+                    tip_floor_cross=cfg.satin_tip_floor_cross,
                     hairline_tier=cfg.satin_hairline_tier,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two

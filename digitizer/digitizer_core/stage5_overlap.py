@@ -1023,6 +1023,12 @@ def resolve_overlaps(
     # own holes, which on TOAT Machine's white fill left 63 mm2 of bare
     # fabric where the art has only the halo round the letters.
     keep_counters = bool(flags_extra.get("growth_keeps_gaps")) or not keep_between
+    # LEAVE `growth_keeps_gaps_between` OFF (director 2026-11-18, not taken to
+    # Kent): with the three keys below, 2 of 13 movers show a small gain
+    # (Gaulke's sun/roof gap 0.3 -> 0.7 mm, Toat beanie), 11 show nothing,
+    # Gaulke's border edge wobble is 3x OFF's (0.110 vs 0.037 mm p95), and the
+    # thresholds were tuned on the 44 designs that judge them
+    # (`docs/gaulke-fine-detail-2026-11-18.md`).
     # `growth_keeps_gaps_between_min_mm2` (built OFF 2026-11-18, read only with
     # `growth_keeps_gaps_between`): a gap is held only between two shapes that
     # are both at least this big (mm2). Absent or 0: every pair, as #1630.

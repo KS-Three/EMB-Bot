@@ -280,6 +280,7 @@
  "satin_stroke_order": "euler",
  "satin_tip_caps": true,
  "satin_tip_corner_gate": false,
+ "satin_tip_floor_cross": false,
  "satin_thin_arm_stop": false,
  "satin_underlay_on_column": false,
  "satin_underlay_short_columns": true,
