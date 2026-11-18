@@ -1270,7 +1270,7 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
                  trim_at_mm: float, width_mm: float | None = None,
                  density_mm: float | None = None,
                  underlay: bool = False, holes=None,
-                 split_shared: bool = False) -> tuple[list[StitchRun], dict]:
+                 split_shared: bool = False, bridge_guides=None) -> tuple[list[StitchRun], dict]:
     """A keyline band as one satin loop round each of its holes. -> (runs,
     report).
 
@@ -1378,7 +1378,7 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
                 report["jumps"] += 1
         elif cursor is not None:
             to = walk[0] if walk else pts[0]
-            bridge = travel_path(band, None, cursor, to)
+            bridge = travel_path(band, bridge_guides, cursor, to)
             if bridge is None:
                 d = math.dist(cursor, to)
                 if d >= machine.TINY_STITCH_MM:

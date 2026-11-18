@@ -143,6 +143,16 @@ def _outer_centre(art: Polygon, w: float) -> LineString | None:
     return LineString(list(max(parts, key=lambda g: g.area).exterior.coords))
 
 
+def _guides(art: Polygon) -> list[LineString]:
+    """Routes for the needle inside the band: the band moved in 0.35 mm, every ring of it
+    (`travel_path` runs along one where a straight line would leave the band)."""
+    out = []
+    for part in _parts(art.buffer(-0.35)):
+        out.append(LineString(list(part.exterior.coords)))
+        out += [LineString(list(r.coords)) for r in part.interiors]
+    return out
+
+
 def _centre_walk(band: Polygon, centre: LineString | None, a, b):
     """A walk a -> b through the band under the outer loop: in to the loop's
     centre line, round it the short way, out again; None when a leg leaves the
@@ -182,7 +192,7 @@ def _centre_walk(band: Polygon, centre: LineString | None, a, b):
 
 
 def _hop(runs: list, new: list, cursor, band: Polygon, shape_id: str, trim_at_mm: float,
-         centre: LineString | None = None) -> int:
+         centre: LineString | None = None, guides=None) -> int:
     """The needle's way to the first stitch of `new`: through the band where a
     route exists (`travel_path`), else a lift, cut past `trim_at_mm`, as
     `keyline_runs` leaves its own loops. -> lifts made."""
@@ -192,7 +202,7 @@ def _hop(runs: list, new: list, cursor, band: Polygon, shape_id: str, trim_at_mm
     d = math.dist(cursor, to)
     if d < machine.TINY_STITCH_MM:
         return 0
-    bridge = travel_path(band, None, cursor, to)
+    bridge = travel_path(band, guides, cursor, to)
     if bridge is None:
         bridge = _centre_walk(band, centre, cursor, to)
     if bridge is None:
@@ -204,8 +214,32 @@ def _hop(runs: list, new: list, cursor, band: Polygon, shape_id: str, trim_at_mm
     return 0
 
 
+def _reroute(new: list, cursor, band: Polygon, shape_id: str, centre, guides) -> list:
+    """`new` with every lift inside it (and the lift into it) walked through the band
+    where a route exists (`_hop`), so the needle is cut only where none does."""
+    out: list = []
+    last = cursor
+    for r in new:
+        if not r.points:
+            out.append(r)
+            continue
+        if last is not None and (r.jump or r.trim):
+            d = math.dist(last, r.points[0])
+            if d >= machine.TINY_STITCH_MM:
+                bridge = travel_path(band, guides, last, r.points[0])
+                if bridge is None:
+                    bridge = _centre_walk(band, centre, last, r.points[0])
+                if bridge is not None:
+                    if len(bridge) > 1:
+                        out.append(StitchRun(points=bridge[:-1], kind=stitches.TRAVEL, shape_id=shape_id))
+                    r.jump = r.trim = False
+        out.append(r)
+        last = r.points[-1]
+    return out
+
+
 def _split_at_gaps(runs: list, longest: float, trim_at_mm: float, shape_id: str,
-                   band: Polygon, centre: LineString | None = None) -> tuple[list, int]:
+                   band: Polygon, centre: LineString | None = None, guides=None) -> tuple[list, int]:
     """A loop clamped to `reach` keeps only the crosses that fit, and joins the
     arcs it keeps with a straight stitch across the gap. Each satin run is cut
     at every stitch longer than any cross (`longest`) into one run per arc,
@@ -229,7 +263,7 @@ def _split_at_gaps(runs: list, longest: float, trim_at_mm: float, shape_id: str,
             if n == 0:
                 piece.jump, piece.trim = r.jump, r.trim
             elif out and out[-1].points:
-                lifts += _hop(out, [piece], out[-1].points[-1], band, shape_id, trim_at_mm, centre)
+                lifts += _hop(out, [piece], out[-1].points[-1], band, shape_id, trim_at_mm, centre, guides)
             out.append(piece)
     return out, lifts
 
@@ -245,28 +279,37 @@ def one_band_runs(art: Polygon, rings: list[tuple[Polygon, float]], shape_id: st
     runs = []
     cursor = entry
     centre = _outer_centre(art, w)
+    guides = _guides(art)
     stem_union = unary_union(stems).buffer(1e-3)
     # the holes' own loops where the outer loop and the stems do not reach,
     # sewn FIRST so the walks between their arcs lie under what follows
     reach = art.difference(outer).difference(stem_union)
     if not reach.is_empty:
         h_runs, h_rep = keyline_runs(art, shape_id, reach=reach, entry=cursor, trim_at_mm=trim_at_mm,
-                                     underlay=False, holes=list(rings))
+                                     underlay=False, holes=list(rings), bridge_guides=guides)
         if not h_rep["empty"]:
-            h_runs, lifts = _split_at_gaps(h_runs, w + 0.05, trim_at_mm, shape_id, art, centre)
+            h_runs, lifts = _split_at_gaps(h_runs, w + 0.05, trim_at_mm, shape_id, art, centre, guides)
             runs += h_runs
             report["jumps"] += h_rep["jumps"] + lifts
             report["outline_loops"] += h_rep["loops"]
             cursor = runs[-1].points[-1]
     # the stems, each a satin column of its own: the outer loop covers the top of each
-    for piece in sorted(stems, key=lambda g: (round(g.centroid.y, 3), round(g.centroid.x, 3))):
+    todo = sorted(stems, key=lambda g: (round(g.centroid.y, 3), round(g.centroid.x, 3)))
+    while todo:
+        if cursor is None:
+            piece = todo.pop(0)
+        else:
+            here = Point(cursor)
+            piece = min(todo, key=lambda g: (round(g.distance(here), 6), todo.index(g)))
+            todo.remove(piece)
         _l, width = _length_over_width(piece)
         s_runs, s_rep = satin_shape(piece, shape_id, start_near=cursor,
                                     max_width_mm=max(machine.SATIN_MAX_WIDTH_MM, 1.5 * width),
                                     **satin_kw)
         if s_rep.get("empty") or not s_runs:
             return [], report                     # a stem the satin cannot sew: keep the loops
-        report["jumps"] += _hop(runs, s_runs, cursor, art, shape_id, trim_at_mm, centre)
+        s_runs = _reroute(s_runs, cursor, art, shape_id, centre, guides)
+        report["jumps"] += _hop(runs, s_runs, cursor, art, shape_id, trim_at_mm, centre, guides)
         runs += s_runs
         report["stems"] += 1
         cursor = runs[-1].points[-1]
@@ -274,7 +317,7 @@ def one_band_runs(art: Polygon, rings: list[tuple[Polygon, float]], shape_id: st
     ext = Polygon(art.exterior)
     o_runs, o_rep = keyline_runs(art, shape_id, reach=art.difference(stem_union), entry=cursor,
                                  trim_at_mm=trim_at_mm, underlay=underlay,
-                                 holes=[(ext, w)])
+                                 holes=[(ext, w)], bridge_guides=guides)
     if o_rep["empty"]:
         return [], report
     runs += o_runs
