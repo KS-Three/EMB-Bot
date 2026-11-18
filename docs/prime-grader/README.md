@@ -8,6 +8,18 @@ pictures hold client artwork and stay in the gitignored
 Every figure here is an instrument reading, not a quality claim (ROADMAP
 gate 4). No flag is flipped on it.
 
+## Rubric 2026-11-18: the next card is a new baseline
+
+The rubric changed on 2026-11-18 (`RUBRIC_VERSION` 2026-11-18, sha `9a169b106243`),
+together with how the kit draws stitches: flat-ended strips, so a satin
+column's edge is the envelope it sews instead of a row of round-cap bumps
+(blind readers had called clean columns "scalloped, saw-toothed on every edge",
+#1648; `docs/renders/satin-caps-2026-11-18/`). **The next card is the first
+under this rubric and is not comparable with any earlier card**: the scorecard
+says so in place of a movement list, and a move between the two is neither the
+engine's nor the rubric's alone. The 2026-11-17 and 2026-11-18 cards were read
+under rubric 2026-11-17 with round-capped renders.
+
 ## First run, 2026-11-17, against Kent's marks
 
 Nine blind readers (one fresh agent per design, rubric 2026-11-17) graded the

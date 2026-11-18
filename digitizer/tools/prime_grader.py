@@ -55,8 +55,14 @@ if str(ROOT) not in sys.path:
 from tools.defect_marks import GRADES, PAD_MM, PRO_SLUGS, PXMM, SEVERITIES, WHATS, WHOLE  # noqa: E402
 
 RUBRIC = Path(__file__).with_name("prime_grader_rubric.md")
-RUBRIC_VERSION = "2026-11-17"
-RUBRIC_SHA256 = "96eff44f4baabf85dba0d471d920d26b089cc4bf558fba7bd805af352ee9e806"
+RUBRIC_VERSION = "2026-11-18"
+RUBRIC_SHA256 = "9a169b10624376fc30dc5fa515bb347826565c2fc463855a9fd9b8f8dd2bd2ec"
+#: How the kit's renders end a stitch. "butt" draws a satin column's edge as the
+#: envelope it sews (flat ends at the thread width); the default "round" draw is
+#: round-capped strokes, which scallop a column edge into bumps that a blind
+#: reader called "saw-toothed on every edge" (#1648, 2026-11-18). Kit-only:
+#: `stitchviz.render_design(caps=)` leaves every other render round.
+KIT_CAPS = "butt"
 ZOOM_PXMM = 30.0          # the magnifier's scale; the overview is PXMM (12)
 TILE_MM = 32.0            # target tile side
 MAX_TILES = 9
@@ -382,13 +388,13 @@ def _hstack(parts, gap: int = 14):
     return np.hstack(cols)
 
 
-def travel_picture(design: dict, fabric_bgr, pxmm: float = PXMM):
+def travel_picture(design: dict, fabric_bgr, pxmm: float = PXMM, caps: str = KIT_CAPS):
     """The render dimmed, every needle-up move (jump / trim, over 1 mm) in
     magenta, each colour block numbered where it starts."""
     import cv2
     import numpy as np
     from digitizer_core import stitchviz
-    base = stitchviz.render_design(design, px_per_mm=pxmm, fabric_bgr=fabric_bgr, pad_mm=PAD_MM)
+    base = stitchviz.render_design(design, px_per_mm=pxmm, fabric_bgr=fabric_bgr, pad_mm=PAD_MM, caps=caps)
     img = (base.astype(np.float32) * 0.45 + 255 * 0.55).astype(np.uint8)
     frame = stitchviz._frame(design.get("stitches") or [], pxmm, PAD_MM)
     if frame is None:
@@ -422,7 +428,7 @@ def travel_picture(design: dict, fabric_bgr, pxmm: float = PXMM):
     return img
 
 
-def build_item(slug: str, output: dict, img_dir: Path) -> tuple[dict, dict]:
+def build_item(slug: str, output: dict, img_dir: Path, caps: str = KIT_CAPS) -> tuple[dict, dict]:
     """Write one design's pictures. -> (kit item, sealed yardstick reading)."""
     import cv2
     import numpy as np
@@ -439,7 +445,7 @@ def build_item(slug: str, output: dict, img_dir: Path) -> tuple[dict, dict]:
     w_mm, h_mm = (x1 - x0) / 10.0, (y1 - y0) / 10.0
     art = _load_art(pb.resolve(art_spec), fabric)
 
-    render = stitchviz.render_design(design, px_per_mm=PXMM, fabric_bgr=fabric, pad_mm=PAD_MM)
+    render = stitchviz.render_design(design, px_per_mm=PXMM, fabric_bgr=fabric, pad_mm=PAD_MM, caps=caps)
     bare = stitchviz.render_design(design, px_per_mm=PXMM, fabric_bgr=SENTINEL_BGR, pad_mm=PAD_MM, lit=False)
     thread = np.abs(bare.astype(np.int32) - np.array(SENTINEL_BGR)).sum(-1) > 90
     reg = register(art, thread, PXMM)
@@ -450,15 +456,15 @@ def build_item(slug: str, output: dict, img_dir: Path) -> tuple[dict, dict]:
     pro_src = next((p for p in (pro_pes, pro_dst) if p and pb.resolve(p).exists()), None)
     if pro_src:
         pro = stitchviz.render_design(design_from_file(pb.resolve(pro_src)), px_per_mm=PXMM, fabric_bgr=fabric,
-                                      pad_mm=PAD_MM)
+                                      pad_mm=PAD_MM, caps=caps)
         parts.append(_label(_fit_h(pro, panel_h), "PROFESSIONAL'S FILE" + ("" if pro_src == pro_pes
                                                                           else " (no thread colours)")))
     cv2.imwrite(str(img_dir / f"{iid}_overview.png"), _hstack(parts))
     cv2.imwrite(str(img_dir / f"{iid}_travel.png"),
-                _label(_ruler(travel_picture(design, fabric), -PAD_MM, -PAD_MM, PXMM, 10.0),
+                _label(_ruler(travel_picture(design, fabric, caps=caps), -PAD_MM, -PAD_MM, PXMM, 10.0),
                        "TRAVEL: magenta = needle-up move, numbers = colour blocks in sewing order"))
 
-    zoom = stitchviz.render_design(design, px_per_mm=ZOOM_PXMM, fabric_bgr=fabric, pad_mm=PAD_MM)
+    zoom = stitchviz.render_design(design, px_per_mm=ZOOM_PXMM, fabric_bgr=fabric, pad_mm=PAD_MM, caps=caps)
     tiles = []
     for t in tile_grid(w_mm, h_mm):
         mx0, my0 = t["x0"] - 1.0, t["y0"] - 1.0                      # 1 mm of context round the tile
@@ -503,12 +509,12 @@ def cmd_kit(a) -> int:
         if output.get("state") != "done":
             skipped.append({"slug": slug, "state": output.get("state")})
             continue
-        it, y = build_item(slug, output, out / "img")
+        it, y = build_item(slug, output, out / "img", a.caps)
         items.append(it)
         sealed[it["id"]] = y
         print(it["id"], it["size"], f"{len(it['tiles'])} tiles", f"art fit {it['art_fit']}", flush=True)
     body = {"schema": 1, "rubric_version": RUBRIC_VERSION, "rubric_sha256": rubric_sha(), "items": items,
-            "skipped": skipped, "pxmm": PXMM, "zoom_pxmm": ZOOM_PXMM, "pad_mm": PAD_MM}
+            "skipped": skipped, "caps": a.caps, "pxmm": PXMM, "zoom_pxmm": ZOOM_PXMM, "pad_mm": PAD_MM}
     body["kit_sha256"] = hashlib.sha256(json.dumps(body, sort_keys=True).encode()).hexdigest()
     _dump(body, out / "kit.json")
     _dump(sealed, out / "_sealed.json")
@@ -589,8 +595,13 @@ def scorecard_markdown(card: dict) -> str:
     L += [f"- **{c}**: {len(ids)} of {ru['designs']} ({', '.join(f'`{i}`' for i in ids)})"
           for c, ids in ru["classes"].items()] or ["- none"]
     L += ["", "## Since the last scorecard", ""]
+    pr = card.get("prev_rubric_version")
     if card.get("prev_date") is None:
         L.append("No earlier scorecard was given.")
+    elif pr and pr != card["rubric_version"]:
+        L.append(f"**Not comparable.** This is the first card under rubric {card['rubric_version']}; "
+                 f"{card['prev_date']} was read under {pr} (and the kit's renders changed with it), so no move "
+                 "is listed. Read this card as a new baseline.")
     elif not card["movement"]:
         L.append(f"Nothing moved against {card['prev_date']}.")
     else:
@@ -635,6 +646,7 @@ def cmd_scorecard(a) -> int:
             "tree_sha": next((i["tree_sha"] for i in kit["items"] if i.get("tree_sha")), None),
             "rollup": ru, "yardstick": ys, "readings": readings["items"],
             "prev_date": (prev or {}).get("date"), "prev_tree_sha": (prev or {}).get("tree_sha"),
+            "prev_rubric_version": (prev or {}).get("rubric_version"),
             "movement": movement(ru, prev), "not_recorded": missing}
     out.mkdir(parents=True, exist_ok=True)
     _dump(card, out / f"scorecard-{date}.json")
@@ -719,6 +731,8 @@ def main(argv=None) -> int:
     p = sub.add_parser("kit")
     p.add_argument("--run", required=True)
     p.add_argument("--out", required=True)
+    p.add_argument("--caps", choices=("butt", "round"), default=KIT_CAPS,
+                   help="stitch ends in the kit's renders (default butt; round is the pre-2026-11-18 look)")
     p = sub.add_parser("record")
     p.add_argument("--kit", required=True)
     p.add_argument("--verdict", required=True)

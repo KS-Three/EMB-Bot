@@ -171,8 +171,15 @@ def _frame(stitches: list[dict], px_per_mm: float, pad_mm: float):
 def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
                   fabric_bgr: tuple[int, int, int] = FABRIC_BGR,
                   pad_mm: float = 2.0, lit: bool = True,
-                  thread_mm: float = THREAD_MM) -> np.ndarray:
+                  thread_mm: float = THREAD_MM, caps: str = "round") -> np.ndarray:
     """-> BGR image of `design` sewn on `fabric_bgr`.
+
+    `caps` (2026-11-18, kit-only): `"round"` (default; every existing render,
+    golden and `coverage` figure) draws each stitch as a round-capped stroke.
+    `"butt"` draws it as a flat-ended rectangle of the filament's width, so a
+    satin column's edge is the envelope its stitches sew (every cross ends ON
+    the column edge) instead of a row of round bumps. Only the lit draw takes
+    it; `lit=False` stays round. `tools.prime_grader` is its only caller.
 
     `thread_mm` (2026-10-12) is the drawn filament width — `machine.
     thread_profile(wt).width_mm` to picture a finer weight (60 wt ~0.32,
@@ -214,7 +221,7 @@ def render_design(design: dict, px_per_mm: float = DEFAULT_PX_PER_MM,
             continue
         p = to_px(s)
         if prev is not None and prev != p:
-            _draw_filament(img, prev, p, rgb, tw, lit)
+            _draw_filament(img, prev, p, rgb, tw, lit, caps)
         prev = p
     return img
 
@@ -232,8 +239,23 @@ def _band(tw: int, w_frac: float, off_frac: float) -> tuple[int, float]:
     return w, max(0.0, min(off_frac * tw, (tw - w) / 2.0))
 
 
+def _butt(img: np.ndarray, a, b, colour, w: int) -> None:
+    """A flat-ended stroke: the rectangle `w` px wide whose short sides are
+    exactly at `a` and `b` (sub-pixel, anti-aliased). Too short to have a
+    direction (under a pixel) falls back to the round stroke."""
+    dx, dy = b[0] - a[0], b[1] - a[1]
+    ln = math.hypot(dx, dy)
+    if ln < 1.0:
+        cv2.line(img, a, b, colour, w, cv2.LINE_AA)
+        return
+    nx, ny = -dy / ln * w / 2.0, dx / ln * w / 2.0
+    q = np.array([[a[0] + nx, a[1] + ny], [b[0] + nx, b[1] + ny],
+                  [b[0] - nx, b[1] - ny], [a[0] - nx, a[1] - ny]], np.float64)
+    cv2.fillConvexPoly(img, np.round(q * 16).astype(np.int32), colour, cv2.LINE_AA, 4)
+
+
 def _draw_filament(img: np.ndarray, a: tuple[int, int], b: tuple[int, int],
-                   rgb: dict, tw: int, lit: bool = True) -> None:
+                   rgb: dict, tw: int, lit: bool = True, caps: str = "round") -> None:
     """One stitch, as a lit cylinder. Bands are painted widest first, so the
     specular lands on top of the body lands on top of the shadow.
 
@@ -283,7 +305,10 @@ def _draw_filament(img: np.ndarray, a: tuple[int, int], b: tuple[int, int],
         colour = tuple(int(max(0, min(255, c * tone * shade))) for c in base)
         pa = (int(round(a[0] + nx * off)), int(round(a[1] + ny * off)))
         pb = (int(round(b[0] + nx * off)), int(round(b[1] + ny * off)))
-        cv2.line(img, pa, pb, colour, w, cv2.LINE_AA)
+        if caps == "butt":
+            _butt(img, pa, pb, colour, w)
+        else:
+            cv2.line(img, pa, pb, colour, w, cv2.LINE_AA)
 
 
 # ---- The penetration map -------------------------------------------------
