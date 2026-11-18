@@ -1125,6 +1125,12 @@ def build_generation(
             count_enclosed=(garment_sews_enclosed(p, cfg)[0]
                             or bool(cfg.sew_enclosed_white)),
             least_loss=cfg.color_cap_least_loss)
+        # `cfg.color_cap_fuse_split_tones` (built OFF 2026-11-18): a letter
+        # the palette cut in two tones, both folded onto one spool by the cap,
+        # sews as one shape, and the text taggers below see the whole letter.
+        if cfg.color_cap_fuse_split_tones:
+            from . import cap_fuse
+            cap_fuse.apply(regions)
 
     # `cfg.bevel_ring_fold` (built OFF 2026-11-13, Kent's Golden Tee "too
     # busy"): shading the pro flattens -- a drop shadow on the page, a ramp

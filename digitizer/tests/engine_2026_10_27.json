@@ -382,6 +382,7 @@
  "regular_structure": false,
  "bevel_ring_fold": false,
  "color_cap_least_loss": false,
+ "color_cap_fuse_split_tones": false,
  "merge_chroma_guard": false,
  "light_thin_stroke_keep": false,
  "keyline_fragment_drop": false,
