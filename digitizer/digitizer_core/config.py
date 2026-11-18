@@ -1562,6 +1562,21 @@ class PipelineConfig:
     # was not in front of him, so the default stays False until it is
     # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
     merge_chroma_guard: bool = False
+    # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
+    # Precision Drone: "the lower left propeller is a thick black slab ...
+    # instead of a thin grey blade"). Traced: the blade's silver highlight is
+    # its own stage-2 region (L 66, 8 mm long, ~0.2 mm wide), under the area
+    # floor, and the photo lane's floor absorbs it into the black beside it,
+    # so highlight and dark edges sew as one black slab. ON, in the photo
+    # lane, a sub-floor region that clears the run floors, is at least
+    # `LIGHT_THIN_ASPECT` times longer than wide, and is at least
+    # `LIGHT_THIN_DL` CIELAB L lighter than the region it would be absorbed
+    # into, is kept for the run tier (`rescued_small_shape`) instead
+    # (`stage3_segment.resolve_small_regions`). Ratios and lightness only, no
+    # fabric constant: gate 1 does not apply. Reaches every photo-lane design:
+    # the default is Kent's, with before | after pictures. False is the floor
+    # bit for bit. Tests: `tests/test_light_thin_stroke_keep.py`.
+    light_thin_stroke_keep: bool = False
     # `keyline_fragment_drop` (ON since 2026-11-17; built OFF the same day.
     # Kent on the Drone render: "The P,R & C should not have the dark stitch
     # lines on them"; shown ORIGINAL | BEFORE | AFTER, `docs/renders/
