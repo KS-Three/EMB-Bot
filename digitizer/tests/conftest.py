@@ -1183,6 +1183,11 @@ PRE_FLIP.update(KEYLINE_FRAGMENT_2026_11_17_OFF)
 # dot: "Flip ON (Recommended)"): `tests/test_round_dot_ring.py`.
 ROUND_DOT_RING_2026_11_18_OFF = {"round_dot_ring": False}
 PRE_FLIP.update(ROUND_DOT_RING_2026_11_18_OFF)
+# `text_cluster_mixed_caps` (Kent 2026-11-18, shown the To a T hat overlay of
+# the shapes it tags and the zoom of the A: "Flip ON (Recommended)"):
+# `tests/test_text_cluster_mixed_caps.py`.
+TEXT_CLUSTER_MIXED_CAPS_2026_11_18_OFF = {"text_cluster_mixed_caps": False}
+PRE_FLIP.update(TEXT_CLUSTER_MIXED_CAPS_2026_11_18_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
