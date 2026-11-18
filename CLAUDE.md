@@ -163,7 +163,8 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   (cloud containers default to 3.11). On 3.11 the `requirements.txt` path leaves a
   venv with no pystitch, and `node --test` then SKIPS the six format
   cross-validation tests and still reports green. That trap and the
-  `[service]`-only `httpx2` hole (a collection count ~123 short) are in
+  `[service]`-only `httpx2` hole (a collection count short by all of
+  `tests/test_service.py`, 180 tests on 2026-11-17) are in
   [`digitizer/CLAUDE.md`](digitizer/CLAUDE.md).
 
 - Always `python -m pytest`, never `python foo.py` — a bare invocation does not put
@@ -177,12 +178,15 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   code yourself: `pytest -q > log 2>&1; echo "EXIT=$?" >> log`.
 - **A cloud container here is FOUR cores, so `-n auto` IS `-n 4`** (`nproc` 4,
   `sched_getaffinity` 4 — measured 2026-09-14). Do not expect the ~9 min Kent's
-  Windows box does; **budget ~45 minutes for a full local digitizer run**, and
-  read that as healthy rather than hung.
+  Windows box does; **budget ~80 minutes for a full local digitizer run**, and
+  read that as healthy rather than hung. **79.0 minutes solo on 2026-11-17**
+  (4738 s, 9,368 tests collected, one run), up from 44.5 on 2026-09-14 as the
+  suite grew; like the CI budgets in footgun 7, this number only goes up.
   **The one thing that actually doubles it is starting a SECOND suite.** Two
   full runs overlapping on those four cores measured **79.1 and 80.9 minutes
-  against 44.5 solo** — 1.8x, from self-inflicted contention, not from `-n auto`
-  and not from any limit. Start one, let it finish.
+  against 44.5 solo** on 2026-09-14 — 1.8x, from self-inflicted contention, not
+  from `-n auto` and not from any limit (the ratio has not been re-measured on
+  today's suite). Start one, let it finish.
   **And do not diagnose a long run as killed the way that session did:** `pytest
   -q` buffers, so a log sitting at 8% says nothing, and `pgrep -c pytest`
   returns 0 against a live run because the process is `.venv/bin/python -m
@@ -314,18 +318,25 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    - **`pytest` exit codes.** `pytest > log; echo $?` is fine, but whatever runs
      LAST sets the code your harness reports — a wrapper ending in `tail` reports
      tail's `0` over pytest's `1`. Read the recorded code, not the harness's.
-   - **The digitizer suite's expected reds.** A full local run fails exactly
-     three golden tests (`test_pushcomp`, `test_flat_lane_byte_identical`,
-     `test_stage2_photo_segment` — platform-level numerics). CI deselects those
-     same three by node ID, so a local run and a green CI job agree. A FOURTH
-     failure is a real regression. **Trust the three NAMED tests, not the
+   - **The digitizer suite's expected reds.** A full local run on a cloud
+     container fails exactly **two** golden tests
+     (`test_flat_lane_byte_identical` and `test_stage2_photo_segment`, both on
+     `photo/enthusiast_logo.png` — platform-level numerics on an engine-stale
+     key). CI deselects those same two by node ID, so a local run and a green
+     CI job agree. A THIRD failure is a real regression. **It was three until
+     2026-10-08**, when the towel `test_pushcomp` row was re-pinned (a stale
+     pin, not numerics) and its deselect removed: `test_pushcomp` passes now,
+     and a red there is real. **Trust the two NAMED tests, not the
      total** — the count moves as tests land: 1414 passed on 2026-08-26, 1491
-     on 2026-08-27, 1546 on 2026-08-31 (3 failed, 8 skipped, 7 xfailed, 9m28s
-     with `-n auto`). Collection is its own tripwire, but read it as a GAP not
+     on 2026-08-27, 1546 on 2026-08-31, 9295 on 2026-11-17 (2 failed, 48
+     skipped, 10 xfailed, 13 xpassed, 79m with `-n auto` on four cores).
+     Collection is its own tripwire, but read it as a GAP not
      a fixed number, since the total keeps growing: 1509 collected on
-     2026-08-27, 1564 on 2026-08-31, and anything ~123 short of the current
-     total means `tests/test_service.py` failed to collect (the `httpx2` hole,
-     `digitizer/CLAUDE.md`). *(measured 2026-08-31 — full local run, `python3.12` venv)*
+     2026-08-27, 1564 on 2026-08-31, 9368 on 2026-11-17, and a count short by
+     the size of `tests/test_service.py` (123 tests on 2026-08-31, 180 on
+     2026-11-17) means that file failed to collect (the `httpx2` hole,
+     `digitizer/CLAUDE.md`). *(measured 2026-11-17 — full local run, 3.12.3
+     venv from `/usr/bin/python3.12`, pinned to `requirements.txt`)*
    - **A just-failed job's `gh run view --job <id> --log` can come back EMPTY.**
      Measured 2026-10-28 on PR #1171 (run 40640429473, job 122657378371): the
      job had failed, the log was zero bytes, and "no log" reads like "no
