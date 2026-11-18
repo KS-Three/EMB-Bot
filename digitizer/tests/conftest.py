@@ -1151,6 +1151,10 @@ PRE_FLIP.update(RIBBON_HANDBACK_2026_11_16_OFF)
 # `tests/test_border_by_size_corner_loss.py`.
 CORNER_LOSS_2026_11_17_OFF = {"border_by_size_corner_loss": False}
 PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
+# `enclosed_white_keeps_known_colour` (Kent 2026-11-17, LEGO sheet: "Flip ON
+# (Recommended)"): `tests/test_enclosed_white_known_colour.py`.
+ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF = {"enclosed_white_keeps_known_colour": False}
+PRE_FLIP.update(ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF)
 # `color_cap_least_loss` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER for
 # the two designs it moves, Precision Drone and the phone screenshot: "Flip ON
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.

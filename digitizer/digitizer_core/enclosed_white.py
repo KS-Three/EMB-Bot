@@ -47,6 +47,11 @@ every area. None: a hole whose colour is known keeps the thread it carries
 nobody knows (`enclosed_colour_unknown`: Becker's interiors carry the ring's
 black), takes white. A review recolour of one shape (`shape_overrides
 thread_index`) still wins, and so does a review `stitched`.
+`cfg.enclosed_white_keeps_known_colour` (ON, Kent 2026-11-17): with the
+chosen thread NEAR WHITE (within `cfg.enclosed_by_garment_de00` of white,
+the Studio's default pick) a known-colour area clearly unlike it keeps its
+own thread (a black band round white letters stays black). An explicit
+non-white pick recolours known areas as before.
 
 Order. The areas this sews go in a layer of their own at the FRONT of the
 sew order, one per thread: the pro sews the big fill first and its outline on
@@ -197,6 +202,12 @@ def apply_enclosed_white(regions, thread_indices: list[int], cfg, chart,
     if cfg.sew_enclosed_rgb is not None:
         chosen = chart.nearest_index(rgb_to_lab(np.array([cfg.sew_enclosed_rgb], dtype=np.float64))[0])
     white = chart.nearest_index(rgb_to_lab(np.array([WHITE], dtype=np.float64))[0])
+    chosen_near_white = False
+    if chosen is not None and getattr(cfg, "enclosed_white_keeps_known_colour", False):
+        from skimage.color import deltaE_ciede2000
+        chosen_near_white = float(deltaE_ciede2000(
+            rgb_to_lab(np.array([cfg.sew_enclosed_rgb], dtype=np.float64)),
+            rgb_to_lab(np.array([WHITE], dtype=np.float64)))[0]) <= cfg.enclosed_by_garment_de00
     sewn = []
     for r in regions:
         k = plan.get(r.shape_id)
@@ -209,11 +220,10 @@ def apply_enclosed_white(regions, thread_indices: list[int], cfg, chart,
         if ov.get("thread_index") is None:
             t = chosen if chosen is not None else (
                 white if r.meta.get("enclosed_colour_unknown") else r.thread_index)
-            # `cfg.enclosed_white_keeps_known_colour` (built OFF): a KNOWN
-            # colour clearly unlike the chosen thread keeps its own thread
-            # (a black band round white letters stays black, not white).
-            if (chosen is not None
-                    and getattr(cfg, "enclosed_white_keeps_known_colour", False)
+            # `cfg.enclosed_white_keeps_known_colour`: with a near-white
+            # chosen thread, a KNOWN colour clearly unlike it keeps its own
+            # thread (a black band round white letters stays black).
+            if (chosen_near_white
                     and not r.meta.get("enclosed_colour_unknown")
                     and chart.delta_e(int(r.thread_index), int(chosen))
                     > cfg.enclosed_by_garment_de00):

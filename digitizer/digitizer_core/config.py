@@ -2516,12 +2516,18 @@ class PipelineConfig:
     # and farther than `enclosed_by_garment_de00` (CIEDE2000, the existing
     # constant, no new one) from the chosen thread keeps that own thread;
     # it still sews, in its own front layer, exactly as with
-    # `sew_enclosed_rgb` None. A white page's own white (distance 0) and an
+    # `sew_enclosed_rgb` None. Only when the chosen colour is NEAR WHITE
+    # (within `enclosed_by_garment_de00` of white, the Studio's default
+    # pick): an explicit non-white pick recolours known areas as before.
+    # A white page's own white (distance 0) and an
     # alpha hole (colour unknown) behave as before. Built OFF: it changes
-    # the design, Kent picks the default. False is the engine before the
-    # flag, byte for byte; `tests/engine_2026_10_27.json` carries it False.
+    # the design, Kent picks the default. **ON by Kent 2026-11-17, LEGO
+    # sheet: Flip ON** (ORIGINAL ART | OFF | ON: "Flip ON (Recommended)").
+    # False is the engine before the flip, byte for byte;
+    # `tests/engine_2026_10_27.json` carries it False and
+    # `ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF` in conftest is in `PRE_FLIP`.
     # Tests: `tests/test_enclosed_white_known_colour.py`.
-    enclosed_white_keeps_known_colour: bool = False
+    enclosed_white_keeps_known_colour: bool = True
     # The keyline band (`stage6_border.keyline_runs`, built OFF 2026-10-23):
     # read only with `sew_enclosed_white`. ON, an enclosed field it sews that
     # is a KEYLINE -- a band with holes, at least `machine.KEYLINE_REACH_FRAC`
