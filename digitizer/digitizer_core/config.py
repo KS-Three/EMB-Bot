@@ -3636,7 +3636,10 @@ class PipelineConfig:
     # (two or more bodies and a stem) is wrong there; MFab hat at 30 mm drops a grade B -> C with
     # it ON (`test_underfill_small_size`). What is worth keeping is the MEASURED CONSTRUCTION: one
     # fill under the group, one border band over the V, a column per stem, stem first
-    # (`docs/outline-one-band-2026-11-18.md`). Off, byte-identical on all 35 pro/fixture runs.
+    # (`docs/outline-one-band-2026-11-18.md`). The one UNTRIED structural option: sew each face's loop
+    # whole, as OFF does, and lay the stems and the outer loop OVER it instead of cutting it (it
+    # brings the double cover at the stems back; not built). Off, byte-identical on all 35 pro/fixture
+    # runs.
     # Tests: `tests/test_outline_one_band.py`. Evidence:
     # `docs/renders/outline-one-band-2026-11-18/README.md`.
     outline_one_band: bool = False
