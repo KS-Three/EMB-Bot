@@ -1,0 +1,158 @@
+[
+ {
+  "fixture": "bg_uncertain.png",
+  "moved": false,
+  "off": 11249,
+  "on": 11249
+ },
+ {
+  "fixture": "logo_alpha.png",
+  "moved": false,
+  "off": 6213,
+  "on": 6213
+ },
+ {
+  "fixture": "logo_whitebg.png",
+  "moved": false,
+  "off": 6720,
+  "on": 6720
+ },
+ {
+  "fixture": "ribbon_curve.png",
+  "moved": false,
+  "off": 1007,
+  "on": 1007
+ },
+ {
+  "fixture": "photo/drone_render.png",
+  "moved": false,
+  "off": 18610,
+  "on": 18610
+ },
+ {
+  "fixture": "photo/enthusiast_logo.png",
+  "moved": false,
+  "off": 2343,
+  "on": 2343
+ },
+ {
+  "fixture": "photo/fur_ramp.png",
+  "moved": false,
+  "off": 6985,
+  "on": 6985
+ },
+ {
+  "fixture": "photo/gradient_ramp_linear.png",
+  "moved": false,
+  "off": 10938,
+  "on": 10938
+ },
+ {
+  "fixture": "photo/gradient_ramp_radial.png",
+  "moved": false,
+  "off": 18289,
+  "on": 18289
+ },
+ {
+  "fixture": "photo/photo_chrome_specular.png",
+  "moved": false,
+  "off": 36259,
+  "on": 36259
+ },
+ {
+  "fixture": "photo/photo_dof_meadow.png",
+  "moved": false,
+  "off": 21101,
+  "on": 21101
+ },
+ {
+  "fixture": "photo/photo_grass_macro.png",
+  "moved": false,
+  "off": 3983,
+  "on": 3983
+ },
+ {
+  "fixture": "photo/photo_owl_pale.png",
+  "moved": false,
+  "off": 24893,
+  "on": 24893
+ },
+ {
+  "fixture": "photo/photo_scene_stub.png",
+  "moved": false,
+  "off": 23496,
+  "on": 23496
+ },
+ {
+  "fixture": "photo/photo_subject_stub.png",
+  "moved": false,
+  "off": 3142,
+  "on": 3142
+ },
+ {
+  "fixture": "photo/photo_sunset_backlit.png",
+  "moved": false,
+  "off": 26910,
+  "on": 26910
+ },
+ {
+  "fixture": "photo/region_blobs.png",
+  "moved": false,
+  "off": 19017,
+  "on": 19017
+ },
+ {
+  "fixture": "photo/repro_gradient_white_icon.png",
+  "moved": false,
+  "off": 22939,
+  "on": 22939
+ },
+ {
+  "fixture": "photo/summit_badge.png",
+  "moved": false,
+  "off": 28513,
+  "on": 28513
+ },
+ {
+  "fixture": "becker_marine_logo.png",
+  "moved": false,
+  "off": 10784,
+  "on": 10784
+ },
+ {
+  "fixture": "logo_script_tires.png",
+  "moved": false,
+  "off": 2515,
+  "on": 2515
+ },
+ {
+  "fixture": "photo/logo_bridge_bar.jpg",
+  "moved": false,
+  "off": 10872,
+  "on": 10872
+ },
+ {
+  "fixture": "photo/logo_gaulke_roofing.png",
+  "moved": true,
+  "off": 5123,
+  "on": 4589
+ },
+ {
+  "fixture": "photo/logo_golden_tee.jpg",
+  "moved": false,
+  "off": 14503,
+  "on": 14503
+ },
+ {
+  "fixture": "photo/logo_hotel_fremont.webp",
+  "moved": false,
+  "off": 12893,
+  "on": 12893
+ },
+ {
+  "fixture": "photo/screenshot_phone_ui_golke.jpg",
+  "moved": false,
+  "off": 11254,
+  "on": 11254
+ }
+]

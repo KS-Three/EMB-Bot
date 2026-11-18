@@ -591,6 +591,29 @@ class PipelineConfig:
     # halo, which the snap removes, measure the pre-flip engine through
     # `tests/conftest.py`'s PRE_FLIP. False is the pre-flip engine.
     two_tone_snap: bool = True
+    # Sew the art's thin white lines (`two_tone.keep_lines`) BEFORE the ink
+    # either side of them (`page_line.py`, built OFF 2026-11-17, prime
+    # grader's gaulke_roofing_hat: the hairline gap under the inner roof sews
+    # as a white satin bar over the thin black line beneath it, which is left
+    # a ragged fringe). ON, those regions take a front layer so the black
+    # lays over their edges. Order only; no width or fabric number. False is
+    # the engine as it was, byte for byte; `tests/engine_2026_10_27.json`
+    # carries it False. Tests: `tests/test_page_line_front.py`.
+    page_line_front: bool = False
+    # Leave the art's thin white lines (`two_tone.keep_lines`) UNSEWN, bare
+    # fabric between the two ink shapes (`page_line.py`, built OFF 2026-11-17).
+    # The pro's Gaulke hat file is one thread, no colour change, and the roof's
+    # light line is open fabric 0.73-0.83 mm wide between the roof and a 1.17 mm
+    # black line (read off the DST); ours sewed it as a white satin bar. No
+    # width or tolerance number: the channel is the one `keep_lines` already
+    # found, and a review `stitched` still wins. False is the engine as it
+    # was, byte for byte. Tests: `tests/test_page_line_front.py`.
+    # **ON since 2026-11-17** (Kent, shown ORIGINAL | BEFORE | AFTER of the
+    # Gaulke roof, told that only the two Gaulke runs move out of 35 and that
+    # our hairline is thinner than the pro's because widening it needs a
+    # sew-out: "Flip ON (Recommended)"). `page_line_front` stays OFF. False is
+    # the engine as it was; PRE_FLIP (PAGE_LINE_OPEN_2026_11_17_OFF) pins it.
+    page_line_open: bool = True
     # Make the gradient lane's region edges follow the PIXELS rather than the
     # SEEDS superpixels they are built from
     # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on

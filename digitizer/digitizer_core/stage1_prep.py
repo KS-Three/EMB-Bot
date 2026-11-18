@@ -115,6 +115,10 @@ class Prep:
     # tag_enclosed_background` reads `bg_from_alpha` and marks the latter
     # `enclosed_colour_unknown`.
     enclosed_mask: np.ndarray | None = None
+    # The pixels `two_tone.keep_lines` handed back to the art as light ink
+    # (a thin drawn white line between inks); None when none were. Read only
+    # by `page_line.plan_page_lines` (`cfg.page_line_front`).
+    page_lines: np.ndarray | None = None
     # The colour the border flood matched, as (R, G, B) ints — the colour
     # `enclosed_mask`'s pixels ARE on the no-alpha path, and therefore the
     # colour an enclosed hole would sew in. None on the alpha path (the hole
