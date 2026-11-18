@@ -24,7 +24,6 @@ the OLDEST lines whole to the archive.
 - [Size-ring corner loss](border-by-size-corner-loss-2026-11-17.md) — Intel's 7 mm square = cushion under the 2.1 mm ring; `border_by_size_corner_loss` ON 11-17 (Kent "Flip ON") refuses rounding loss > 0.083 (Intel 0.12, next 0.058); 1 of 44 jobs moves
 - [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: a drawn black line re-snapped to grey, not a border; pro borders per patch; both fixes (`resnap_hairline_never_lightens`, fix B) ruled OFF by Kent 11-11
 - [Colour cap fuse split tones](color-cap-fuse-split-tones-2026-11-18.md) — Drone THERMAL E/R = two gradient bands the cap folded to one thread; `color_cap_fuse_split_tones` ON 11-18 (Kent "Flip ON"); edge-to-edge only, never a dot in a ring
-- [Compare ends on regenerate](compare-ends-on-regenerate-2026-11-08.md) — Kent 11-08 "Keep as is": Compare view (#1345) is an Original sub-mode, a regeneration ends it; don't build survival
 - [Connector edge-walk](connector-edge-walk-2026-11-14.md) — `connectors_edge_walk` ON 11-14 (Kent "Flip ON"): the walk ordered so the next stroke covers each join; 28 designs 268/44/32 mm, trims 589/639/596
 - [Connectors on top](connectors-on-top-2026-11-14.md) — Becker #14/#15 = Column-lane hops across finished satin; `lettering_columns_connectors_buried` OFF: 268 -> 44 mm, +50 trims; MFab #2 = photo border lightened to a bean loop
 - [Corner-fold kappa](corner-fold-kappa-2026-11-15.md) — Becker hat kappa drop 0.337->0.289 = scorecard REGISTRATION (0.1 mm moves the 2 mm grid), not the fold: one frame +0.006/-0.008; tripwire frame pin ON 11-15 (Kent "Flip ON now")
@@ -45,7 +44,6 @@ the OLDEST lines whole to the archive.
 - [Flat ends, pro's construction](flat-ends-pro-2026-11-14.md) — pro edge = cross ends on the line / last cross ON a flat face; text_lean undid the mitre; `lean_flat_ends` (extra, OFF); Becker #10/#11 flat
 - [Flip candidates 11-14](flip-candidates-2026-11-14.md) — inshape_piece_lift ON (Kent 11-14 "Flip ON"): Becker/MFab 13.7-60.6 mm stitches gone, +1-2 trims; apex_cut corpus 25 of 43 moved: 10 better, 4 worse, wants a guard
 - [Flip run 11-15/16](flip-run-2026-11-16.md) — Kent 11-15: 19 of 20 ruled flags ON (#1565-#1599); lean_flat_ends held OFF; 8 built OFF for Kent; nightly tripwire red, re-capture in CI; flat-lane rules reach photos; combined check first
-- [Foreman merge/push findings](foreman-merge-push-findings-2026-11-08.md) — 62 PRs 11-07/08: squash branches refuse `branch -d`; test.fail() expected; empty log != green; fix-lane branch needs a finding index
 - [Foreman wake-up](foreman-wakeup-while-wave-out-2026-11-12.md) — Kent 11-12 "stale for 10 hours": 7 cloud sessions merged while the foreman idled; a wave out = set a wake-up (CronCreate sweep / gh run watch) before ending the turn, delete when empty
 - [Fremont room](fremont-room-2026-11-14.md) — EST 1895 `no_room`: its own white field (0.48 of hull) read as obstacle; `small_text_reset_ground_ring` + `_bean_follows` (spines read at drawn size) OFF: date reads clean at 2x; pro 2.4x
 - [Golden Tee swoosh hairline](goldentee-swoosh-hairline-2026-11-18.md) — pin (10,8): pro sews the outer hairline as ~1.0 mm satin too (ours 1.33); saw teeth = satin end caps; docs only, no flag
@@ -64,7 +62,6 @@ the OLDEST lines whole to the archive.
 - [Letter-reader replication](letter-reader-replication-2026-11-12.md) — #1389 reader pre-registered; Kent sat 9 logos 11-13: letter pins on 2 items (needs 5) = no verdict, not replicated
 - [Ribbon hand-back](lettering-ribbon-handback-2026-11-16.md) — `lettering_columns_ribbon_handback` ON 11-16 (Kent "Flip ON"): lane member >= 1.6x its cluster's dt_p90 median AND fill verdict goes to the ladder; moves Adidas' bar only
 - [Line chain, one thread](line-chain-one-thread-2026-11-11.md) — fix B `line_chain_one_thread`: Kent 11-11 "Keep off, very little improvements were made, if any"; stays OFF, no flip, no retune; 4 of 21 rows move
-- [Local lanes fill the disk](local-lanes-fill-disk-2026-11-08.md) — ~25 local lanes (900 MB node_modules each) took C: to 143 MB; remove a lane on merge, stop under 10 GB free
 - [Logo batch 2](logo-batch-2-2026-11-17.md) — 10 more Commons logos at 90 mm; CDC tagline cropped (transparent band read as a bar), fixed ON; SBA, HHS text faults seen
 - [Logo batch 11-16](logo-batch-2026-11-16.md) — 10 Commons logos, final before/after only (Kent); rim fabric-edges + group size-ring ON (Kent 11-16); 6 of 22 pro jobs move, none worse; arc text NOT fixed
 - [Logo batch 3](logo-batch-3-2026-11-17.md) — Coast Guard ring text buried; `dark_ink_ground_innermost` OFF; FTC 549 -> 135 s
