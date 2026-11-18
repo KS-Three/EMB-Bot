@@ -1194,14 +1194,14 @@ def build_generation(
                          # since 2026-11-14, Kent's flip): False, the call as it was
                          **({"solid_guard": True}
                             if cfg.text_cluster_solid_guard else {}),
-                         # a letter turned on a ring joins its line (2026-11-07,
-                         # ON since 2026-11-08, Kent's flip)
-                         **({"nest_door_aspect": True}
-                            if cfg.text_cluster_nest_door_aspect else {}),
                          # a high-contrast serif letter the door refused joins
                          # the line beside it (2026-11-18, built OFF)
                          **({"adopt_contrast": True}
-                            if (cfg.extra or {}).get("text_cluster_adopt_contrast") else {}))
+                            if (cfg.extra or {}).get("text_cluster_adopt_contrast") else {}),
+                         # a letter turned on a ring joins its line (2026-11-07,
+                         # ON since 2026-11-08, Kent's flip)
+                         **({"nest_door_aspect": True}
+                            if cfg.text_cluster_nest_door_aspect else {}))
     # `cfg.dark_ink_floor_rescue`: a stroke kept under the floor for the
     # lettering path that the tagger did not claim is a speck, not a letter:
     # dropped, counted with stage 4's drops (no new sentence).
