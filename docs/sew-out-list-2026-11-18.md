@@ -14,7 +14,7 @@ float clearance drafted, not built),
 Stitches"), card v7 beside it, and the other `docs/sewout/card-*` folders. MASTER_SCOPE items
 33 (pull comp per rail or total; line 335), 44 (`forbid_gap_mm`, 0.8 mm; line 393) and the
 hairline-bean question (item 24, card block 5; line 133) already name their own sew-outs.
-Rows 1-9 below are the questions that have NO card block yet.
+Rows 1-9 and 12 below are the questions that have NO card block yet.
 
 ## Grouping: what to sew so that one sitting answers the most rows
 
@@ -31,7 +31,7 @@ below, so "same as card v8" is a suggestion, not a requirement from any note.
 | **Toat beanie at 82.3 mm** (`toat_beanie`) | 5, and 10 if the speed lines are in this design (not confirmed, see row 10) |
 | **Precision Drone hat at 62.6 mm** + **Golden Tee hat at 74.9 mm** | 3, 4 (same cause, same constants) |
 | **Tires hat at 114.3 mm** (`tires_hat_3d`) | 8 |
-| **Hotel Fremont**: the card v8 block F piece already covers the dividers (92.5 mm patch) | 11 |
+| **Hotel Fremont**: the card v8 block F piece already covers the dividers (92.5 mm patch); the same piece, re-cut from today's engine and extended to the upper crest (EST / 1895), answers the small lettering | 11, 12 |
 
 Fewest sittings: MFab hat, Toat Machine hat, Toat beanie, Drone + Golden Tee, Tires. Rows 2, 3
 and 4 are all the same constant (the satin pull), so any one of those sews also speaks to the
@@ -164,6 +164,27 @@ other two.
    dividers; add them to the "look at" list.
 4. **Unlocks.** Nothing new on its own; feeds the hairline-bean decision.
 5. **Source.** `docs/fremont-dividers-thread-limit-2026-11-17.md` (PR #1629).
+
+### 12. Hotel Fremont small lettering (EST 1895, EAT STAY PLAY): a 0.5 mm bean cord where the pro sews bold satin
+1. **Design, spot.** `hotel_fremont_hat`, 93.3 mm: EST 1895 (y about -14.7..-10.2 plan mm, caps 4.2-4.5 mm
+   sewn) and EAT STAY PLAY (y 8.7..13.3, caps 4.6-4.8 mm sewn). Art caps are 1.9 and 2.5 mm, hair strokes
+   0.27-0.30 mm; the reset regrows them to the pro's 4.5 / 4.6 mm.
+2. **In doubt.** Bean cord versus satin. Ours sews one 0.5 mm bean line (`bean_letter_max_stroke_mm` 0.5)
+   down a 0.9-1.2 mm drawn stroke; the pro sews 0.86-1.26 mm bold satin. Satin here would need a 0.6 mm
+   counter (`small_text_min_counter_mm` 0.619) and a stroke at the 1.0 mm floor
+   (`stage6_satin.PHOTO_MIN_SATIN_WIDTH_MM`, never tuned). Neither is sewn on cloth. Existing OFF flags
+   (`small_print_floor`, `lettering_columns_small_stem`) change nothing visible at 93.3 mm.
+3. **Sew, look.** Card v8 block F (92.5 mm patch) already sews the lower crest, so the tagline is on the
+   card, but from the 11-01 engine: card v8's own README (line 134) says today's hat sews EST and 1895 as
+   bean lines, so that piece does not answer it as it stands. Add: re-cut block F from current main and
+   include the upper crest (EST / Wisconsin / 1895). Look at: do the bean letters read at arm's length
+   against the pro's satin, is the A (no crossbar, no counter) legible as an A, are the 0.6 mm
+   counters of E, P, 8, 9 open. No satin arm exists to sew; that is the second step, only if the bean
+   reads badly.
+4. **Unlocks.** If the bean reads: close the fault as a limit. If not: a built-OFF satin tier for re-set
+   letters (small satin counters, gate 1) and the A's crossbar re-spine (the director declined it for now,
+   it cannot be judged without cloth).
+5. **Source.** `docs/fremont-small-lettering-limit-2026-11-18.md` (PR #1676).
 
 ## What this list does not claim
 
