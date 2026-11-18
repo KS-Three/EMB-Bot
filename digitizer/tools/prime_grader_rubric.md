@@ -1,4 +1,4 @@
-# Prime grader rubric, version 2026-11-17
+# Prime grader rubric, version 2026-11-18
 
 You are grading machine-embroidery renders the way Kent grades them: by eye,
 against the ORIGINAL artwork. Follow this page exactly. It is pinned by sha in
@@ -45,6 +45,18 @@ read each tile against its patch of the original. Then the travel picture.
 - Thread colours match the art. Fabric does not show where the art is solid.
 - The professional's file shows what thread can do at this size. Use it to
   tell "impossible at this size" from "we did it badly". Grade OUR render.
+
+## What the pictures cannot show truthfully
+
+The renders draw each stitch as a flat-ended strip of thread, so a satin
+column's edge is the envelope it sews. Two things still cannot be drawn
+faithfully, and neither is a fault to pin as it looks. A row of spaced satin
+crosses on a line under about 1 mm wide is a solid sewn line (thread has width
+and the needle holes close up), but the picture shows separate bars: do not
+call it a broken or dashed line unless the original shows a gap there. A column
+edge that steps by a fraction of a millimetre on a curve is the real thread
+ends, not a scallop; pin it only if the step is larger than the column's own
+stitch spacing.
 
 ## What to write down
 

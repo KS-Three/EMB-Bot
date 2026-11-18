@@ -67,6 +67,8 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("columns", "_RING_FLOOR"),
     ("columns", "_STROKE_FLOOR"),
     ("wedge_cap", "_ON"),
+    ("end_overlap", "_ON"),
+    ("end_overlap", "_ALIGN"),
     ("outline_cut", "_APEX_PRO_JOINTS"),
     ("outline_cut", "_FOLD_CAP_FLARED"),
     ("outline_cut", "_APEX_BAND_KNOTS"),

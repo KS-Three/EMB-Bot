@@ -2246,6 +2246,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
     from .outline_cut import neck_cuts_scope
     from .wedge_cap import wedge_cap_scope
+    from .end_overlap import end_overlap_scope, junction_align_scope
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
@@ -2287,6 +2288,9 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(neck_cuts_scope(bool((cfg.extra or {}).get("lettering_columns_neck_cuts"))))
         # `cfg.lettering_columns_stem_wedge_cap` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key)
         _enter(wedge_cap_scope(cfg.lettering_columns_stem_wedge_cap))
+        # `cfg.extra["lettering_columns_end_overlap_cut"]` (built OFF 2026-11-18), the same way
+        _enter(end_overlap_scope(bool((cfg.extra or {}).get("lettering_columns_end_overlap_cut"))))
+        _enter(junction_align_scope(bool((cfg.extra or {}).get("lettering_columns_junction_align"))))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))
