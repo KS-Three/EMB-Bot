@@ -3571,6 +3571,16 @@ class PipelineConfig:
     # (`docs/renders/outline-loop-split-shared-2026-11-18/`). Off,
     # byte-identical. Tests: `tests/test_outline_loop_split_shared.py`.
     outline_loop_split_shared: bool = False
+    # `outline_one_band` (2026-11-18, prime grader / Kent 11-10 "the border
+    # around this logo should be smooth"): an outline whose band is shared by
+    # two or more bodies and has stems between them (BECKER) is sewn the way
+    # the professional's Becker file is -- each stem a satin column of its own
+    # first, then ONE loop on the band's outer ring last, so the border passes
+    # the dip between two letters as one band (`outline_band`). Single-body
+    # bands and bands without a stem are untouched. Built OFF: the flip is
+    # Kent's, judged on the before / after pictures
+    # (`docs/renders/outline-one-band-2026-11-18/`). Off, byte-identical.
+    outline_one_band: bool = False
     # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
     # the 2026-09-03 mechanism left open). A stroke that loses crosses to
     # `SATIN_MIN_CROSS_MM` and whose MEDIAN cross is under the hairline line
