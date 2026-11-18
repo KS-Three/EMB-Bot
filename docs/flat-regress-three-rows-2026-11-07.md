@@ -13,9 +13,10 @@ the Gaulke and Fremont rows are unmoved.
 
 **Re-seeded a third time 2026-11-15 (#1565):** Kent's Flip PR 2 turned on the small-text re-set flags (`small_text_reset_ground_ring`, `_bean_follows`, `small_text_handover`), which re-set Fremont's date and tagline. The pinned re-capture (CI run 43772829964, five passes) reads Fremont patch trims **28**, not 20. The "cured by flat_light_text_runs" attribution below is of the 20-trim engine and was not re-measured. The Gaulke row is unmoved, and MFab LC needle-up stays 441.0.
 
-**Re-seeded a fourth time 2026-11-18 (PR #1646, capture run 44205663556, held as a draft):** about 30 flips since 11-15. Gaulke hat trims now read **30**
-(`page_line_open`, #1633: the roof's white line is bare fabric), Fremont patch trims **19** (`rope_band`, #1632) and MFab LC needle-up **468.5 mm** (about 1 mm
-of it `lettering_columns_cover_hops`; the rest is not traced). The attributions below are of the older engines and were not re-measured.
+**Re-seeded a fourth time 2026-11-18 (PR #1646, capture run 44241180150 on main 5068c36d; Kent: "Accept after one fresh capture (Recommended)"):** the ledger
+re-captured after about 30 flips since 11-15. Gaulke hat trims now read **30** (`page_line_open`, #1633: the roof's white line is bare fabric), Fremont patch
+trims **19** (`rope_band`, #1632) and MFab LC needle-up **523.9 mm** (468.5 in the intermediate capture on 3edc5011; about 1 mm of the first step is
+`lettering_columns_cover_hops`, the rest and the second step are not traced). The attributions below are of the older engines and were not re-measured.
 See `docs/tripwire-trace-2026-11-18.md`.
 
 ## Question

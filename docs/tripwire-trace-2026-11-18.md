@@ -6,7 +6,7 @@ This doc is the trace. It changes no default and proposes no revert: that is Ken
 ## Method
 
 - **Base and head.** The 2026-11-15 ledger was captured at head `f095e1ab`. `PipelineConfig` defaults at `f095e1ab` against `origin/main`
-  (3edc5011 plus two built-OFF commits) differ in **31 flags**: 7 flipped False -> True (`border_from_outline_follow_shape`,
+  (3edc5011 plus two built-OFF commits; see the correction below for #1659) differ in **31 flags**: 7 flipped False -> True (`border_from_outline_follow_shape`,
   `outline_frame_guard`, `satin_cap_skew_inset`, `satin_free_end_chord_aim`, `satin_seam_hold`, `speck_prune`, `stroke_bridge_keep`),
   1 value change (`satin_push_keeps_gaps` None -> 0.5) and 23 new fields that default ON (the rest of the 11-15 to 11-17 flips).
 - **Arms.** `tools.tripwire measure` (pinned frame, one process per arm, local Linux, nothing committed) over the 6 jobs that hold the
@@ -14,6 +14,35 @@ This doc is the trace. It changes no default and proposes no revert: that is Ken
   `goldentee_hat`, `mfab_hat`. Arms: today's default; each of the 31 flags forced to its old value, one at a time; all 31 at once
   (ALLOFF); then 10 combinations of the suspects. "Share" below = (now - arm) / (now - old ledger), so 1.00 restores the old figure.
 - **Not measured:** word cc (`mfab_hat` 0.0 -> -0.091; needs the OCR reader), the `becker_*` movers, and any job outside the six.
+
+## Correction after #1659 (2026-11-18)
+
+Three of the 31 flags below, `lettering_columns_apex_pro`, `lettering_columns_apex_pro_joints` and `lettering_columns_corner_fold_cap_flared`, were
+flipped ON on 2026-11-15 in #1583 and **reverted to OFF by #1659** (d6a7cf70, Kent 2026-11-17: "Revert all three (Recommended)"). Main therefore no longer
+differs from `f095e1ab` in them: **on current main the difference is 28 flags, not 31.** The arms in this doc ran on `49be98e6`, while those three were still ON,
+so their rows (Becker's MARINE caps, and any share of a figure they carried) describe a state main no longer has. No figure in the tables below was
+attributed to them (the carriers are the five listed under "The flags that carry it"), so no row changes, but the "31" and "ALLOFF" counts are of the
+pre-#1659 tree.
+
+## The fresh capture the ruling asked for (run 44241180150, main 5068c36d)
+
+Kent, 2026-11-18: "Accept after one fresh capture (Recommended)". Captured after #1635 (`satin_thin_arm_stop`), #1652 (`text_cluster_mixed_caps`), #1654
+(`color_cap_fuse_split_tones`), #1655 (`round_dot_ring`), #1656 (`lettering_columns_off_line_mark`), #1659 (the apex revert) and #1662
+(`enclosed_white_keeps_known_colour`, also landed). Against the 2026-11-15 ledger: 57 figures better, 35 wrong-way, 19 unchanged (of 111); against the
+intermediate capture 44205663556 on 3edc5011: 30 better, 34 wrong-way, 47 unchanged.
+
+**Wrong-way movers on jobs this trace did NOT cover, or not explained by the trace** (not measured per flag):
+
+- `mfab_lc` needle-up mm: 441.0 (11-15) -> 468.5 (capture on 3edc5011) -> **523.9** (this capture), +82.9 mm. #1656 says it moves `mfab_hat` only; no flag in this doc
+  explains `mfab_lc`.
+- The five `becker_*` jobs: stitches up (hat_small +254, chest_small +238, lc_large +102, beanie +89, hat_large +21 since 3edc5011) with stitch-type and direction
+  kappas down 0.03-0.05 on four of them. The apex revert explains part of it (#1659's own table: Becker hat large -27 stitches, the other four +75 to +152), but hat_small (+254) and chest_small (+238) rise further than that and hat_large rises where #1659 says it falls, so other flips contribute; no per-flag arm was run.
+  Against the 11-15 ledger the Becker rows are mostly still at or better than baseline (hat_large stitch-type 0.289 -> 0.303); the 11-15 wrong-way Becker figures
+  are beanie needle-up +17.2 mm, stitch-type -0.018, direction -0.007 and hat_large +16 stitches / +2.7 mm.
+- `toat_machine_beanie` needle-up +25.4 mm and `toat_machine_hat` +10.2 mm since 3edc5011 (the `satin_thin_arm_stop` arm above explains about +5.0 mm of the hat's).
+
+Movers the flips themselves explain: Tires +106 stitches and +5.0 mm needle-up (`round_dot_ring`, #1655), `mfab_hat` +76 stitches (#1656), Drone +10 stitches
+and +6.4 mm (`color_cap_fuse_split_tones`, #1654).
 
 ## Headline
 
