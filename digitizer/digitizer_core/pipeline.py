@@ -1363,6 +1363,12 @@ def build_generation(
     if cfg.lettering_columns_ink_link and not cfg.lettering_words:
         from .columns import tag_ink_strays
         tag_ink_strays(regions, chart_for(cfg))
+    # A text-cluster member off its cluster's line is not a letter
+    # (`cfg.lettering_columns_off_line_mark`, built OFF 2026-11-18). OFF: never
+    # called, no key written.
+    if cfg.lettering_columns_off_line_mark:
+        from .columns import tag_off_line_marks
+        tag_off_line_marks(regions)
 
     # Regular structure (`cfg.regular_structure`, built OFF 2026-11-13): what
     # the art repeats becomes one shape repeated -- congruent shapes on a
