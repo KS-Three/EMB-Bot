@@ -75,6 +75,7 @@ the OLDEST lines whole to the archive.
 - [Monarch size cliff](monarch-size-cliff-2026-11-13.md) — wing cell lost at 90.50/91.75 mm; hand-back OFF by Kent 11-14: don't flip, don't re-narrow; lane branch-drop is the real fix ("the & was better on": his eye favoured ON)
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
+- [Off-line mark](off-line-mark-2026-11-18.md) — MFab's mark at the M's inner V (tagged into AND) sewed as crossing lane satin; `lettering_columns_off_line_mark` ON 11-18 (Kent "Flip ON"): a stacked, close, off-line member sews fill; 1 of 35 moves
 - [Outline-body guard](outline-body-guard-2026-11-14.md) — group_consistent_outline_body (ON 11-14): width tie-break needs > MARGIN; redraw had tipped MFab 113.5's small line to bodies on 3.4% (riders 12 -> 0); AHORA decided by ink, kept
 - [Outline frame guard](outline-frame-guard-2026-11-14.md) — k_line's red box is a field, not an outline: holder/holes area 1.0x+ keeps it a field; ticked ON 11-15 with a combined-check STOP, pending
 - [Outline inlets kept](outline-inlets-2026-11-14.md) — 'shape detail lost' 18 pins: 9 satin ends (apex/flat-ends lanes), 3 an outline inlet the polygon keeps and thread sews over (gear teeth, beak, notch); `outline_inlets_kept` OFF

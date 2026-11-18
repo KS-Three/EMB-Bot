@@ -24,8 +24,14 @@ def _line(n=4):
     return [_r(f"L{i}", box(8 * i, 25, 8 * i + 5, 31.8)) for i in range(n)]
 
 
-def test_default_is_off_and_in_the_engine_snapshot():
-    assert PipelineConfig().lettering_columns_off_line_mark is False
+def test_default_is_on_since_kent_2026_11_18_and_the_snapshot_and_pre_flip_pin_it_off():
+    import json
+    from pathlib import Path
+    from .conftest import OFF_LINE_MARK_2026_11_18_OFF
+    assert PipelineConfig().lettering_columns_off_line_mark is True
+    assert PipelineConfig(**OFF_LINE_MARK_2026_11_18_OFF).lettering_columns_off_line_mark is False
+    snap = json.loads((Path(__file__).parent / "engine_2026_10_27.json").read_text())
+    assert snap["lettering_columns_off_line_mark"] is False
 
 
 def test_mark_stacked_above_the_line_is_flagged():
@@ -81,7 +87,7 @@ def test_tag_keeps_an_explicit_tier():
 def test_is_lettering_reads_the_flag_only_when_on():
     r = _r("M", box(9, 21, 14, 27), lettering_off_line=True)
     base = dict(lettering_columns_skip_blobs=False)       # the box is a blob; isolate the flag
-    assert is_lettering(r, PipelineConfig(**base)) is True
+    assert is_lettering(r, PipelineConfig(lettering_columns_off_line_mark=False, **base)) is True
     assert is_lettering(r, PipelineConfig(lettering_columns_off_line_mark=True, **base)) is False
     plain = _r("N", box(40, 25.5, 45, 32))
     assert is_lettering(plain, PipelineConfig(lettering_columns_off_line_mark=True, **base)) is True

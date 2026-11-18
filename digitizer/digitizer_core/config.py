@@ -4432,8 +4432,15 @@ class PipelineConfig:
     # (`columns.off_line_marks`, 2026-11-18, built OFF). MFab Hat's pointed
     # mark at the foot of the M's inner V, tagged into "AND", sewed as two
     # crossing satin pieces that bled onto the white legs and beside the N.
-    # False writes no key and reads none. Tests: `tests/test_off_line_mark.py`.
-    lettering_columns_off_line_mark: bool = False
+    # ON by Kent's ruling 2026-11-18, shown the MFab Hat ORIGINAL | BEFORE | AFTER
+    # close-up and overview: "Flip ON (Recommended)". Caveats he was given: it
+    # rests on one logo (1 of 35 runs moves); the 0.25 gap threshold comes from
+    # two measurements (MFab 0.12, Toat Machine's i-dot 2.0); the classic-dot
+    # exemption is unit-tested only; not sewn on cloth. Pre-flip engine:
+    # `tests/conftest.OFF_LINE_MARK_2026_11_18_OFF`; the engine snapshot keeps
+    # False. False writes no key and reads none. Tests:
+    # `tests/test_off_line_mark.py`.
+    lettering_columns_off_line_mark: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
     # axis is a tangle: `columns.is_drawing_fragment`, junctions plus free
     # ends of the pruned skeleton >= `columns.ICON_GUARD_MIN_NODES` (24).

@@ -1158,6 +1158,12 @@ PRE_FLIP.update(THIN_ARM_STOP_2026_11_17_OFF)
 # `tests/test_page_line_front.py` names the flag itself.
 PAGE_LINE_OPEN_2026_11_17_OFF = {"page_line_open": False}
 PRE_FLIP.update(PAGE_LINE_OPEN_2026_11_17_OFF)
+# `lettering_columns_off_line_mark` (Kent 2026-11-18, shown the MFab Hat ORIGINAL |
+# BEFORE | AFTER: "Flip ON (Recommended)"): MFab's pointed mark at the M's inner
+# V sews as fill, not crossing lane satin. Only MFab moves (1 of 35 runs).
+# `tests/test_off_line_mark.py`.
+OFF_LINE_MARK_2026_11_18_OFF = {"lettering_columns_off_line_mark": False}
+PRE_FLIP.update(OFF_LINE_MARK_2026_11_18_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
