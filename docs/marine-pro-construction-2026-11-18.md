@@ -7,7 +7,7 @@ sure the MARINE strokes match the pros. These letters need to be perfect." Built
 public repo). Reader: `digitizer/tools/marine_construct.py` (new; one rule on the pro's DST and on ours written by
 `digitizer_core.export`), on `tools/letter_pieces.py`. Six letters found in all five Becker placements.
 Placements: hat large 101.9, LC large 95.7, hat small 76.5, chest small 76.5 (same file as hat small, moved), beanie 79.8.
-Ours = main + #1683 with `lettering_columns_block_butt` ON (arm "ours ON"); OFF is in the JSON too.
+Ours = main with `lettering_columns_block_butt` ON ("ours ON", built on #1683 before it landed; Kent flipped it in #1684); OFF is in the JSON too.
 `python -m tools.marine_construct --out DIR` regenerates every number.
 
 Conventions: y down; cross angle in degrees from the line of text (0 = level cross, square to an upright stem, +/-90 =
@@ -77,7 +77,7 @@ changes (ROADMAP gate 1). OFF is byte-identical to `lettering_columns_block_butt
 | `lettering_columns_a_bar` | a flat-topped block A: the lane's level cut at the counter's bottom (left foot + bar as one fanned piece) becomes the leg's inner edge, so both legs run uncut and the bar is its own column of upright crosses (`_a_bar_cuts`) | 5 |
 | `lettering_columns_block_lean` | on a heavy block letter the satin convention's lean cap (30 deg) is 50 deg where that lets the house (level) cross through: the M's V diagonals and the N's diagonal cross level, as his do. An arm's near-upright cross keeps today's fade (`column_lean.cross_direction`) | 3 |
 
-### Figures, every placement (stitches / trims / jumps / needle-up mm; base = block_butt alone; preflight grade and score equal on every row)
+### Figures, every placement (stitches / trims / jumps / needle-up mm; base = main, block_butt ON since #1684; preflight grade and score equal on every row)
 
 | design | base | r_bowl | block_butt_small | a_bar | block_lean | all four |
 |---|---|---|---|---|---|---|
@@ -96,7 +96,7 @@ cover, coverage, uncovered, legibility and element-drop figures do not move on a
 figures that move are `satin_short_fraction` (+0.001 to +0.003, two rows -0.001), `coverage_p95` +0.01 at hat small and
 `trims_per_1000` +0.1 at five rows. No bare-fabric, cover or coverage figure moved the wrong way.
 
-### Related tests with the four flags forced ON (with block_butt)
+### Related tests with the four flags forced ON (with block_butt; measured before #1684 landed, the 11 below are the flags' own)
 
 35 files, 579 tests (`test_column_*`, `test_lettering_*`, `test_outline_cut_units`, `test_a_cap_centered`, `test_apex_is_real`,
 `test_edge_walk_keeps_cut`): flags OFF, 578 passed 1 xfailed. block_butt forced ON alone: 12 fail (#1683's list). All five
@@ -119,7 +119,7 @@ New tests: `tests/test_r_bowl.py` (7), `tests/test_marine_match.py` (10), on `te
 ## 4. Per letter: matches the pro / differs / cannot match
 
 Pictures: `docs/renders/marine-match-2026-11-18/<placement>_word.jpg` (ORIGINAL / BEFORE / AFTER at one frame) and `_letters.jpg`
-(each letter, 2x), all five placements and 114 mm; ours only. BEFORE = block_butt, AFTER = all four flags.
+(each letter, 2x), all five placements and 114 mm; ours only. BEFORE = main (block_butt ON since #1684), AFTER = all four flags.
 
 | letter | status | detail |
 |---|---|---|

@@ -2,8 +2,7 @@
 
 Our renders only (`digitizer_core.stitchviz`), never the professional's file
 (`tests/test_no_new_pro_renders`; the repo is public). For each Becker placement
-the Studio's request is digitized twice -- BEFORE = `lettering_columns_block_butt`
-alone (Kent's 2026-11-18 ruling), AFTER = that plus the flags named by `--flags`
+the Studio's request is digitized twice -- BEFORE = main (`lettering_columns_block_butt` ON since #1684), AFTER = that plus the flags named by `--flags`
 -- and the MARINE line (the bottom third of the design) is cut out of the
 registered ORIGINAL and both renders at ONE frame:
 
@@ -74,7 +73,7 @@ def main(argv=None) -> int:
     slugs = [s for s in BECKER if not a.only or s in a.only]
     a.out.mkdir(parents=True, exist_ok=True)
     tw.materialise(a.kent_dir or a.out / "_kent", slugs)
-    before = {KEY + "block_butt": True}
+    before = {}                    # main: block_butt is ON by default since #1684
     after = {**before, **{KEY + f: True for f in a.flags}}
     for s in slugs:
         garment, width, art = JOBS[s][0], float(a.width or JOBS[s][1]), Path(resolve(JOBS[s][2]))

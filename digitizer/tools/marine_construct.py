@@ -35,7 +35,7 @@ from tools import letter_pieces as lp  # noqa: E402
 
 BECKER = ("becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small", "becker_beanie")
 NAMES = "MARINE"
-FLAG = "lettering_columns_block_butt"
+FLAG = "lettering_columns_block_butt"      # a typed field since #1684 (ON on main); "off" arm sets it false
 PPM = 24.0
 THREAD_MM = 0.4
 
@@ -235,14 +235,14 @@ def main(argv=None) -> int:
     slugs = [s for s in BECKER if not a.only or s in a.only]
     a.out.mkdir(parents=True, exist_ok=True)
     tw.materialise(a.out / "_kent", slugs)
-    on_extra = {f"extra.{FLAG}": True}
+    on_extra = {}
     for item in a.set:
         k, _, v = item.partition("=")
         on_extra[f"extra.{k}"] = json.loads(v)
     for s in slugs:
         doc = {"slug": s, "pro": read_file(pro_path(s, None))}
         if not a.no_ours:
-            doc["off"] = read_file(ours_path(s, {f"extra.{FLAG}": False}, a.out, "off"))
+            doc["off"] = read_file(ours_path(s, {FLAG: False}, a.out, "off"))
             doc["on"] = read_file(ours_path(s, on_extra, a.out, "on"))
         (a.out / f"{s}.json").write_text(json.dumps(doc, indent=1), encoding="utf-8")
         print(s, {k: len(v) for k, v in doc.items() if isinstance(v, list)}, flush=True)
