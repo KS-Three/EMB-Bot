@@ -105,7 +105,7 @@ def test_dot_centred_over_a_narrow_stem_is_not_flagged():
     assert off_line_marks(_line() + [stem, dot]) == []
 
 
-# --- `cfg.extra["off_line_mark_single_only"]` (built OFF 2026-11-18) ---------
+# --- `cfg.lettering_columns_off_line_mark_single_only` (ON 2026-11-18) -------
 # The test above reads "stacked on a mate, no row-mate" on axis-aligned boxes,
 # which is also every letter down the side of a ring: the DEA seal at 90 mm
 # had 11 of its 50 ring letters marked and sewn bold beside their line-mates.
@@ -135,8 +135,12 @@ def test_single_only_judges_each_cluster_alone():
     assert off_line_marks(regs, single_only=True) == ["M"]
 
 
-def test_single_only_is_off_by_default_and_tag_passes_it_through():
-    assert not (PipelineConfig().extra or {}).get("off_line_mark_single_only")
+def test_single_only_is_on_since_kent_2026_11_18_and_tag_passes_it_through():
+    from .conftest import OFF_LINE_SINGLE_2026_11_18_OFF, PRE_FLIP
+    assert PipelineConfig().lettering_columns_off_line_mark_single_only is True
+    assert PRE_FLIP["lettering_columns_off_line_mark_single_only"] is False
+    off = PipelineConfig(**OFF_LINE_SINGLE_2026_11_18_OFF)
+    assert off.lettering_columns_off_line_mark_single_only is False
     regs = _column()
     assert tag_off_line_marks(regs, single_only=True) == 0
     assert all("lettering_off_line" not in r.meta for r in regs)

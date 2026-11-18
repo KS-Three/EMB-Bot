@@ -452,8 +452,8 @@ def off_line_marks(regions, single_only: bool = False) -> list[str]:
     """Shape ids of text-cluster members `cfg.lettering_columns_off_line_mark`
     refuses (see above).
 
-    `single_only` (`cfg.extra["off_line_mark_single_only"]`, built OFF
-    2026-11-18): a cluster in which MORE THAN ONE member reads as off-line
+    `single_only` (`cfg.lettering_columns_off_line_mark_single_only`, built
+    OFF 2026-11-18 and ON the same day, Kent's ruling): a cluster in which MORE THAN ONE member reads as off-line
     marks none. The test reads "stacked on a mate, no row-mate" on
     axis-aligned boxes, which is also every letter down the side of a ring:
     the DEA seal at 90 mm had 11 of its 50 ring letters marked ("DRU", "MENT",
