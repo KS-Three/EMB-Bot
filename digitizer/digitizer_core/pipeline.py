@@ -1138,7 +1138,7 @@ def build_generation(
     # fills"): a region the cap folded onto another spool sews at that spool's
     # layer, not the one of the ink it was traced in. Off: no call, no change.
     if (getattr(cfg, "extra", None) or {}).get("cap_merged_layer_home"):
-        rehome_cap_merged_regions(regions, list(q.thread_indices))
+        rehome_cap_merged_regions(regions, list(q.thread_indices), chart_for(cfg))
 
     # `cfg.extra["shadow_to_page"]` (built OFF 2026-11-18, Golden Tee's grey
     # fringe): `bevel_fold`'s pass 1 alone -- a band of the art's own page

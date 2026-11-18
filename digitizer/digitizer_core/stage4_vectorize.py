@@ -1545,10 +1545,12 @@ def rehome_resnapped_regions(regions: list[Region],
 #: `rehome_cap_merged_regions`: the widest band (mm, mean width 2A/P) it moves
 #: (= `bevel_fold.BAND_MAX_MM`: two 40 wt threads)
 CAP_MERGED_BAND_MAX_MM = 0.8
+#: ... and only onto a thread this dark (CIELAB L*; `bevel_fold.DARK_L_MAX`)
+CAP_MERGED_DARK_L_MAX = 35.0
 
 
 def rehome_cap_merged_regions(regions: list[Region],
-                              layer_threads: list[int]) -> int:
+                              layer_threads: list[int], chart=None) -> int:
     """`cfg.extra["cap_merged_layer_home"]` (built OFF 2026-11-18). A region the
     colour cap folded onto another spool (`meta["color_cap_merged_from"]`)
     keeps the layer of the art ink it was traced in, so it sews with that
@@ -1575,6 +1577,11 @@ def rehome_cap_merged_regions(regions: list[Region],
         # and re-layered the Drone's grey fields (109 shapes) and Summit's.
         per = r.polygon.length
         if per <= 0 or 2.0 * r.area_mm2 / per > CAP_MERGED_BAND_MAX_MM:
+            continue
+        # ... in a DARK thread (L* <= CAP_MERGED_DARK_L_MAX): the dark under-edge
+        # sewn over a lighter fill is the fault. Bands in a mid tone (the
+        # Drone's orange, Summit's violet) only had their order shuffled.
+        if chart is not None and float(chart.lab[r.thread_index][0]) > CAP_MERGED_DARK_L_MAX:
             continue
         target = home.get(r.thread_index)
         if target is None or target == r.meta["layer"]:
