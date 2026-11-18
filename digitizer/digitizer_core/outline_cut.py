@@ -549,7 +549,7 @@ def _bowl_column_normal(piece: Polygon, hole: Polygon, W: float, pitch_mm: float
         if prev_n is not None:
             # a corner: the crosses pivot on the vertex from the last edge's normal to this one's
             phi = math.acos(max(-1.0, min(1.0, prev_n[0] * nrm[0] + prev_n[1] * nrm[1])))
-            k = int(phi * W / pitch_mm)
+            k = int(phi * 1.5 * W / pitch_mm)         # the far end of a cross is about 1.5 W from the pivot
             sgn = 1.0 if (prev_n[0] * nrm[1] - prev_n[1] * nrm[0]) > 0 else -1.0
             for m in range(1, k):
                 th = sgn * phi * m / k

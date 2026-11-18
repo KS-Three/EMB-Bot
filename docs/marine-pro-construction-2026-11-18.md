@@ -62,7 +62,76 @@ small size). R pro 9.85 / 8.06 / 4.5 against ours 4.59 / 4.57 / 2.2.
 | 6 | **Slabs on the top of M, A, R, I, N, E** | near-vertical sheared slab, 4-5 mm deep, overlaps the stem 1-1.5 mm | none | on the art the sheared top-left corner is visible; on the sewn word the lack of slab reads as plain stems (what #1659 left). A new narrow in-letter cap is a later question |
 | 7 | **I** | 17 mm + slab patches | 1 column 17.2 mm | no |
 
-## 3. Data
+## 3. What was built: four flags, all built OFF (`cfg.extra["lettering_columns_<name>"]`)
+
+None is flipped. Each is layout only: no satin floor, pull compensation, cover tolerance, density or fabric number
+changes (ROADMAP gate 1). OFF is byte-identical to `lettering_columns_block_butt` alone on every run below; each has a
+`flag_sweep` over all 18 tripwire placements and 26 fixtures (`docs/renders/marine-match-2026-11-18/flag-sweeps/`).
+**Only Becker moves, for every flag: 44 runs, 6 movers (the five placements and `fx_becker_marine_logo` = Becker at 80 mm),
+38 byte-identical, 0 errors.** MFab hat at 30 mm: identical under all four (2,996 stitches, 10 trims, 17 jumps, grade B 76).
+
+| flag | what it does | pro rule (section 1) |
+|---|---|---|
+| `lettering_columns_r_bowl` | on a block letter with one counter and a stem-head butt (R): cut a slab across the top (stem top + bowl top, upright crosses), the stem below it, the leg (level crosses), and sew the bowl as ONE column whose crosses start normal to each edge of the counter and pivot on its corners (`outline_cut._bowl_cuts`, `_bowl_column_normal`) | 2, 4 |
+| `lettering_columns_block_butt_small` | block_butt's heavy-stroke gate 3.5 -> 3.0 mm: Becker MARINE at 76.5-79.8 mm measures 3.46 (E), so block_butt did nothing to its E, A and N there. No other committed job has a letter over 1.7 mm | 6 |
+| `lettering_columns_a_bar` | a flat-topped block A: the lane's level cut at the counter's bottom (left foot + bar as one fanned piece) becomes the leg's inner edge, so both legs run uncut and the bar is its own column of upright crosses (`_a_bar_cuts`) | 5 |
+| `lettering_columns_block_lean` | on a heavy block letter the satin convention's lean cap (30 deg) is 50 deg where that lets the house (level) cross through: the M's V diagonals and the N's diagonal cross level, as his do. An arm's near-upright cross keeps today's fade (`column_lean.cross_direction`) | 3 |
+
+### Figures, every placement (stitches / trims / jumps / needle-up mm; base = block_butt alone; preflight grade and score equal on every row)
+
+| design | base | r_bowl | block_butt_small | a_bar | block_lean | all four |
+|---|---|---|---|---|---|---|
+| Becker hat large 101.9 | 15,820 / 18 / 53 / 508.6 | 15,919 / 18 / 53 / 500.4 | = base | 15,800 / 18 / 53 / 508.6 | 15,796 / 18 / 53 / 508.6 | 15,856 / 18 / 53 / 504.6 |
+| Becker LC large 95.7 | 14,291 / 13 / 30 / 236.8 | 14,331 / 13 / 30 / 243.8 | = base | 14,296 / 14 / 32 / 244.6 | = base | 14,336 / 14 / 32 / 251.7 |
+| Becker hat small 76.5 | 10,165 / 9 / 35 / 304.4 | 10,071 / 9 / 35 / 304.4 | 9,999 / 10 / 36 / 309.2 | 10,144 / 9 / 35 / 304.4 | 10,152 / 8 / 34 / 303.6 | 9,871 / 9 / 35 / 308.4 |
+| Becker chest small 76.5 | 10,039 / 7 / 33 / 300.6 | 9,890 / 7 / 33 / 300.6 | 9,877 / 8 / 34 / 305.8 | 10,018 / 7 / 33 / 300.6 | 10,071 / 7 / 33 / 300.6 | 9,739 / 8 / 34 / 305.8 |
+| Becker beanie 79.8 | 13,619 / 12 / 41 / 376.8 | 13,575 / 11 / 40 / 375.3 | 13,473 / 13 / 43 / 380.5 | 13,589 / 12 / 42 / 369.4 | 13,612 / 12 / 41 / 376.8 | 13,392 / 12 / 43 / 371.6 |
+| Becker 114 (hat large art) | 19,621 / 17 / 67 / 641.4 | 19,616 / 17 / 67 / 641.4 | = base | 19,710 / 17 / 67 / 640.6 | 19,559 / 18 / 68 / 642.8 | 19,643 / 18 / 68 / 642.0 |
+| MFab hat 30 mm | 2,996 / 10 / 17 / 92.1 | = | = | = | = | = |
+
+**What got worse (all small).** Trims: +1 at LC large (a_bar), hat small and chest small and beanie (block_butt_small), +1 at 114
+mm (block_lean); the worst single row is one extra trim and 2 more jumps. Needle-up travel: +15 mm at LC large (all four),
++4-5 mm at the 76.5/79.8 placements. Preflight (`run_preflight`, 38 metrics, grade and score unchanged everywhere): bare artwork,
+cover, coverage, uncovered, legibility and element-drop figures do not move on any of the 7 designs x 6 arms; the only
+figures that move are `satin_short_fraction` (+0.001 to +0.003, two rows -0.001), `coverage_p95` +0.01 at hat small and
+`trims_per_1000` +0.1 at five rows. No bare-fabric, cover or coverage figure moved the wrong way.
+
+### Related tests with the four flags forced ON (with block_butt)
+
+35 files, 579 tests (`test_column_*`, `test_lettering_*`, `test_outline_cut_units`, `test_a_cap_centered`, `test_apex_is_real`,
+`test_edge_walk_keeps_cut`): flags OFF, 578 passed 1 xfailed. block_butt forced ON alone: 12 fail (#1683's list). All five
+forced ON: 23 fail; the 11 added by these flags, none a bare-fabric, travel-guard or connector guard:
+- OFF-byte pins on MARINE letters: `test_off_sews_exactly_what_main_sewed[marine102_A]`,
+  `test_off_the_left_leg_below_the_bar_sews_steep` (A, `a_bar`), `test_off_is_byte_for_byte[marine102_M]`,
+  `test_travel_per_job_within_today[marine102]` (M: 23.63 against 22.68 mm; `block_lean`),
+  `test_past_the_cap_the_lean_fades_toward_the_pieces_own_normal` (pins the 30 deg cap, `block_lean`),
+  `test_off_is_the_lane_before_the_flag[mfab105_band_letters]`.
+- Assert the E's fold exists (Kent's 11-14 ruling, now also at 76.5-79.8 mm, `block_butt_small`):
+  `test_the_e_folds_round_both_corners`, `test_only_the_e_moves`, `test_the_folded_e_needs_no_trim`.
+- Edge-walk fixtures: `test_production_lane_buried_clean_at_offs_trims` (13 against 12 trims),
+  `test_the_n_and_the_a_need_no_cut`.
+
+**One to read:** `mfab105_band_letters` is MFab's 105 mm outline-band letters, heavy enough (>= 3.5 mm) for `block_lean`'s gate when
+the lane is driven directly. The pipeline does not send them through `lean_columns` (MFab hat is byte-identical under the
+flag), but the gate is stroke width alone, so a heavy-stroked design that does reach `lean_columns` would take it.
+New tests: `tests/test_r_bowl.py` (7), `tests/test_marine_match.py` (10), on `testdata/marine102_*_letter(s).json`.
+
+## 4. Per letter: matches the pro / differs / cannot match
+
+Pictures: `docs/renders/marine-match-2026-11-18/<placement>_word.jpg` (ORIGINAL / BEFORE / AFTER at one frame) and `_letters.jpg`
+(each letter, 2x), all five placements and 114 mm; ours only. BEFORE = block_butt, AFTER = all four flags.
+
+| letter | status | detail |
+|---|---|---|
+| **M** | **matches** the V's cross direction; differs in the cuts | the V's diagonals cross level (0 +/- 3 deg, his 0) under `block_lean`. Differs: his V is four 3-5 mm pieces whose crosses run 7.4-7.7 mm, plus a slab-and-left-diagonal piece fanning 31 deg; ours is two diagonals of 11.7-11.9 mm cut at the stems' edges, crosses 2.8-3.6 mm median, and no slab |
+| **A** | **matches** the bar and the legs; differs at the apex | `a_bar`: bar 3.9 mm span, crosses 87 deg (his 86), 4.9 mm long (his 4.6-4.7), butting both legs; legs level and uncut (18.3 and 18.6 mm; his 13.1 and 19.4). Differs: his bar tucks 1.5 mm under each leg (ours butts, overlap 0.5-1.0), his right leg fans 37 deg into a two-piece cap (we have none, apex family OFF) |
+| **R** | **matches** the construction, **cannot match the counter** | slab upright (89 deg, his 78-90), stem level, leg level, bowl one column (30 crosses, 19.5 mm; his 101 crosses, 31.9 mm: his slab ends at the counter's right edge and the bowl takes the top-right corner, ours takes it with the slab). Counter 3.2 mm2 at 101.9 (his 9.85, art 6.63, block_butt alone 4.59) and 1.7 at 76.5 (his 4.5): normal crosses push the pull into the counter on all four sides where block_butt's level crosses push only into two. **Needs the pull's counter hold-off (gate 1): sew-out row 14.** Also: the bowl's outer edge steps 0.4 mm where horizontal crosses clip the arc |
+| **I** | unchanged, differs | one 17.2 mm column; his has a 5 mm slab piece and 3-4 junction patches |
+| **N** | **matches** the diagonal's cross; differs at the head | diagonal level (-1.6 to -1.4 deg), 19.5 mm; his fans 78 deg from the slab at the head and sews level at the foot. The slab is not built |
+| **E** | **matches** the arms at 76.5-79.8 now; differs at the corners | `block_butt_small`: stem and three butted arms at 76.5 and 79.8 (before: a 24 mm folded fan and a 23.6 mm fan). Differs: his top arm is one 12.2 mm piece over the stem's top, his lower-left corner three small fans (we butt square) |
+| **Slabs** (top of M A R I N E) | **not built** | the pro's sheared top band; #1659's apex family put ours on and Kent turned it off at the whole word. A narrow in-letter cap is possible (his is 4-5 mm deep and inside the outline), but the A, R and E now read well at the whole word without it; left for the director's call |
+
+## 5. Data
 
 Piece-level tables for hat large (every column in sewing order), then a per-letter line for the other four. `ends` is
 what the column's end meets (`free` nothing, `butt` another column's body, `corner` / `straight` another column's end,

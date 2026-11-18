@@ -14,7 +14,7 @@ float clearance drafted, not built),
 Stitches"), card v7 beside it, and the other `docs/sewout/card-*` folders. MASTER_SCOPE items
 33 (pull comp per rail or total; line 335), 44 (`forbid_gap_mm`, 0.8 mm; line 393) and the
 hairline-bean question (item 24, card block 5; line 133) already name their own sew-outs.
-Rows 1-9 and 12 below are the questions that have NO card block yet.
+Rows 1-9, 12 and 14 below are the questions that have NO card block yet.
 
 ## Grouping: what to sew so that one sitting answers the most rows
 
@@ -198,6 +198,23 @@ other two.
    patches 12 OFF, 17 `"counter"`, 220 `true`).
 4. **Unlocks.** Whether the pull may drop by stroke width on script (and which mode), or stays 0.4.
 5. **Source.** `docs/tires-script-counters-2026-11-18.md`; the flag's config comment.
+
+### 14. Becker MARINE's R counter: how far to hold the bowl's crosses off the counter
+1. **Design, spot.** `becker_hat_large` 101.9 mm and the other four Becker placements (76.5-101.9 mm), the R of MARINE,
+   its counter at about 4 mm wide at 101.9 (art 6.63 mm2).
+2. **In doubt.** The satin pull on crosses that run square to the counter's edge. Thread-free counter area, mm2, measured
+   on bare renders (24 px/mm, 0.4 mm thread): art **6.63**, the professional's file **9.30** (9.85 by the 2026-11-18 reader,
+   `tools/marine_construct.py`), ours with `lettering_columns_block_butt` **4.59**, ours with `lettering_columns_r_bowl`
+   (crosses normal to every edge of the counter, the pro's construction) **3.2** at 101.9 mm and **1.7** at 76.5 mm
+   (art about 3.7 there, his 4.5). His counter is LARGER than the art's: he holds his crosses off it. Ours are pushed
+   into it by `Fabric.pull_comp_mm` = 0.4 on the rail that faces it (`digitizer_core/fabrics.py:47`).
+3. **Sew, look.** The R at 101.9 mm and at 76.5 mm, `block_butt` alone against `block_butt` + `r_bowl` (both OFF-by-default
+   flags, `docs/marine-pro-construction-2026-11-18.md`). Look: is the counter a clear hole of thread-free cloth, does the R
+   read as an R at arm's length, does the bowl's outer edge (crosses clipped by the arc, 0.4 mm steps) show.
+4. **Unlocks.** If the counter fills at 76.5 mm: a counter hold-off for the bowl's inner rail (an inset of about 0.3 mm,
+   the number his counter implies, to be read off the cloth), which `counter_clear_mm` (`columns.py`, default 0) already
+   carries for small print. If it reads fine: `r_bowl` can flip on its construction alone.
+5. **Source.** `docs/marine-pro-construction-2026-11-18.md` (this PR), the R rows of section 2 and of the per-letter report.
 
 ## What this list does not claim
 

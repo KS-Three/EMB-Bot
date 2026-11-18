@@ -61,6 +61,8 @@ def main(argv=None) -> int:
     ap.add_argument("--flags", nargs="*", default=list(ALL), help="names after lettering_columns_ turned ON in AFTER")
     ap.add_argument("--only", nargs="*")
     ap.add_argument("--ppm", type=float, default=20.0)
+    ap.add_argument("--width", type=float, help="the design's width in mm in place of the job's (Becker at 114)")
+    ap.add_argument("--tag", default="", help="appended to each file name (e.g. _114mm)")
     ap.add_argument("--kent-dir", type=Path)
     a = ap.parse_args(argv)
     import json
@@ -75,7 +77,7 @@ def main(argv=None) -> int:
     before = {KEY + "block_butt": True}
     after = {**before, **{KEY + f: True for f in a.flags}}
     for s in slugs:
-        garment, width, art = JOBS[s][0], float(JOBS[s][1]), Path(resolve(JOBS[s][2]))
+        garment, width, art = JOBS[s][0], float(a.width or JOBS[s][1]), Path(resolve(JOBS[s][2]))
         orig = pro_pair._scaled(pro_pair._art_ink(art), width, a.ppm, cv2.INTER_AREA)
         panels = [orig]
         for extra in (before, after):
@@ -86,14 +88,14 @@ def main(argv=None) -> int:
             p3 = p if p.ndim == 3 else cv2.cvtColor(p, cv2.COLOR_GRAY2BGR)
             word.append(p3[int(p3.shape[0] * 0.62):])
         hh = max(p.shape[0] for p in word)
-        ww0 = min(p.shape[1] for p in word)
-        word = [cv2.copyMakeBorder(p[:, :ww0], 0, hh - p.shape[0], 0, 0, cv2.BORDER_CONSTANT, value=(235, 235, 235))
+        ww0 = max(p.shape[1] for p in word)
+        word = [cv2.copyMakeBorder(p, 0, hh - p.shape[0], 0, ww0 - p.shape[1], cv2.BORDER_CONSTANT, value=(235, 235, 235))
                 for p in word]
         names = ("ORIGINAL", "BEFORE (block_butt)", "AFTER (" + " + ".join(a.flags) + ")")
         rows = []
         for p, nm in zip(word, names):
             rows.append(pro_pair._label(p if p.ndim == 3 else cv2.cvtColor(p, cv2.COLOR_GRAY2BGR), nm))
-        cv2.imwrite(str(a.out / f"{s}_word.png"), pro_pair._vstack(rows))
+        cv2.imwrite(str(a.out / f"{s}{a.tag}_word.png"), pro_pair._vstack(rows))
         # per letter
         gray = cv2.cvtColor(word[0], cv2.COLOR_BGR2GRAY) if word[0].ndim == 3 else word[0]
         spans = letter_spans(gray)
@@ -110,7 +112,7 @@ def main(argv=None) -> int:
         ww = max(r.shape[1] for r in strips)
         strips = [cv2.copyMakeBorder(r, 0, 0, 0, ww - r.shape[1], cv2.BORDER_CONSTANT, value=(235, 235, 235)) for r in strips]
         strips = [pro_pair._label(r, nm) for r, nm in zip(strips, names)]
-        cv2.imwrite(str(a.out / f"{s}_letters.png"), pro_pair._vstack(strips))
+        cv2.imwrite(str(a.out / f"{s}{a.tag}_letters.png"), pro_pair._vstack(strips))
         print(s, "ok", [tuple(sp) for sp in spans], flush=True)
     return 0
 
