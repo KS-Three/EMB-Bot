@@ -73,6 +73,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_FOLD_CAP_FLARED"),
     ("outline_cut", "_APEX_BAND_KNOTS"),
     ("outline_cut", "_A_CAP_CENTERED"),
+    ("outline_cut", "_BLOCK_BUTT"),
     ("outline_cut", "_FLARE_TOP_FOLD"),
     ("outline_cut", "_ABSORB_UNSEWN"),
     ("outline_cut", "_NECK_ARMED"),
@@ -93,6 +94,8 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("column_lean", "_ITALIC"),
     ("column_lean", "_LEAN_FLAT_ENDS"),
     ("stage6_satin", "_CHORD_AIM"),
+    # `cfg.script_strokes_pull_by_stroke` == "counter" (built OFF): the push a counter-facing rail gets
+    ("stage6_satin", "COUNTER_PULL"),
 )
 #: ContextVars that are caches, not knobs. `stage6_fill._BRIDGE_MEMO` is one
 #: `stitch_shape` call's covered-bridge memo: set and reset inside the call,
