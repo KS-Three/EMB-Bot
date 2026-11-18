@@ -1148,6 +1148,12 @@ PRE_FLIP.update(CORNER_LOSS_2026_11_17_OFF)
 # (Recommended)"): `tests/test_color_cap_least_loss.py`.
 COLOR_CAP_LEAST_LOSS_2026_11_17_OFF = {"color_cap_least_loss": False}
 PRE_FLIP.update(COLOR_CAP_LEAST_LOSS_2026_11_17_OFF)
+# `page_line_open` (Kent 2026-11-17, shown ORIGINAL | BEFORE | AFTER of the Gaulke
+# roof: "Flip ON (Recommended)"): the art's thin white line stays bare fabric
+# instead of sewing as a white satin bar. Only Gaulke moves (2 of 35 runs).
+# `tests/test_page_line_front.py` names the flag itself.
+PAGE_LINE_OPEN_2026_11_17_OFF = {"page_line_open": False}
+PRE_FLIP.update(PAGE_LINE_OPEN_2026_11_17_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
