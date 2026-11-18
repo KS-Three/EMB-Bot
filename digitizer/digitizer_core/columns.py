@@ -334,6 +334,9 @@ def is_lettering(region, cfg=None) -> bool:
     if tagged and getattr(cfg, "lettering_columns_ink_link", False) \
             and m.get("lettering_ink_stray"):
         return False
+    if tagged and getattr(cfg, "lettering_columns_off_line_mark", False) \
+            and m.get("lettering_off_line"):
+        return False
     if tagged and getattr(cfg, "lettering_columns_icon_guard", False) \
             and m.get("lettering_group") and not m.get("text_candidate") \
             and is_drawing_fragment(region.polygon):
@@ -407,6 +410,87 @@ def tag_ink_strays(regions, chart) -> int:
     for r in regions:
         if r.shape_id in ids:
             r.meta["lettering_ink_stray"] = True
+    return len(ids)
+
+
+# `cfg.lettering_columns_off_line_mark` (2026-11-18, built OFF): a text-cluster
+# member that shares a line with NONE of its cluster's other members. A mate
+# "shares its line" when their vertical extents overlap by at least
+# `OFF_LINE_MIN_OVERLAP` of the shorter one; a flagged shape must also be
+# glyph-sized (not a dot or accent) and stacked over a mate (their x ranges
+# overlap by at least half the shape's width), so it is a mark piled on a
+# letter, not a letter on a line of its own. MFab Hat: the small pointed mark
+# at the foot of the big M's inner V (design x 14-19, y 21-27.5 mm) was
+# tagged into the "AND" cluster (letters y 24.8-33.3); it overlaps the N by 40%
+# and the other letters by under 30%, and sits 86% over the N's x range, so
+# the Column lane sewed it as two crossing satin pieces whose ends overshot
+# onto the white legs and ran down beside the N. Sewn as the ordinary ladder
+# sews an untagged shape it is still satin (three pieces), so the tag also sets
+# its tier to fill: one wedge with a clean point. A first draft
+# compared the centre to the MEDIAN band of all mates and over-fired on
+# clusters that span several lines (Gaulke's two rows, the phone screenshot's
+# six): the per-mate line test is what a multi-line cluster passes.
+OFF_LINE_MIN_MATES = 3
+OFF_LINE_MIN_HEIGHT_FRAC = 0.5
+OFF_LINE_MIN_OVERLAP = 0.5
+OFF_LINE_MIN_STACK = 0.5
+
+
+def off_line_marks(regions) -> list[str]:
+    """Shape ids of text-cluster members `cfg.lettering_columns_off_line_mark`
+    refuses (see above)."""
+    import statistics
+    groups: dict[str, list] = {}
+    for r in regions:
+        cid = (r.meta or {}).get("text_cluster_id")
+        if cid:
+            groups.setdefault(str(cid), []).append(r)
+    out: list[str] = []
+    for members in groups.values():
+        for r in members:
+            mates = [t for t in members if t is not r]
+            if len(mates) < OFF_LINE_MIN_MATES:
+                continue
+            bb = r.polygon.bounds
+            h, w = bb[3] - bb[1], bb[2] - bb[0]
+            h_med = statistics.median(t.polygon.bounds[3] - t.polygon.bounds[1] for t in mates)
+            if h < OFF_LINE_MIN_HEIGHT_FRAC * h_med or w <= 0 or h <= 0:
+                continue
+
+            def v_overlap(t):
+                tb = t.polygon.bounds
+                ov = min(bb[3], tb[3]) - max(bb[1], tb[1])
+                return ov / min(h, tb[3] - tb[1]) if tb[3] > tb[1] else 0.0
+
+            def x_overlap(t):
+                tb = t.polygon.bounds
+                return (min(bb[2], tb[2]) - max(bb[0], tb[0])) / w
+
+            if any(v_overlap(t) >= OFF_LINE_MIN_OVERLAP for t in mates):
+                continue
+            if any(x_overlap(t) >= OFF_LINE_MIN_STACK for t in mates):
+                out.append(r.shape_id)
+    return out
+
+
+def tag_off_line_marks(regions) -> int:
+    """Write `meta["lettering_off_line"] = True` on every `off_line_marks`
+    shape and, where its tier is still `auto`, `meta["tier"] = "fill"`;
+    returns how many. Called only under `cfg.lettering_columns_off_line_mark`,
+    so OFF no key is written.
+
+    Why fill: handed back to the ordinary ladder the MFab mark still sews as
+    satin (`classify_ribbon`: ribbon_w 1.22 mm, aspect 7.3, because its
+    medial axis is a long bent line), three satin pieces whose ends overshoot
+    onto the white legs. It is a 12 mm^2 wedge with a pointed tail, 4.3 mm
+    across at the wing, and one tatami fill sews it as one blade with the
+    point and the crescent top the art has."""
+    ids = set(off_line_marks(regions))
+    for r in regions:
+        if r.shape_id in ids:
+            r.meta["lettering_off_line"] = True
+            if str(r.meta.get("tier", "auto")).lower() == "auto":
+                r.meta["tier"] = "fill"
     return len(ids)
 
 
