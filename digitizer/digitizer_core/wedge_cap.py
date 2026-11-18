@@ -68,6 +68,15 @@ def armed() -> bool:
     return _ON.get()
 
 
+#: a sibling is "thinner" when its median cross is under this share of the column's own
+THINNER = 0.85
+
+
+def _median_cross(col) -> float:
+    ws = sorted(math.dist(a, b) for a, b in col.stations)
+    return ws[len(ws) // 2] if ws else 0.0
+
+
 def _opened(w: list[float], half: int) -> list[float]:
     n = len(w)
     lo = [min(w[max(0, i - half):i + half + 1]) for i in range(n)]
@@ -153,14 +162,21 @@ def cap_columns(columns: list) -> list:
     if len(columns) < 2:
         return columns
     pieces = [c.piece for c in columns]
+    med = [_median_cross(c) for c in columns]
     out, any_cap = [], False
     for k, col in enumerate(columns):
         if col.kind != "curved":
             out.append(col)
             continue
-        # the siblings AS CAPPED so far: two columns that overlap cannot both
-        # give the shared ink to the other
-        sib = unary_union([p for j, p in enumerate(pieces) if j != k])
+        # A column gives its wedge only to a THINNER sibling (median cross
+        # under its own by `THINNER`): the meeting hairline keeps the ground
+        # it crosses, the stem gives it up. Without this the hairline, taken
+        # first, gave its ground across the stem to the stem's wedge and left
+        # the stem nothing to hand over (Toat h, 2026-11-18). The siblings are
+        # read AS CAPPED so far, so two overlapping columns never both give
+        # the shared ink away.
+        sib = unary_union([p for j, p in enumerate(pieces)
+                           if j != k and med[j] < med[k] * THINNER])
         newc, n = cap_column(col, sib if not sib.is_empty else None)
         if n:
             from .script_strokes import _ribbon

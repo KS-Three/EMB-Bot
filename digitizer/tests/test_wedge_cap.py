@@ -96,8 +96,22 @@ def test_only_curved_columns_and_the_same_list_when_nothing_changes():
 
 def test_cap_columns_caps_the_stem_beside_a_covering_sibling():
     stem = _stem()
-    tail = Column(stations=[((-3.0, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
-                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=2.8)
+    tail = Column(stations=[((-1.6, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
+                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.4)
     out = W.cap_columns([stem, tail])
     assert out[1] is tail
     assert _width(out[0], 19) < _width(stem, 19) - 0.5
+
+
+def test_a_thicker_sibling_never_takes_the_wedge_and_the_hairline_is_not_capped():
+    """The hairline that crosses the stem keeps the ground it crosses; only the
+    thicker column gives a wedge up, and only to a thinner one."""
+    stem = _stem()
+    tail = Column(stations=[((-1.6, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
+                  piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=1.4)
+    out = W.cap_columns([tail, stem])               # the order the lane happens to hand them in
+    assert out[0] is tail
+    assert _width(out[1], 19) < _width(stem, 19) - 0.5
+    fat = Column(stations=[((-3.0, 4.6 + 0.4 * i), (-0.2, 4.6 + 0.4 * i)) for i in range(15)],
+                 piece=box(-3.0, 4.5, 0.0, 10.7), kind="curved", axis=None, width_mm=2.8)
+    assert W.cap_columns([stem, fat])[0] is stem     # a thicker sibling covers nothing of the stem's
