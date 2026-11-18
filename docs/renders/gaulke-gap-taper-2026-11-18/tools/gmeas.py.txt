@@ -1,0 +1,44 @@
+import sys, pickle, numpy as np, cv2
+sys.path.insert(0,'.')
+from PIL import Image
+from tools.counter_slots import thread_rasters, THREAD_MM
+S='/tmp/claude-0/-home-user-EMB-Bot/82ff0188-f395-586c-97d4-87aeefc800dd/scratchpad/'
+PPM=20.0; PAD=2.0
+def art_field(width_mm):
+    a=np.asarray(Image.open('testdata/photo/logo_gaulke_roofing.png').convert('L')).astype(np.float32)
+    # white strip rows
+    rows=np.where((a>200).mean(1)>0.5)[0]; a=a[rows.min():rows.max()+1]
+    cols=np.where((a>200).mean(0)>0.1)[0]; a=a[:,cols.min():cols.max()+1]
+    ink=a<128
+    ys,xs=np.nonzero(ink); ink=ink[ys.min():ys.max()+1,xs.min():xs.max()+1]
+    s=width_mm*PPM/ink.shape[1]
+    f=cv2.resize((a[ys.min():ys.max()+1,xs.min():xs.max()+1]<128).astype(np.float32),None,fx=s,fy=s,interpolation=cv2.INTER_AREA)
+    return f>=0.5
+def sewn(design):
+    m,_=thread_rasters(design,set(),PPM)
+    return list(m.values())[0]
+def place(art,sw):
+    # art mask on sewn frame; search shift
+    H,W=sw.shape; best=(-1,0,0)
+    oy0=int(PAD*PPM)+(0); ox0=int(PAD*PPM)
+    for dy in range(-40,41,2):
+        for dx in range(-40,41,2):
+            c=np.zeros((H,W),bool)
+            y0=oy0+dy;x0=ox0+dx
+            ys=slice(max(y0,0),min(y0+art.shape[0],H));xs=slice(max(x0,0),min(x0+art.shape[1],W))
+            c[ys,xs]=art[ys.start-y0:ys.stop-y0, xs.start-x0:xs.stop-x0]
+            iou=(c&sw).sum()/max(1,(c|sw).sum())
+            if iou>best[0]: best=(iou,dx,dy,c)[:3]+(c,) if False else (iou,dx,dy)
+    iou,dx,dy=best
+    c=np.zeros((H,W),bool); y0=oy0+dy;x0=ox0+dx
+    ys=slice(max(y0,0),min(y0+art.shape[0],H));xs=slice(max(x0,0),min(x0+art.shape[1],W))
+    c[ys,xs]=art[ys.start-y0:ys.stop-y0, xs.start-x0:xs.stop-x0]
+    return c,iou,dx/PPM,dy/PPM
+def load(tag):
+    return pickle.load(open(S+f'g_{tag}.pkl','rb'))['design']
+if __name__=='__main__':
+    for tag in ('off','on'):
+        d=load(tag); sw=sewn(d); art=art_field(d['widthMM'])
+        c,iou,dx,dy=place(art,sw)
+        print(tag,'iou',round(iou,3),'shift mm',dx,dy,'art ink mm2',c.sum()/PPM**2,'sewn mm2',sw.sum()/PPM**2)
+        np.save(S+f'art_{tag}.npy',c); np.save(S+f'sw_{tag}.npy',sw)

@@ -199,6 +199,21 @@ other two.
 4. **Unlocks.** Whether the pull may drop by stroke width on script (and which mode), or stays 0.4.
 5. **Source.** `docs/tires-script-counters-2026-11-18.md`; the flag's config comment.
 
+### 14. Gaulke hat: counters and mullions at the hat pull
+1. **Design, spot.** `gaulke_roofing_hat`, 114.2 mm: G counter (19.5, 35.5), R/E (98, 35.5), the
+   ampersand (74, 44), the four-pane window (57, 24.5) mm.
+2. **In doubt.** The hat pull `Fabric.pull_comp_mm` = **0.4** per rail (`fabrics.py:47`). Measured
+   (`docs/gaulke-fine-detail-2026-11-18.md`): counters sew 0.4-0.5 mm wide against 0.8-0.9 mm
+   with pull 0 (art 1.0-1.4 mm); sewn ink 1882 mm2 against the art's 1330 and the professional's
+   1709 (same reader; the 0.4 mm drawn thread itself adds about 0.2 mm an edge in all three).
+3. **Sew, look.** The design at 114.2 mm: are the G, R, E counters and the ampersand open, do the
+   window mullions show, are the letter strokes visibly fatter than the art. Ruler a counter.
+4. **Unlocks.** Whether the hat pull is too big for 1.0-1.4 mm counters (a per-feature or
+   smaller pull is a gate-1 constant; `pull_comp_by_stroke`, built OFF, does not change this
+   design), or the closed counters are the picture and not the cloth.
+5. **Source.** `docs/gaulke-fine-detail-2026-11-18.md` (PR #1679).
+
+
 ## What this list does not claim
 
 - No row says a sew-out will come out any particular way.

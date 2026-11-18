@@ -3649,6 +3649,16 @@ class PipelineConfig:
     # both ways. False is the engine as it was; PRE_FLIP
     # (THIN_ARM_STOP_2026_11_17_OFF) pins it False.
     satin_thin_arm_stop: bool = True
+    # `satin_tip_floor_cross` (2026-11-18, built OFF; LEAVE OFF: 33 of 44 designs
+    # move for a sub-mm change nobody sees at print size, `docs/gaulke-fine-
+    # detail-2026-11-18.md`): where a FREE end's spine stops short of a pointed
+    # art tip, the column is carried on to the tip with crosses at
+    # `machine.SATIN_MIN_CROSS_MM` (unchanged, gate 1), as the professional's
+    # Gaulke wing does (a 0.9 mm cross from the tip; ours began 0.75 mm in).
+    # Only where the art runs on at least `stage6_satin._TIP_EXTEND_MIN_MM`
+    # (0.5 mm) past the spine, at most `_TIP_EXTEND_MAX_MM` (1.5). Off,
+    # byte-identical. Tests: `tests/test_satin_tip_floor_cross.py`.
+    satin_tip_floor_cross: bool = False
     # `outline_loop_split_shared` (2026-11-18, prime grader: Becker large's
     # outline between the B and the E, pin x 21 y 8.5 -- "the satin columns
     # overlap in a thick knot"; Kent pinned the border 11-10, "the stitches

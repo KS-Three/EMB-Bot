@@ -5070,6 +5070,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   tip_caps: bool = False,
                   tip_corner_gate: bool = False,
                   thin_arm_stop: bool = False,
+                  tip_floor_cross: bool = False,
                   hairline_tier: bool = False,
                   siblings: list | None = None) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
@@ -5133,7 +5134,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, hairline_tier=hairline_tier, siblings=member_sibs,
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross, hairline_tier=hairline_tier, siblings=member_sibs,
                              # only the joined stroke's OUTER ends are free
                              # ends to read; an owner's corner end was laid
                              # square above, on its own 4-half-width line
@@ -5191,6 +5192,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  tip_caps: bool = False,
                  tip_corner_gate: bool = False,
                  thin_arm_stop: bool = False,
+                 tip_floor_cross: bool = False,
                  hairline_tier: bool = False,
                  siblings: list | None = None,
                  read_ends: tuple[bool, bool] = (True, True)) -> list[tuple[float, float]]:
@@ -5255,7 +5257,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, hairline_tier=hairline_tier, siblings=siblings)
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross, hairline_tier=hairline_tier, siblings=siblings)
 
     if free_end_square and not stroke.closed:
         # A square cap or a slab sews square to it (see `_free_end_reading`).
@@ -5289,7 +5291,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                   rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                   rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
-                  junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop)
+                  junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross)
         arm = Stroke(spine=raw, free_start=stroke.free_start, free_end=stroke.free_end,
                      closed=False, capped_start=stroke.capped_start, capped_end=stroke.capped_end,
                      tuck_under_start=stroke.tuck_under_start, tuck_under_end=stroke.tuck_under_end)
@@ -5524,6 +5526,11 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                                   square_ends=cap_skew_inset,
                                   siblings=siblings)
     crosses = _short_stitch_guard(rail_a, rail_b)
+    if tip_floor_cross and not stroke.closed:
+        n_before = len(crosses)
+        crosses, spine = _tip_floor_extend(crosses, spine, stroke, poly, spacing_mm)
+        if len(crosses) != n_before:
+            rail_a, rail_b = [c[0] for c in crosses], [c[1] for c in crosses]
     above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
 
     # HAIRLINE STRETCHES (2026-09-03). A cross under SATIN_MIN_CROSS_MM is
@@ -5926,6 +5933,68 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
             runs.append(StitchRun(points=pts, kind=stitches.UNDERLAY,
                                   shape_id=shape_id))
     return runs
+
+
+#: `cfg.satin_tip_floor_cross`: the column is extended to the art's tip by at
+#: most this much (mm), and only when the art runs on at least `_MIN` past the
+#: spine's end (a flat or capped end has none to give)
+_TIP_EXTEND_MAX_MM = 1.5
+_TIP_EXTEND_MIN_MM = 0.5
+
+
+def _tip_floor_extend(crosses: list, spine: list, stroke, poly, spacing_mm: float):
+    """`cfg.satin_tip_floor_cross`: where a FREE end's spine stops short of the
+    art's tip (a tapered point whose skeleton is pruned under the stroke's
+    width), carry the column on along the spine's own heading to the tip with
+    crosses at exactly `SATIN_MIN_CROSS_MM`, centred on the heading. The
+    professional's Gaulke wing starts its satin at the art's tip with a 0.9 mm
+    cross; ours began 0.75 mm in. The floor is unchanged (ROADMAP gate 1); only
+    the truncation is. -> (crosses, spine), parallel lists as before."""
+    from shapely.geometry import LineString
+    floor = machine.SATIN_MIN_CROSS_MM + 1e-6
+    crosses, spine = list(crosses), list(spine)
+    if len(spine) < 4:
+        return crosses, spine
+    for at_end in (False, True):
+        if not (stroke.free_end if at_end else stroke.free_start):
+            continue
+        sp = spine if at_end else spine[::-1]
+        end, ref = sp[-1], sp[-3]
+        tx, ty = end[0] - ref[0], end[1] - ref[1]
+        T = math.hypot(tx, ty)
+        if T < 1e-9:
+            continue
+        tx, ty = tx / T, ty / T
+        if not poly.buffer(1e-6).contains(SPoint(end)):
+            continue
+        # the art's tip: the polygon vertex furthest ahead of the spine's end
+        # along its heading, within reach (a thin wedge's point is a vertex)
+        best, tip = 0.0, None
+        for g in getattr(poly, "geoms", [poly]):
+            for vx, vy in g.exterior.coords:
+                dx, dy = vx - end[0], vy - end[1]
+                ahead = dx * tx + dy * ty
+                if ahead > best and math.hypot(dx, dy) <= _TIP_EXTEND_MAX_MM:
+                    best, tip = ahead, (vx, vy)
+        if tip is None:
+            continue
+        ext = math.hypot(tip[0] - end[0], tip[1] - end[1])
+        if ext < _TIP_EXTEND_MIN_MM:
+            continue
+        tx, ty = (tip[0] - end[0]) / ext, (tip[1] - end[1]) / ext
+        steps = max(1, int(round(ext / max(spacing_mm, 0.05))))
+        new_sp, new_cr = [], []
+        for k in range(1, steps + 1):
+            f = ext * k / steps
+            c = (end[0] + tx * f, end[1] + ty * f)
+            ux, uy = -ty * floor / 2.0, tx * floor / 2.0
+            new_sp.append(c)
+            new_cr.append(((c[0] - ux, c[1] - uy), (c[0] + ux, c[1] + uy)))
+        if at_end:
+            spine, crosses = spine + new_sp, crosses + new_cr
+        else:
+            spine, crosses = new_sp[::-1] + spine, new_cr[::-1] + crosses
+    return crosses, spine
 
 
 def _build_travel_graph(strokes: list[Stroke]):
@@ -7077,6 +7146,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 tip_caps: bool = False,
                 tip_corner_gate: bool = False,
                 thin_arm_stop: bool = False,
+                tip_floor_cross: bool = False,
                 hairline_tier: bool = False,
                 counter_holes: list | None = None,
                 counter_clear_mm: float = 0.0,
@@ -7269,7 +7339,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
-                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, hairline_tier=hairline_tier, siblings=siblings)
+                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross, hairline_tier=hairline_tier, siblings=siblings)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:

@@ -1,0 +1,20 @@
+import sys,pickle,numpy as np,cv2
+sys.path.insert(0,'.')
+from PIL import Image
+from digitizer_core.stitchviz import render_design
+S='/tmp/claude-0/-home-user-EMB-Bot/82ff0188-f395-586c-97d4-87aeefc800dd/scratchpad/'
+off=pickle.load(open(S+'g_off.pkl','rb'))['design']; on=pickle.load(open(S+'g_tip.pkl','rb'))
+PPM=40.0;PAD=2.0
+def lab(img,t):
+    img=img.copy();cv2.rectangle(img,(0,0),(img.shape[1],26),(255,255,255),-1);cv2.putText(img,t,(6,19),cv2.FONT_HERSHEY_SIMPLEX,0.6,(0,0,0),1,cv2.LINE_AA);return img
+A=render_design(off,px_per_mm=PPM);B=render_design(on,px_per_mm=PPM)
+x0,x1,y0,y1=24,40,19,32
+crop=lambda im:im[int((y0+PAD)*PPM):int((y1+PAD)*PPM),int((x0+PAD)*PPM):int((x1+PAD)*PPM)]
+a=np.asarray(Image.open('testdata/photo/logo_gaulke_roofing.png').convert('L')).astype(np.float32)
+rows=np.where((a>200).mean(1)>0.5)[0]; a=a[rows.min():rows.max()+1]; cols=np.where((a>200).mean(0)>0.1)[0]; a=a[:,cols.min():cols.max()+1]
+ys,xs=np.nonzero(a<128); a=a[ys.min():ys.max()+1,xs.min():xs.max()+1]
+s=114.2*PPM/a.shape[1]; a=cv2.resize(a,None,fx=s,fy=s,interpolation=cv2.INTER_AREA)
+can=np.full((int(A.shape[0]),int(A.shape[1])),255,np.uint8); p=int(PAD*PPM); h=min(a.shape[0],can.shape[0]-p); w=min(a.shape[1],can.shape[1]-p); can[p:p+h,p:p+w]=a[:h,:w]
+O=cv2.cvtColor(can,cv2.COLOR_GRAY2BGR)
+out=np.hstack([lab(crop(O),'ORIGINAL (wing tip, 16 x 13 mm)'),lab(crop(A),'BEFORE (flag OFF)'),lab(crop(B),'AFTER (satin_tip_floor_cross ON)')])
+cv2.imwrite('/home/user/EMB-Bot/docs/renders/gaulke-wing-tip-2026-11-18/wing_tip_left.jpg' if __import__('os').makedirs('/home/user/EMB-Bot/docs/renders/gaulke-wing-tip-2026-11-18',exist_ok=True) is None else '',out,[cv2.IMWRITE_JPEG_QUALITY,90])

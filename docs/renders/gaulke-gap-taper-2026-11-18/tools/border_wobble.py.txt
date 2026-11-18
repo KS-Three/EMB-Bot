@@ -1,0 +1,15 @@
+import sys,pickle
+sys.path.insert(0,'.')
+from tools import pro_pair, pro_baseline as pb
+from digitizer_core import edge_wobble as ew
+S='/tmp/claude-0/-home-user-EMB-Bot/82ff0188-f395-586c-97d4-87aeefc800dd/scratchpad/'
+B={"extra.growth_keeps_gaps_between":True,"extra.growth_keeps_gaps_between_min_mm2":100,"extra.growth_keeps_gaps_between_min_gap_mm":1.0}
+g,w,art,*_=pb.JOBS['gaulke_roofing_hat']
+for tp in [float(a) for a in sys.argv[1:]]:
+    ex=dict(B); 
+    if tp: ex["extra.growth_keeps_gaps_between_taper_mm"]=tp
+    d=pro_pair.digitize(pb.resolve(art),w,g,ex)
+    row=ew.analyse_plan({r.shape_id:r.polygon for r in d.result.regions},d.plan,unsewn=False)
+    b=row['by_tier'].get('border')
+    print('taper',tp,d.plan.stats.stitch_count,'border p95',b['wobble_p95_mm'],'max',b['wobble_max_mm'],'std',b['wobble_std_mm'],'satin',row['by_tier']['satin']['wobble_p95_mm'])
+    pickle.dump(d.design,open(S+f'gk_taper{tp}.pkl','wb'))
