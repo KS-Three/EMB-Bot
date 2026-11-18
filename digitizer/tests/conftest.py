@@ -1181,6 +1181,11 @@ PRE_FLIP.update(OFF_LINE_MARK_2026_11_18_OFF)
 # fix, ON (Recommended)"): `tests/test_off_line_mark.py`.
 OFF_LINE_SINGLE_2026_11_18_OFF = {"lettering_columns_off_line_mark_single_only": False}
 PRE_FLIP.update(OFF_LINE_SINGLE_2026_11_18_OFF)
+# `thin_letters_after_ground` (Kent 2026-11-18, shown ART | BEFORE | AFTER for
+# the ATF, Commerce and AmeriCorps designs, the three it changes of 82: "Flip
+# ON now"): `tests/test_thin_letters_after_ground.py`.
+THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF = {"thin_letters_after_ground": False}
+PRE_FLIP.update(THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}

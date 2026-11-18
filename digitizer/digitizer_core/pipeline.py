@@ -2495,10 +2495,10 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     if cfg.dark_ink_bean:
         stitched_regions = ink_after_ground(
             stitched_regions, innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
-    # `cfg.extra["thin_letters_after_ground"]` (built OFF 2026-11-18): a thin
+    # `cfg.thin_letters_after_ground` (ON since 2026-11-18, Kent's flip): a thin
     # letter sewn before its ground loses most of its stroke to the ground's
     # pull allowance; it sews after the ground instead.
-    if (cfg.extra or {}).get("thin_letters_after_ground"):
+    if cfg.thin_letters_after_ground:
         stitched_regions = thin_letters_after_ground(stitched_regions)
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,

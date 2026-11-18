@@ -655,7 +655,8 @@ THIN_LETTER_PULLS = 6.0
 
 
 def thin_letters_after_ground(regions):
-    """`cfg.extra["thin_letters_after_ground"]` (built OFF 2026-11-18): the
+    """`cfg.thin_letters_after_ground` (built OFF 2026-11-18, ON the same day,
+    Kent's flip): the
     lettering of one thread written on one ground, sewn BEFORE that ground,
     moves to a layer of its own right after the ground's when the ground's
     pull allowance from both edges takes a third or more of the letters'
