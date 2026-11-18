@@ -16,7 +16,7 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.enclosed_white import apply_enclosed_white
 from digitizer_core.regions import Region
 from digitizer_core.threads import chart_for, rgb_to_lab
-from tests.conftest import ENGINE_2026_10_27
+from tests.conftest import ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF, ENGINE_2026_10_27
 
 CHART = chart_for(PipelineConfig())
 
@@ -52,15 +52,25 @@ def _scene(hole_thread, **hole_meta):
     return [ring, hole]
 
 
-def test_default_is_off_and_the_snapshot_holds_it_off():
-    assert PipelineConfig().enclosed_white_keeps_known_colour is False
+def test_default_is_on_and_the_snapshot_and_pre_flip_dict_hold_it_off():
+    # ON by Kent 2026-11-17 (LEGO sheet, "Flip ON (Recommended)")
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().enclosed_white_keeps_known_colour is True
     assert ENGINE_2026_10_27["enclosed_white_keeps_known_colour"] is False
+    assert PRE_FLIP["enclosed_white_keeps_known_colour"] is False
+    assert PipelineConfig(**ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF) \
+        .enclosed_white_keeps_known_colour is False
 
 
-def test_a_dark_known_band_goes_white_off_and_keeps_its_thread_on():
+def test_a_dark_known_band_keeps_its_thread_by_default_and_goes_white_off():
     regs = _scene(BLACK_T)
     out, n = apply_enclosed_white(regs, [RED_T, BLACK_T], _cfg(), CHART)
-    assert n == 1 and regs[1].thread_index == WHITE_T          # OFF: today's recolour
+    assert n == 1 and regs[1].thread_index == BLACK_T          # the default is ON
+
+    regs = _scene(BLACK_T)
+    out, n = apply_enclosed_white(regs, [RED_T, BLACK_T],
+                                  _cfg(**ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF), CHART)
+    assert n == 1 and regs[1].thread_index == WHITE_T          # OFF: the pre-flip recolour
 
     regs = _scene(BLACK_T)
     out, n = apply_enclosed_white(regs, [RED_T, BLACK_T],

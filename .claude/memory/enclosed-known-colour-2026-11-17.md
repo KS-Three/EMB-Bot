@@ -1,6 +1,6 @@
 ---
 name: enclosed-known-colour-2026-11-17
-description: enclosed_white_keeps_known_colour OFF - a known-colour enclosed area (black letter band) keeps its own thread under the Studio's white sew thread; one logo of 50 census runs moves; flip is Kent's
+description: enclosed_white_keeps_known_colour ON (Kent 11-17) - a known-colour enclosed area (black letter band) keeps its own thread under the Studio's white sew thread; one logo of 50 census runs moves
 metadata:
   type: project
 ---
@@ -36,4 +36,6 @@ areas" cannot rescue a keyline-shaped logo. The black FRAME is the page flood an
 nothing sews it; left as is. The late colour cap's protected set still lists a kept
 thread when `sew_enclosed_rgb` is set (harmless, only under cap pressure).
 
-Flag OFF; flipping it is Kent's, from the OFF | ON sheet.
+Built OFF, then **flipped ON 2026-11-17**: Kent, shown the ORIGINAL ART | OFF | ON
+sheet, answered "Flip ON (Recommended)". `ENCLOSED_KNOWN_COLOUR_2026_11_17_OFF` in
+conftest is in `PRE_FLIP`; `engine_2026_10_27.json` stays false.
