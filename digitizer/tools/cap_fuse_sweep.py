@@ -46,8 +46,8 @@ def main(argv=None) -> int:
     for name, garment, width, art in _jobs(a.fixtures, a.only)[k::n]:
         stem = Path(name).stem
         try:
-            d0 = pp.digitize(art, width, garment, extra={pp.EXTRA_PREFIX + "color_cap_fuse_split_tones": False})
-            d1 = pp.digitize(art, width, garment, extra={pp.EXTRA_PREFIX + "color_cap_fuse_split_tones": True})
+            d0 = pp.digitize(art, width, garment, extra={"color_cap_fuse_split_tones": False})
+            d1 = pp.digitize(art, width, garment, extra={"color_cap_fuse_split_tones": True})
         except Exception as e:  # noqa: BLE001 - recorded, not hidden
             rows[name] = {"error": repr(e)[:200]}
             print(name, "ERROR", repr(e)[:120], flush=True)
