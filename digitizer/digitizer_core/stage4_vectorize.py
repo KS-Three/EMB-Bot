@@ -1542,6 +1542,11 @@ def rehome_resnapped_regions(regions: list[Region],
     return moved
 
 
+#: `rehome_cap_merged_regions`: the widest band (mm, mean width 2A/P) it moves
+#: (= `bevel_fold.BAND_MAX_MM`: two 40 wt threads)
+CAP_MERGED_BAND_MAX_MM = 0.8
+
+
 def rehome_cap_merged_regions(regions: list[Region],
                               layer_threads: list[int]) -> int:
     """`cfg.extra["cap_merged_layer_home"]` (built OFF 2026-11-18). A region the
@@ -1563,6 +1568,13 @@ def rehome_cap_merged_regions(regions: list[Region],
     moved = 0
     for r in regions:
         if "color_cap_merged_from" not in r.meta or r.meta.get("step_key"):
+            continue
+        # a BAND only (mean width 2A/P <= `bevel_fold.BAND_MAX_MM`, two laid
+        # threads): a bevel / keyline sliver is what sews wider than the art
+        # and caps its neighbour. First version moved every cap-merged region
+        # and re-layered the Drone's grey fields (109 shapes) and Summit's.
+        per = r.polygon.length
+        if per <= 0 or 2.0 * r.area_mm2 / per > CAP_MERGED_BAND_MAX_MM:
             continue
         target = home.get(r.thread_index)
         if target is None or target == r.meta["layer"]:
