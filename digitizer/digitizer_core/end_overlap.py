@@ -19,6 +19,8 @@ running on beside another) is never cut. The ground a cut leaves bare is the
 patch lane's (`script_strokes._patches` runs after this).
 
 Off, byte-identical (the scope reads False and the columns pass through).
+BOTH flags stay OFF and are NOT flip candidates: marginal at print size on Toat
+Machine, and `junction_align` raises the hat's `coverage_max` 7.19 -> 7.68.
 Tests: `tests/test_end_overlap.py`.
 
 SECOND MODE, `cfg.extra["lettering_columns_junction_align"]` (built OFF the same

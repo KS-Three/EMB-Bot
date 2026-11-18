@@ -1,3 +1,25 @@
+# NEXT THING TO TRY (read this first): the h's hairline route
+
+Both flags built here stay OFF and neither is a flip candidate (marginal at print size; `junction_align`
+also raises the hat's `coverage_max` 7.19 -> 7.68). The valuable finding is where the real pile-up is:
+
+- **Toat Machine hat, "h":** the arch hairline (column 3 of the word, 63 stations, after `wedge_cap`,
+  columns sorted left to right by `script_strokes._left_key`) runs ALONG the stem (column 5, 61
+  stations) for 11 stations: hairline stations 32-43 lie over stem stations 13-22, **5.95 mm2** at
+  crosses more than 30 degrees apart. The pro's equivalent pair (its h stem x the arch column) overlaps
+  **1.95 mm2**. It is a through-run, so no turn or cut at a column END reaches it.
+- **Where the route is chosen:** `digitizer_core/script_strokes.py`, `pen_strokes` (welds the
+  skeleton's arms at a junction by straightest pair, `WELD_MAX_DEG`) reading the medial axis in
+  `_skeleton` (`_cluster_junctions`, `_prune_spurs`), then `_split_cusps` and `_stations`. The merged
+  ink at the h's junction pulls the skeleton down the stem's centre before it peels off; the fix is the
+  route (leave the stem at the first station past the merge, or weld at a different arm pair), not the
+  cross angle. Reader: the hat's capped columns via `script_strokes_shape` (`/tmp`-style capture of
+  `wedge_cap.cap_columns`' return is how the stations above were read).
+- Judge any route change on To a T, Bridge and Tires whole words at print size, then
+  `python -m tools.flag_sweep` (44 runs); a route change moves column stations everywhere.
+
+---
+
 # Toat "Machine" script: what the plan shows, and a flag that does not clear it (2026-11-18)
 
 **Verdict: the faults are real in the stitches. One cause is built as
