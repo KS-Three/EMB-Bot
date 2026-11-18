@@ -3318,6 +3318,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             edge_walk_judge_off: bool = False,
                             judge_entry_free: bool = False,
                             small_bold_pull_floor: bool = False,
+                            stroke_floor_lost_stroke: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3558,11 +3559,35 @@ def _stroke_floor_judged(args: dict) -> tuple[list[StitchRun], dict]:
         return runs, report
     with stroke_floor_scope(False):
         runs0, report0 = lettering_columns_shape(**args)
-    if ([r.points for r in runs] == [r.points for r in runs0]
-            or not handback_wins(runs0, runs, args["poly"], rule="net", underlay=True)):
+    if [r.points for r in runs] == [r.points for r in runs0]:
         return runs0, report0
+    if not handback_wins(runs0, runs, args["poly"], rule="net", underlay=True):
+        if not (args.get("stroke_floor_lost_stroke")
+                and stroke_floor_restores(runs0, runs, args["poly"])):
+            return runs0, report0
+        report["stroke_floor_lost_stroke"] = 1
     report["stroke_floor_kept"] = 1
     return runs, report
+
+
+def stroke_floor_restores(unfloored: list[StitchRun], floored: list[StitchRun],
+                          poly: Polygon) -> bool:
+    """`cfg.extra["stroke_floor_keeps_lost_strokes"]` (built OFF 2026-11-18):
+    the floored sew is kept, whatever the "net" rule says, when the unfloored
+    sew leaves the letter not whole (satin cover under
+    `SMALL_BOLD_COVER_MIN`) and the floored sew makes it whole.
+
+    The "net" rule asks the floor to add more thread inside the letter than
+    outside it. A hairline stroke is narrower than the thread, so sewn at
+    the floor it always adds more outside than in, the rule refuses it and
+    the stroke sews nothing. The Marine Corps emblem at 90 mm, a 4.4 mm
+    serif face: the S lost its top curve (cover 0.69 -> 1.00 floored, spill
+    0.59 -> 1.26: refused) and a C everything but its back (0.61 -> 1.00,
+    spill 0.34 -> 1.41: refused). A letter that is whole without the floor
+    is still judged "net" alone: Commons Bukit's e (0.92 -> 0.98) stays
+    refused."""
+    return (satin_cover(unfloored, poly) < SMALL_BOLD_COVER_MIN
+            <= satin_cover(floored, poly))
 
 
 def satin_cover(runs: list[StitchRun], poly: Polygon, half_mm: float = 0.2) -> float:

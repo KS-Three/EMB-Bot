@@ -4349,6 +4349,11 @@ def sequence(
                     # the small-bold pull cap never starves a stroke under one cross
                     **({"small_bold_pull_floor": True}
                        if (cfg.extra or {}).get("small_bold_pull_reaches_floor") else {}),
+                    # `cfg.extra["stroke_floor_keeps_lost_strokes"]` (built OFF
+                    # 2026-11-18): a floored hairline stroke is kept when the
+                    # letter is not whole without it
+                    **({"stroke_floor_lost_stroke": True}
+                       if (cfg.extra or {}).get("stroke_floor_keeps_lost_strokes") else {}),
                     # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
                     **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
