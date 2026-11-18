@@ -86,3 +86,21 @@ def test_the_stem_is_sewn_once():
         hit = ((p[:, 0] > 10.9) & (p[:, 0] < 14.1) & (p[:, 1] > 7.0) & (p[:, 1] < 17.0)).any()
         covering += int(hit)
     assert covering == 1
+
+
+def test_no_stitch_of_the_outer_loop_crosses_a_face_at_a_grazing_corner():
+    """Two faces 1 mm apart in one keyline (the `test_border_from_outline` case): a cross at a
+    face's convex corner used to run through the corner; its far end is pulled back to the edge."""
+    from shapely.geometry import LineString
+    from shapely.ops import unary_union
+    left, right = box(-15, -6, -0.5, 6), box(0.5, -6, 15, 6)
+    ring = Polygon(box(-16, -7, 16, 7).exterior, [left.exterior, right.exterior])
+    runs, rep = one_band_runs(ring, [(Polygon(left.exterior), 2.0), (Polygon(right.exterior), 2.0)], "x",
+                              entry=None, trim_at_mm=4.0, underlay=False, satin_kw=_kw())
+    assert not rep["empty"]
+    faces = unary_union([left, right]).buffer(-0.01)
+    for r in runs:
+        if r.kind != "satin":
+            continue
+        for a, b in zip(r.points, r.points[1:]):
+            assert not faces.intersects(LineString([a, b]))

@@ -43,7 +43,7 @@ from __future__ import annotations
 import math
 
 from shapely.geometry import LineString, MultiPolygon, Point, Polygon
-from shapely.ops import substring, unary_union
+from shapely.ops import nearest_points, substring, unary_union
 
 from . import machine, stitches
 from .stitches import StitchRun
@@ -132,6 +132,50 @@ def stem_pieces(art: Polygon, rings: list[tuple[Polygon, float]]) -> tuple[list[
         if width > 0 and length >= 2.0 * width:
             stems.append(part)
     return stems, outer, w
+
+
+def _loops_exit(rings: list[tuple[Polygon, float]], entry):
+    """Where the per-hole loops (`keyline_runs`, nearest loop first, each starting and
+    ending at its own point nearest the needle) leave the needle after the last one."""
+    cursor = entry
+    todo = [h.exterior for h, _w in rings]
+    while todo:
+        if cursor is None:
+            ring = todo.pop(0)
+            cursor = ring.coords[0]
+            continue
+        here = Point(cursor)
+        k = min(range(len(todo)), key=lambda j: (round(todo[j].distance(here), 6), j))
+        ring = todo.pop(k)
+        near = nearest_points(ring, here)[0]
+        cursor = (near.x, near.y)
+    return cursor
+
+
+def _keep_out_of_faces(runs: list, faces, outer_line: LineString) -> int:
+    """No stitch of the outer loop crosses a face: where one does (a cross grazing a face's
+    corner), its far end -- the end further from the outer ring -- is pulled back to where
+    the stitch first enters the face. -> stitches shortened."""
+    from shapely.geometry import MultiPoint
+    n = 0
+    for r in runs:
+        if r.kind != stitches.SATIN or not r.points:
+            continue
+        pts = list(r.points)
+        for i in range(len(pts) - 1):
+            seg = LineString([pts[i], pts[i + 1]])
+            if not seg.intersects(faces):
+                continue
+            near, far = (i, i + 1) if outer_line.distance(Point(pts[i])) <= outer_line.distance(Point(pts[i + 1])) else (i + 1, i)
+            hit = seg.intersection(faces)
+            if hit.is_empty:
+                continue
+            cand = [Point(c) for g in getattr(hit, "geoms", [hit]) for c in g.coords]
+            first = min(cand, key=lambda q: Point(pts[near]).distance(q))
+            pts[far] = (first.x, first.y)
+            n += 1
+        r.points = pts
+    return n
 
 
 def _outer_centre(art: Polygon, w: float) -> LineString | None:
@@ -315,11 +359,19 @@ def one_band_runs(art: Polygon, rings: list[tuple[Polygon, float]], shape_id: st
         cursor = runs[-1].points[-1]
     # ... and the one band on the outer ring, last
     ext = Polygon(art.exterior)
-    o_runs, o_rep = keyline_runs(art, shape_id, reach=art.difference(stem_union), entry=cursor,
+    # The band ends where the loops it replaces would have ended, so what is sewn after the
+    # outline (the next shape's entry, and the order it picks its neighbours in) is the order
+    # it was: the loop is entered there and the needle's way to it is walked first.
+    seed = _loops_exit(rings, entry) or cursor
+    o_runs, o_rep = keyline_runs(art, shape_id, reach=art.difference(stem_union), entry=seed,
                                  trim_at_mm=trim_at_mm, underlay=underlay,
                                  holes=[(ext, w)], bridge_guides=guides)
     if o_rep["empty"]:
         return [], report
+    _keep_out_of_faces(o_runs, unary_union([h for h, _w in rings]).buffer(-0.0005),
+                       LineString(list(art.exterior.coords)))
+    o_runs = _reroute(o_runs, cursor, art, shape_id, centre, guides)
+    report["jumps"] += _hop(runs, o_runs, cursor, art, shape_id, trim_at_mm, centre, guides)
     runs += o_runs
     report["jumps"] += o_rep["jumps"]
     report["outline_loops"] += o_rep["loops"]
