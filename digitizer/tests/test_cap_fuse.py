@@ -73,3 +73,16 @@ def test_a_union_that_is_not_one_polygon_is_refused():
     cap_fuse.apply(regions)
     assert any(r.shape_id == "C" for r in regions)
     assert all(r.polygon.geom_type == "Polygon" for r in regions)
+
+
+def test_a_dot_inside_a_rings_hole_is_not_fused_with_it():
+    ring = Polygon(box(0, 0, 8, 8).exterior.coords, [box(2, 2, 6, 6).exterior.coords])
+    dot = box(2.5, 2.5, 6.0, 6.0)                   # lies in the ring's hole, grazing its edge
+    regions = [_r("Ring", ring, "0824"), _r("Dot", dot, "0931")]
+    assert cap_fuse.apply(regions)["removed"] == 0 and len(regions) == 2
+
+
+def test_a_piece_beside_a_rings_hole_still_fuses_edge_to_edge():
+    ring = Polygon(box(0, 0, 8, 8).exterior.coords, [box(2, 2, 6, 6).exterior.coords])
+    arm = box(8, 1, 12, 7)                          # outside, sharing the ring's right edge
+    assert cap_fuse.apply([_r("Ring", ring, "0824"), _r("Arm", arm, "0700")])["removed"] == 1

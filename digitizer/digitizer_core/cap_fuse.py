@@ -14,10 +14,14 @@ cap re-threaded from DIFFERENT original threads onto the SAME thread, sharing a
 seam or overlapping, become one polygon (the larger keeps its identity), so
 every later stage sees the whole letter. Only cap-moved pairs: a shape that was
 already one thread is never touched, and a union that is not a single polygon
-is refused. Geometry only; no fabric constant (gate 1 does not apply).
+is refused. A pair is edge-to-edge or it is not fused: a piece that lies in a
+hole of the other (the Drone's target icon, a dot inside its ring) is never
+fused with it (2026-11-18: that fuse clogged the target's open centre). Geometry
+only; no fabric constant (gate 1 does not apply).
 """
 from __future__ import annotations
 
+from shapely.geometry import Polygon
 from shapely.ops import unary_union
 
 #: Seam (mm) two halves must share, or overlap across, to be one letter.
@@ -27,6 +31,16 @@ MIN_SEAM_MM = 1.0
 def _poly(r) -> bool:
     g = r.polygon
     return g.geom_type == "Polygon" and g.is_valid and not g.is_empty
+
+
+def _sits_in_hole(inner, outer) -> bool:
+    """True when most of `inner` lies inside a hole of `outer`: a dot in a ring's
+    centre, kept apart from the ring by page or another colour. Two tone bands of
+    one letter touch along a shared edge and neither encloses the other."""
+    for h in outer.interiors:
+        if Polygon(h).intersection(inner).area >= 0.5 * inner.area:
+            return True
+    return False
 
 
 def apply(regions, touch_mm: float = 0.05) -> dict:
@@ -53,6 +67,8 @@ def apply(regions, touch_mm: float = 0.05) -> dict:
             ga, gb = ra.polygon, rb.polygon
             if ga.distance(gb) > touch_mm:
                 continue
+            if _sits_in_hole(ga, gb) or _sits_in_hole(gb, ga):
+                continue                       # enclosed, not edge-to-edge: a ring and its dot
             # the length of each outline lying against (or inside) the other
             seam = min(ga.boundary.intersection(gb.buffer(touch_mm)).length,
                        gb.boundary.intersection(ga.buffer(touch_mm)).length)
