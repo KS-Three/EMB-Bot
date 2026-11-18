@@ -885,7 +885,8 @@ def _as_drawn(region: Region, specks: list[Region], chart) -> Polygon:
 
 def _letter_candidates(regions: list[Region], chart=None,
                        counters_as_drawn: bool = False,
-                       aspect: tuple[float, float] | None = None) -> list[_Candidate]:
+                       aspect: tuple[float, float] | None = None,
+                       stroke_cv: tuple[float, float] | None = None) -> list[_Candidate]:
     """The LETTER door: every NON-rescued region that could be one glyph of
     a word.
 
@@ -931,6 +932,10 @@ def _letter_candidates(regions: list[Region], chart=None,
 
     `aspect` (lo, hi): admit lo < width/height <= hi instead of the door's
     own range -- the wide-letter pool `_adopt_wide` reads. None: the door.
+
+    `stroke_cv` (lo, hi): admit lo < stroke CV <= hi instead of the door's
+    own bound -- the high-contrast pool `_adopt_contrast` reads. None: the
+    door.
     """
     raw: list[_Candidate] = []
     specks = ([r for r in regions if r.meta.get("rescued_small_shape")]
@@ -952,7 +957,12 @@ def _letter_candidates(regions: list[Region], chart=None,
             continue
         stats = (_stats_of_polygon(_as_drawn(r, specks, chart)) if specks
                  else _skeleton_stroke_stats(r))
-        if stats is None or stats.cv > LETTER_STROKE_CV_MAX:
+        if stats is None:
+            continue
+        if stroke_cv is None:
+            if stats.cv > LETTER_STROKE_CV_MAX:
+                continue
+        elif not (stroke_cv[0] < stats.cv <= stroke_cv[1]):
             continue
         raw.append(_Candidate(region=r, height_mm=height_mm, width_mm=width_mm,
                               stroke_mean_mm=stats.mean_mm, stroke_cv=stats.cv,
@@ -1086,7 +1096,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                          nest_guard_rotated: bool = False,
                          nest_door_aspect: bool = False,
                          solid_guard: bool = False,
-                         mixed_caps: bool = False) -> None:
+                         mixed_caps: bool = False,
+                         adopt_contrast: bool = False) -> None:
     """Post-vectorization pass: tag every member of a qualifying group of
     glyph-shaped regions as a text candidate (`text_candidate`,
     `text_cluster_id`, `text_cluster_stroke_mm`, `text_cluster_all_rescued`
@@ -1220,6 +1231,11 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
         """`solid_guard`: a row of shapes, not a word (`SOLID_GROUP_SHARE`)."""
         return solid_guard and sum(_solid(c) for c in group) >= SOLID_GROUP_SHARE * len(group)
 
+    def contrast(regs: list[Region]) -> list[_Candidate]:
+        """`adopt_contrast`: the glyphs the letter door refused for stroke CV alone."""
+        return _letter_candidates(regs, chart=chart, counters_as_drawn=counters_as_drawn,
+                                  stroke_cv=(LETTER_STROKE_CV_MAX, CONTRAST_STROKE_CV_MAX))
+
     rescued = _candidates(regions)
     taken: set[str] = set()
     for group in _cluster(rescued, SIMILARITY_RATIO, chart if rescued_ink_link else None):
@@ -1237,6 +1253,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                       if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
             if mixed_caps:
                 groups = _mixed_caps(groups, kept_cands, chart, blobs)
+            if adopt_contrast:
+                groups = _adopt_contrast(groups, kept_cands, contrast(regions), chart, blobs)
             for group in groups:
                 tag(group)
             return
@@ -1245,7 +1263,10 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
                   if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
         if mixed_caps:
             groups = _mixed_caps(groups, kept_cands, chart, blobs)
-        for group in _adopt_turned(groups, _turned_regions(regions, chart, counters_as_drawn), chart):
+        groups = _adopt_turned(groups, _turned_regions(regions, chart, counters_as_drawn), chart)
+        if adopt_contrast:
+            groups = _adopt_contrast(groups, kept_cands, contrast(regions), chart, blobs)
+        for group in groups:
             tag(group)
         return
 
@@ -1277,6 +1298,8 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
             groups = _adopt_band(groups, kept_cands, chart)
         if nest_door_aspect:
             groups = _adopt_turned(groups, _turned_regions(trial, chart, counters_as_drawn), chart)
+        if adopt_contrast:
+            groups = _adopt_contrast(groups, kept_cands, contrast(trial), chart, blobs)
         tagged = {c.region.shape_id for g in groups for c in g}
         still = {sid: pieces for sid, pieces in kept.items()
                  if all(p.shape_id in tagged for p in pieces)}
@@ -1286,6 +1309,59 @@ def detect_text_clusters(regions: list[Region], p: Prep, *,
     regions[:] = trial
     for group in groups:
         tag(group)
+
+
+# --- High-contrast letters (`cfg.extra["text_cluster_adopt_contrast"]`,
+# 2026-11-18, built OFF) ------------------------------------------------------
+#
+# The letter door refuses a glyph whose stroke width varies by more than
+# `LETTER_STROKE_CV_MAX` (0.55). A serif capital with a bold stem and
+# hairline arms varies more than that: the Defense seal at 90 mm, "OF
+# DEFENSE" on the ring, its E's and F's read 0.58-0.63 and were refused,
+# and the N and S between them, short of a line of three, went untagged
+# with them. None of the six reached the Column lane; the skeleton tier
+# sewed each E's stem and the word read "DLFENSE".
+# `CONTRAST_STROKE_CV_MAX`: how far past the door a glyph may read and still
+# be offered to a line. 0.70 admits every letter measured on that ring
+# (highest 0.68); it is a layout candidate from one seal, not a typographic
+# constant. The filter is not this bound but the line: a refused glyph is
+# only ever ADOPTED into a line the door already found.
+CONTRAST_STROKE_CV_MAX = 0.70
+
+
+def _adopt_contrast(groups: list[list[_Candidate]], cands: list[_Candidate],
+                    contrast: list[_Candidate], chart, blobs) -> list[list[_Candidate]]:
+    """`groups` regrown with `contrast` (the glyphs the door refused for
+    stroke CV alone) in the pool: the candidates are clustered again with
+    them, and each group is replaced by the regrown component that holds
+    it. A component that holds NO group is dropped, so contrast glyphs never
+    make a line of their own; one that holds two joins them (the refused E
+    and F were the gap between "DEPARTMENT OF D" and "NSE"). A regrown
+    component `blobs` calls a row of shapes leaves its groups as they were.
+    Order-independent: `_cluster` is, and groups are matched by membership."""
+    have = {c.region.shape_id for c in cands}
+    extra = [c for c in contrast if c.region.shape_id not in have]
+    if not groups or not extra:
+        return groups
+    regrown = _cluster(cands + extra, LETTER_HEIGHT_RATIO, chart)
+    home = {c.region.shape_id: i for i, g in enumerate(regrown) for c in g}
+    out: list[list[_Candidate]] = []
+    used: set[int] = set()
+    for g in groups:
+        homes = {home.get(c.region.shape_id) for c in g}
+        i = next(iter(homes)) if len(homes) == 1 else None
+        if i is None or blobs(regrown[i]) or len(regrown[i]) == len(g):
+            out.append(g)
+            continue
+        if i in used:
+            continue                    # joined a line already taken above
+        if any(home.get(c.region.shape_id) == i for o in out for c in o):
+            # a group kept as it was already lives in this component: no join
+            out.append(g)
+            continue
+        used.add(i)
+        out.append(sorted(regrown[i], key=lambda c: c.region.shape_id))
+    return out
 
 
 # --- Wide letters (`cfg.text_cluster_wide_letters`, 2026-10-23, built OFF) --
