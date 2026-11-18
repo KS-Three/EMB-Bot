@@ -1576,6 +1576,14 @@ class PipelineConfig:
     # fabric constant: gate 1 does not apply. Reaches every photo-lane design:
     # the default is Kent's, with before | after pictures. False is the floor
     # bit for bit. Tests: `tests/test_light_thin_stroke_keep.py`.
+    # **NOT A FLIP CANDIDATE (2026-11-18, director's ruling; pictures in
+    # `docs/renders/light-thin-stroke-keep-2026-11-18/`).** (1) `mfab_hat` gets
+    # worse: the first W of WELDING loses its white outline. (2) Three real test
+    # failures with it ON: `test_forbid_gap` (drone_render), `test_photo_lane_byte_
+    # identical[drone_render]`, `test_underfill_small_size::test_mfab_hat_size_sweep_
+    # order_and_grade[60.0-default]`. (3) It does not cure the Drone's black slab:
+    # that is pull compensation on a 0.35-0.5 mm shape, ROADMAP gate 1, which
+    # waits for a sew-out.
     light_thin_stroke_keep: bool = False
     # `keyline_fragment_drop` (ON since 2026-11-17; built OFF the same day.
     # Kent on the Drone render: "The P,R & C should not have the dark stitch
