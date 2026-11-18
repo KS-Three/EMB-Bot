@@ -70,3 +70,24 @@ def test_off_is_the_weight_it_always_was():
     g = _graph(BLACK, BLUE, False)
     assert "chroma_guard" not in g.graph
     assert PipelineConfig().merge_chroma_guard is False
+
+
+def _sized_graph(a, b, count_a, count_b):
+    g = _graph(a, b, True)
+    g.nodes[0]["fg pixel count"] = count_a
+    g.nodes[1]["fg pixel count"] = count_b
+    return g
+
+
+def test_the_guard_needs_both_sides_to_be_real_regions():
+    """2026-11-18: the guard acts only when both sides are at least
+    `CHROMA_GUARD_MIN_PX` foreground pixels. Background node 0 carries a
+    count of 0, so its edges are never lifted, and a 20 px fragment is free
+    to merge. The Drone's blue regions were 7.6-13.2 k px."""
+    big = s2.CHROMA_GUARD_MIN_PX
+    assert big > 0
+    lifted = s2._weight_mean_color(_sized_graph(BLACK, BLUE, 10_000, 10_000), 2, 0, 1)["weight"]
+    assert lifted > s2.MERGE_DELTAE00_THRESH
+    for a, b in ((10_000, 0), (10_000, big - 1), (big - 1, 10_000), (20, 10_000)):
+        w = s2._weight_mean_color(_sized_graph(BLACK, BLUE, a, b), 2, 0, 1)["weight"]
+        assert w < s2.MERGE_DELTAE00_THRESH, (a, b, w)

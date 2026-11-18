@@ -1585,6 +1585,13 @@ class PipelineConfig:
     # `drone_render`, and a new forbid-gap finding on `drone_render`. That
     # was not in front of him, so the default stays False until it is
     # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
+    # 2026-11-18 sweep (76 runs, `docs/renders/merge-chroma-guard-2026-11-18/`):
+    # at the shipped configs ONLY the Drone moves; golden_tee and bridge_bar
+    # move only at old pinned test configs. The guard now also needs both
+    # sides >= `stage2_photo_segment.CHROMA_GUARD_MIN_PX` (1000) px: that
+    # spares background node 0 and tiny fragments, and ends the Bridge Bar
+    # mover, but leaves golden_tee and the Drone's own pins. Not a flip
+    # candidate yet: the Drone's gain costs trims and stacked-thread area.
     merge_chroma_guard: bool = False
     # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
     # Precision Drone: "the lower left propeller is a thick black slab ...
