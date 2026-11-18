@@ -1,4 +1,4 @@
-# `cap_merged_layer_home` and `shadow_to_page`, flag OFF vs ON (2026-11-18, built OFF, not flipped)
+# `cap_merged_layer_home` and `shadow_to_page`, flag OFF vs ON (2026-11-18; built OFF, ON by Kent's ruling the same day: "Flip both ON (Recommended)")
 
 Prime-grader fault `L_goldentee_hat` (Bad, `ruins`): black piles over the gold so the O counter, L and F are hard to read;
 a grey fringe is sewn under GOLF for a soft blur; the TM is missing. Cause and numbers:
@@ -49,3 +49,8 @@ The first A moved every cap-merged region: Precision Drone re-layered 109 shapes
 still moved Summit and the Drone's mid-tones; adding "thread L* <= 35" took Summit and Chrome out and left the Drone's navy.
 Tests: `tests/test_layer_shadow.py` (4); the 15 related files pass with the flags OFF (285) and, forced ON by a plugin,
 280 of 281 (the one, `test_white_keyline_art`'s dict-equality check, fails because the plugin adds keys to `cfg.extra`).
+
+## After the flip (2026-11-18)
+
+The 44-run sweep was re-run on the flip branch with both fields ON by default against both forced False: still **5 movers, 39
+byte-identical, 0 errors**. The tripwire ledger's goldentee and drone rows will move at the next capture; the ledger was not touched.
