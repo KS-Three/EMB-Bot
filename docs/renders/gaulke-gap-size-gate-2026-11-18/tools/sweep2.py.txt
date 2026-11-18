@@ -1,0 +1,19 @@
+import sys,os,json,pickle
+sys.path.insert(0,'.'); sys.path.insert(0,'/tmp/claude-0/-home-user-EMB-Bot/82ff0188-f395-586c-97d4-87aeefc800dd/scratchpad')
+S='/tmp/claude-0/-home-user-EMB-Bot/82ff0188-f395-586c-97d4-87aeefc800dd/scratchpad/'
+shard,n,TAG,EX=int(sys.argv[1]),int(sys.argv[2]),sys.argv[3],json.loads(sys.argv[4])
+from tools import pro_pair, pro_baseline as pb, corpus_scorecard as cs
+import importlib.util
+src=open(S+'sweep.py').read()
+# reuse job list + stats() from sweep.py without running its loop
+head=src.split('for i,(kind,name,art,w,g) in enumerate(jobs):')[0].replace("shard,n=int(sys.argv[1]),int(sys.argv[2])","").replace("FLAG=sys.argv[3] if len(sys.argv)>3 else 'growth_keeps_gaps_between'","")
+exec(head)
+for i,(kind,name,art,w,g) in enumerate(jobs):
+    if i%n!=shard: continue
+    base=S+f'sweep/growth_keeps_gaps_between__{kind}__{name.replace("/","_")}.json'
+    out=S+f'sweep/{TAG}__{kind}__{name.replace("/","_")}.json'
+    if os.path.exists(out): continue
+    res=json.load(open(base)); res.pop('on',None)
+    d=pro_pair.digitize(art,w,g,EX); res['on']=stats(d)
+    if res['on']['md5']!=res['off']['md5']: pickle.dump(d.design,open(out[:-5]+'_on.pkl','wb'))
+    json.dump(res,open(out,'w')); print(kind,name,res['off']['stitches'],res['on']['stitches'],flush=True)

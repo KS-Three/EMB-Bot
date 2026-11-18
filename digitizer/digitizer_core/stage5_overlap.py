@@ -896,7 +896,7 @@ def _inscribed_width(poly: Polygon) -> float:
 
 
 def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float,
-               counters: bool = True):
+               counters: bool = True, min_pair_mm2: float = 0.0, min_gap_mm: float = 0.0):
     """`growth_keeps_gaps`: `grown` less the bare fabric `r` must leave as the
     art drew it (comment at `GAP_SEWABLE_MM`). `others`: the shapes near `r`;
     `later`: what sews after `r` (a counter it fills is a seam, not bare).
@@ -910,6 +910,8 @@ def _kept_gaps(r: Region, poly, grown, others, all_art, later, reach: float,
             continue
         if d < GAP_SEWABLE_MM and o.thread_index != r.thread_index:
             continue
+        if (min_pair_mm2 > 0 and min(poly.area, o.polygon.area) < min_pair_mm2) or d < min_gap_mm:
+            continue    # `growth_keeps_gaps_between_min_mm2`: small shapes grow as before
         span = d + reach + 1e-6      # the gap and the growth at its mouth
         lens = poly.buffer(span).intersection(o.polygon.buffer(span))
         if not lens.is_empty:
@@ -1006,6 +1008,13 @@ def resolve_overlaps(
     # own holes, which on TOAT Machine's white fill left 63 mm2 of bare
     # fabric where the art has only the halo round the letters.
     keep_counters = bool(flags_extra.get("growth_keeps_gaps")) or not keep_between
+    # `growth_keeps_gaps_between_min_mm2` (built OFF 2026-11-18, read only with
+    # `growth_keeps_gaps_between`): a gap is held only between two shapes that
+    # are both at least this big (mm2). Absent or 0: every pair, as #1630.
+    min_pair_mm2 = (float(flags_extra.get("growth_keeps_gaps_between_min_mm2") or 0.0)
+                    if keep_between else 0.0)
+    min_gap_mm = (float(flags_extra.get("growth_keeps_gaps_between_min_gap_mm") or 0.0)
+                  if keep_between else 0.0)   # holds only a gap at least this wide (mm)
     # `cfg.outline_inlets_kept` (ON since 2026-11-15, Kent's tick "K-Line box
     # + gear flags"; comment at the field): a fill's growth keeps out of its
     # own outline's inlets.
@@ -1355,7 +1364,7 @@ def resolve_overlaps(
                 near = [regions[int(i)] for i in gap_tree.query(poly.buffer(GAP_PROTECT_MM))
                         if regions[int(i)] is not r]
                 grown = _kept_gaps(r, poly, grown, near, all_art, later[L], pull + overlap,
-                                   counters=keep_counters)
+                                   counters=keep_counters, min_pair_mm2=min_pair_mm2, min_gap_mm=min_gap_mm)
 
             # `cfg.outline_inlets_kept` (ON, Kent 2026-11-15; `outline_inlets`):
             # a fill's growth stays out of its own outline's inlets (a notch,
