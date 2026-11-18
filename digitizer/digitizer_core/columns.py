@@ -866,11 +866,8 @@ def _sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float
     from .stage6_satin import _push_rails
     a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
     if pull_mm > 0:
-        from . import wedge_cap
         a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm,
-                                   **({"keep": keep} if keep is not None else {}),
-                                   # `cfg.extra["lettering_columns_stem_wedge_cap"]`: holds ease in and out
-                                   **({"ramp": True} if wedge_cap.armed() else {}))
+                                   **({"keep": keep} if keep is not None else {}))
     if col.kind in ("straight", "folded"):      # a folded column's ends are its legs' straight ends
         a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
                                         pull_mm - RAIL_REACH_INSET_MM,

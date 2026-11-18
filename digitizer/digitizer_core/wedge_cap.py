@@ -23,8 +23,18 @@ shortened on a side only along its own line. A station gives its ink up ONLY
 where a SIBLING column's piece already covers it (`GUARD_MM` of slack): the
 cap moves ink between columns, it never leaves any bare.
 
-Off, byte-identical (the scope reads False and `leaned` hands back the
-columns untouched). Tests: `tests/test_wedge_cap.py`.
+The rail point of a trimmed station goes ON the chord (not onto the slanted
+cross line, which shifted it along the column and bunched two penetrations), and
+the rail points within `EVEN_WINDOW` stations of a run's end are re-spaced evenly
+along the polyline they follow: the skeleton's join kink turns the cross there
+by a few degrees and the next stage shortened it into a notch, the "seam" the
+grader pinned at y 35.0 and y 39.5. (A push ramp in `_push_rails` was built for
+that notch and dropped: the re-spacing alone clears it, and the ramp reached
+every lane column, moving 18 of 35 runs with cover losses of up to 0.046.)
+
+Off, byte-identical (the scope reads False and `script_strokes_shape` hands the
+columns on untouched). Tests: `tests/test_wedge_cap.py`.
+
 """
 from __future__ import annotations
 

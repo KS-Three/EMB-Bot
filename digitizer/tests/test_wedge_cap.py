@@ -137,32 +137,3 @@ def test_a_capped_runs_end_is_re_spaced_not_notched():
     new, n = W.cap_column(kinked, box(-3.0, 4.5, 0.0, 11.0))
     steps = [math.dist(new.stations[i][0], new.stations[i - 1][0]) for i in range(8, 20)]
     assert min(steps) > 0.3, steps
-
-
-def _push_with_hole(ramp):
-    from shapely.geometry import Polygon
-    from digitizer_core.stage6_satin import _push_rails
-    hole = [(1.5, 1.9), (2.5, 1.9), (2.5, 2.5), (1.5, 2.5)]
-    poly = Polygon([(-1, -1), (3.2, -1), (3.2, 6), (-1, 6)], [hole])
-    a = [(0.0, 0.4 * i) for i in range(12)]
-    b = [(1.2, 0.4 * i) for i in range(12)]
-    return _push_rails(a, b, poly, 0.4, 0.6, ramp=ramp)
-
-
-def test_push_ramp_off_is_byte_identical_and_on_only_lowers_and_eases():
-    from digitizer_core.stage6_satin import _push_rails, PUSH_RAMP_SLOPE
-    off = _push_with_hole(False)
-    assert _push_with_hole(False) == off
-    from shapely.geometry import Polygon
-    poly = Polygon([(-1, -1), (3.2, -1), (3.2, 6), (-1, 6)], [[(1.5, 1.9), (2.5, 1.9), (2.5, 2.5), (1.5, 2.5)]])
-    a = [(0.0, 0.4 * i) for i in range(12)]
-    b = [(1.2, 0.4 * i) for i in range(12)]
-    assert _push_rails(a, b, poly, 0.4, 0.6) == off                    # the default is the old call
-    on = _push_with_hole(True)
-    push_off = [off[1][i][0] - b[i][0] for i in range(12)]            # rail B pushes toward +x, into the hole
-    push_on = [on[1][i][0] - b[i][0] for i in range(12)]
-    assert min(push_off) < 0.399 and max(push_off) > 0.399             # the hole holds some stations, not all
-    assert all(p_on <= p_off + 1e-9 for p_on, p_off in zip(push_on, push_off))   # never loosened
-    assert any(p_on < p_off - 1e-3 for p_on, p_off in zip(push_on, push_off))    # eased somewhere
-    for k in range(1, 12):
-        assert abs(push_on[k] - push_on[k - 1]) <= PUSH_RAMP_SLOPE * 0.4 + 1e-9

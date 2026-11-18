@@ -3879,14 +3879,8 @@ def _kept_limits(rail_a: list, rail_b: list, poly: Polygon, other, reach: float,
     return lim[:n], lim[n:]
 
 
-#: `_push_rails(ramp=True)`: the most a held push limit may rise per mm of arc
-#: along the column (mm of push per mm): the full 0.4 mm pull comes back over
-#: about 1.6 mm, four stations
-PUSH_RAMP_SLOPE = 0.25
-
-
 def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
-                floor_mm: float, held=None, keep=None, ramp: bool = False) -> tuple[list, list]:
+                floor_mm: float, held=None, keep=None) -> tuple[list, list]:
     """Move every real cross's two rails outward along the cross by `pull_mm`
     each -- the rail-side form of stage 5's `poly.buffer(pull)`.
 
@@ -3967,13 +3961,14 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
             return k
         return min(k, held[1].distance(SPoint(p)))
 
-    rows = []
+    out_a, out_b = [], []
     for i, (pa, pb) in enumerate(zip(rail_a, rail_b)):
         deadline.check("satin rail push")
         dx, dy = pa[0] - pb[0], pa[1] - pb[1]
         d = math.hypot(dx, dy)
         if d < 1e-9:
-            rows.append((pa, pb, 0.0, 0.0, 0.0, 0.0))
+            out_a.append(pa)
+            out_b.append(pb)
             continue
         ux, uy = dx / d, dy / d
         ka = room(pa, ux, uy)
@@ -3985,32 +3980,6 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
         if held is not None and d >= _SEAM_HOLD_MIN_CROSS_MM:
             ka = held_push(pa, ux, uy, ka)
             kb = held_push(pb, -ux, -uy, kb)
-        rows.append((pa, pb, ux, uy, ka, kb))
-    if ramp:
-        # `cfg.extra["lettering_columns_stem_wedge_cap"]`: a hold (a counter, a
-        # gap, the colour already down) takes the push from `pull_mm` to its
-        # limit in ONE cross, and that step is a short stitch on the rail and
-        # a notch in the column (the h's seam, y 35.0 and 39.5). The limit may
-        # now rise only `PUSH_RAMP_SLOPE` per mm of arc: lowers, never raises.
-        live = [i for i, r in enumerate(rows) if r[2] or r[3]]
-        for side in (4, 5):
-            ks = [rows[i][side] for i in live]
-            mids = [((rows[i][0][0] + rows[i][1][0]) / 2, (rows[i][0][1] + rows[i][1][1]) / 2) for i in live]
-            seg = [math.dist(mids[j], mids[j + 1]) for j in range(len(live) - 1)]
-            for j in range(1, len(ks)):
-                ks[j] = min(ks[j], ks[j - 1] + PUSH_RAMP_SLOPE * seg[j - 1])
-            for j in range(len(ks) - 2, -1, -1):
-                ks[j] = min(ks[j], ks[j + 1] + PUSH_RAMP_SLOPE * seg[j])
-            for j, i in enumerate(live):
-                r = list(rows[i])
-                r[side] = ks[j]
-                rows[i] = tuple(r)
-    out_a, out_b = [], []
-    for pa, pb, ux, uy, ka, kb in rows:
-        if not (ux or uy):
-            out_a.append(pa)
-            out_b.append(pb)
-            continue
         out_a.append((pa[0] + ux * ka, pa[1] + uy * ka))
         out_b.append((pb[0] - ux * kb, pb[1] - uy * kb))
     return out_a, out_b
