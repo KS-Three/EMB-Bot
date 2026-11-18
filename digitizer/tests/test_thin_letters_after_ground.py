@@ -103,3 +103,13 @@ def test_dark_ink_strokes_are_not_this_rules():
 def test_flag_is_off_by_default():
     from digitizer_core import PipelineConfig
     assert not (PipelineConfig().extra or {}).get("thin_letters_after_ground")
+
+
+def test_a_narrow_column_is_not_a_ground():
+    """Agriculture seal: cream highlights inside yellow letters and grey beads
+    named those as their ground and jumped on top (trims 284 -> 416). Only a
+    fill lengthens its rows for pull; a column is no ground."""
+    _field, ring, letters = _seal()
+    ring.meta[MEASURED_KEY], ring.meta[PULL_KEY] = 1.2, PULL       # the "ring" is a thin band
+    regs = [*letters, ring]
+    assert thin_letters_after_ground(regs) is regs

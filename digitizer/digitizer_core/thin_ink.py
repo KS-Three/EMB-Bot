@@ -689,8 +689,12 @@ def thin_letters_after_ground(regions):
     if not any(r.meta.get("text_cluster_id") for r in cands):
         return regions
     ids = {r.shape_id for r in cands if r.meta.get("text_cluster_id")}
+    # A ground is a FILL: its rows are what the pull allowance lengthens. A
+    # shape that is itself a narrow column (a letter, a rope strand, a bead)
+    # is not one -- the Agriculture seal's cream highlights inside its yellow
+    # letters and grey beads jumped on top of them (trims 284 -> 416).
     grounds = [r for r in regions if r.shape_id not in ids and r.meta.get("stitched", True)
-               and r.polygon is not None]
+               and r.polygon is not None and not narrow(r)]
     lines: dict[tuple, list] = {}
     for b in cands:
         g = _ground_of(b, [g_ for g_ in grounds if g_ is not b and g_.thread_index != b.thread_index],
