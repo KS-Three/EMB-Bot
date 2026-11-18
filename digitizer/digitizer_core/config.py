@@ -5053,8 +5053,26 @@ class PipelineConfig:
     # _mixed_caps`); a group that tagged keeps its members. The lane then
     # sews the A as the pro does: two level-crossed legs and a short crossbar
     # between them. Layout, not a cloth constant (gate 1). False is the tagger
-    # as it was, byte for byte. Tests: `tests/test_text_cluster_mixed_caps.py`.
-    text_cluster_mixed_caps: bool = False
+    # as it was, byte for byte. A line that tags ONLY this way is marked
+    # (`meta["text_cluster_mixed_caps"]`) and sews at its DRAWN size
+    # (`small_text` skips it, `regularize_text_clusters` never redraws it).
+    # Two bounds, both in `textcluster._mixed_caps`: (1) the group must hold
+    # a pair the NORMAL 0.8 pass links (`_has_letter_pair`: TOAT's T and T);
+    # (2) its members must sit on ONE line (`_on_one_line`: centres within
+    # `SAME_LINE_SPREAD` 0.5 of the tallest member; the ratio rests on THREE
+    # rows, TOAT hat 0.19, the beanie row with the i-dot 1.26, a gradient icon
+    # 1.83 -- a candidate, not a typographic constant).
+    # **ON since 2026-11-18, Kent's flip** (shown the To a T hat overlay of
+    # the shapes it tags and the zoom of the A, and told it tags only T, o, A,
+    # T on the To a T jobs and four letters of "Photo" at drawn size, nothing
+    # that is not a letter across 44 designs, 4 of 44 move, three better,
+    # 2,685 related tests pass ON, the threshold rests on three rows: "Flip ON
+    # (Recommended)"). **The first, UNBOUNDED version was withdrawn on
+    # 2026-11-17**: ON it tagged six of a gradient icon's bands as lettering
+    # (`test_borders_last`). False is the tagger as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_text_cluster_mixed_caps.py`.
+    text_cluster_mixed_caps: bool = True
     # Station pitch for BEAN LETTERS only (`stage6_beanletter.bean_letter`),
     # in mm. `machine.BEAN_STITCH_MM` (0.73) gives the loop of a 1.9 mm "8"
     # two or three stations and it sews as a wedge; at 0.45 it is drawn.
