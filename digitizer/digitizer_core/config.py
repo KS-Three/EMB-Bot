@@ -4449,6 +4449,38 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_wedge_cap.py`.
     lettering_columns_stem_wedge_cap: bool = True
+    # `lettering_columns_block_butt` (built OFF 2026-11-18 as
+    # `cfg.extra["lettering_columns_block_butt"]`, #1683; prime grader:
+    # Becker MARINE's R, N and E "fan their stitches out from one point
+    # instead of following the stroke"). On a HEAVY block letter (stroke
+    # width >= `outline_cut.BUTT_MIN_W_MM` 3.5 mm) the strokes sew as
+    # straight columns butted at the joins: (1) a pointed slot's tip stays
+    # cut, so an E's arms butt its stem (`corner_fold_apex_side`'s fold, one
+    # fan over the whole spine, is not taken there); (2) a stem's head, where
+    # a `mitre` cut slants from a counter's corner to the letter's corner,
+    # is cut straight up the stem's edge instead (the R: stem + bowl, two
+    # straight columns); (3) a straight piece's slanted end sews square when
+    # its fan would sweep past 45 deg and the square end leaves <= 0.05 mm2
+    # bare (the N's diagonal).
+    # **ON since 2026-11-18, Kent's flip**, shown ORIGINAL | BEFORE | AFTER
+    # of the MARINE word at all five Becker placements and told it replaces
+    # his 11-14 E corner fold on heavy block letters. Verbatim: "Flip on, but
+    # make sure the MARINE strokes match the pros. These letters need to be
+    # perfect, release another agent if needed."
+    # **Caveats:** heavy = stroke width >= 3.5 mm, and Becker is the ONLY
+    # design with such a letter today (every other committed job's widest
+    # letter is 0.8-1.7 mm), so it is untested on other heavy block lettering;
+    # the R keeps its fan at 76.5-79.8 mm and 114 mm (the butt is built, then
+    # the fold look drops it); the R counter is 4.06 of the art's 6.63 mm2
+    # (OFF 3.18); the M's top-right changes (its right diagonal's slanted end
+    # sews square, OFF's small tabs there are gone); it replaces
+    # `lettering_columns_corner_fold_apex_side`'s E fold on heavy strokes;
+    # +8..19 mm needle-up travel at the larger sizes; not sewn on cloth. The
+    # pro's MARINE is not matched yet: `docs/block-butt-2026-11-18.md` hand-off.
+    # False is the columns as they were; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_block_butt.py`.
+    lettering_columns_block_butt: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

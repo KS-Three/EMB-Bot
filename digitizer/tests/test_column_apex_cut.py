@@ -236,6 +236,13 @@ def test_on_an_m_with_an_acute_tip_is_not_read_as_an_e():
     assert "slot" not in [c[2] for c in on.cuts] and "apex" in [c[2] for c in on.cuts]
     assert max(oc.pivot_sweep(c.stations) for c in off.columns) > 75.0
     assert max(oc.pivot_sweep(c.stations) for c in on.columns) < 60.0
+    # Kent 2026-11-18: `lettering_columns_block_butt` (ON by default) sews a heavy
+    # letter's slanted end square (this M is 4+ mm a stroke; apex_cut, OFF in production, is the arm that changes), so under the default
+    # no column of it fans past the small-bold limit. The OFF fan above is the
+    # `PRE_FLIP` arm (block_butt OFF)
+    with oc.block_butt_scope(True):
+        squared = _cut(poly, False)      # apex_cut is OFF in production: the lane the flip changes
+    assert max(oc.pivot_sweep(c.stations) for c in squared.columns) <= oc.SMALL_BOLD_FAN_DEG
     # crotch (-37.8, 16.59), tip (-37.35, 24.54): one column of level crosses near the point
     for f in (0.7, 0.85):
         p = (-37.8 + 0.45 * f, 16.59 + 7.95 * f)

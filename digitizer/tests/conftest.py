@@ -1222,6 +1222,14 @@ PRE_FLIP.update(WHOLE_LETTER_FLOOR_2026_11_18_OFF)
 # `tests/test_wedge_cap.py`.
 STEM_WEDGE_CAP_2026_11_18_OFF = {"lettering_columns_stem_wedge_cap": False}
 PRE_FLIP.update(STEM_WEDGE_CAP_2026_11_18_OFF)
+# `lettering_columns_block_butt` (Kent 2026-11-18, shown the MARINE word at all
+# five Becker placements, told it replaces his 11-14 E corner fold on heavy block
+# letters: "Flip on, but make sure the MARINE strokes match the pros. These
+# letters need to be perfect, release another agent if needed."): the strokes of
+# a heavy block letter (>= 3.5 mm) sew straight and butted, not fanned from a
+# point. `tests/test_block_butt.py`.
+BLOCK_BUTT_2026_11_18_OFF = {"lettering_columns_block_butt": False}
+PRE_FLIP.update(BLOCK_BUTT_2026_11_18_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

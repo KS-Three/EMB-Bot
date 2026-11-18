@@ -109,6 +109,14 @@ def test_kents_pin_14_e_at_hat_large_size():
     off_runs, _r = columns.lettering_columns_shape(poly, "pin", **kw)
     on_runs, _r = columns.lettering_columns_shape(poly, "pin", **kw, corner_fold_apex_side=True)
     assert sum(bool(r.trim) for r in on_runs) == 0 < sum(bool(r.trim) for r in off_runs)
+    # Kent 2026-11-18 ("Flip on, but make sure the MARINE strokes match the pros"):
+    # `lettering_columns_block_butt` is ON by default and REPLACES this fold on
+    # a heavy block letter (stroke >= 3.5 mm; this E is 5.3). The assertions
+    # above are the apex-side fold as built (block_butt OFF, the `PRE_FLIP` arm);
+    # under the default the E is a stem and three arms, butted, none folded
+    with outline_cut.block_butt_scope(True):
+        butted = _kinds(poly, True)
+    assert butted == ["straight"] * 4
 
 
 def test_apex_side_half_plane():
