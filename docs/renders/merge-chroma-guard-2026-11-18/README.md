@@ -111,3 +111,29 @@ and doubles the stacked-thread area (107 -> 203 mm2; stacking is a fabric
 question, which needs a sew-out), and Golden Tee and three Drone pins still
 need re-pinning. If Kent wants the Drone fixed without a default flip, a
 per-design route is the cheaper path.
+
+## 7. The Drone body: would a lightness term keep it apart? (director's extra ask)
+
+Measured on `precision_drone` (hat, 62.6 mm), stage-2 regions read back onto
+the prepped art (mean Lab per region, guard OFF -> bounded guard ON):
+
+| region | OFF | ON |
+|---|---|---|
+| black (thread 0020) | 800 mm2, mean L 15, chroma 13, L spread 16.8 | 548 mm2, mean L 10, chroma 1, spread 16.5 |
+| left sky, grey (1972) | 130 mm2, L 55, chroma 0 | 148 mm2, L 53 |
+| blue sky, right | inside the black region | two Flag Blue regions, 87 + 85 mm2, L 27-33, chroma 44-47 |
+
+- The sky is not one region with the body. The left sky is its own grey
+  region (L 55) in both arms. The part of the 800 mm2 that is sky is the
+  BLUE half (201 mm2, chroma 47), and the guard already takes that out.
+- What is left is dark neutral against dark neutral. k-means (k=4) inside
+  the OFF black region: shadows, ring and glass at L 2.1 (399 mm2, chroma
+  0.7); panels of the body and arms at L 20.4 (145 mm2, chroma 1.3); a
+  light highlight at L 67 (33 mm2). The body panels and the black are 18 L*
+  apart and both neutral, so no chroma rule can separate them.
+- A lightness term would have to fire on a 18 L* gap between two neutrals.
+  The black region's own spread is 16.5 L* (std), so the same rule cuts every
+  dark gradient on every design (tree shading, the ring, any dark shaded
+  logo). I did not build or sweep it: this is a tonal-split job (stage 2's
+  `TONAL_SPLIT` machinery already cuts a region by tone), a different
+  mechanism, and its cost on the other 43 runs is unmeasured.
