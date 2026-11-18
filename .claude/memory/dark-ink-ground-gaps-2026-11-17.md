@@ -101,12 +101,13 @@ until the pro-paired jobs are run with all three ON against OFF and he has
 seen art | before | after for every job that moves. It has to run on his
 machine (`scratch_kent/`; his EMB-Bot folder is not offered to cloud
 sessions): `python -m tools.pro_intake --list`, then `tools.pro_pair --job
-SLUG` twice per job, the ON arm with `--set extra.KEY=true` for each of the four:
+SLUG` twice per job, the ON arm with `--set extra.KEY=true` for each of the eight:
 `dark_ink_refuse_ground_gaps`, `group_consistent_fill_angle_split_ground`,
 `lettering_columns_neck_cuts`, `satin_straight_slots`, and the two of
 [[logo-batch-2-2026-11-17]] Kent added the same day
 (`small_text_keep_tall_letters`, `small_bold_pull_reaches_floor`) and the one of
-[[logo-batch-3-2026-11-17]] (`dark_ink_ground_innermost`): seven in all; a job that moves is re-run one flag at a
+[[logo-batch-3-2026-11-17]] (`dark_ink_ground_innermost`) and the one of
+[[logo-batch-4-2026-11-18]] (`thin_letters_after_ground`, Kent 11-18 "Add to paired check"): eight in all; a job that moves is re-run one flag at a
 time to say which moved it. Look at the real Becker jobs for the bare A
 counter named above.
 
