@@ -5413,6 +5413,9 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # joint alone. Off: neither line runs.
             thin_meet = (thin_arm_stop and under is None
                          and _meets_wider(spine, field, at_start))
+            if thin_arm_stop and under is None and _THIN_ARM_TALLY.get() is not None:
+                _THIN_ARM_TALLY.get()[0] += 1          # an end the rule was asked about
+                _THIN_ARM_TALLY.get()[1] += int(thin_meet)  # ... and stopped
             if thin_meet:
                 reach_in = 0.0
             # `tip_caps` (`cfg.satin_tip_caps`, 2026-09-29, defect 49): this
@@ -7613,6 +7616,11 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
 # 80's feet: 2.8 -> 6.8 mm2 of bare artwork, ROADMAP gate 3's failure mode).
 # The same patch finder and floors the crown cover and `ARTWORK_UNCOVERED` use.
 _THIN_ARM_JUDGE_SLACK_MM2 = 0.3
+# [ends asked, ends stopped] of the `satin_shape` call the judge is timing:
+# no end stopped means the flag-on runs ARE the flag-off runs, so the second
+# sew is skipped. Zero ends asked means a memo hit that ran nothing, which
+# proves nothing, so the judge then runs whole.
+_THIN_ARM_TALLY: contextvars.ContextVar = contextvars.ContextVar("thin_arm_tally", default=None)
 
 
 def _bare_mm2(poly: Polygon, runs: list[StitchRun]) -> float:
@@ -7627,13 +7635,25 @@ def satin_shape_judged(poly: Polygon, shape_id: str, *, _impl=None, **kw) -> tup
     `satin_shape`. `_impl` is the caller's own name for `satin_shape`, so a
     test that replaces it there still sees every call."""
     satin_shape_ = _impl or satin_shape
-    on = satin_shape_(poly, shape_id, **kw)
     if not kw.get("thin_arm_stop"):
-        return on
+        return satin_shape_(poly, shape_id, **kw)
+    deadline.check("satin thin-arm judge")
+    tally = [0, 0]
+    token = _THIN_ARM_TALLY.set(tally)
+    try:
+        on = satin_shape_(poly, shape_id, **kw)
+    finally:
+        _THIN_ARM_TALLY.reset(token)
+    if tally[0] and not tally[1]:
+        return on                      # nothing stopped: the flag-off runs, byte for byte
+    deadline.check("satin thin-arm judge")
     off = satin_shape_(poly, shape_id, **{**kw, "thin_arm_stop": False})
     if on[0] == off[0]:
         return on
-    if _bare_mm2(poly, on[0]) <= _bare_mm2(poly, off[0]) + _THIN_ARM_JUDGE_SLACK_MM2:
+    deadline.check("satin thin-arm judge")
+    bare_on = _bare_mm2(poly, on[0])
+    deadline.check("satin thin-arm judge")
+    if bare_on <= _bare_mm2(poly, off[0]) + _THIN_ARM_JUDGE_SLACK_MM2:
         return on
     return off
 

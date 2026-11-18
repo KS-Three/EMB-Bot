@@ -119,3 +119,45 @@ def test_the_judge_is_satin_shape_when_the_flag_is_off(monkeypatch):
     monkeypatch.setattr(s6, "satin_shape", lambda poly, sid, **kw: (calls.append(kw), ([], {}))[1])
     s6.satin_shape_judged(None, "S1", thin_arm_stop=False)
     assert len(calls) == 1
+
+
+def test_the_judge_skips_the_second_sew_when_no_end_stopped(monkeypatch):
+    """Becker 96 mm sewed identical thread with the flag ON at +18% plan time
+    (the OFF sew was pure cost) and the plan's longest checkpoint-free stretch
+    grew past `test_cancel_seams_1113`'s 10%. No end stopped -> the flag-on
+    runs ARE the flag-off runs."""
+    seen = []
+
+    def fake(poly, shape_id, **kw):
+        seen.append(kw.get("thin_arm_stop"))
+        s6._THIN_ARM_TALLY.get()[0] += 2       # two ends asked, none stopped
+        return ["on"], {}
+
+    monkeypatch.setattr(s6, "satin_shape", fake)
+    runs, _ = s6.satin_shape_judged(None, "S1", thin_arm_stop=True)
+    assert runs == ["on"] and seen == [True]
+
+
+def test_the_judge_runs_whole_on_a_call_that_asked_no_end(monkeypatch):
+    """A memo hit runs nothing, so a zero tally proves nothing."""
+    seen = []
+
+    def fake(poly, shape_id, **kw):
+        seen.append(kw.get("thin_arm_stop"))
+        return ["on" if kw.get("thin_arm_stop") else "off"], {}
+
+    monkeypatch.setattr(s6, "satin_shape", fake)
+    monkeypatch.setattr(s6, "_bare_mm2", lambda poly, runs: 1.0)
+    s6.satin_shape_judged(None, "S1", thin_arm_stop=True)
+    assert seen == [True, False]
+
+
+def test_the_judge_checks_for_cancel_between_its_steps(monkeypatch):
+    from digitizer_core import deadline
+
+    calls = []
+    monkeypatch.setattr(deadline, "check", lambda stage: calls.append(stage))
+    monkeypatch.setattr(s6, "satin_shape", lambda poly, sid, **kw: (["on" if kw.get("thin_arm_stop") else "off"], {}))
+    monkeypatch.setattr(s6, "_bare_mm2", lambda poly, runs: 1.0)
+    s6.satin_shape_judged(None, "S1", thin_arm_stop=True)
+    assert calls.count("satin thin-arm judge") >= 4
