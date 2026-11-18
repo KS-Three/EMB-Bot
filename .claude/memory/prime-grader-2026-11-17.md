@@ -41,3 +41,5 @@ Still open on the Drone: the navy sky is black from stage 2; "A" of AND a shade 
 - A new typed `PipelineConfig` field needs `tests/engine_2026_10_27.json`; a tool that names a `.md` needs
   `tests/test_tools_console.py` (`NAMES_ONLY`). CI caught both.
 Related: [[vlm-judge-100-2026-11-06]], [[eye-first-diagnosis-2026-11-13]], [[bevel-ring-fold-2026-11-13]].
+
+- **2026-11-18:** kit renders flat-ended (butt) strips (`stitchviz.render_design(caps="butt")`, kit-only) after readers called round-cap bumps "saw-toothed"; rubric 2026-11-18 adds "what the pictures cannot show truthfully". Next card is the first under it, not comparable with earlier.

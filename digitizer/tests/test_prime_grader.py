@@ -123,3 +123,75 @@ def test_scorecard_markdown_states_what_it_is(tmp_path):
     md = pg.scorecard_markdown(card)
     assert "not a quality claim" in md and "`L_y`" in md and "the border stair-steps" in md
     json.dumps(card)
+
+
+# ---- rubric 2026-11-18 and the kit's flat-ended renders ---------------------------------------
+
+def test_the_rubric_is_the_2026_11_18_one_and_says_what_cannot_be_drawn():
+    # Literal on purpose: the next change is a new dated version, not an edit of this one.
+    assert pg.RUBRIC_VERSION == "2026-11-18"
+    assert pg.RUBRIC_SHA256 == "9a169b10624376fc30dc5fa515bb347826565c2fc463855a9fd9b8f8dd2bd2ec"
+    text = pg.RUBRIC.read_text(encoding="utf-8")
+    assert "spaced satin" in text and "under about 1 mm" in text and "solid sewn line" in text
+
+
+def _satin_design():
+    from tools.satin_caps_demo import synthetic_design
+    return synthetic_design()
+
+
+def test_the_default_render_is_still_round_capped_and_butt_is_kit_only():
+    import numpy as np
+    from digitizer_core import stitchviz
+    d = _satin_design()
+    default = stitchviz.render_design(d, px_per_mm=12.0)
+    assert np.array_equal(default, stitchviz.render_design(d, px_per_mm=12.0, caps="round"))
+    assert not np.array_equal(default, stitchviz.render_design(d, px_per_mm=12.0, caps="butt"))
+    assert stitchviz.render_design(d, px_per_mm=12.0, caps="butt").shape == default.shape
+
+
+def test_butt_caps_do_not_grow_the_footprint_past_round():
+    """Flat ends draw the envelope the stitches sew: never more thread than the round draw's bumps."""
+    import numpy as np
+    from digitizer_core import stitchviz
+    d = _satin_design()
+    cloth = np.array(stitchviz.FABRIC_BGR)
+    covered = lambda im: (np.abs(im.astype(int) - cloth).sum(-1) > 90).sum()  # noqa: E731
+    assert covered(stitchviz.render_design(d, px_per_mm=30.0, caps="butt")) \
+        < covered(stitchviz.render_design(d, px_per_mm=30.0, caps="round"))
+
+
+def test_a_straight_satin_edge_is_flatter_with_butt_caps():
+    import numpy as np
+    from digitizer_core import stitchviz
+    d = {"stitches": [{"type": "stitch", "x": round(i * 4), "y": 0 if i % 2 == 0 else 30}
+                      for i in range(60)], "colors": [{"r": 0, "g": 0, "b": 0}]}
+    cloth = np.array(stitchviz.FABRIC_BGR)
+
+    def top_edge_roughness(caps):
+        im = stitchviz.render_design(d, px_per_mm=30.0, caps=caps)
+        ink = np.abs(im.astype(int) - cloth).sum(-1) > 150
+        cols = slice(int(im.shape[1] * 0.2), int(im.shape[1] * 0.8))
+        top = np.array([np.argmax(ink[:, c]) if ink[:, c].any() else 0 for c in range(im.shape[1])])[cols]
+        return float(top.std())
+    assert top_edge_roughness("butt") < top_edge_roughness("round")
+
+
+def test_kit_defaults_to_butt_and_the_option_reaches_the_item_builder():
+    import inspect
+    assert pg.KIT_CAPS == "butt"
+    assert inspect.signature(pg.build_item).parameters["caps"].default == "butt"
+    assert inspect.signature(pg.travel_picture).parameters["caps"].default == "butt"
+
+
+def test_a_card_after_a_different_rubric_says_not_comparable():
+    kit, readings = _kit_and_readings()
+    card = {"date": "2026-11-19", "rubric_version": pg.RUBRIC_VERSION, "rubric_sha256": pg.RUBRIC_SHA256,
+            "tree_sha": "abcdef123456", "rollup": pg.rollup(kit, readings), "yardstick": {},
+            "readings": readings["items"], "prev_date": "2026-11-18", "prev_rubric_version": "2026-11-17",
+            "movement": [{"id": "L_y", "new": True, "grade": "Okay"}]}
+    md = pg.scorecard_markdown(card)
+    assert "Not comparable" in md and "first card under rubric 2026-11-18" in md
+    assert "`L_y`: new" not in md
+    card["prev_rubric_version"] = pg.RUBRIC_VERSION
+    assert "Not comparable" not in pg.scorecard_markdown(card)
