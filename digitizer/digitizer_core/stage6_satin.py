@@ -3583,6 +3583,24 @@ def _is_tip_end(spine: list, poly: Polygon, half_sewn: float, at_start: bool) ->
 # somewhere in 152-164, and 160 sits in all of them.
 _TIP_CORNER_MAX_DEG = 160.0
 
+# `cfg.satin_thin_arm_stop`: the node must be this many times the arm's own
+# half-width (Toat Machine's M: a hairline against a stem ~3x as wide).
+_THIN_ARM_RATIO = 2.0
+
+
+def _meets_wider(spine: list, field, at_start: bool) -> bool:
+    """True if the node at this end of `spine` is at least `_THIN_ARM_RATIO`
+    times as wide as the arm itself, the arm's width read as the median of
+    the field over the spine 1.5-4 mm back from the end (clear of the
+    node's own blob). False on a spine too short to read."""
+    pts = list(reversed(spine)) if at_start else list(spine)
+    end = pts[-1]
+    back = [p for p in pts[:-1] if 1.5 <= math.dist(p, end) <= 4.0]
+    if len(back) < 3:
+        return False
+    arm = sorted(field.half_at(p) for p in back)[len(back) // 2]
+    return arm > 0 and field.half_at(end) >= _THIN_ARM_RATIO * arm
+
 
 def _tip_lands_on_corner(spine: list, poly: Polygon, half_sewn: float,
                          at_start: bool) -> bool:
@@ -5044,6 +5062,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   cap_recentre: bool = False,
                   tip_caps: bool = False,
                   tip_corner_gate: bool = False,
+                  thin_arm_stop: bool = False,
                   hairline_tier: bool = False,
                   siblings: list | None = None) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
@@ -5107,7 +5126,7 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=member_sibs,
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, hairline_tier=hairline_tier, siblings=member_sibs,
                              # only the joined stroke's OUTER ends are free
                              # ends to read; an owner's corner end was laid
                              # square above, on its own 4-half-width line
@@ -5164,6 +5183,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  cap_recentre: bool = False,
                  tip_caps: bool = False,
                  tip_corner_gate: bool = False,
+                 thin_arm_stop: bool = False,
                  hairline_tier: bool = False,
                  siblings: list | None = None,
                  read_ends: tuple[bool, bool] = (True, True)) -> list[tuple[float, float]]:
@@ -5228,7 +5248,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, hairline_tier=hairline_tier, siblings=siblings)
 
     if free_end_square and not stroke.closed:
         # A square cap or a slab sews square to it (see `_free_end_reading`).
@@ -5262,7 +5282,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                   rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                   rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
-                  junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate)
+                  junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop)
         arm = Stroke(spine=raw, free_start=stroke.free_start, free_end=stroke.free_end,
                      closed=False, capped_start=stroke.capped_start, capped_end=stroke.capped_end,
                      tuck_under_start=stroke.tuck_under_start, tuck_under_end=stroke.tuck_under_end)
@@ -5386,6 +5406,18 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # do. A corner tuck (`under` set) is already under its owner and
             # keeps its clearance.
             reach_in = half_sewn if (junction_stack and under is None) else 0.0
+            # `thin_arm_stop` (`cfg.satin_thin_arm_stop`): a thin arm whose
+            # end meets a node at least `_THIN_ARM_RATIO` times its own
+            # width stops at the blob's edge like a corner tuck -- no reach
+            # in, no tip cap -- so the thick stroke's crosses cover the
+            # joint alone. Off: neither line runs.
+            thin_meet = (thin_arm_stop and under is None
+                         and _meets_wider(spine, field, at_start))
+            if thin_arm_stop and under is None and _THIN_ARM_TALLY.get() is not None:
+                _THIN_ARM_TALLY.get()[0] += 1          # an end the rule was asked about
+                _THIN_ARM_TALLY.get()[1] += int(thin_meet)  # ... and stopped
+            if thin_meet:
+                reach_in = 0.0
             # `tip_caps` (`cfg.satin_tip_caps`, 2026-09-29, defect 49): this
             # end has no single owner and the boundary is one tangent-length
             # away -- a tapered TIP, not a meeting. The artwork beyond it
@@ -5396,7 +5428,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
             # `tip_corner_gate` (defect 59) also asks where the ray lands: on
             # a convex corner of the outline the end is a taper; on a wall or
             # in a notch it MEETS a stroke, and falls through to the tuck.
-            if (tip_caps and under is None
+            if (tip_caps and under is None and not thin_meet
                     and _is_tip_end(spine, poly, half_sewn, at_start)
                     and (not tip_corner_gate
                          or _tip_lands_on_corner(spine, poly, half_sewn, at_start))):
@@ -7037,6 +7069,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 cap_recentre: bool = False,
                 tip_caps: bool = False,
                 tip_corner_gate: bool = False,
+                thin_arm_stop: bool = False,
                 hairline_tier: bool = False,
                 counter_holes: list | None = None,
                 counter_clear_mm: float = 0.0,
@@ -7229,7 +7262,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
-                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, hairline_tier=hairline_tier, siblings=siblings)
+                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, hairline_tier=hairline_tier, siblings=siblings)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -7575,4 +7608,53 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
         cur.trim = d > trim_at_mm
         report["jumps"] += 1
     return runs, report
+
+# `cfg.satin_thin_arm_stop`'s judge: a shape sewn with the flag keeps it only
+# where it leaves no more bare artwork than the same shape sewn without. A
+# thin arm that stops at the blob's edge is right where the stem's own crosses
+# cover its footprint (Toat Machine's M) and wrong where nothing does (MARINE
+# 80's feet: 2.8 -> 6.8 mm2 of bare artwork, ROADMAP gate 3's failure mode).
+# The same patch finder and floors the crown cover and `ARTWORK_UNCOVERED` use.
+_THIN_ARM_JUDGE_SLACK_MM2 = 0.3
+# [ends asked, ends stopped] of the `satin_shape` call the judge is timing:
+# no end stopped means the flag-on runs ARE the flag-off runs, so the second
+# sew is skipped. Zero ends asked means a memo hit that ran nothing, which
+# proves nothing, so the judge then runs whole.
+_THIN_ARM_TALLY: contextvars.ContextVar = contextvars.ContextVar("thin_arm_tally", default=None)
+
+
+def _bare_mm2(poly: Polygon, runs: list[StitchRun]) -> float:
+    return sum(p.area for p in _uncovered_patches(
+        poly, runs, _CROWN_MIN_MM2, _CROWN_MIN_HALF_MM, _CROWN_MIN_FILL))
+
+
+def satin_shape_judged(poly: Polygon, shape_id: str, *, _impl=None, **kw) -> tuple[list[StitchRun], dict]:
+    """`satin_shape`, and under `thin_arm_stop` the judged one: the flag's
+    runs are kept only if they leave at most `_THIN_ARM_JUDGE_SLACK_MM2` more
+    bare artwork than the flag-off runs of the same shape. Off, exactly
+    `satin_shape`. `_impl` is the caller's own name for `satin_shape`, so a
+    test that replaces it there still sees every call."""
+    satin_shape_ = _impl or satin_shape
+    if not kw.get("thin_arm_stop"):
+        return satin_shape_(poly, shape_id, **kw)
+    deadline.check("satin thin-arm judge")
+    tally = [0, 0]
+    token = _THIN_ARM_TALLY.set(tally)
+    try:
+        on = satin_shape_(poly, shape_id, **kw)
+    finally:
+        _THIN_ARM_TALLY.reset(token)
+    if tally[0] and not tally[1]:
+        return on                      # nothing stopped: the flag-off runs, byte for byte
+    deadline.check("satin thin-arm judge")
+    off = satin_shape_(poly, shape_id, **{**kw, "thin_arm_stop": False})
+    if on[0] == off[0]:
+        return on
+    deadline.check("satin thin-arm judge")
+    bare_on = _bare_mm2(poly, on[0])
+    deadline.check("satin thin-arm judge")
+    if bare_on <= _bare_mm2(poly, off[0]) + _THIN_ARM_JUDGE_SLACK_MM2:
+        return on
+    return off
+
 

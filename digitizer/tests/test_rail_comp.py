@@ -642,7 +642,15 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
                                        border_from_outline=PRE_FLIP["border_from_outline"],
                                        # ... and white sewn (ON 2026-10-26): the faces' fill
                                        # changes the bare this arm was sized on
-                                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"]))
+                                       sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
+                                       # ... and `satin_thin_arm_stop` (ON 2026-11-17): a
+                                       # thin arm that stops at the blob's edge shortens the
+                                       # rails' last crosses on this skeleton-tier MARINE,
+                                       # so bare reads False 5.10 -> 5.39% and envelope
+                                       # 3.75 -> 4.93%, and the envelope's reach
+                                       # (0.5 pt asserted) is 0.46. The arm this prices is
+                                       # the envelope's, not the junction rule's.
+                                       satin_thin_arm_stop=PRE_FLIP["satin_thin_arm_stop"]))
         polys = {rg.shape_id: rg.polygon for rg in r.regions}
         num, den = bare_area(polys, p)
         wob = EW.analyse_plan(polys, p, background=set())

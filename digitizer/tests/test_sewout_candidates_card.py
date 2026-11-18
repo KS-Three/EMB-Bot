@@ -30,8 +30,25 @@ COMMITTED = v2.REPO / "docs" / "sewout" / "card-v2-2026-10-13"
 
 @pytest.fixture(scope="module")
 def card(tmp_path_factory):
+    # The card's done-test is about blocks, colours, hoop and extents, not the
+    # satin's junction ends: `satin_thin_arm_stop` (ON since Kent's 2026-11-17
+    # flip) re-lays ROSE's serifs and takes the 40wt readback from 5,172 to
+    # 5,116 stitches (60wt 5,707 -> 5,635), against a committed 5,318 +- 3%
+    # that sat 2.7% above it already. Pinned to the engine the committed
+    # readback was taken on, like `PRE_FLIP`'s other arms.
+    from functools import partial
+
+    from digitizer_core import PipelineConfig
+
+    from .conftest import THIN_ARM_STOP_2026_11_17_OFF
+
     out = tmp_path_factory.mktemp("cardv2")
-    table = v2.generate(out, None, quiet=True)
+    mp = pytest.MonkeyPatch()
+    mp.setattr(v2, "PipelineConfig", partial(PipelineConfig, **THIN_ARM_STOP_2026_11_17_OFF))
+    try:
+        table = v2.generate(out, None, quiet=True)
+    finally:
+        mp.undo()
     return out, table
 
 

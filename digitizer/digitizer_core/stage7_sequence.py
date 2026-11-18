@@ -111,7 +111,7 @@ from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, is_straight_slot, satin_shape,
+from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, is_straight_slot, satin_shape, satin_shape_judged,
                            small_solid_satin)
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
@@ -4594,9 +4594,10 @@ def sequence(
                         s_report["straight_slot"] = 1
                         return s_runs, s_report, False
                 _cored_s = cored_holes_of(p.polygon)
-                runs, report = satin_shape(
+                runs, report = satin_shape_judged(
                     p.polygon,
                     p.shape_id,
+                    _impl=satin_shape,
                     **({"counter_holes": _cored_s,
                         "counter_clear_mm": profile_for(p).width_mm / 2.0} if _cored_s else {}),
                     # `cfg.satin_underlay_short_columns` (OFF): a small shape
@@ -4639,6 +4640,7 @@ def sequence(
                     cap_recentre=cfg.satin_cap_recentre,
                     tip_caps=cfg.satin_tip_caps,
                     tip_corner_gate=cfg.satin_tip_corner_gate,
+                    thin_arm_stop=cfg.satin_thin_arm_stop,
                     hairline_tier=cfg.satin_hairline_tier,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two
