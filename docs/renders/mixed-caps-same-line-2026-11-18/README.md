@@ -41,3 +41,19 @@ on a slant with a small left tip; the art's foot is flat with a left flare, so i
 | `toat_beanie` | `toat_beanie__whole/zoom1..4/tagged` | **better**: the A and both T bars (zoom2, zoom3); 17,389 -> 17,349, trims 26 -> 28 |
 | `otherrow_toat_machine_beanie` | `otherrow_toat_machine_beanie__whole/zoom1..3/tagged` | **better**: the A and the T bars; 17,030 -> 16,973, trims 20 -> 18 |
 | `screenshot_phone_ui_golke` (fixture) | `fixture_screenshot_phone_ui_golke__whole/tagged` | no visible change: the "Photo" stays at its drawn size and no changed region shows by eye; 10,744 -> 10,726 stitches |
+
+## Every test file that mentions text, tag, letter, border, cluster or repro_gradient, flag ON
+
+156 files (names matching those words, plus every file mentioning `text_cluster`, `textcluster`, `repro_gradient`,
+`letter_candidates`, `is_lettering` or `text_candidate`), the default temporarily True:
+**2,685 passed, 18 skipped, 2 xfailed, 3 failed. No guard breach.** The three failures:
+1. `test_text_cluster_mixed_caps.py::test_the_config_field_defaults_off...`: my own "defaults OFF" assertion,
+   expected under the temporary True.
+2. `test_stage2_photo_segment.py::...match_golden...[photo/enthusiast_logo.png]`: the known platform-numerics golden
+   (CI deselects it); it fails the same way with the flag OFF.
+3. `test_small_text_reset_record.py::test_the_pipeline_keeps_the_rows_and_hands_them_on`: **my own artefact**. The
+   test reads `inspect.getsource(pipeline.finish_generation)`, and I merged `origin/main` into the working tree
+   while the 19-minute run was in progress, so the source on disk no longer matched the imported module. Re-run on
+   its own it passes with the flag OFF **and** ON (4 passed, 4 passed).
+`test_borders_last.py::test_repro_fixture_border_satin_sews_after_its_cone_s_fills` (the guard the first flip
+broke) passes with the flag ON.
