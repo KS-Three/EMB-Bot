@@ -64,7 +64,7 @@ from .stage3_segment import (
     resolve_small_regions,
 )
 from .stage4_vectorize import (art_thread_errors, enforce_color_cap, garment_sews_enclosed,
-                               rehome_resnapped_regions, revalidate_threads,
+                               rehome_cap_merged_regions, rehome_resnapped_regions, revalidate_threads,
                                tag_enclosed_background, vectorize)
 from .designangle import set_design_angle
 from .beanletters import hold_bean_counters, tag_bean_letters
@@ -1133,6 +1133,24 @@ def build_generation(
             from . import cap_fuse
             cap_fuse.apply(regions)
 
+    # `cfg.cap_merged_layer_home` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key; the prime
+    # grader's Golden Tee: "black outline stitches pile over the yellow/orange
+    # fills"): a region the cap folded onto another spool sews at that spool's
+    # layer, not the one of the ink it was traced in. False: no call, no change.
+    if cfg.cap_merged_layer_home:
+        rehome_cap_merged_regions(regions, list(q.thread_indices), chart_for(cfg))
+
+    # `cfg.shadow_to_page` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key; Golden Tee's grey
+    # fringe): `bevel_fold`'s pass 1 alone -- a band of the art's own page
+    # colour lying on the page and hugging one side of the art is a drop
+    # shadow, and goes to the page. Redundant under `bevel_ring_fold`, which
+    # runs it first.
+    if (cfg.shadow_to_page and not cfg.bevel_ring_fold
+            and classification.class_ not in PHOTO_CLASSES):
+        from .bevel_fold import apply_bevel_fold
+        apply_bevel_fold(regions, p, cfg, chart_for(cfg), layer_threads=list(q.thread_indices),
+                         only_shadows=True)
+
     # `cfg.bevel_ring_fold` (built OFF 2026-11-13, Kent's Golden Tee "too
     # busy"): shading the pro flattens -- a drop shadow on the page, a ramp
     # the palette split in two, thin bevel / keyline / ring bands along a
@@ -1379,7 +1397,13 @@ def build_generation(
     # called, no key written.
     if cfg.lettering_columns_off_line_mark:
         from .columns import tag_off_line_marks
-        tag_off_line_marks(regions)
+        # `cfg.lettering_columns_off_line_mark_single_only` (ON since 2026-11-18,
+        # Kent's ruling): several off-line members in one cluster is text on a
+        # curve, not marks
+        # `cfg.extra["off_line_mark_row_only"]` (built OFF 2026-11-18): a mark
+        # needs a row of mates to be off
+        tag_off_line_marks(regions, bool(cfg.lettering_columns_off_line_mark_single_only),
+                           bool((cfg.extra or {}).get("off_line_mark_row_only")))
 
     # Regular structure (`cfg.regular_structure`, built OFF 2026-11-13): what
     # the art repeats becomes one shape repeated -- congruent shapes on a
@@ -2241,6 +2265,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
     from .outline_cut import a_cap_centered_scope    # `cfg.extra["lettering_columns_a_cap_centered"]` (built OFF), the same way
+    from .outline_cut import block_butt_scope        # `cfg.lettering_columns_block_butt` (ON since 2026-11-18), the same way
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
     from .outline_cut import neck_cuts_scope
@@ -2280,6 +2305,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(fold_cap_flared_scope(cfg.lettering_columns_corner_fold_cap_flared))
         _enter(apex_band_knots_scope(bool((cfg.extra or {}).get("lettering_columns_apex_pro_band_knots"))))
         _enter(a_cap_centered_scope(bool((cfg.extra or {}).get("lettering_columns_a_cap_centered"))))
+        # `cfg.lettering_columns_block_butt` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key)
+        _enter(block_butt_scope(cfg.lettering_columns_block_butt))
         _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
         _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way

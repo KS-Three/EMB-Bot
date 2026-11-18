@@ -244,6 +244,64 @@ def _snap(poly, q, r):
     return best
 
 
+BUTT_COLLINEAR_DEG = 8.0       # a stem's edge and the cut that continues it
+BUTT_REACH_W = 1.8             # the extended edge meets the outline within this many strokes
+
+
+def _butt_mitres(poly: Polygon, W: float, cuts: list) -> list:
+    """`block_butt` (built OFF): a counter's corner that a `through` cut leaves
+    along the stem's edge and a `mitre` cut leaves toward the outer corner is a
+    stem meeting a bar at its head (Becker MARINE's R: the stem's right edge
+    runs up from the leg's notch to the counter's top-left corner, and the
+    mitre slants on to the letter's top-left corner, so the head fans from the
+    counter's corner). Take the mitre back out and cut ON the stem's edge
+    instead, up to the outline: the stem sews straight to its top and the bar
+    butts it. Only where the mitre starts at a hole vertex, a `through` cut
+    ends at the same hole's other end of that edge, and the two are collinear
+    within `BUTT_COLLINEAR_DEG`; any other mitre stays."""
+    out = list(cuts)
+    for ring in poly.interiors:
+        pts = list(ring.coords)[:-1]
+        for k, c in enumerate(cuts):
+            if c[2] != "mitre":
+                continue
+            for end in (0, 1):
+                v = c[end]
+                vi = next((i for i, q in enumerate(pts) if math.dist(q, v) < 1e-6), None)
+                if vi is None:
+                    continue
+                for nb in (pts[(vi - 1) % len(pts)], pts[(vi + 1) % len(pts)]):
+                    ed = (v[0] - nb[0], v[1] - nb[1])
+                    L = math.hypot(*ed)
+                    if L < 0.4 * W:
+                        continue
+                    d = (ed[0] / L, ed[1] / L)
+                    # a through cut continues this edge from its far end
+                    thr = [t for t in cuts if t[2] == "through" and any(
+                        math.dist(t[m], nb) < 0.05 * W for m in (0, 1))]
+                    ok = False
+                    for t in thr:
+                        o = t[1] if math.dist(t[0], nb) < 0.05 * W else t[0]
+                        td = _unit((nb[0] - o[0], nb[1] - o[1]))
+                        if abs(td[0] * d[1] - td[1] * d[0]) < math.sin(math.radians(BUTT_COLLINEAR_DEG)) \
+                                and td[0] * d[0] + td[1] * d[1] > 0:
+                            ok = True
+                    if not ok:
+                        continue
+                    hit = _ray_hit(poly, v, d, BUTT_REACH_W * W)
+                    if hit is None or not _inside(poly, v, hit):
+                        continue
+                    if math.dist(hit, v) < 0.3 * W:
+                        continue
+                    out[k] = (v, hit, "butt", math.dist(v, hit))
+                    break
+                else:
+                    continue
+                break
+    return out
+
+
+
 def find_cuts(poly: Polygon, W: float):
     """-> (cuts, reflex, convex). A cut is (p, q, rule, length) with rule in
     "through" (two concave corners joined along an edge at both ends: a
@@ -1179,6 +1237,32 @@ APEX_PRO_JOINT_CASES = ("n_top", "n_foot", "a_cap")
 # R row). ON, the band needs the counter's top vertex in the middle third of
 # the counter's width (an A's apex is central; an R's is at the edge). Layout,
 # not a cloth number (gate 1). False is the cut as it was, byte for byte.
+# `block_butt` (`cfg.extra["lettering_columns_block_butt"]`, 2026-11-18, built OFF):
+# a block letter's strokes sew as STRAIGHT columns across the stroke, butted at
+# the joins, not fanned from a point (Becker MARINE's E, the N's top-left wedge:
+# prime-grader scorecard 2026-11-18). ON, (1) `_fold_corners` leaves a POINTED
+# SLOT's tip cut (the apex-side fold that sweeps an E's whole spine in one fan),
+# and (2) a piece that would fan past `SMALL_BOLD_FAN_DEG` is stationed straight
+# along its own long axis when that scan fits (`_straight_rescan`, the small-bold
+# fallback, at any size). Layout, not a cloth number (gate 1). False is the cut
+# as it was, byte for byte.
+_BLOCK_BUTT: contextvars.ContextVar[bool] = contextvars.ContextVar("block_butt", default=False)
+
+
+
+@contextlib.contextmanager
+def block_butt_scope(on: bool):
+    """`cfg.extra["lettering_columns_block_butt"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _BLOCK_BUTT.set(True)
+    try:
+        yield
+    finally:
+        _BLOCK_BUTT.reset(token)
+
+
 _A_CAP_CENTERED: contextvars.ContextVar[bool] = contextvars.ContextVar("a_cap_centered", default=False)
 
 
@@ -2901,6 +2985,8 @@ def _fold_corners(columns: list, cuts: list, poly: Polygon, W: float, pitch_mm: 
             continue
         if any(t.distance(Point(p)) < 0.25 * W for t in through):
             continue
+        if slot and _BLOCK_BUTT.get() and W >= BUTT_MIN_W_MM:
+            continue    # `block_butt` (built OFF): a pointed slot's tip stays cut, the arm butts the stem
         if any(k[2] == "corner_cap" and math.dist(k[0], p) < 1e-6 for k in cuts):
             continue    # `fold_cap_flared` (built OFF): this corner is capped, not folded
         for q in (_apex_candidates(r, convex, poly, W) if side else _apex_nearest(r, convex, poly, W)):
@@ -3047,10 +3133,39 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
         return _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     key = ("build_column", piece.wkb, _lines_key(cut_lines), float(W), float(pitch_mm),
            bool(mitre_ends), bool(rail_axis), _SMALL_BOLD.get(), _SMALL_BOLD_SIMPLIFY.get(),
-           _APEX_CUT.get(), _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get())
+           _APEX_CUT.get(), _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get(), _BLOCK_BUTT.get())
     if key not in memo:
         memo[key] = _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     return _fresh(memo[key])
+
+
+BUTT_BARE_MM2 = 0.05           # a square end may leave this much of its piece bare (a fan exists to cover tips)
+
+
+def _bare_area(piece: Polygon, st) -> float:
+    """`block_butt`: the area of `piece` no cross of `st` reaches (a cross is
+    a thread's width, `machine.THREAD_WIDTH_MM`-ish: 0.2 mm each side)."""
+    from shapely.ops import unary_union
+    if not st:
+        return piece.area
+    reach = unary_union([LineString([a, b]).buffer(0.2) for a, b in st])
+    return piece.difference(reach).area
+
+
+
+BUTT_MIN_W_MM = 3.5            # heavy block strokes only: a fan's radius is the stroke, and a thin one is small and covers its tip
+
+
+def _butt_piece(piece: Polygon) -> bool:
+    """`block_butt`: this letter has a `butt` cut (`_butt_mitres`), so its pieces
+    that the rails would fan from the counter's corner (the bowl a stem head's
+    butt leaves) sew straight along their own long axis instead. A letter with
+    no butt cut (an A, an M) never reaches the rescan."""
+    if not _BLOCK_BUTT.get():
+        return False
+    memo = _MEMO.get()
+    return memo is not None and bool(memo.get("block"))
+
 
 
 def _fresh(col: Column | None) -> Column | None:
@@ -3077,7 +3192,11 @@ def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                 rr = _straight_rails(piece, u)
                 st = _cap_square_ends(st, piece, u, cut_lines, pitch_mm)
                 if not _SMALL_BOLD.get():       # small bold: a straight end, never a fan
+                    plain = st
                     st = _fan_ends(st, piece, u, pitch_mm, W)
+                    if _BLOCK_BUTT.get() and W >= BUTT_MIN_W_MM and st is not plain and pivot_sweep(st) > SMALL_BOLD_FAN_DEG \
+                            and _bare_area(piece, plain) <= BUTT_BARE_MM2:
+                        st = plain      # `block_butt`: the slanted end sews square, not fanned from a point
                 if mitre_ends:
                     st = _mitre_ends(st, piece, u, cut_lines, pitch_mm, W)
                 return Column(stations=st, piece=piece, kind="straight", axis=u,
@@ -3089,7 +3208,7 @@ def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
     st = pair_rails(r[0], r[1], pitch_mm)
     if len(st) < 3:
         return None
-    if _SMALL_BOLD.get() and not piece.interiors and pivot_sweep(st) > SMALL_BOLD_FAN_DEG:
+    if (_SMALL_BOLD.get() or _butt_piece(piece)) and not piece.interiors and pivot_sweep(st) > SMALL_BOLD_FAN_DEG:
         # one rail collapsed to a point (a serif block's inner corner): the
         # piece stationed straight along its own length instead
         alt = _straight_rescan(piece, cut_lines, W, pitch_mm, mitre_ends)
@@ -3732,12 +3851,20 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         return LetterCut(poly, W, [], [], [])
     W = stroke_width(poly)
     cuts, _reflex, _convex = find_cuts(poly, W)
+    block = _BLOCK_BUTT.get() and W >= BUTT_MIN_W_MM       # `block_butt` (built OFF): heavy strokes only
+    if block:
+        cuts = _butt_mitres(poly, W, cuts)
     if _NECK_APPLY.get():       # `neck_cuts` (built OFF): the lane's second sew only
         cuts = cuts + _neck_cuts(poly, W, cuts, _reflex)
     # An E or an F: the stem line through its slot backs replaces every
     # junction-rule cut that ends on that line (those slice the stem
     # crosswise) or crosses it.
     scuts, stems = slot_cuts(poly, W)
+    memo = _MEMO.get()
+    if block and memo is not None:
+        # a letter with a stem-head butt or an E's slot cuts is a block letter:
+        # its fanned pieces sew straight (`_butt_piece`)
+        memo["block"] = bool(scuts) or any(c[2] == "butt" for c in cuts)
     if scuts and ((_APEX_CUT.get() and any(c[2] == "apex" for c in cuts))
                   or any(c[2] == "apex_pro" for c in cuts)):      # `apex_pro`: the same reading
         # `apex_cut`: a letter with an acute tip is no E or F. MARINE's M at

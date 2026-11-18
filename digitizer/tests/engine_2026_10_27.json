@@ -184,6 +184,7 @@
  "lettering_columns_icon_guard": true,
  "lettering_columns_ink_link": true,
  "lettering_columns_off_line_mark": false,
+ "lettering_columns_off_line_mark_single_only": false,
  "lettering_columns_inside_connectors": true,
  "lettering_columns_inside_stagger": true,
  "lettering_columns_italic_lean": false,
@@ -287,6 +288,7 @@
  "satin_walk_cursor_reach_mm": 0.0,
  "script_strokes": false,
  "script_strokes_drawn_width": false,
+ "script_strokes_pull_by_stroke": false,
  "seed": 0,
  "sew_enclosed_counters": false,
  "sew_enclosed_rgb": null,
@@ -399,5 +401,8 @@
  "page_line_front": false,
  "page_line_open": false,
  "enclosed_white_keeps_known_colour": false,
- "lettering_columns_stem_wedge_cap": false
+ "lettering_columns_stem_wedge_cap": false,
+ "cap_merged_layer_home": false,
+ "shadow_to_page": false,
+ "lettering_columns_block_butt": false
 }

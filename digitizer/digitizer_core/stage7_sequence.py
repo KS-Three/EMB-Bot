@@ -4303,7 +4303,9 @@ def sequence(
                     inside_connectors=cfg.lettering_columns_inside_connectors,
                     inside_stagger=cfg.lettering_columns_inside_stagger,
                     ink=ink_source, drawn_width=cfg.script_strokes_drawn_width,
-                    cover_hops=cfg.lettering_columns_cover_hops)
+                    cover_hops=cfg.lettering_columns_cover_hops,
+                    pull_by_stroke=(pull_by_stroke_for(fabric, bool(cfg.script_strokes_pull_by_stroke))
+                                    and ("counter" if cfg.script_strokes_pull_by_stroke == "counter" else True)))
                 if not report["empty"]:
                     return runs, report, False
             # Lettering as Columns (`cfg.lettering_columns`, 2026-10-07): a

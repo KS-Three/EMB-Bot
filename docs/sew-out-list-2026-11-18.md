@@ -30,7 +30,7 @@ below, so "same as card v8" is a suggestion, not a requirement from any note.
 | **Toat Machine hat at 89.5 mm** (`toat_machine_hat`) | 6, 7, 10 |
 | **Toat beanie at 82.3 mm** (`toat_beanie`) | 5, and 10 if the speed lines are in this design (not confirmed, see row 10) |
 | **Precision Drone hat at 62.6 mm** + **Golden Tee hat at 74.9 mm** | 3, 4 (same cause, same constants) |
-| **Tires hat at 114.3 mm** (`tires_hat_3d`) | 8 |
+| **Tires hat at 114.3 mm** (`tires_hat_3d`) | 8, 13 |
 | **Hotel Fremont**: the card v8 block F piece already covers the dividers (92.5 mm patch); the same piece, re-cut from today's engine and extended to the upper crest (EST / 1895), answers the small lettering | 11, 12 |
 
 Fewest sittings: MFab hat, Toat Machine hat, Toat beanie, Drone + Golden Tee, Tires. Rows 2, 3
@@ -186,7 +186,20 @@ other two.
    it cannot be judged without cloth).
 5. **Source.** `docs/fremont-small-lettering-limit-2026-11-18.md` (PR #1676).
 
-### 13. Gaulke hat: counters and mullions at the hat pull
+### 13. script_strokes_pull_by_stroke: the pull on a 4.7 mm script pen, into the e and s counters
+1. **Design, spot.** `tires_hat_3d`, 114.3 mm, the e counter (76-84, 21-29 mm) and the s counter
+   (97-104, 23-34 mm).
+2. **In doubt.** The fixed `Fabric.pull_comp_mm` = 0.4 per rail (`fabrics.py`) on a 4.7 mm pen:
+   sewn counters 19.3 / 33.2 mm2 against the art's 28.7 / 43.3. The per-stroke fit
+   `columns.pull_for_width` (0.07 at 4 mm) is read off the pro's hat files and not sewn on cloth.
+3. **Sew, look.** Tires at 114.3 mm, three arms if cloth allows: OFF, `"counter"` (counter-facing
+   rails only), `true` (every rail by width). Are the e and s counters open; is the art's edge
+   covered, or do slivers of bare cloth show along the outer edges (the preflight counts uncovered
+   patches 12 OFF, 17 `"counter"`, 220 `true`).
+4. **Unlocks.** Whether the pull may drop by stroke width on script (and which mode), or stays 0.4.
+5. **Source.** `docs/tires-script-counters-2026-11-18.md`; the flag's config comment.
+
+### 14. Gaulke hat: counters and mullions at the hat pull
 1. **Design, spot.** `gaulke_roofing_hat`, 114.2 mm: G counter (19.5, 35.5), R/E (98, 35.5), the
    ampersand (74, 44), the four-pane window (57, 24.5) mm.
 2. **In doubt.** The hat pull `Fabric.pull_comp_mm` = **0.4** per rail (`fabrics.py:47`). Measured

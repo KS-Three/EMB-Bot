@@ -1176,6 +1176,11 @@ PRE_FLIP.update(PAGE_LINE_OPEN_2026_11_17_OFF)
 # `tests/test_off_line_mark.py`.
 OFF_LINE_MARK_2026_11_18_OFF = {"lettering_columns_off_line_mark": False}
 PRE_FLIP.update(OFF_LINE_MARK_2026_11_18_OFF)
+# `lettering_columns_off_line_mark_single_only` (Kent 2026-11-18, shown ART |
+# BEFORE | AFTER for the DEA and Supreme Court seals and six more: "Ship as a
+# fix, ON (Recommended)"): `tests/test_off_line_mark.py`.
+OFF_LINE_SINGLE_2026_11_18_OFF = {"lettering_columns_off_line_mark_single_only": False}
+PRE_FLIP.update(OFF_LINE_SINGLE_2026_11_18_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
@@ -1222,6 +1227,20 @@ PRE_FLIP.update(WHOLE_LETTER_FLOOR_2026_11_18_OFF)
 # `tests/test_wedge_cap.py`.
 STEM_WEDGE_CAP_2026_11_18_OFF = {"lettering_columns_stem_wedge_cap": False}
 PRE_FLIP.update(STEM_WEDGE_CAP_2026_11_18_OFF)
+# `cap_merged_layer_home` + `shadow_to_page` (Kent 2026-11-18, shown the six
+# ORIGINAL | BEFORE | AFTER pictures of Golden Tee's GOLF, the 80 mm fixture,
+# the phone screenshot and both Drones, 5 of 44 move: "Flip both ON
+# (Recommended)"): `tests/test_layer_shadow.py`.
+LAYER_SHADOW_2026_11_18_OFF = {"cap_merged_layer_home": False, "shadow_to_page": False}
+PRE_FLIP.update(LAYER_SHADOW_2026_11_18_OFF)
+# `lettering_columns_block_butt` (Kent 2026-11-18, shown the MARINE word at all
+# five Becker placements, told it replaces his 11-14 E corner fold on heavy block
+# letters: "Flip on, but make sure the MARINE strokes match the pros. These
+# letters need to be perfect, release another agent if needed."): the strokes of
+# a heavy block letter (>= 3.5 mm) sew straight and butted, not fanned from a
+# point. `tests/test_block_butt.py`.
+BLOCK_BUTT_2026_11_18_OFF = {"lettering_columns_block_butt": False}
+PRE_FLIP.update(BLOCK_BUTT_2026_11_18_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

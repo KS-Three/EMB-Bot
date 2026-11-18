@@ -3938,6 +3938,8 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
                 other = None if o.is_empty else o
         kept_a, kept_b = _kept_limits(rail_a, rail_b, poly, other, reach, pull_mm, keep_floor)
 
+    counter_pull = COUNTER_PULL.get()
+
     def room(p: tuple, ux: float, uy: float) -> float:
         if not holes:
             return pull_mm
@@ -3952,6 +3954,8 @@ def _push_rails(rail_a: list, rail_b: list, poly: Polygon, pull_mm: float,
             if near > pull_mm:
                 continue
             allowed = min(allowed, max(0.0, (chord.length - floor_mm) / 2.0))
+            if counter_pull is not None:
+                allowed = min(allowed, counter_pull)
         return allowed
 
     def held_push(p: tuple, ux: float, uy: float, k: float) -> float:
@@ -4197,6 +4201,9 @@ _FREE_END_AIM_DEG = 8.0
 # `cfg.satin_free_end_chord_aim` for the length of one plan (`chord_aim_scope`);
 # a direct `_extend_to_cap(..., chord_aim=True)` reads it too.
 _CHORD_AIM: contextvars.ContextVar[bool] = contextvars.ContextVar("chord_aim", default=False)
+#: `cfg.script_strokes_pull_by_stroke` == "counter" (built OFF 2026-11-18): the most a rail
+#: facing a counter is pushed, mm; outer rails keep the full pull. None: every rail as before.
+COUNTER_PULL: contextvars.ContextVar = contextvars.ContextVar("counter_pull", default=None)
 
 
 @contextlib.contextmanager

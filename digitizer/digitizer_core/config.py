@@ -1520,6 +1520,39 @@ class PipelineConfig:
     # light shading in counters go to the page, darkest-ink bands (the tee's
     # shadow) are drawn and stay: Golden Tee 3 threads, as he sews it.
     bevel_ring_fold: bool = False
+    # `cap_merged_layer_home` and `shadow_to_page` (built OFF 2026-11-18 as
+    # `cfg.extra` keys, #1681; the prime grader's Golden Tee hat, Bad, `ruins`:
+    # "black outline stitches pile over the yellow/orange fills so the O
+    # counter and the L and F are barely readable; a grey shadow fringe is
+    # sewn under the word that the art has only as a soft blur").
+    # * `cap_merged_layer_home`: the colour cap folds the art's teal bevel onto
+    #   black but leaves it on its quantize layer (6, last), so it sews AFTER
+    #   the gold and caps it. ON, a cap-merged region that is a BAND (mean
+    #   width 2A/P <= 0.8 mm) in a DARK thread (L* <= 35) sews at the layer
+    #   that declares its new spool (`stage4_vectorize.rehome_cap_merged_regions`).
+    # * `shadow_to_page`: `bevel_fold` pass 1 alone (a band of the art's own
+    #   page colour lying on the page and hugging one side of the art, which
+    #   stage 2 made of a soft blur, goes to the page). Redundant under
+    #   `bevel_ring_fold`, which runs it first.
+    # **ON since 2026-11-18, Kent's flip, both**, shown the six pictures
+    # (ORIGINAL | BEFORE | AFTER, `docs/renders/golf-layer-shadow-2026-11-18/`)
+    # and told 5 of 44 runs move: "Flip both ON (Recommended)". The catch he
+    # was given: the red keylines still sew heavy, so GOLF reads red-edged and
+    # is not as flat as a professional's; the two Drones change ORDER only (+2
+    # to +3 jumps, none by eye); the phone screenshot's battery icon fills
+    # green; the Golden Tee hat sews 52 -> 54 trims. **Meant ON together:**
+    # `logo_golden_tee.jpg` bare thread is 0.71 mm with the order flag alone
+    # and 0.31 with both (0.51 OFF). The rule rests on dark bands <= 0.8 mm and
+    # L* <= 35, tuned on this set (a wider or mid-tone version re-ordered the
+    # Drone's 109 shapes and Summit's); NOT sewn on cloth. Gate 1 does not
+    # apply: the band's sewn width (1.0-1.3 mm against the art's 0.33-0.64) is
+    # the satin floor plus pull and is untouched; only the order moved. The
+    # tripwire ledger's goldentee and drone rows move at the next capture.
+    # False is the engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin both False. Tests:
+    # `tests/test_layer_shadow.py`.
+    cap_merged_layer_home: bool = True
+    shadow_to_page: bool = True
     # `color_cap_least_loss` (built 2026-11-17, the prime grader's first
     # scorecard: Precision Drone "no blue thread anywhere"). The colour cap
     # keeps the N threads with the most sewn area, so several near-identical
@@ -1585,6 +1618,13 @@ class PipelineConfig:
     # `drone_render`, and a new forbid-gap finding on `drone_render`. That
     # was not in front of him, so the default stays False until it is
     # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
+    # 2026-11-18 sweep (76 runs, `docs/renders/merge-chroma-guard-2026-11-18/`):
+    # at the shipped configs ONLY the Drone moves; golden_tee and bridge_bar
+    # move only at old pinned test configs. The guard now also needs both
+    # sides >= `stage2_photo_segment.CHROMA_GUARD_MIN_PX` (1000) px: that
+    # spares background node 0 and tiny fragments, and ends the Bridge Bar
+    # mover, but leaves golden_tee and the Drone's own pins. Not a flip
+    # candidate yet: the Drone's gain costs trims and stacked-thread area.
     merge_chroma_guard: bool = False
     # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
     # Precision Drone: "the lower left propeller is a thick black slab ...
@@ -4459,6 +4499,38 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_wedge_cap.py`.
     lettering_columns_stem_wedge_cap: bool = True
+    # `lettering_columns_block_butt` (built OFF 2026-11-18 as
+    # `cfg.extra["lettering_columns_block_butt"]`, #1683; prime grader:
+    # Becker MARINE's R, N and E "fan their stitches out from one point
+    # instead of following the stroke"). On a HEAVY block letter (stroke
+    # width >= `outline_cut.BUTT_MIN_W_MM` 3.5 mm) the strokes sew as
+    # straight columns butted at the joins: (1) a pointed slot's tip stays
+    # cut, so an E's arms butt its stem (`corner_fold_apex_side`'s fold, one
+    # fan over the whole spine, is not taken there); (2) a stem's head, where
+    # a `mitre` cut slants from a counter's corner to the letter's corner,
+    # is cut straight up the stem's edge instead (the R: stem + bowl, two
+    # straight columns); (3) a straight piece's slanted end sews square when
+    # its fan would sweep past 45 deg and the square end leaves <= 0.05 mm2
+    # bare (the N's diagonal).
+    # **ON since 2026-11-18, Kent's flip**, shown ORIGINAL | BEFORE | AFTER
+    # of the MARINE word at all five Becker placements and told it replaces
+    # his 11-14 E corner fold on heavy block letters. Verbatim: "Flip on, but
+    # make sure the MARINE strokes match the pros. These letters need to be
+    # perfect, release another agent if needed."
+    # **Caveats:** heavy = stroke width >= 3.5 mm, and Becker is the ONLY
+    # design with such a letter today (every other committed job's widest
+    # letter is 0.8-1.7 mm), so it is untested on other heavy block lettering;
+    # the R keeps its fan at 76.5-79.8 mm and 114 mm (the butt is built, then
+    # the fold look drops it); the R counter is 4.06 of the art's 6.63 mm2
+    # (OFF 3.18); the M's top-right changes (its right diagonal's slanted end
+    # sews square, OFF's small tabs there are gone); it replaces
+    # `lettering_columns_corner_fold_apex_side`'s E fold on heavy strokes;
+    # +8..19 mm needle-up travel at the larger sizes; not sewn on cloth. The
+    # pro's MARINE is not matched yet: `docs/block-butt-2026-11-18.md` hand-off.
+    # False is the columns as they were; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_block_butt.py`.
+    lettering_columns_block_butt: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule
@@ -4597,6 +4669,25 @@ class PipelineConfig:
     # False. False writes no key and reads none. Tests:
     # `tests/test_off_line_mark.py`.
     lettering_columns_off_line_mark: bool = True
+    # `lettering_columns_off_line_mark` marks ONE stray shape in a row of
+    # letters; a cluster with more than one off-line member marks none
+    # (`columns.off_line_marks(single_only=)`; built OFF 2026-11-18 as
+    # `cfg.extra["off_line_mark_single_only"]`, #1677). **ON since 2026-11-18,
+    # Kent's ruling**: shown ART | BEFORE | AFTER for eight of the designs it
+    # changes, "Ship as a fix, ON (Recommended)". The mark's test ("stacked
+    # on a mate, no row-mate", on axis-aligned boxes) is also every letter
+    # down the SIDE of a ring: the DEA seal at 90 mm had 11 of its 50 ring
+    # letters set to the fill tier and sewn bold beside their bean
+    # line-mates, the Supreme Court seal the same. 74 designs (six Commons
+    # logo batches, 16 repo logos): 20 change, 54 identical; MFab hat and LC
+    # keep their one mark each. DEA 33,788 -> 33,640 stitches, trims 36 both.
+    # Catches: only DEA and Supreme Court were read closely; a ring where
+    # exactly ONE letter of a cluster reads off-line still has it marked;
+    # the `scratch_kent` paired corpus was not run. Promoted from `cfg.extra`
+    # so the default can be ON. False is the rule as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_off_line_mark.py`.
+    lettering_columns_off_line_mark_single_only: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
     # axis is a tangle: `columns.is_drawing_fragment`, junctions plus free
     # ends of the pruned skeleton >= `columns.ICON_GUARD_MIN_NODES` (24).
@@ -7885,6 +7976,26 @@ class PipelineConfig:
     # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
     # was, byte for byte. Tests: `tests/test_script_strokes.py`.
     script_strokes_drawn_width: bool = False
+    # NOT A FLIP CANDIDATE AS BUILT in mode True. It opens the e and s counters
+    # (sewn 19.3 / 33.2 -> 25.9 / 41.2 mm2 against the art's 28.7 / 43.3) but
+    # uncovered patches on Tires go 12 -> 220: it is the pull-comp constant, so
+    # cloth decides (ROADMAP gate 1). Mode "counter" (pull reduced only on rails
+    # facing a counter; outer rails keep the full pull) sews 26.8 / 41.1 mm2 with
+    # patches 12 -> 17; True or "all" reads every rail by width. Both OFF.
+    # Script strokes' pull read off each stroke's own drawn width (2026-11-18,
+    # built OFF; `script_strokes.script_strokes_shape`, `columns.pull_for_width`).
+    # `pull_comp_by_stroke` reads the Column lane's letters only; a script word
+    # takes the preset's fixed pull on every rail (0.4 mm on the hat), and on
+    # Tires' 4.7 mm pen that pushes both rails 0.4 mm into the e's and the s's
+    # counters (sewn counter area 19.3 / 33.2 mm2 against the art's 28.7 /
+    # 43.3; the traced polygon's own holes are 29.3 / 44.6, so the loss is the
+    # pull and not the trace; docs/tires-script-counters-2026-11-18.md). The
+    # pro's fit is +0.58 on a 0.85 mm stroke and nothing at 4. ON, each stroke's
+    # rails get `pull_for_width(its own width, the preset's pull)`, on the hat /
+    # LC / beanie presets only. A physical constant (ROADMAP gate 1): Kent
+    # flips after a sew-out. False is today's plan byte for byte.
+    # Tests: `tests/test_script_strokes_pull_by_stroke.py`.
+    script_strokes_pull_by_stroke: bool | str = False
     # The reference digitizer's rule for WHAT gets a bean (built OFF
     # 2026-10-27; `bean_rule.py`, `tools/bean_census.py`,
     # docs/bean-census-reference-2026-10-27.md). Ours has no bean
