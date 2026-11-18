@@ -648,7 +648,7 @@ def _ground_of(stroke, grounds):
 DARK_INK_BEAN_MAX_WIDTH_MM = 1.5 * machine.SATIN_MIN_CROSS_MM
 
 
-def bean_dark_ink(regions, by_width: bool = False) -> int:
+def bean_dark_ink(regions, by_width: bool = False, skip=frozenset()) -> int:
     """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
     ground, the way the reference digitizer sews a drawn line
     (`bean_rule`). Each `meta["dark_ink"]` region gets its polygon's
@@ -672,7 +672,10 @@ def bean_dark_ink(regions, by_width: bool = False) -> int:
     WIDTH. The strokes on one ground in one thread are a group; the group's
     median mean width (2 x area / perimeter) under
     `DARK_INK_BEAN_MAX_WIDTH_MM` beans every member, at or over it none,
-    whatever the contrast. Ground, spines and keys as above."""
+    whatever the contrast. Ground, spines and keys as above.
+
+    `skip` (`release_word_tier_dark_ink`): shape ids left out of the group
+    and never tagged, so the median is read over what remains."""
     from shapely.geometry import Polygon
 
     from .beanletters import BEAN_LETTER_KEY
@@ -685,7 +688,7 @@ def bean_dark_ink(regions, by_width: bool = False) -> int:
         widths: dict = {}
         for r in regions:
             if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
-                    or not isinstance(r.polygon, Polygon)):
+                    or not isinstance(r.polygon, Polygon) or r.shape_id in skip):
                 continue
             g = _ground_of(r, grounds)
             if g is None or r.polygon.length <= 0:
@@ -697,7 +700,7 @@ def bean_dark_ink(regions, by_width: bool = False) -> int:
     tagged = 0
     for r in regions:
         if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
-                or not isinstance(r.polygon, Polygon)):
+                or not isinstance(r.polygon, Polygon) or r.shape_id in skip):
             continue
         g = _ground_of(r, grounds)
         if g is None:
@@ -715,6 +718,46 @@ def bean_dark_ink(regions, by_width: bool = False) -> int:
         r.meta[DARK_INK_GROUND_KEY] = g.shape_id
         tagged += 1
     return tagged
+
+
+def release_word_tier_dark_ink(regions, by_width: bool = False) -> int:
+    """`cfg.dark_ink_bean_keeps_word_tier` (built OFF 2026-11-17), after
+    `detect_text_clusters` (the text clusters do not exist where
+    `bean_dark_ink` runs): a dark-ink piece that is a letter of a text
+    cluster whose dark-ink members are a MINORITY (strictly under half the
+    cluster's letters) is left out of the bean group and sews like its
+    word-mates, on the ordinary satin / Column-lane path. A cluster that is
+    wholly or mostly dark-ink (pen-line ring text), and a dark-ink piece in
+    no cluster, are untouched. When any piece is released the bean tags are
+    cleared and `bean_dark_ink` is read again over what remains, so the
+    group's median width is taken without the released letters. Returns the
+    number of pieces released."""
+    from .beanletters import BEAN_LETTER_KEY
+
+    members: dict = {}
+    for r in regions:
+        cid = r.meta.get("text_cluster_id")
+        if cid:
+            members.setdefault(cid, []).append(r)
+    skip = set()
+    for rs in members.values():
+        ink = [r for r in rs if r.meta.get("dark_ink")]
+        if ink and 2 * len(ink) < len(rs):
+            skip.update(r.shape_id for r in ink)
+    if not skip:
+        return 0
+    old = {}
+    for r in regions:
+        if r.meta.get("dark_ink") and r.meta.get(DARK_INK_GROUND_KEY) is not None:
+            old[r.shape_id] = r.meta.pop(BEAN_LETTER_KEY, None)
+            r.meta.pop(DARK_INK_GROUND_KEY, None)
+    bean_dark_ink(regions, by_width=by_width, skip=frozenset(skip))
+    # A member that stays bean keeps the spines it had (a re-set may have moved
+    # them with the grown letter), not a fresh skeleton.
+    for r in regions:
+        if old.get(r.shape_id) and r.meta.get(BEAN_LETTER_KEY):
+            r.meta[BEAN_LETTER_KEY] = old[r.shape_id]
+    return len(skip)
 
 
 # The shape id of the ground a bean stroke is written on (`bean_dark_ink`),

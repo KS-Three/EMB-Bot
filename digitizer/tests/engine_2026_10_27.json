@@ -75,6 +75,7 @@
  "cut_every_jump": false,
  "dark_ink_bean": false,
  "dark_ink_bean_by_width": false,
+ "dark_ink_bean_keeps_word_tier": false,
  "dark_ink_floor_rescue": false,
  "dark_ink_read_floor_mm": 1.0,
  "dark_ink_refuse_strays": false,

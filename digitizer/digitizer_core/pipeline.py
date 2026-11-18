@@ -1255,6 +1255,15 @@ def build_generation(
                            default_wt=int(cfg.thread_wt),
                            min_cap_mm=0.9 * cfg.small_text_cap_mm, handover=True)
 
+    # `cfg.dark_ink_bean_keeps_word_tier` (built OFF 2026-11-17): a dark-ink
+    # letter in a word whose other letters are not dark ink sews like them.
+    # Here, not at `bean_dark_ink`: the clusters do not exist there, and the
+    # tagger's own cluster holds only part of a line -- the line's untagged
+    # letters join it in `restore_small_text` above. False: never loads.
+    if cfg.dark_ink_bean_keeps_word_tier and cfg.dark_ink_bean and q.dark_ink_labels:
+        from .thin_ink import release_word_tier_dark_ink
+        release_word_tier_dark_ink(regions, by_width=cfg.dark_ink_bean_by_width)
+
     # Regularization (Step 5): a genuine geometry change, not metadata, so it
     # runs immediately after tagging and still before shape identity edits —
     # a merge/split/boundary_override on a tagged shape should see the

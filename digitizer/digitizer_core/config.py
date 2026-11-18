@@ -1277,6 +1277,21 @@ class PipelineConfig:
     # (BEAN_BY_WIDTH_2026_11_16_OFF) and `tests/engine_2026_10_27.json` pin it
     # False.
     dark_ink_bean_by_width: bool = True
+    # `dark_ink_bean_keeps_word_tier` (built OFF 2026-11-17, Kent 2026-11-17
+    # logo trial): a heading of bold serif caps (4.3 mm cap at 80 mm, dark
+    # brown on tan) sewed S, & and W of one line as thin bean runs and F, I,
+    # H, L, D, E as satin: stage 2's thin-stroke read tagged some glyphs
+    # `dark_ink`, and `bean_dark_ink` beaned the whole dark-ink group (the
+    # heading pieces and the ring text below, one ground and thread) on its
+    # median width, while the tagged letters' own widths (0.60-0.76 mm)
+    # overlap the untagged satin letters' (0.59-0.86). ON: a dark-ink piece
+    # that is a letter of a text cluster whose dark-ink members are a
+    # MINORITY (strictly under half) is left out of the bean group and sews
+    # like its word-mates; a cluster that is mostly dark ink (pen-line ring
+    # text) is untouched, and the group's median is read over what remains.
+    # Read only with `dark_ink_bean`. OFF: never read, byte for byte.
+    # Tests: `tests/test_dark_ink_bean_word_tier.py`.
+    dark_ink_bean_keeps_word_tier: bool = False
     # A dark-ink carve (`keep_dark_thin_strokes`) under stage 3's detail floor
     # is kept for the lettering path instead of absorbed into its ground
     # (built OFF 2026-11-03, Kent on the Pooh pot: "a lettering rescue from
