@@ -7875,6 +7875,26 @@ class PipelineConfig:
     # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
     # was, byte for byte. Tests: `tests/test_script_strokes.py`.
     script_strokes_drawn_width: bool = False
+    # NOT A FLIP CANDIDATE AS BUILT in mode True. It opens the e and s counters
+    # (sewn 19.3 / 33.2 -> 25.9 / 41.2 mm2 against the art's 28.7 / 43.3) but
+    # uncovered patches on Tires go 12 -> 220: it is the pull-comp constant, so
+    # cloth decides (ROADMAP gate 1). Mode "counter" (pull reduced only on rails
+    # facing a counter; outer rails keep the full pull) sews 26.8 / 41.1 mm2 with
+    # patches 12 -> 17; True or "all" reads every rail by width. Both OFF.
+    # Script strokes' pull read off each stroke's own drawn width (2026-11-18,
+    # built OFF; `script_strokes.script_strokes_shape`, `columns.pull_for_width`).
+    # `pull_comp_by_stroke` reads the Column lane's letters only; a script word
+    # takes the preset's fixed pull on every rail (0.4 mm on the hat), and on
+    # Tires' 4.7 mm pen that pushes both rails 0.4 mm into the e's and the s's
+    # counters (sewn counter area 19.3 / 33.2 mm2 against the art's 28.7 /
+    # 43.3; the traced polygon's own holes are 29.3 / 44.6, so the loss is the
+    # pull and not the trace; docs/tires-script-counters-2026-11-18.md). The
+    # pro's fit is +0.58 on a 0.85 mm stroke and nothing at 4. ON, each stroke's
+    # rails get `pull_for_width(its own width, the preset's pull)`, on the hat /
+    # LC / beanie presets only. A physical constant (ROADMAP gate 1): Kent
+    # flips after a sew-out. False is today's plan byte for byte.
+    # Tests: `tests/test_script_strokes_pull_by_stroke.py`.
+    script_strokes_pull_by_stroke: bool | str = False
     # The reference digitizer's rule for WHAT gets a bean (built OFF
     # 2026-10-27; `bean_rule.py`, `tools/bean_census.py`,
     # docs/bean-census-reference-2026-10-27.md). Ours has no bean
