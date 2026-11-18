@@ -1542,6 +1542,30 @@ class PipelineConfig:
     # (`docs/renders/prime-fixes-2026-11-17/`). False is the engine as it
     # was; PRE_FLIP (COLOR_CAP_LEAST_LOSS_2026_11_17_OFF) pins it False.
     color_cap_least_loss: bool = True
+    # `color_cap_fuse_split_tones` (built OFF 2026-11-18, the prime grader's
+    # Precision Drone: "THERMAL is mushed in the middle, the E-R pair piles
+    # up"). The orange gradient word was cut across the middle into a light and
+    # a deep band (threads 0700 / 0824); the cap folded both onto spool 1305
+    # and left two overlapping shapes per letter (E, R, M, A, L), each with its
+    # own angle and none tagged as lettering. ON, two regions the cap
+    # re-threaded from DIFFERENT threads onto ONE, sharing >= 1 mm of outline,
+    # become one shape right after the cap (`cap_fuse.py`). A DESIGN CHANGE:
+    # the default is Kent's. No fabric constant: gate 1 does not apply. False
+    # is the engine byte for byte. Tests: `tests/test_cap_fuse.py`.
+    # Only edge-to-edge halves fuse: a piece lying in a hole of the other (the
+    # Drone's target icon, a dot inside its ring) never does
+    # (`cap_fuse._sits_in_hole`; the first, unguarded version clogged that
+    # icon's open centre and was not shown to Kent).
+    # **ON since 2026-11-18, Kent's flip** (shown ORIGINAL | BEFORE | AFTER for
+    # the two designs it moves, Precision Drone's THERMAL and the Drone render,
+    # 2 of 35 runs, none worse by eye: "Flip ON (Recommended)"). The caveats he
+    # was given: the gain is modest, the M keeps a slanted patch, the target's
+    # inner dot is still not sewn, the sample is one artwork, and the E keeps a
+    # 0.149 mm2 sliver hole (the traced gap between the two bands). False is
+    # the engine as it was; `tests/conftest.py` PRE_FLIP
+    # (COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    color_cap_fuse_split_tones: bool = True
     # `merge_chroma_guard` (built OFF 2026-11-17, the prime grader's Precision
     # Drone: "the blue sky ... is sewn solid black"). The photo/gradient
     # lane's region merge weighs edges in CIEDE2000, which calls a vivid dark
@@ -1562,6 +1586,29 @@ class PipelineConfig:
     # was not in front of him, so the default stays False until it is
     # (`docs/renders/merge-chroma-guard-2026-11-17/README.md`).
     merge_chroma_guard: bool = False
+    # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
+    # Precision Drone: "the lower left propeller is a thick black slab ...
+    # instead of a thin grey blade"). Traced: the blade's silver highlight is
+    # its own stage-2 region (L 66, 8 mm long, ~0.2 mm wide), under the area
+    # floor, and the photo lane's floor absorbs it into the black beside it,
+    # so highlight and dark edges sew as one black slab. ON, in the photo
+    # lane, a sub-floor region that clears the run floors, is at least
+    # `LIGHT_THIN_ASPECT` times longer than wide, and is at least
+    # `LIGHT_THIN_DL` CIELAB L lighter than the region it would be absorbed
+    # into, is kept for the run tier (`rescued_small_shape`) instead
+    # (`stage3_segment.resolve_small_regions`). Ratios and lightness only, no
+    # fabric constant: gate 1 does not apply. Reaches every photo-lane design:
+    # the default is Kent's, with before | after pictures. False is the floor
+    # bit for bit. Tests: `tests/test_light_thin_stroke_keep.py`.
+    # **NOT A FLIP CANDIDATE (2026-11-18, director's ruling; pictures in
+    # `docs/renders/light-thin-stroke-keep-2026-11-18/`).** (1) `mfab_hat` gets
+    # worse: the first W of WELDING loses its white outline. (2) Three real test
+    # failures with it ON: `test_forbid_gap` (drone_render), `test_photo_lane_byte_
+    # identical[drone_render]`, `test_underfill_small_size::test_mfab_hat_size_sweep_
+    # order_and_grade[60.0-default]`. (3) It does not cure the Drone's black slab:
+    # that is pull compensation on a 0.35-0.5 mm shape, ROADMAP gate 1, which
+    # waits for a sew-out.
+    light_thin_stroke_keep: bool = False
     # `keyline_fragment_drop` (ON since 2026-11-17; built OFF the same day.
     # Kent on the Drone render: "The P,R & C should not have the dark stitch
     # lines on them"; shown ORIGINAL | BEFORE | AFTER, `docs/renders/
@@ -4426,6 +4473,21 @@ class PipelineConfig:
     # below (ON since the same ruling). False writes no
     # key and reads none. Tests: `tests/test_column_capture.py`.
     lettering_columns_ink_link: bool = True
+    # A text-cluster member whose centre lies outside the vertical band of its
+    # cluster's other members, and that is glyph-sized, is not a letter of the
+    # line: the Column lane refuses it and it sews as fill
+    # (`columns.off_line_marks`, 2026-11-18, built OFF). MFab Hat's pointed
+    # mark at the foot of the M's inner V, tagged into "AND", sewed as two
+    # crossing satin pieces that bled onto the white legs and beside the N.
+    # ON by Kent's ruling 2026-11-18, shown the MFab Hat ORIGINAL | BEFORE | AFTER
+    # close-up and overview: "Flip ON (Recommended)". Caveats he was given: it
+    # rests on one logo (1 of 35 runs moves); the 0.25 gap threshold comes from
+    # two measurements (MFab 0.12, Toat Machine's i-dot 2.0); the classic-dot
+    # exemption is unit-tested only; not sewn on cloth. Pre-flip engine:
+    # `tests/conftest.OFF_LINE_MARK_2026_11_18_OFF`; the engine snapshot keeps
+    # False. False writes no key and reads none. Tests:
+    # `tests/test_off_line_mark.py`.
+    lettering_columns_off_line_mark: bool = True
     # Under `lettering_columns`, refuse a HOUSE-GROUP-ONLY shape whose medial
     # axis is a tangle: `columns.is_drawing_fragment`, junctions plus free
     # ends of the pruned skeleton >= `columns.ICON_GUARD_MIN_NODES` (24).
