@@ -82,8 +82,13 @@ def armed() -> bool:
     return _ON.get()
 
 
-#: a sibling is "thinner" when its median cross is under this share of the column's own
-THINNER = 0.85
+#: a sibling may take a column's wedge only when it is a HAIRLINE join: its median
+#: cross under this share of the column's own. The h's c-tail/arch hairline is 0.49
+#: of its stem; Bridge's g-to-e link, two nearly parallel strokes, is 0.65 of its
+#: column and read as a wedge at 0.85 (2026-11-18: at 0.6 the hat is byte-identical
+#: to 0.85's, Bridge is byte-identical to OFF, and no other of the 44 sweep runs
+#: moves either way; 0.55 gives the same two results)
+THINNER = 0.6
 
 
 def _median_cross(col) -> float:
