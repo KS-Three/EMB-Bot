@@ -3471,6 +3471,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             stroke_floor_lost_stroke: bool = False,
                             whole_letter_floor: bool = False,
                             dropped_branch: bool = False,
+                            dropped_hairline: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3644,6 +3645,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             # stations do not reach is cut as a letter of its own, and its
             # columns sew with the rest
             bare = dropped_branches(cut.columns, cut.W)
+            if dropped_hairline:    # a hairline branch sews at the cross floor
+                rk = {**rk, "thin_floor_all": True}
             if bare:
                 cols, cuts, unsewn = list(cut.columns), list(cut.cuts), list(cut.unsewn)
                 for g in bare:
@@ -3716,7 +3719,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 and absorb_gains(runs, runs_n, poly)):
             runs, report = runs_n, report_n
             report["neck_cuts"] = 1
-    if dropped_branch:
+    if dropped_branch or dropped_hairline:
         # `cfg.extra["lettering_columns_sew_dropped_branch"]` (built OFF
         # 2026-11-18): the letter sewn again with its dropped branches cut
         # and sewn (`dropped_branches`), kept only if it covers more of the
@@ -3725,7 +3728,18 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         runs_b, report_b = sew(branches=True)
         if (report_b.get("dropped_branches")
                 and [r.points for r in runs_b] != [r.points for r in runs]
-                and absorb_gains(runs, runs_b, poly)):
+                and (absorb_gains(runs, runs_b, poly)
+                     # `cfg.extra["lettering_columns_sew_dropped_hairline"]`
+                     # (built OFF 2026-11-18): the branch is a hairline stroke.
+                     # Sewn at the cross floor (`thin_floor_all` above) it adds
+                     # more thread outside the ink than inside, so the "net"
+                     # judge refuses it; it is kept when the letter is not
+                     # whole without it and whole with it
+                     # (`stroke_floor_restores`). The DIA seal at 90 mm, the N
+                     # of UNITED (0.56 mm strokes): one column stations the
+                     # bold diagonal, both 0.3 mm stems take no stitch (cover
+                     # 0.70 -> 1.00, spill 0.52 -> 1.11: refused).
+                     or (dropped_hairline and stroke_floor_restores(runs, runs_b, poly)))):
             runs, report = runs_b, report_b
             report["dropped_branch_kept"] = 1
     return runs, report
