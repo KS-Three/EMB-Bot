@@ -1,0 +1,98 @@
+{
+ "logo_whitebg.png": {
+  "moved": false,
+  "stitches_off": 6716,
+  "stitches_on": 6716,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 8,
+  "regions_on": 8,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/enthusiast_logo.png": {
+  "moved": false,
+  "stitches_off": 2337,
+  "stitches_on": 2337,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 31,
+  "regions_on": 31,
+  "lettering_off": 25,
+  "lettering_on": 25,
+  "fused": []
+ },
+ "photo/gradient_ramp_radial.png": {
+  "moved": false,
+  "stitches_off": 18289,
+  "stitches_on": 18289,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 1,
+  "regions_on": 1,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/photo_grass_macro.png": {
+  "moved": false,
+  "stitches_off": 3953,
+  "stitches_on": 3953,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 2,
+  "regions_on": 2,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/photo_subject_stub.png": {
+  "moved": false,
+  "stitches_off": 3142,
+  "stitches_on": 3142,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 1,
+  "regions_on": 1,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/repro_gradient_white_icon.png": {
+  "moved": false,
+  "stitches_off": 22089,
+  "stitches_on": 22089,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 14,
+  "regions_on": 14,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "logo_script_tires.png": {
+  "moved": false,
+  "stitches_off": 2520,
+  "stitches_on": 2520,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 6,
+  "regions_on": 6,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/logo_golden_tee.jpg": {
+  "moved": false,
+  "stitches_off": 11547,
+  "stitches_on": 11547,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 94,
+  "regions_on": 94,
+  "lettering_off": 9,
+  "lettering_on": 9,
+  "fused": []
+ }
+}

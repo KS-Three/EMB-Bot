@@ -1,0 +1,143 @@
+{
+ "becker_hat_large": {
+  "moved": false,
+  "stitches_off": 16265,
+  "stitches_on": 16265,
+  "width_mm": 101.9,
+  "garment": "hat_front",
+  "regions_off": 17,
+  "regions_on": 17,
+  "lettering_off": 11,
+  "lettering_on": 11,
+  "fused": []
+ },
+ "gaulke_roofing_hat": {
+  "moved": false,
+  "stitches_off": 6696,
+  "stitches_on": 6696,
+  "width_mm": 114.2,
+  "garment": "hat_front",
+  "regions_off": 53,
+  "regions_on": 53,
+  "lettering_off": 39,
+  "lettering_on": 39,
+  "fused": []
+ },
+ "hotel_fremont_hat": {
+  "moved": false,
+  "stitches_off": 15265,
+  "stitches_on": 15265,
+  "width_mm": 92.6,
+  "garment": "hat_front",
+  "regions_off": 168,
+  "regions_on": 168,
+  "lettering_off": 91,
+  "lettering_on": 91,
+  "fused": []
+ },
+ "mfab_hat": {
+  "moved": false,
+  "stitches_off": 20549,
+  "stitches_on": 20549,
+  "width_mm": 104.9,
+  "garment": "hat_front",
+  "regions_off": 61,
+  "regions_on": 61,
+  "lettering_off": 16,
+  "lettering_on": 16,
+  "fused": []
+ },
+ "precision_drone": {
+  "moved": true,
+  "stitches_off": 14114,
+  "stitches_on": 14178,
+  "width_mm": 62.6,
+  "garment": "hat_front",
+  "regions_off": 117,
+  "regions_on": 109,
+  "lettering_off": 25,
+  "lettering_on": 26,
+  "fused": [
+   [
+    "Sa9f1767c",
+    "S463bf58d"
+   ],
+   [
+    "S7eafb519",
+    "S6a243ed7"
+   ],
+   [
+    "S023dfb17",
+    "S0405abeb"
+   ],
+   [
+    "S885001f8",
+    "S755bef70"
+   ],
+   [
+    "S95978c7e",
+    "Sb2de8c40"
+   ],
+   [
+    "S4ba0c4f5",
+    "S6bc433a5"
+   ],
+   [
+    "Sc374e8c8-2",
+    "S24664d70"
+   ],
+   [
+    "Sc374e8c8",
+    "Sa55452bd"
+   ]
+  ]
+ },
+ "tires_hat_3d": {
+  "moved": false,
+  "stitches_off": 4554,
+  "stitches_on": 4554,
+  "width_mm": 114.3,
+  "garment": "hat_front",
+  "regions_off": 6,
+  "regions_on": 6,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "goldentee_hat": {
+  "moved": false,
+  "stitches_off": 10713,
+  "stitches_on": 10713,
+  "width_mm": 74.9,
+  "garment": "hat_front",
+  "regions_off": 92,
+  "regions_on": 92,
+  "lettering_off": 9,
+  "lettering_on": 9,
+  "fused": []
+ },
+ "toat_machine_hat": {
+  "moved": false,
+  "stitches_off": 17262,
+  "stitches_on": 17262,
+  "width_mm": 89.5,
+  "garment": "hat_front",
+  "regions_off": 120,
+  "regions_on": 120,
+  "lettering_off": 15,
+  "lettering_on": 15,
+  "fused": []
+ },
+ "toat_beanie": {
+  "moved": false,
+  "stitches_off": 17293,
+  "stitches_on": 17293,
+  "width_mm": 82.3,
+  "garment": "beanie",
+  "regions_off": 67,
+  "regions_on": 67,
+  "lettering_off": 3,
+  "lettering_on": 3,
+  "fused": []
+ }
+}

@@ -1,0 +1,120 @@
+{
+ "logo_alpha.png": {
+  "moved": false,
+  "stitches_off": 6211,
+  "stitches_on": 6211,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 8,
+  "regions_on": 8,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/drone_render.png": {
+  "moved": true,
+  "stitches_off": 18436,
+  "stitches_on": 18369,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 119,
+  "regions_on": 116,
+  "lettering_off": 21,
+  "lettering_on": 21,
+  "fused": [
+   [
+    "S718a4e40",
+    "Se1ac9b61"
+   ],
+   [
+    "S3c682663",
+    "S563951d0-2",
+    "S4c3af3a1"
+   ]
+  ]
+ },
+ "photo/gradient_ramp_linear.png": {
+  "moved": false,
+  "stitches_off": 10938,
+  "stitches_on": 10938,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 1,
+  "regions_on": 1,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/photo_dof_meadow.png": {
+  "moved": false,
+  "stitches_off": 20960,
+  "stitches_on": 20960,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 46,
+  "regions_on": 46,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/photo_scene_stub.png": {
+  "moved": false,
+  "stitches_off": 21066,
+  "stitches_on": 21066,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 54,
+  "regions_on": 54,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "photo/region_blobs.png": {
+  "moved": false,
+  "stitches_off": 19017,
+  "stitches_on": 19017,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 9,
+  "regions_on": 9,
+  "lettering_off": 0,
+  "lettering_on": 0,
+  "fused": []
+ },
+ "becker_marine_logo.png": {
+  "moved": false,
+  "stitches_off": 10672,
+  "stitches_on": 10672,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 17,
+  "regions_on": 17,
+  "lettering_off": 11,
+  "lettering_on": 11,
+  "fused": []
+ },
+ "photo/logo_gaulke_roofing.png": {
+  "moved": false,
+  "stitches_off": 4606,
+  "stitches_on": 4606,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 53,
+  "regions_on": 53,
+  "lettering_off": 35,
+  "lettering_on": 35,
+  "fused": []
+ },
+ "photo/screenshot_phone_ui_golke.jpg": {
+  "moved": false,
+  "stitches_off": 11081,
+  "stitches_on": 11081,
+  "width_mm": 80.0,
+  "garment": "left_chest",
+  "regions_off": 240,
+  "regions_on": 240,
+  "lettering_off": 88,
+  "lettering_on": 88,
+  "fused": []
+ }
+}
