@@ -22,8 +22,14 @@ def _r(sid, poly, merged_from=None, thread=5):
                   thread_number=CHART[thread].number, area_mm2=float(poly.area), meta=m)
 
 
-def test_default_is_off():
-    assert PipelineConfig().color_cap_fuse_split_tones is False
+def test_default_is_on_since_kents_flip():
+    assert PipelineConfig().color_cap_fuse_split_tones is True
+
+
+def test_the_pre_flip_arm_and_the_engine_snapshot_pin_it_off():
+    from tests.conftest import COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF, ENGINE_2026_10_27
+    assert COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF == {"color_cap_fuse_split_tones": False}
+    assert ENGINE_2026_10_27["color_cap_fuse_split_tones"] is False
 
 
 def test_two_tone_halves_fuse_into_one_shape():

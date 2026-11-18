@@ -1552,7 +1552,20 @@ class PipelineConfig:
     # become one shape right after the cap (`cap_fuse.py`). A DESIGN CHANGE:
     # the default is Kent's. No fabric constant: gate 1 does not apply. False
     # is the engine byte for byte. Tests: `tests/test_cap_fuse.py`.
-    color_cap_fuse_split_tones: bool = False
+    # Only edge-to-edge halves fuse: a piece lying in a hole of the other (the
+    # Drone's target icon, a dot inside its ring) never does
+    # (`cap_fuse._sits_in_hole`; the first, unguarded version clogged that
+    # icon's open centre and was not shown to Kent).
+    # **ON since 2026-11-18, Kent's flip** (shown ORIGINAL | BEFORE | AFTER for
+    # the two designs it moves, Precision Drone's THERMAL and the Drone render,
+    # 2 of 35 runs, none worse by eye: "Flip ON (Recommended)"). The caveats he
+    # was given: the gain is modest, the M keeps a slanted patch, the target's
+    # inner dot is still not sewn, the sample is one artwork, and the E keeps a
+    # 0.149 mm2 sliver hole (the traced gap between the two bands). False is
+    # the engine as it was; `tests/conftest.py` PRE_FLIP
+    # (COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF) and
+    # `tests/engine_2026_10_27.json` pin it False.
+    color_cap_fuse_split_tones: bool = True
     # `merge_chroma_guard` (built OFF 2026-11-17, the prime grader's Precision
     # Drone: "the blue sky ... is sewn solid black"). The photo/gradient
     # lane's region merge weighs edges in CIEDE2000, which calls a vivid dark
