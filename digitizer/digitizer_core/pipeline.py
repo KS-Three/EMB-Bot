@@ -87,7 +87,8 @@ from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_la
                               depth_sort_layers, sequence, cut_every_jump_step_mm,
                               stamp_ribbon_outliers, tag_border_by_size_groups)
 from .stitches import StitchPlan
-from .thin_ink import bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean
+from .thin_ink import (bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean,
+                       thin_letters_after_ground)
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
     COLOR_CAP_APPLIED,
@@ -2463,6 +2464,11 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     if cfg.dark_ink_bean:
         stitched_regions = ink_after_ground(
             stitched_regions, innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
+    # `cfg.extra["thin_letters_after_ground"]` (built OFF 2026-11-18): a thin
+    # letter sewn before its ground loses most of its stroke to the ground's
+    # pull allowance; it sews after the ground instead.
+    if (cfg.extra or {}).get("thin_letters_after_ground"):
+        stitched_regions = thin_letters_after_ground(stitched_regions)
 
     # Fur regions on the streamline tier (`cfg.hair_regions_directional`,
     # default OFF; `fur_regions`). Only regions the gate read in
