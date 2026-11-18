@@ -2798,6 +2798,24 @@ before every republish, and never make room by moving his documents
 URL each sitting; the sittings' READMEs live in `docs/eye-pairs-<date>/`.
 
 
+### The flag sweep: one tool for a flip's evidence (2026-11-18)
+
+`cd digitizer && python -m tools.flag_sweep --flag NAME [--set key=value ...] --out DIR [--pictures]`
+runs the flag OFF and ON over **every** placement the nightly tripwire runs
+(`tripwire.committed_jobs()`, 18, each at its pro's width and garment) **and**
+the 26 `corpus_scorecard.FIXTURES` at the Studio request (81 mm, hat_front),
+and writes `DIR/sweep.json` + `sweep.md`: per run the stitch md5 both ways,
+stitches, trims, jumps, needle-up mm, colour count and moved yes/no. A flag
+with a value takes `--on 0.5 --off null`; `--set` lays a context key over both
+arms; `--only` narrows. `--pictures` writes ORIGINAL | BEFORE | AFTER for each
+mover to `DIR/pictures/` (ours only, never a pro's file). **Why one tool:**
+#1656 was reported as moving `mfab_hat` only and also moved `mfab_lc`
+(`docs/tripwire-trace-2026-11-18.md`), because each worker had their own
+sweep script. A sweep that lists fewer than 44 runs, or names one placement of
+a piece of artwork, is not this one. `DIR` is scratch: the original is client
+artwork, so commit nothing under `digitizer/eye_pairs_out/` from it.
+Roughly a minute per run (about 90 minutes, sequential).
+
 ### The labelled before | after page — "Flag Before After" (2026-09-18)
 
 `cd digitizer && python -m tools.eye_pairs_gallery --labelled` is the same

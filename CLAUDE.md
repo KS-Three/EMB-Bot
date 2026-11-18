@@ -83,6 +83,10 @@ picture and does not stand in for one.
   --render` wrote (`COOKBOOK.md`,
   "The labelled before | after page"); republish to its existing artifact URL.
   For one or two designs an inline pair sent in the chat is enough.
+  **Which designs move is `python -m tools.flag_sweep --flag NAME --out DIR
+  [--pictures]`'s answer, not a hand-picked list** (all 18 tripwire placements
+  plus the 26 corpus fixtures, OFF vs ON; `COOKBOOK.md`, "The flag sweep"):
+  #1656 moved `mfab_lc` as well as `mfab_hat` and a private sweep missed it.
 - **Then ask.** The pictures go up first, the `AskUserQuestion` after, and the
   question says where the pictures are. Numbers sit beside them.
 - **A flag that changes nothing you can see** (angle only, metrics only) still

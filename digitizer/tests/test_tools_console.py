@@ -58,6 +58,7 @@ NAMES_ONLY = {"border_census",   # WRITES the census table's .md, reads none (20
               "proofread",   # `census` WRITES census/tables.md beside census.json, reads none (2026-11-14)
               "bean_census",     # WRITES docs/bean-census-reference-2026-10-27.md, reads none (2026-10-27)
               "lettering_board",   # WRITES docs/scoreboards/lettering-board-<date>.md, reads none (2026-10-25)
+              "flag_sweep",   # WRITES OUT/sweep.md beside sweep.json, reads none (2026-11-18)
               "tripwire",   # `floor --write` WRITES docs/scoreboards/heatstitch-floor-<date>.md and links the survey doc by name, reads none (2026-11-05)
               "bench_free_digitizers",   # WRITES report-<engine>-<date>.md under scratch_bench/ and the scoreboard .md, reads none (2026-11-04)
               "fault_reader_harness",   # `pins` NAMES the pre-registration .md in its JSON, reads none (2026-11-10)
