@@ -42,9 +42,9 @@ def test_the_scope_is_off_by_default_and_puts_itself_back():
 
 def test_plan_stitches_sets_it_from_the_field_for_its_own_plan_only(monkeypatch):
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: oc._FOLD_CAP_FLARED.get())
-    assert pipeline.plan_stitches(None, PipelineConfig()) is True      # ON since 2026-11-15
-    off = replace(PipelineConfig(), lettering_columns_corner_fold_cap_flared=False)
-    assert pipeline.plan_stitches(None, off) is False
+    assert pipeline.plan_stitches(None, PipelineConfig()) is False     # OFF again since 2026-11-17 (Kent's revert)
+    on = replace(PipelineConfig(), lettering_columns_corner_fold_cap_flared=True)
+    assert pipeline.plan_stitches(None, on) is True
     assert oc._FOLD_CAP_FLARED.get() is False
 
 
