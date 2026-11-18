@@ -1555,17 +1555,56 @@ def _adopt_band(groups: list[list[_Candidate]], cands: list[_Candidate],
     return out
 
 
+# `SAME_LINE_SPREAD`: the letters of a word sit on ONE line, so the spread of
+# their vertical centres (highest to lowest) stays within this share of the
+# tallest member. A RATIO of the row's own geometry, no millimetre number. It
+# rests on THREE rows (2026-11-18): TOAT's "To A T" on the hat reads 0.19; the
+# same group on the beanie with the i-dot of "Machine" that joined it reads
+# 1.26; the gradient icon's four bars and triangle on `repro_gradient_white_icon`
+# read 1.83. Half the tallest glyph sits between them; no other row was
+# measured, so it is a candidate, not a typographic constant.
+SAME_LINE_SPREAD = 0.5
+
+
+def _on_one_line(group: list[_Candidate]) -> list[_Candidate]:
+    """`group` cut down to the members on one line: while the spread of the
+    centres is over `SAME_LINE_SPREAD` of the tallest member, the member
+    farthest from the median centre is dropped; a group that cannot reach
+    `MIN_CLUSTER_MEMBERS` on one line is returned empty."""
+    g = list(group)
+    while len(g) >= MIN_CLUSTER_MEMBERS:
+        cys = sorted(c.cy for c in g)
+        if cys[-1] - cys[0] <= SAME_LINE_SPREAD * max(c.height_mm for c in g):
+            return g
+        med = cys[len(cys) // 2]
+        g.remove(max(g, key=lambda c: (abs(c.cy - med), c.region.shape_id)))
+    return []
+
+
+def _has_letter_pair(group: list[_Candidate], chart) -> bool:
+    """Does `group` hold two glyphs the NORMAL pass links (`_linked` at
+    `LETTER_HEIGHT_RATIO`, one ink, stroke, reach)? A line set in two cap
+    heights is built from lines of one height: TOAT's T and T (or its o and
+    A) are such a pair. A pile of shapes of every height with no two alike --
+    a gradient icon's bands, 0 of 11 candidates pair on `repro_gradient_white_
+    icon` -- holds none, and never starts a row (2026-11-17, `_mixed_caps`)."""
+    return any(_linked(a, b, LETTER_HEIGHT_RATIO, chart)
+               for i, a in enumerate(group) for b in group[i + 1:])
+
+
 def _mixed_caps(groups: list[list[_Candidate]], cands: list[_Candidate], chart,
                 blobs) -> list[list[_Candidate]]:
     """`groups` plus every group of `MIN_CLUSTER_MEMBERS` or more the
     candidates NO group took form at `HEIGHT_BAND_MIN` (every other `_linked`
-    term as it is: one ink, stroke, reach). A line set in two cap heights
+    term as it is: one ink, stroke, reach) and that hold a pair the normal
+    pass would link (`_has_letter_pair`), cut to the members on one line
+    (`_on_one_line`). A line set in two cap heights
     splits into pairs at `LETTER_HEIGHT_RATIO` and tags nothing; the pairs
     are the leftovers here. A tagged group is never touched."""
     taken = {c.region.shape_id for g in groups for c in g}
     left = [c for c in cands if c.region.shape_id not in taken]
-    extra = [g for g in _cluster(left, HEIGHT_BAND_MIN, chart)
-             if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g)]
+    extra = [g for g in (_on_one_line(g) for g in _cluster(left, HEIGHT_BAND_MIN, chart))
+             if len(g) >= MIN_CLUSTER_MEMBERS and not blobs(g) and _has_letter_pair(g, chart)]
     for g in extra:
         for c in g:                 # read by `small_text._drawn_size_only`: drawn size, no re-set
             c.region.meta["text_cluster_mixed_caps"] = True
