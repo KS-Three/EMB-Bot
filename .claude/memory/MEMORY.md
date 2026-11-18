@@ -112,5 +112,5 @@ the OLDEST lines whole to the archive.
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Transparent white in-fill](transparent-white-infill-2026-11-11.md) — `enclosed_white_skip_transparent` ON (Kent 11-11 "Flip ON"): transparent enclosed areas open unless a hollow letter body; kanji 39 open, Becker kept; moves Drone tripwire + logo_alpha
 - [Under-fill ground guard](underfill-ground-guard-2026-11-16.md) — ON (Kent 11-16): a ring on the ground it would jump reads no ring; NASA orbit + stars back
-- [Wedge cap](wedge-cap-2026-11-18.md) — Toat Machine h stem steps: the Column lane sews a junction wedge into the stem (not satin_stroke); `lettering_columns_stem_wedge_cap` built OFF, 2 of 35 move, bare 0 -> 0
+- [Wedge cap](wedge-cap-2026-11-18.md) — Toat Machine h stem steps + seam: the Column lane sews a junction wedge into the stem; `lettering_columns_stem_wedge_cap` ON 11-18 (Kent "Flip ON"), hairline bound 0.6, only the hat moves of 44
 - [Z joints, rail-pair bars](z-joints-rail-pair-2026-11-14.md) — and_pizza Z fanned at one joint: its top bar read CURVED (coherence 0.46, spine bent); `rail_pair_bars` (extra, OFF) reads two long parallel rails as a bar; guard still refuses Z tips

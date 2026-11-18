@@ -4402,6 +4402,32 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_stroke_floor.py`.
     lettering_columns_stroke_floor: bool = True
+    # `lettering_columns_stem_wedge_cap` (built OFF 2026-11-18 as
+    # `cfg.extra["lettering_columns_stem_wedge_cap"]`, #1661 and #1664; prime
+    # grader: Toat Machine's "h" stem "built from offset segments with visible
+    # steps and a split along its left edge"). In a script word the stem is
+    # one column whose cross runs 0.7-0.9 mm wider where a hairline (the c's
+    # tail, the arch) merges into it, with a step at each end of the merge
+    # and, where the skeleton's join kink turns the pen-stroke cross, one
+    # cross shortened into a notch at each end. ON, the thicker column gives
+    # that wedge back to a sibling that is a HAIRLINE join (median cross
+    # under `wedge_cap.THINNER` 0.6 of its own) whose piece already covers
+    # the ground, and the rail points at the wedge's ends are re-spaced
+    # evenly (`wedge_cap.py`).
+    # **ON since 2026-11-18, Kent's flip** (shown ORIGINAL | BEFORE | AFTER
+    # of the hat's h, close-up and word, and told the rule is bounded so that
+    # only the hat moves of 44 runs: "Flip ON (Recommended)"). Evidence: 18
+    # tripwire jobs (every placement) + 26 fixtures, 1 mover (the hat, 2
+    # stitches: 17,102 -> 17,100; trims, jumps and needle-up unchanged), bare
+    # artwork 0 -> 0, `satin_cover` 0.9954 -> 0.9957 on the h's shape.
+    # **Caveats:** 0.6 sits between two measured ratios (0.49 the h's hairline,
+    # 0.65 Bridge's g-to-e link) and rests on those two examples; the h's TOP
+    # CAP is a separate fault and stays; not sewn on cloth. At 0.85 (the first
+    # rule) Bridge also moved (-2 trims, a cleaner e, a busier g-to-e link).
+    # False is the columns as they were; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_wedge_cap.py`.
+    lettering_columns_stem_wedge_cap: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

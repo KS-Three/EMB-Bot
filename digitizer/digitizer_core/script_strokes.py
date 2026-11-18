@@ -1152,7 +1152,7 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     cols, strokes, grid = script_columns(poly, spacing_mm, ink)
     if not cols:
         return [], {"empty": True, "too_thin": False, "jumps": 0}
-    # `cfg.extra["lettering_columns_stem_wedge_cap"]` (built OFF): a junction's
+    # `cfg.lettering_columns_stem_wedge_cap` (ON since 2026-11-18): a junction's
     # wedge is the meeting stroke's to sew, not the stem's (`wedge_cap`)
     if wedge_cap.armed():
         cols = wedge_cap.cap_columns(cols)

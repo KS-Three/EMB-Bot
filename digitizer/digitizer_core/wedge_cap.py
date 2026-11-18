@@ -1,4 +1,5 @@
-"""`cfg.extra["lettering_columns_stem_wedge_cap"]` (built OFF 2026-11-18): a
+"""`cfg.lettering_columns_stem_wedge_cap` (built OFF 2026-11-18 as a `cfg.extra` key, ON since
+2026-11-18, Kent's flip: "Flip ON (Recommended)"): a
 column's junction wedge belongs to the column that meets it.
 
 Why. Where a hairline or a tail joins a stem the artwork's ink widens (the
