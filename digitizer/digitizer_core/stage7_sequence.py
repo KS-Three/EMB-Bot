@@ -4386,6 +4386,11 @@ def sequence(
                     # sews the plain cut with every thin cross at the floor
                     **({"whole_letter_floor": True}
                        if cfg.lettering_columns_whole_letter_floor else {}),
+                    # `cfg.extra["lettering_columns_sew_dropped_branch"]` (built OFF
+                    # 2026-11-18): a branch the cut left inside one column, which
+                    # sews nothing, is cut and sewn in the lane
+                    **({"dropped_branch": True}
+                       if (cfg.extra or {}).get("lettering_columns_sew_dropped_branch") else {}),
                     # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
                     **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
