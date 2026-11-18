@@ -7,6 +7,13 @@ tool.
 
 ## A. The nightly run
 
+**Rubric 2026-11-18 (`RUBRIC_VERSION` in `prime_grader.py`).** The first card
+written under it is a new baseline: it is not comparable with the 2026-11-17 or
+2026-11-18 cards (round-capped renders, the old rubric), and `scorecard --prev`
+prints "Not comparable" instead of a movement list. State that in the PR body.
+`kit` draws flat-ended strips by default (`--caps round` restores the old
+look, for a like-for-like check only).
+
 Cost, measured on the first run: about 950,000 tokens (nine readers at about
 105,000 each) and under ten minutes of wall time after the venv is built.
 

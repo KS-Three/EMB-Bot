@@ -2937,6 +2937,18 @@ From `digitizer/`:
 - **The rubric is pinned** (`RUBRIC_SHA256`, `tests/test_prime_grader.py`). A
   changed word is a new dated version; do not compare scorecards across
   versions as if they were one instrument.
+- **Flat-ended renders and rubric 2026-11-18 (2026-11-18).** The preview
+  renderer draws every stitch as a round-capped stroke, which scallops a satin
+  column's edge into bumps; blind readers read that as "saw-toothed on every
+  edge" (#1648) and spaced crosses on a thin line as "broken". `kit` now draws
+  with `stitchviz.render_design(caps="butt")` (flat ends at the thread width, so
+  the column edge is the sewn envelope; `KIT_CAPS`, `kit --caps round` to
+  revert). **Kit-only:** the default stays `"round"`, byte-identical, for
+  preflight, `coverage`, goldens and every other render. What still cannot be
+  drawn (spaced crosses on a line under about 1 mm are a solid sewn line) is a
+  paragraph of the rubric, a new dated version, so **the next card is the first
+  under it and is not comparable with earlier ones**. Synthetic demo:
+  `python -m tools.satin_caps_demo --out docs/renders/satin-caps-2026-11-18`.
 - **What it is not:** a quality claim, a gate, or a judge of close A/B picks.
   The kit folder holds client artwork; only the text scorecard is committed
   (`docs/prime-grader/`).
