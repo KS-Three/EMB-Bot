@@ -32,3 +32,14 @@ files: no guard breach (`test_borders_last` passes). But `repro_gradient_white_i
 at 80 mm still tags 4 shapes (two twin 19 mm frame bars pair at 0.8), and the beanie's
 i-dot joins the TOAT row. TOAT's row is on one line (centre spread 0.19 of the tallest),
 the icon's group is not (1.83): a "same line" rule would split them, not built.
+
+**Bounded and flipped ON 2026-11-18 (PR #1645 bounds, flip PR after).** Two bounds in
+`textcluster._mixed_caps`: a pair the normal 0.8 pass links (`_has_letter_pair`) and
+members on ONE line (`_on_one_line`, centres within `SAME_LINE_SPREAD` 0.5 of the
+tallest; rests on THREE rows: TOAT hat 0.19, beanie with the i-dot 1.26, icon 1.83). The
+census READ THE TAGS over 44 designs (`docs/renders/mixed-caps-same-line-2026-11-18/`):
+40 tag nothing; the 4 that do tag only letters (T,o,A,T x3 TOAT jobs; four letters of
+"Photo" at drawn size); 3 TOAT better, 0 worse. 156 related test files ON: no breach.
+**Kent 11-18: "Flip ON (Recommended)"**, shown the tagged overlay and the A zoom.
+OFF arm `TEXT_CLUSTER_MIXED_CAPS_2026_11_18_OFF`. Lesson: for a flag that changes
+TAGGING, list what it tagged; "no visible change" hid a wrong tag twice.
