@@ -116,9 +116,15 @@ _CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO"),
 #: is set round one `lettering_columns_shape` call inside that function's
 #: own judge and reset in a `finally`; stage 7 calls that function directly,
 #: and no memoized emitter reads the var.
+#: `stage6_satin._THIN_ARM_TALLY` (`satin_thin_arm_stop`, ON since 2026-11-17)
+#: is an OUT-parameter: `satin_shape_judged` (not memoized) sets a two-int list
+#: round one `satin_shape` call, the end-trim block only ADDS to it, and
+#: nothing the emitter returns depends on it. A memo hit runs no end-trim, so
+#: the tally stays zero and the judge then runs whole (it never trusts zero).
 _INERT: frozenset[tuple[str, str]] = frozenset({
     ("deadline", "_DEADLINE"), ("deadline", "_CANCEL"),
-    ("stage5_overlap", "_KEEP_ART"), ("columns", "_STROKE_JUDGING")})
+    ("stage5_overlap", "_KEEP_ART"), ("columns", "_STROKE_JUDGING"),
+    ("stage6_satin", "_THIN_ARM_TALLY")})
 
 _UNIMPORTED = "<unimported>"
 
