@@ -1270,7 +1270,8 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
                  trim_at_mm: float, width_mm: float | None = None,
                  density_mm: float | None = None,
                  underlay: bool = False, holes=None,
-                 split_shared: bool = False, bridge_guides=None) -> tuple[list[StitchRun], dict]:
+                 split_shared: bool = False, bridge_guides=None,
+                 bridge_ok=None, tangent_scale: float = 1.0) -> tuple[list[StitchRun], dict]:
     """A keyline band as one satin loop round each of its holes. -> (runs,
     report).
 
@@ -1340,7 +1341,7 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
             ring_pts, total = _ring_arc_samples(coords, n)
         if not ring_pts:
             continue
-        k_tan = max(1, int(round(half / step)))
+        k_tan = max(1, int(round(half / step * tangent_scale)))
         start_at = cursor
         if chain and rings:
             # `cfg.keyline_loop_chain` (built OFF): the loop starts where it
@@ -1379,6 +1380,8 @@ def keyline_runs(band, shape_id: str, *, reach, entry: tuple[float, float] | Non
         elif cursor is not None:
             to = walk[0] if walk else pts[0]
             bridge = travel_path(band, bridge_guides, cursor, to)
+            if bridge is not None and bridge_ok is not None and not bridge_ok(bridge):
+                bridge = None
             if bridge is None:
                 d = math.dist(cursor, to)
                 if d >= machine.TINY_STITCH_MM:

@@ -123,7 +123,7 @@ def stem_pieces(art: Polygon, rings: list[tuple[Polygon, float]]) -> tuple[list[
                 shared.append(g)
     if not shared:
         return [], outer, w
-    s = unary_union(shared).intersection(art).difference(outer)
+    s = unary_union(shared).buffer(0.3).intersection(art).difference(outer)
     # the opening drops the slivers where two hole buffers just touch
     s = s.buffer(-0.05).buffer(0.05)
     stems = []
@@ -176,6 +176,29 @@ def _keep_out_of_faces(runs: list, faces, outer_line: LineString) -> int:
             n += 1
         r.points = pts
     return n
+
+
+def _scrub_face_travel(runs: list, faces, trim_at_mm: float) -> tuple[list, int]:
+    """No thread crosses a white face: a travel run that runs through a face for more than a
+    third of a millimetre is not sewn, the needle lifts instead (cut past `trim_at_mm`)."""
+    out, lifts, last, pending = [], 0, None, False
+    for r in runs:
+        if not r.points:
+            out.append(r)
+            continue
+        if r.kind == stitches.TRAVEL and len(r.points) > 1 and LineString(r.points).intersection(faces).length > 0.33:
+            pending = True
+            continue
+        if pending and r.kind != stitches.TRAVEL and last is not None:
+            d = math.dist(last, r.points[0])
+            if d >= machine.TINY_STITCH_MM:
+                r.jump = True
+                r.trim = d > trim_at_mm
+                lifts += 1
+            pending = False
+        out.append(r)
+        last = r.points[-1]
+    return out, lifts
 
 
 def _outer_centre(art: Polygon, w: float) -> LineString | None:
@@ -233,6 +256,12 @@ def _centre_walk(band: Polygon, centre: LineString | None, a, b):
         out.extend(_densify(cur, pt, machine.TRAVEL_STITCH_MM))
         cur = pt
     return out
+
+
+#: the outer loop's cross direction is read over this many times the usual stretch of its ring, so
+#: through a notch (the V between two letters) the crosses keep the band's own direction instead of
+#: turning with each facet (the pro's stay 79-93 deg across the V)
+TANGENT_SCALE = 3.0
 
 
 def _hop(runs: list, new: list, cursor, band: Polygon, shape_id: str, trim_at_mm: float,
@@ -377,7 +406,7 @@ def one_band_runs(art: Polygon, rings: list[tuple[Polygon, float]], shape_id: st
     seed = _loops_exit(rings, entry) or cursor
     o_runs, o_rep = keyline_runs(art, shape_id, reach=art.difference(stem_union), entry=seed,
                                  trim_at_mm=trim_at_mm, underlay=underlay,
-                                 holes=[(ext, w)], bridge_guides=guides)
+                                 holes=[(ext, w)], bridge_guides=guides, tangent_scale=TANGENT_SCALE)
     if o_rep["empty"]:
         return [], report
     _keep_out_of_faces(o_runs, unary_union([h for h, _w in rings]).buffer(-0.0005),
@@ -387,5 +416,7 @@ def one_band_runs(art: Polygon, rings: list[tuple[Polygon, float]], shape_id: st
     runs += o_runs
     report["jumps"] += o_rep["jumps"]
     report["outline_loops"] += o_rep["loops"]
+    runs, lifts = _scrub_face_travel(runs, unary_union([h for h, _w in rings]).buffer(-0.1), trim_at_mm)
+    report["jumps"] += lifts
     report["empty"] = False
     return runs, report

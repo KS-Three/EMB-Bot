@@ -2,7 +2,7 @@
  "becker_hat_large": {
   "stitches": [
    16287,
-   16289
+   16203
   ],
   "shapes_same": true,
   "runs_total": [
@@ -11,11 +11,11 @@
   ],
   "trims": [
    20,
-   21
+   24
   ],
   "jumps": [
    20,
-   21
+   24
   ],
   "outline_runs_by_kind_off": {
    "underlay": 7,
@@ -27,27 +27,27 @@
    "underlay": 7,
    "travel": 37,
    "fill": 4,
-   "satin": 56,
+   "satin": 57,
    "run": 1
   }
  },
  "fx_becker_marine_logo": {
   "stitches": [
    10855,
-   10500
+   10327
   ],
   "shapes_same": true,
   "runs_total": [
    137,
-   183
+   188
   ],
   "trims": [
    14,
-   20
+   22
   ],
   "jumps": [
    14,
-   20
+   22
   ],
   "outline_runs_by_kind_off": {
    "underlay": 6,
@@ -56,10 +56,10 @@
    "satin": 5
   },
   "outline_runs_by_kind_on": {
-   "underlay": 6,
-   "travel": 16,
+   "underlay": 10,
+   "travel": 15,
    "fill": 2,
-   "satin": 37,
+   "satin": 38,
    "run": 1
   }
  }
