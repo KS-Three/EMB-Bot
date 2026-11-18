@@ -90,8 +90,13 @@ SMALL = json.loads((Path(__file__).resolve().parent.parent / "testdata"
 
 @pytest.mark.parametrize("cell", SMALL, ids=[c["job"].split(":")[0] + "-" + c["shape_id"] for c in SMALL])
 def test_a_small_shape_the_ladder_would_spill_over_keeps_the_lane(cell):
-    poly, off = _sew(cell)
-    _, on = _sew(cell, lettering_columns_cover_handback=True)
+    # The cells were collected before `lettering_columns_whole_letter_floor`
+    # went ON (2026-11-18): with it the lane itself makes commons-S1dd25151
+    # whole (cover 0.98), so it is no candidate there. The hand-back rule is
+    # read on the engine the cells came from.
+    from tests.conftest import WHOLE_LETTER_FLOOR_2026_11_18_OFF as PRE
+    poly, off = _sew(cell, **PRE)
+    _, on = _sew(cell, lettering_columns_cover_handback=True, **PRE)
     assert satin_cover(off, poly) < HANDBACK_COVER_MIN          # it is a candidate
     assert _md5(on) == _md5(off)                                # and the lane is kept
 
