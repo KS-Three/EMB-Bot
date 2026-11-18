@@ -407,7 +407,10 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     extend = extension_applies(cfg, alpha, design_class=design_class)
     raw = rgb
     if extend:
-        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
+        rgb = extend_opaque_colour(
+            rgb, alpha, cfg.alpha_edge_extend_px,
+            **({"keep_interior": True}
+               if (cfg.extra or {}).get("alpha_extend_keeps_interior") else {}))
 
     if cfg.denoise:
         # Edge-preserving; on flat art this is nearly a no-op, which is the

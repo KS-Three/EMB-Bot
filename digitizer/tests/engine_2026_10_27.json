@@ -184,6 +184,7 @@
  "lettering_columns_icon_guard": true,
  "lettering_columns_ink_link": true,
  "lettering_columns_off_line_mark": false,
+ "lettering_columns_off_line_mark_single_only": false,
  "lettering_columns_inside_connectors": true,
  "lettering_columns_inside_stagger": true,
  "lettering_columns_italic_lean": false,

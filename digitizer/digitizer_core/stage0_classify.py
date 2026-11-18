@@ -750,7 +750,10 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     # `alpha_edge_extend_stage0_whole` (Kent's pick 2026-09-20); stage 1 keeps
     # the resolution-floor gate for the pixels it sews. `alpha_edge.py` says why.
     if extension_applies(cfg, alpha, ignore_gate=cfg.alpha_edge_extend_stage0_whole):
-        rgb = extend_opaque_colour(rgb, alpha, cfg.alpha_edge_extend_px)
+        rgb = extend_opaque_colour(
+            rgb, alpha, cfg.alpha_edge_extend_px,
+            **({"keep_interior": True}
+               if (cfg.extra or {}).get("alpha_extend_keeps_interior") else {}))
     fg = _fg_mask(rgb, alpha)
 
     ucm = _unique_color_mass(rgb, fg, cfg.seed)

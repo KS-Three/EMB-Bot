@@ -65,8 +65,9 @@ the OLDEST lines whole to the archive.
 - [Logo batch 2](logo-batch-2-2026-11-17.md) — 10 more Commons logos at 90 mm; CDC tagline cropped (transparent band read as a bar), fixed ON; SBA, HHS text faults seen
 - [Logo batch 11-16](logo-batch-2026-11-16.md) — 10 Commons logos, final before/after only (Kent); rim fabric-edges + group size-ring ON (Kent 11-16); 6 of 22 pro jobs move, none worse; arc text NOT fixed
 - [Logo batch 3](logo-batch-3-2026-11-17.md) — Coast Guard ring text buried; `dark_ink_ground_innermost` OFF; FTC 549 -> 135 s
-- [Logo batch 4](logo-batch-4-2026-11-18.md) — Commerce ring text hairline; `thin_letters_after_ground` OFF, 2 of 56 move
-- [Logo batch 5](logo-batch-5-2026-11-18.md) — Peace Corps R stem unsewn; `lettering_columns_sew_dropped_branch` OFF, 9 of 66 change
+- [Logo batch 4](logo-batch-4-2026-11-18.md) — Commerce ring text; `thin_letters_after_ground` OFF
+- [Logo batch 5](logo-batch-5-2026-11-18.md) — Peace Corps R; `lettering_columns_sew_dropped_branch` OFF
+- [Logo batch 6](logo-batch-6-2026-11-18.md) — overview only; lines half bold, half thin
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [MFab counter ring room](mfab-counter-ring-room-2026-11-14.md) — "random stitch" = photo-lane significant border on the A's 3.35 mm counter lightened to a bean loop inside its fill; `border_significant_ring_room` OFF drops it; our satin tier there was worse
 - [Monarch size cliff](monarch-size-cliff-2026-11-13.md) — wing cell lost at 90.50/91.75 mm; hand-back OFF by Kent 11-14: don't flip, don't re-narrow; lane branch-drop is the real fix ("the & was better on": his eye favoured ON)

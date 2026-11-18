@@ -1379,7 +1379,13 @@ def build_generation(
     # called, no key written.
     if cfg.lettering_columns_off_line_mark:
         from .columns import tag_off_line_marks
-        tag_off_line_marks(regions)
+        # `cfg.lettering_columns_off_line_mark_single_only` (ON since 2026-11-18,
+        # Kent's ruling): several off-line members in one cluster is text on a
+        # curve, not marks
+        # `cfg.extra["off_line_mark_row_only"]` (built OFF 2026-11-18): a mark
+        # needs a row of mates to be off
+        tag_off_line_marks(regions, bool(cfg.lettering_columns_off_line_mark_single_only),
+                           bool((cfg.extra or {}).get("off_line_mark_row_only")))
 
     # Regular structure (`cfg.regular_structure`, built OFF 2026-11-13): what
     # the art repeats becomes one shape repeated -- congruent shapes on a
