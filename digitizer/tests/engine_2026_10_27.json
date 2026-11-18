@@ -45,6 +45,7 @@
  "border_abrupt_raggedness": null,
  "border_by_size": true,
  "border_by_size_corner_loss": false,
+ "round_dot_ring": false,
  "border_by_size_fabric_edges": false,
  "border_from_outline": true,
  "border_from_outline_follow_shape": false,

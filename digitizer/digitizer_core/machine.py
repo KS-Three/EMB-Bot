@@ -625,6 +625,12 @@ BORDER_DENSITY_MM = 0.40
 # layout habit of one pro, judged in the preview, not a cloth constant.
 BORDER_BY_SIZE_MIN_DIM_MM = 6.0
 BORDER_BY_SIZE_WIDTH_MM = ((6.0, 2.1), (4.0, 1.5))
+# `cfg.round_dot_ring` (2026-11-18): a round compact solid is read by the size
+# rule from the lower edge of its 4-6 mm band, and "round" is 4 pi A / P^2 at
+# or over this (a disc 1.0, the Tires dot 0.97, a square 0.785, a 2:1 ellipse
+# 0.80). Layout, judged in the preview, not a cloth constant.
+ROUND_DOT_MIN_DIM_MM = 4.0
+ROUND_DOT_MIN_CIRCULARITY = 0.9
 # A border is sewn ON a fill. The shape's CORE is what is left inside the
 # ring (eroded by the column plus `BORDER_HOST_MARGIN_MM`); its REACH is the
 # core grown back by the same amount -- the part of the shape a fill core
