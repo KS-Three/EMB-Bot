@@ -103,3 +103,40 @@ def test_dot_centred_over_a_narrow_stem_is_not_flagged():
     stem = _r("stem", box(40, 27, 42, 32))
     dot = _r("dot", box(40, 20.5, 42, 25.5))              # stem's width, centred, 1.5 mm gap
     assert off_line_marks(_line() + [stem, dot]) == []
+
+
+# --- `cfg.extra["off_line_mark_single_only"]` (built OFF 2026-11-18) ---------
+# The test above reads "stacked on a mate, no row-mate" on axis-aligned boxes,
+# which is also every letter down the side of a ring: the DEA seal at 90 mm
+# had 11 of its 50 ring letters marked and sewn bold beside their line-mates.
+
+def _column(n=5):
+    # letters down the side of a ring: one above the next, 0.6 mm apart, each
+    # 1 mm further round (so none is "a dot centred over a stem")
+    return [_r(f"V{i}", box(40 + i, 10 + 7.4 * i, 45 + i, 16.8 + 7.4 * i)) for i in range(n)]
+
+
+def test_letters_down_the_side_of_a_ring_are_marked_today():
+    assert len(off_line_marks(_column())) > 1                  # the fault
+
+
+def test_single_only_marks_none_when_several_read_off_line():
+    assert off_line_marks(_column(), single_only=True) == []
+
+
+def test_single_only_still_marks_the_one_mark_in_a_row():
+    regs = _line() + [_r("M", box(9, 21, 14, 27))]
+    assert off_line_marks(regs, single_only=True) == ["M"]
+
+
+def test_single_only_judges_each_cluster_alone():
+    regs = (_line() + [_r("M", box(9, 21, 14, 27))]
+            + [_r(r.shape_id, r.polygon, cid="TC2") for r in _column()])
+    assert off_line_marks(regs, single_only=True) == ["M"]
+
+
+def test_single_only_is_off_by_default_and_tag_passes_it_through():
+    assert not (PipelineConfig().extra or {}).get("off_line_mark_single_only")
+    regs = _column()
+    assert tag_off_line_marks(regs, single_only=True) == 0
+    assert all("lettering_off_line" not in r.meta for r in regs)

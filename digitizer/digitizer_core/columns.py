@@ -448,9 +448,19 @@ OFF_LINE_DOT_WIDTH = (0.6, 1.5)
 OFF_LINE_DOT_CENTRE = 0.15
 
 
-def off_line_marks(regions) -> list[str]:
+def off_line_marks(regions, single_only: bool = False) -> list[str]:
     """Shape ids of text-cluster members `cfg.lettering_columns_off_line_mark`
-    refuses (see above)."""
+    refuses (see above).
+
+    `single_only` (`cfg.extra["off_line_mark_single_only"]`, built OFF
+    2026-11-18): a cluster in which MORE THAN ONE member reads as off-line
+    marks none. The test reads "stacked on a mate, no row-mate" on
+    axis-aligned boxes, which is also every letter down the side of a ring:
+    the DEA seal at 90 mm had 11 of its 50 ring letters marked ("DRU", "MENT",
+    "ISTR"), each set to the fill tier, and they sewed bold beside their bean
+    line-mates; the Supreme Court seal the same. A mark is one stray shape
+    in a row of letters (MFab's: 1 of its cluster); several in one cluster is
+    text set on a curve."""
     import statistics
     groups: dict[str, list] = {}
     for r in regions:
@@ -459,6 +469,7 @@ def off_line_marks(regions) -> list[str]:
             groups.setdefault(str(cid), []).append(r)
     out: list[str] = []
     for members in groups.values():
+        found: list[str] = []
         for r in members:
             mates = [t for t in members if t is not r]
             if len(mates) < OFF_LINE_MIN_MATES:
@@ -493,12 +504,14 @@ def off_line_marks(regions) -> list[str]:
                 if tw > 0 and OFF_LINE_DOT_WIDTH[0] <= w / tw <= OFF_LINE_DOT_WIDTH[1] \
                         and abs((bb[0] + bb[2]) / 2 - (tb[0] + tb[2]) / 2) <= OFF_LINE_DOT_CENTRE * tw:
                     continue
-                out.append(r.shape_id)
+                found.append(r.shape_id)
                 break
+        if not (single_only and len(found) > 1):
+            out.extend(found)
     return out
 
 
-def tag_off_line_marks(regions) -> int:
+def tag_off_line_marks(regions, single_only: bool = False) -> int:
     """Write `meta["lettering_off_line"] = True` on every `off_line_marks`
     shape and, where its tier is still `auto`, `meta["tier"] = "fill"`;
     returns how many. Called only under `cfg.lettering_columns_off_line_mark`,
@@ -510,7 +523,7 @@ def tag_off_line_marks(regions) -> int:
     onto the white legs. It is a 12 mm^2 wedge with a pointed tail, 4.3 mm
     across at the wing, and one tatami fill sews it as one blade with the
     point and the crescent top the art has."""
-    ids = set(off_line_marks(regions))
+    ids = set(off_line_marks(regions, single_only))
     for r in regions:
         if r.shape_id in ids:
             r.meta["lettering_off_line"] = True
