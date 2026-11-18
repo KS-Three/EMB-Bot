@@ -31,6 +31,7 @@ from __future__ import annotations
 import contextlib
 import contextvars
 import math
+from dataclasses import replace
 
 from shapely.geometry import Point
 from shapely.ops import unary_union
@@ -143,7 +144,6 @@ def cap_column(col, siblings) -> tuple[object, int]:
                 capped += 1
     if not capped:
         return col, 0
-    from dataclasses import replace
     return replace(col, stations=new), capped
 
 
@@ -158,8 +158,14 @@ def cap_columns(columns: list) -> list:
         if col.kind != "curved":
             out.append(col)
             continue
+        # the siblings AS CAPPED so far: two columns that overlap cannot both
+        # give the shared ink to the other
         sib = unary_union([p for j, p in enumerate(pieces) if j != k])
         newc, n = cap_column(col, sib if not sib.is_empty else None)
+        if n:
+            from .script_strokes import _ribbon
+            newc = replace(newc, piece=_ribbon(newc.stations))
+            pieces[k] = newc.piece
         out.append(newc)
         any_cap = any_cap or n > 0
     return out if any_cap else columns
