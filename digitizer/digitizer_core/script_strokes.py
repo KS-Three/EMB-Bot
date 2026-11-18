@@ -1128,12 +1128,18 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                          inside_connectors: bool = False,
                          inside_stagger: bool = False,
                          ink=None, drawn_width: bool = False,
-                         cover_hops: bool = False):
+                         cover_hops: bool = False,
+                         pull_by_stroke: bool | str = False):
     """One script word (its ARTWORK polygon) -> (runs, report), the satin
     tier's contract (`empty` when nothing could be built: the caller falls
     through to the ladder). `ink`: `stage6_hairline.InkSource` or None.
     `drawn_width` (`cfg.script_strokes_drawn_width`): a cross side that
     crowds another stroke stops at the drawn half-width (`script_columns`).
+    `pull_by_stroke` (`cfg.script_strokes_pull_by_stroke`, built OFF): each
+    column's rails get `columns.pull_for_width` of its own drawn width, never
+    above `pull_mm`; off, `pull_mm` on every rail. "counter": the full
+    `pull_mm` on every rail except one facing a counter, which takes the
+    word's by-width pull (`stage6_satin.COUNTER_PULL`).
 
     A patch over each piece of polygon the strokes leave uncovered
     (`uncovered`), its crosses the way the nearest stroke's lie, is sewn
@@ -1168,6 +1174,15 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
               pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
               **({"inside_connectors": True} if inside_connectors else {}),
               **({"inside_stagger": True} if inside_stagger else {}))
+    counter_pull = None
+    if pull_by_stroke == "counter":
+        from .columns import column_width, pull_for_width
+        ws = sorted(column_width(c) for c in cols)
+        counter_pull = min(pull_mm, max(0.0, pull_for_width(ws[len(ws) // 2], pull_mm)))
+    elif pull_by_stroke:
+        from .columns import pull_for_width
+        _fabric_pull = pull_mm
+        kw["pull_of"] = lambda w: min(_fabric_pull, pull_for_width(w, _fabric_pull))
     patches = _patches(poly, cols, spacing_mm)
     crowded = False
     if drawn_width and crowd_share([sewn_ribbon(c.stations, pull_mm)
@@ -1182,6 +1197,19 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             if end_overlap.align_armed():
                 cols, _turned = end_overlap.align_columns(cols, poly)
             patches = _patches(poly, cols, spacing_mm, pull_mm)
+    from .stage6_satin import COUNTER_PULL
+    _cp_token = COUNTER_PULL.set(counter_pull)
+    try:
+        return _sew_script(poly, shape_id, cols, strokes, grid, patches, kw, crowded, drawn_width,
+                           start_near, end_near, pull_mm, cover_hops, trim_at_mm, underlay_style)
+    finally:
+        COUNTER_PULL.reset(_cp_token)
+
+
+def _sew_script(poly, shape_id, cols, strokes, grid, patches, kw, crowded, drawn_width,
+                start_near, end_near, pull_mm, cover_hops, trim_at_mm, underlay_style):
+    from .columns import column_runs
+    from .monoline import bury_hops, clear_finished_underlay
     # the patches first, so the strokes lie over their edges; then the
     # strokes as one walk from where the patches left the needle
     under: list = []
