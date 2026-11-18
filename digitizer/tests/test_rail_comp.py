@@ -298,6 +298,13 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
         # their price is their own tests'
         for k, v in TEXT_GAPS_2026_11_15_OFF.items():
             kw.setdefault(k, v)
+        # ...and `lettering_columns_cover_hops` (ON since 2026-11-17, Kent), the
+        # same way. It landed while the apex_pro family was ON, where the 09-19
+        # arm below read 9 trims either way; with the family OFF again (Kent's
+        # revert, the same day) cover hops alone takes that arm 9 -> 11 trims
+        # (1,840 -> 1,841 stitches), measured one hold at a time over every
+        # 11-14..11-17 flip. Its price is `tests/test_column_cover_hops.py`'s.
+        kw.setdefault("lettering_columns_cover_hops", PRE_FLIP["lettering_columns_cover_hops"])
         c = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
         gen = build_generation(str(FIXTURE), c)
         return plan_stitches(finish_generation(gen.fork(), c), c)
