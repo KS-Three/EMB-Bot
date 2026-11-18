@@ -34,8 +34,11 @@ from __future__ import annotations
 import math
 import statistics
 
+import numpy as np
+
 from shapely.geometry import LineString, Point, Polygon
 from shapely.ops import unary_union
+from shapely.prepared import prep
 
 from . import machine, stitches
 from .curve_fidelity import CORNER_DEG
@@ -140,6 +143,33 @@ def stations(coords: list[tuple[float, float]],
     return out
 
 
+def _own_stations(pts: list, sewn: list, sewn_near: list, half: float) -> list[bool]:
+    """For each station of a loop: is it this loop's OWN, i.e. further than
+    `half` from every line already sewn?
+
+    The question was asked by buffering the UNION of every sewn line, again
+    for each loop: quadratic in the loops of one keyline. The FTC seal at 90
+    mm has keylines of thousands of loops and spent 429 of its 534 planning
+    seconds in those buffers (37,643 of them, 2026-11-17). The reach of a
+    union is the union of the reaches, so each line is buffered ONCE, as it
+    is sewn, and a station is tested against the reaches whose boxes hold
+    it. `sewn_near` is this call's cache, one entry per line of `sewn`."""
+    while len(sewn_near) < len(sewn):
+        near = sewn[len(sewn_near)].buffer(half)
+        sewn_near.append((near.bounds, prep(near)))
+    if not pts or not sewn_near:
+        return [True] * len(pts)
+    boxes = np.asarray([b for b, _n in sewn_near], dtype=np.float64)        # (lines, 4)
+    xy = np.asarray(pts, dtype=np.float64)[:, :2]                            # (stations, 2)
+    held = ((boxes[None, :, 0] <= xy[:, None, 0]) & (xy[:, None, 0] <= boxes[None, :, 2])
+            & (boxes[None, :, 1] <= xy[:, None, 1]) & (xy[:, None, 1] <= boxes[None, :, 3]))
+    own = []
+    for j, (x, y) in enumerate(pts):
+        pt = Point(x, y)
+        own.append(not any(sewn_near[i][1].contains(pt) for i in np.nonzero(held[j])[0]))
+    return own
+
+
 def keyline_bean_runs(poly, shape_id: str, *, entry: tuple[float, float] | None,
                       trim_at_mm: float) -> tuple[list[StitchRun], dict]:
     """A hairline keyline polygon -> (runs, report): one bean loop per body
@@ -170,6 +200,7 @@ def keyline_bean_runs(poly, shape_id: str, *, entry: tuple[float, float] | None,
     # joins.
     pieces: list[tuple[str, list[tuple[float, float]]]] = []   # ("loop" | "arc", needle points)
     sewn: list[LineString] = []
+    sewn_near: list = []                        # each sewn line's reach, buffered once (`_own_stations`)
     holes: list[tuple[float, float]] = []       # every needle point settled so far
     for coords in sorted(loops, key=lambda c: -LineString(c).length):
         pts = stations(coords)
@@ -184,9 +215,7 @@ def keyline_bean_runs(poly, shape_id: str, *, entry: tuple[float, float] | None,
             sewn.append(line)
             holes.extend(pts)
             continue
-        laid = unary_union(sewn)
-        near = laid.buffer(width / 2.0)
-        own = [not near.contains(Point(p)) for p in pts]
+        own = _own_stations(pts, sewn, sewn_near, width / 2.0)
         if all(own):
             pieces.append(("loop", pts))
             report["loops"] += 1
