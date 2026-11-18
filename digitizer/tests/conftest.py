@@ -1092,6 +1092,14 @@ PRE_FLIP.update(RING_ROOM_2026_11_15_OFF)
 # `counter_fan_satin` (same ruling), a field since: `tests/test_counter_fan.py`.
 COUNTER_FAN_2026_11_15_OFF = {"counter_fan_satin": False}
 PRE_FLIP.update(COUNTER_FAN_2026_11_15_OFF)
+# The apex_pro family below is OFF AGAIN since 2026-11-17 (Kent: "Revert all
+# three", on the whole-word MARINE picture), so these three dicts now equal the
+# default. They stay: a test that spreads one keeps meaning "the cut as it was".
+# A number pinned on main between the flip and the revert (2026-11-15 to 11-17)
+# was read with the three ON: spread APEX_FAMILY_2026_11_15_ON for it.
+APEX_FAMILY_2026_11_15_ON = {"lettering_columns_apex_pro": True,
+                             "lettering_columns_apex_pro_joints": True,
+                             "lettering_columns_corner_fold_cap_flared": True}
 # `lettering_columns_apex_pro` ("Flip all three ON", Kent 2026-11-15, the apex_pro family): `tests/test_column_apex_pro.py`.
 APEX_PRO_2026_11_15_OFF = {"lettering_columns_apex_pro": False}
 PRE_FLIP.update(APEX_PRO_2026_11_15_OFF)

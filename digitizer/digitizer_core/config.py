@@ -4292,7 +4292,14 @@ class PipelineConfig:
     # `cfg.extra` to a field so the default can be ON. False is the cut as it
     # was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin
     # it False. Tests: `tests/test_column_apex_pro.py`.
-    lettering_columns_apex_pro: bool = True
+    # **OFF again since 2026-11-17, Kent's revert** ("Revert all three", shown
+    # the whole word: Becker's MARINE sewed a slab cap across every letter's
+    # top, the A's and R's overhanging, and he read it as a regression from
+    # the 11-16 renders; the 11-15 flip was ruled from single-letter close-ups).
+    # The pro does sew a cap there, narrow and inside the letter: rebuild it
+    # like his and show whole words before asking again.
+    # `docs/apex-family-revert-2026-11-17.md`.
+    lettering_columns_apex_pro: bool = False
     # The N's two joints and a flat A's top band sewn as the pro sews them
     # (`outline_cut._APEX_PRO_JOINTS`, 2026-11-14, #1550; built OFF as
     # `cfg.extra["lettering_columns_apex_pro_joints"]`): the right-hand stroke
@@ -4306,7 +4313,10 @@ class PipelineConfig:
     # the cut as it was; `tests/conftest.py` PRE_FLIP and
     # `tests/engine_2026_10_27.json` pin it False.
     # Tests: `tests/test_column_apex_pro_joints.py`.
-    lettering_columns_apex_pro_joints: bool = True
+    # **OFF again since 2026-11-17, Kent's revert** (see
+    # `lettering_columns_apex_pro` above): this one sewed the caps on MARINE's
+    # A, R and N.
+    lettering_columns_apex_pro_joints: bool = False
     # A gate on `lettering_columns_corner_fold_apex_side` (`outline_cut._FOLD_CAP_FLARED`,
     # 2026-11-14, #1550; built OFF as
     # `cfg.extra["lettering_columns_corner_fold_cap_flared"]`): the pro CAPS an
@@ -4320,7 +4330,9 @@ class PipelineConfig:
     # so the default can be ON. False is the cut as it was; `tests/conftest.py`
     # PRE_FLIP and `tests/engine_2026_10_27.json` pin it False.
     # Tests: `tests/test_column_fold_cap_flared.py`.
-    lettering_columns_corner_fold_cap_flared: bool = True
+    # **OFF again since 2026-11-17, Kent's revert** (see
+    # `lettering_columns_apex_pro` above): this one sewed the cap on MARINE's E.
+    lettering_columns_corner_fold_cap_flared: bool = False
     # Under `lettering_columns_small_bold`'s thin floor, a RING column (a closed
     # bowl) has its crosses under the floor widened to it instead of dropped
     # (`columns._RING_FLOOR`, 2026-11-14, #1558; built OFF as
