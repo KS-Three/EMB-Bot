@@ -48,7 +48,7 @@ def synthetic_design() -> dict:
     return {"stitches": st, "colors": [{"r": 30, "g": 60, "b": 150}]}
 
 
-def pair() -> "np.ndarray":
+def pair():
     import cv2
     import numpy as np
     from digitizer_core import stitchviz
