@@ -48,6 +48,10 @@ MIN_CUT_MM = 0.2
 #: taper or a swelling rises gradually (0.16 mm a station on a leaf) and is
 #: the stroke's own shape, never a merge (mm).
 STEP_MM = 0.3
+#: stations either side of a wedge's end whose rail points are re-spaced evenly
+EVEN_WINDOW = 3
+#: ... unless that moves a point more than this (mm)
+EVEN_MAX_MM = 0.35
 #: A station's given-up ink must lie inside a sibling's piece buffered by this (mm)
 GUARD_MM = 0.15
 
@@ -81,6 +85,27 @@ def _opened(w: list[float], half: int) -> list[float]:
     n = len(w)
     lo = [min(w[max(0, i - half):i + half + 1]) for i in range(n)]
     return [max(lo[max(0, i - half):i + half + 1]) for i in range(n)]
+
+
+def _equalize(pts: list) -> list | None:
+    """`pts` re-spaced at equal arc length along the polyline they trace (the
+    two end points fixed); None for a degenerate one."""
+    cum = [0.0]
+    for p, q in zip(pts, pts[1:]):
+        cum.append(cum[-1] + math.dist(p, q))
+    total = cum[-1]
+    if total <= 1e-9:
+        return None
+    out, j = [pts[0]], 0
+    for k in range(1, len(pts) - 1):
+        s = total * k / (len(pts) - 1)
+        while j + 1 < len(cum) - 1 and cum[j + 1] < s:
+            j += 1
+        span = cum[j + 1] - cum[j]
+        u = 0.0 if span <= 1e-12 else (s - cum[j]) / span
+        out.append((pts[j][0] + (pts[j + 1][0] - pts[j][0]) * u, pts[j][1] + (pts[j + 1][1] - pts[j][1]) * u))
+    out.append(pts[-1])
+    return out
 
 
 def _runs(flags: list[bool]) -> list[tuple[int, int]]:
@@ -142,8 +167,14 @@ def cap_column(col, siblings) -> tuple[object, int]:
                 s = _along(own, other, chord)
                 if s <= 0.0:               # the chord is outside this rail: nothing to give up
                     continue
-                s = min(s, 1.0)
-                moved = (own[0] + (other[0] - own[0]) * s, own[1] + (other[1] - own[1]) * s)
+                if s >= 1.0:               # the chord is past the far rail: never
+                    continue
+                # the rail point goes ON the chord, not onto the cross line: a
+                # cross is slanted off the column's normal, so sliding the end
+                # along it shifted the rail by 0.3 x the cut ALONG the column
+                # and bunched two penetrations under the short-stitch floor
+                # (the stagger's notch, the grader's seam at y 35.0 / 39.5)
+                moved = chord
                 if math.dist(own, moved) < 0.05:
                     continue
                 mid = ((own[0] + moved[0]) / 2, (own[1] + moved[1]) / 2)
@@ -153,6 +184,26 @@ def cap_column(col, siblings) -> tuple[object, int]:
                 capped += 1
     if not capped:
         return col, 0
+    # The pen-stroke cross at a wedge's end is turned a few degrees by the
+    # skeleton's join kink, so a rail point there sits 0.1-0.2 mm off its
+    # neighbours' pitch and the next stage shortens that cross: a notch in the
+    # column (the h's seam, y 35.0 and y 39.5). Each rail's points within
+    # `EVEN_WINDOW` stations of a run's end are re-spaced evenly by arc length
+    # along the polyline they already follow (its shape is kept), unless that
+    # moves a point more than `EVEN_MAX_MM`.
+    for i0, i1 in _runs(cut):
+        for e in (i0, i1):
+            lo, hi = max(1, e - EVEN_WINDOW), min(n - 2, e + EVEN_WINDOW)
+            if hi - lo < 3:
+                continue
+            for side in (0, 1):
+                pts = [new[j][side] for j in range(lo - 1, hi + 2)]
+                even = _equalize(pts)
+                if even is None or max(math.dist(x, y) for x, y in zip(pts, even)) > EVEN_MAX_MM:
+                    continue
+                for k, j in enumerate(range(lo, hi + 1)):
+                    a_, b_ = new[j]
+                    new[j] = (even[k + 1], b_) if side == 0 else (a_, even[k + 1])
     return replace(col, stations=new), capped
 
 
