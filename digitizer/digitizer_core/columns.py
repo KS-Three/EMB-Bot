@@ -2387,7 +2387,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
             kept = _floor_ring_crosses(guarded, min_cross_mm, col.kind == "ring")
             report["ring_floored"] = report.get("ring_floored", 0) + 1
         elif thin_floor_all and len(guarded) >= 3 and len(kept) < len(guarded):
-            # `whole_letter_floor` (built OFF): every thin cross of the
+            # `cfg.lettering_columns_whole_letter_floor`: every thin cross of the
             # column at the floor -- an E cut as ONE column round its stem
             # and both hairline arms keeps most of its crosses (the stem's),
             # so neither rule below reaches the arms
@@ -3437,6 +3437,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             small_bold_pull_floor: bool = False,
                             stroke_floor_lost_stroke: bool = False,
                             whole_letter_floor: bool = False,
+                            dropped_branch: bool = False,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3597,7 +3598,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         from .column_lean import lean_columns
         return lean_columns(cols, text_lean_deg, spacing_mm, letter=lpoly)
 
-    def sew(plain: bool = False, floor_all: bool = False, **extra):
+    def sew(plain: bool = False, floor_all: bool = False, branches: bool = False, **extra):
         lk, rk = lc_kw, run_kw
         if plain:           # the lane's own construction, small_bold's pull kept
             lk = {k: v for k, v in lc_kw.items() if k != "small_bold"}
@@ -3605,6 +3606,21 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             if floor_all:   # `whole_letter_floor`: its thin crosses at the floor
                 rk = {**rk, "thin_floor_all": True}
         cut = letter_columns(poly, pitch_mm=spacing_mm, **lk, **extra)
+        if branches:
+            # `dropped_branch` (built OFF): each part of a column's piece its
+            # stations do not reach is cut as a letter of its own, and its
+            # columns sew with the rest
+            bare = dropped_branches(cut.columns, cut.W)
+            if bare:
+                cols, cuts, unsewn = list(cut.columns), list(cut.cuts), list(cut.unsewn)
+                for g in bare:
+                    sub = letter_columns(g, pitch_mm=spacing_mm, **lk, **extra)
+                    cols += sub.columns
+                    cuts += sub.cuts
+                    unsewn += sub.unsewn
+                runs, report = sew_cut(cols, cuts, unsewn, cut.poly, rk)
+                report["dropped_branches"] = len(bare)
+                return runs, report
         runs, report = sew_cut(cut.columns, cut.cuts, cut.unsewn, cut.poly, rk)
         if cut.before_absorb is not None:
             # `absorb_unsewn` (built OFF) merged a bare piece: kept only if
@@ -3643,8 +3659,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                     report["small_bold_plain"] = 1
                     cover = satin_cover(runs, poly)
             if cover < SMALL_BOLD_COVER_MIN and whole_letter_floor:
-                # `cfg.extra["lettering_columns_whole_letter_floor"]` (built
-                # OFF 2026-11-18): the ladder is spent and the letter is
+                # `cfg.lettering_columns_whole_letter_floor` (built OFF
+                # 2026-11-18, ON the same day, Kent's flip): the ladder is spent and the letter is
                 # still not whole. The lane's own cut once more, with EVERY
                 # thin cross at the floor, kept only if it makes the letter
                 # whole. Marine Corps emblem at 90 mm, a 4.4 mm serif E: the
@@ -3667,7 +3683,57 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 and absorb_gains(runs, runs_n, poly)):
             runs, report = runs_n, report_n
             report["neck_cuts"] = 1
+    if dropped_branch:
+        # `cfg.extra["lettering_columns_sew_dropped_branch"]` (built OFF
+        # 2026-11-18): the letter sewn again with its dropped branches cut
+        # and sewn (`dropped_branches`), kept only if it covers more of the
+        # letter and adds no more thread outside it than inside
+        # (`absorb_gains`)
+        runs_b, report_b = sew(branches=True)
+        if (report_b.get("dropped_branches")
+                and [r.points for r in runs_b] != [r.points for r in runs]
+                and absorb_gains(runs, runs_b, poly)):
+            runs, report = runs_b, report_b
+            report["dropped_branch_kept"] = 1
     return runs, report
+
+
+def dropped_branches(columns: list, W: float) -> list[Polygon]:
+    """`cfg.extra["lettering_columns_sew_dropped_branch"]` (built OFF
+    2026-11-18): the parts of each column's piece that its stations do not
+    reach -- a branch of the letter the cut left inside one column, which
+    then sews nothing.
+
+    Kent's ruling 2026-11-14 on the cover hand-back named this as the fix
+    nobody had built: "the Column lane drops a branch (the V cell, the '&'
+    bowl), so sew that branch in the lane". The Peace Corps logo at 90 mm:
+    the R of CORPS (9 mm, 2.1 mm strokes) is cut once, at its leg; its stem
+    and bowl stay one folded column whose 45 stations run round the bowl and
+    the top serif, and the whole stem -- the largest part of the letter --
+    takes no stitch.
+
+    A branch is a part of `piece - (the quads between consecutive stations)`
+    at least one stroke square (`W` x `W`) in area that survives an erosion
+    of `W / 4`: a sliver along a rail, or the chord gap of a curve, is
+    neither. Layout, no cloth number."""
+    out: list[Polygon] = []
+    for col in columns:
+        st = col.stations
+        quads = []
+        for (a0, b0), (a1, b1) in zip(st, st[1:]):
+            q = Polygon([a0, a1, b1, b0])
+            if not q.is_valid:
+                q = q.buffer(0)
+            if not q.is_empty:
+                quads.append(q)
+        if not quads:
+            continue
+        bare = col.piece.difference(unary_union(quads).buffer(0.05))
+        for g in getattr(bare, "geoms", [bare]):
+            if (isinstance(g, Polygon) and g.area >= W * W
+                    and not g.buffer(-W / 4.0).is_empty):
+                out.append(g)
+    return out
 
 
 def _stroke_floor_judged(args: dict) -> tuple[list[StitchRun], dict]:

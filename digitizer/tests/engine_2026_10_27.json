@@ -394,6 +394,7 @@
  "lettering_columns_corner_fold_cap_flared": false,
  "lettering_columns_ring_floor": false,
  "lettering_columns_stroke_floor": false,
+ "lettering_columns_whole_letter_floor": false,
  "page_line_front": false,
  "page_line_open": false,
  "enclosed_white_keeps_known_colour": false,

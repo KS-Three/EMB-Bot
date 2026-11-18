@@ -1211,6 +1211,11 @@ PRE_FLIP.update(TEXT_CLUSTER_MIXED_CAPS_2026_11_18_OFF)
 # `tests/test_cap_fuse.py`.
 COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF = {"color_cap_fuse_split_tones": False}
 PRE_FLIP.update(COLOR_CAP_FUSE_SPLIT_TONES_2026_11_18_OFF)
+# `lettering_columns_whole_letter_floor` (Kent 2026-11-18, shown art | before |
+# after for the ten designs it changes: "Flip ON now"):
+# `tests/test_whole_letter_floor.py`.
+WHOLE_LETTER_FLOOR_2026_11_18_OFF = {"lettering_columns_whole_letter_floor": False}
+PRE_FLIP.update(WHOLE_LETTER_FLOOR_2026_11_18_OFF)
 # `lettering_columns_stem_wedge_cap` (Kent 2026-11-18, shown ORIGINAL | BEFORE |
 # AFTER of Toat Machine's h, close-up and word, and told the rule is bounded
 # to a hairline join so only the hat moves of 44 runs: "Flip ON (Recommended)"):
