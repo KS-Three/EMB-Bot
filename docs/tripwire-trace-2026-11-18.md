@@ -109,3 +109,31 @@ same method. The OFF arm reproduces the ledger's figures, so the comparison is c
 Every one of the six jobs sews 83-156 fewer stitches ON. The worse readings are small (1 cut or hop, 5-7 mm of needle-up, a kappa
 within 0.007). Wrong-way moves against the tripwire's 0.00 tolerance are: precision_drone hops, trims, needle-up and direction kappa;
 toat_machine_beanie stitch-type kappa; toat_machine_hat needle-up and trims; goldentee_hat stitch-type kappa.
+
+## The untraced movers of the fresh capture, traced (2026-11-18, local Linux, same method)
+
+Director's order: per-flag arms on the movers the first trace did not cover. 8 jobs (`mfab_lc`, the five `becker_*`, `toat_machine_beanie`,
+`toat_machine_hat`) on the tree of `5068c36d` (code identical to main; only ledger, docs and tests differ). Arms: default; each flag that landed since the
+3edc5011 capture forced OFF singly (`lettering_columns_off_line_mark` #1656, `color_cap_fuse_split_tones` #1654, `round_dot_ring` #1655,
+`text_cluster_mixed_caps` #1652, `satin_thin_arm_stop` #1635, `enclosed_white_keeps_known_colour` #1662); each of the three apex flags forced back ON singly
+and together (undoing #1659); and BACK, all of those at once. BACK reproduces the 3edc5011 ledger on every row below except where noted.
+
+- **`mfab_lc` needle-up 468.5 -> 523.9 mm (ledger), local 456.8 (BACK) -> 504.9 (default): follows #1656 `lettering_columns_off_line_mark`.** OFF alone gives 462.3
+  (42.6 of the 48.1 mm local move), `satin_thin_arm_stop` OFF 499.4 (5.5 mm). The same flag moves stitches (17,613 OFF -> 17,570 ON), trims (20 -> 17) and hops (29 -> 28).
+  **#1656 does move `mfab_lc`, which its own evidence said it did not:** that sweep's "9 pro jobs" are one job per artwork, so MFab is represented by `mfab_hat`
+  and `mfab_lc` (the left-chest job, 95.2 mm) was never in it; the 26 fixtures include no MFab. By eye (`docs/renders/tripwire-trace-2026-11-18/mfab_lc_lettering_columns_off_line_mark*.png`,
+  ORIGINAL | BEFORE | AFTER and a zoom) it is the same change as on the hat: the ragged blob at the foot of the M's inner V becomes a clean pointed mark, nothing else
+  moves; not worse. The needle-up is extra travel round the re-ordered block.
+- **`toat_machine_beanie` needle-up +25.4 mm: follows #1652 `text_cluster_mixed_caps`** (OFF restores 298.3 of 323.6, exact to the BACK arm), which also carries trims 16 -> 18, hops 30 -> 31
+  and part of the stitch-type kappa (0.263 -> 0.276). `satin_thin_arm_stop` carries part of its stitches and kappa (16,973 OFF). **`toat_machine_hat` needle-up +10.2 mm: split between
+  #1652 (262.7 OFF) and #1635 (263.0 OFF)**, about 5 mm each. #1652's own PR said the three TOAT designs move and are better (the small A); what it did not state is that the beanie's needle-up
+  rises 25 mm and the hat's 5 mm. Not a hidden mover, a figure its summary left out.
+- **The five `becker_*` jobs follow #1659, the apex revert, as a family.** Forcing the three apex flags back ON together restores `becker_chest_small` (stitches 9,916, trims 10, hops 13,
+  needle-up 315.6, direction 0.473 against the ledger's 9,916 / 10 / 13 / 315.6 / 0.469) and `becker_beanie` (13,564 / 12 / 14 / 285.9 / 0.561) exactly, and `becker_hat_small` to within 3
+  stitches. No single apex flag restores them: `lettering_columns_apex_pro_joints` carries most of the trims, hops and needle-up, `apex_pro` and `corner_fold_cap_flared` the rest of the stitches.
+  `becker_hat_large`'s stitch-type kappa 0.356 -> 0.303 comes back only to 0.311 here, and `becker_lc_large` does not reproduce the runner's figures even in BACK (local needle-up 224.6
+  against the runner's 319.7): the local reading of those two is not comparable with the runner on those rows (the frame-registration sensitivity of `docs/corner-fold-kappa-2026-11-15.md`).
+  The pictures for the revert are #1659's own (`docs/renders/apex-family-revert-2026-11-17/`).
+- **`enclosed_white_keeps_known_colour` (#1662) moves none of these eight jobs** (no arm differs from the default).
+
+Flips relayed to Kent today that move a design their evidence did not name: **#1656 moves `mfab_lc`** (above). #1652 moves the TOAT designs it said it moves, with a needle-up cost it did not state.
