@@ -93,6 +93,8 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("column_lean", "_ITALIC"),
     ("column_lean", "_LEAN_FLAT_ENDS"),
     ("stage6_satin", "_CHORD_AIM"),
+    # `cfg.script_strokes_pull_by_stroke` == "counter" (built OFF): the push a counter-facing rail gets
+    ("stage6_satin", "COUNTER_PULL"),
 )
 #: ContextVars that are caches, not knobs. `stage6_fill._BRIDGE_MEMO` is one
 #: `stitch_shape` call's covered-bridge memo: set and reset inside the call,
