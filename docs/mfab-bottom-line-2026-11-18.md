@@ -18,7 +18,7 @@ starting 0.3-0.6 mm out from the letter edge.
 0.4 mm over the white polygon in the band: 52.8 of 303.8 mm2 (17%) of the white is covered
 by black thread, as a continuous ~0.2 mm rim round every letter (cyan rim in the check
 image, not committed). Polygon overlap itself is tiny (0.0-0.8 mm2 per letter), so the rim
-is rail pull compensation (0.2 per side) plus half a thread width, not a shape error.
+is most likely rail pull compensation plus half a thread width, not a shape error. The hat fabric's `pull_comp_mm` is 0.4 (`digitizer_core/fabrics.py:47`, structured_cap; applied per rail, comment at `machine.py:1297`), so the ~0.2 mm rim is smaller than the nominal pull; the split between pull, the gap the white leaves and thread width was NOT measured.
 
 **Tried.** Letting lettering use `satin_seam_hold` (remove the `text_candidate`
 exemption in `stage7_sequence.seam_ground`): byte-identical, 20,564 stitches. Lettering
