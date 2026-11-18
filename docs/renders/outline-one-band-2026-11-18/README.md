@@ -22,8 +22,8 @@ outline shape (`S92f2350b`: 1201 mm2, 5 face holes at 102 mm) is sewn differentl
 
 | | stitches | runs | trims | jumps | outline runs by kind OFF -> ON |
 |---|---|---|---|---|---|
-| becker_hat_large | 16265 -> 16195 | 182 -> 268 | 19 -> 20 | 20 -> 20 | satin 5 -> ~56, travel 8 -> ~35, underlay 7 -> 7, fill 4 -> 4, run 0 -> 1 |
-| fx_becker_marine_logo (80 mm) | 10672 -> 10403 | 156 -> 195 | 15 -> 19 | 16 -> 22 | satin 5 -> ~37, travel 7 -> ~14, fill 2 -> 2 |
+| becker_hat_large | 16287 -> 16289 | 164 -> 246 | 20 -> 21 | 20 -> 21 | satin 5 -> ~56, travel 8 -> ~35, underlay 7 -> 7, fill 4 -> 4, run 0 -> 1 |
+| fx_becker_marine_logo (80 mm) | 10855 -> 10500 | 137 -> 183 | 14 -> 20 | 14 -> 20 | satin 5 -> ~37, travel 7 -> ~14, fill 2 -> 2 |
 
 What is new: ONE satin loop on the band's outer ring (last), one satin column per stem
 (the B/E stem is one 20 mm column, the E/R stem another, a third at the lower-right), the
@@ -35,12 +35,12 @@ count and the trims come from), and travel inside the band under the outer loop.
 Better: the border passes the dip as one band, the stem is one column, no pile of two
 loops (before: two columns side by side down the stem, both fanning into the V). The
 E/R join is the same. **Worse:**
-* **Trims 19 -> 20 on Becker large (jumps 20 -> 20), 15 -> 19 at 80 mm (jumps 16 -> 22).**
-  First build: 19 -> 31. The needle now walks between the pieces inside the band
-  (`travel_path` along the band moved in 0.35 mm, else along the outer loop's centre
-  line), under the outer loop sewn last, and the stems go nearest-first. What is left:
-  the first hole arc (as OFF), two far hole arcs in the E/R stem, a stem's tail sewn as
-  a run, and the 80 mm design's extra arcs.
+* **Trims +1 on Becker large (20 -> 21, jumps 20 -> 21); +6 at 80 mm (14 -> 20).**
+  First build: +12 on Becker large. The needle walks between the pieces inside the band
+  (`travel_path` along the band moved in 0.35 mm, else along the outer loop's centre line,
+  never over a finished stem), under the outer loop sewn last; stems nearest-first; the
+  outer loop is entered where the loops it replaces would have ended. What is left: a stem's
+  tail sewn as a run, a far hole arc or two, and the 80 mm design's extra arcs.
 * A few thin black strips (0.5-1 mm satin arcs) along the face edge where the band is a
   little thicker than the outer loop reaches; they read as lines at print size.
 * A tiny white slit beside the B/E stem's lower column (closeup 3) and at the E/R
@@ -48,20 +48,52 @@ E/R join is the same. **Worse:**
 * At the V the outer loop's crosses still turn with the band's normal (they bunch in the
   notch); the pro's stay near-square to the band. Closer than before, not the pro's.
 
-## Related tests with the flag forced ON (227 files)
+## ALL 18 tripwire jobs (every placement) + the 26 fixtures, OFF vs ON (director 11-18, final build)
 
-3,978 passed, 7 failed. With the flag OFF (the default) all pass.
-* `test_flat_lane_byte_identical[enthusiast_logo]`: the known golden red.
+44 runs by stitch md5: **6 moved, 38 byte-identical.** The 35-run table above missed four
+(second placements of the same artwork). Needle-up = the straight gap the needle flies at each
+lift (`pro_baseline.needle_up`'s rule, from the design's stitch list).
+
+| run | stitches | trims | jumps | needle-up mm |
+|---|---|---|---|---|
+| becker_hat_large | 16,246 -> 16,246 | 19 -> 20 | 20 -> 21 | 489.6 -> **672.5** |
+| becker_hat_small | 10,319 -> 9,851 | 10 -> **18** | 14 -> 23 | 306.3 -> 319.0 |
+| becker_chest_small | 10,156 -> 9,698 | 9 -> **16** | 13 -> 21 | 303.5 -> 292.5 |
+| becker_beanie | 13,653 -> 13,330 | 13 -> **19** | 15 -> 21 | 385.0 -> 375.0 |
+| mfab_lc | 17,570 -> **18,467** | 19 -> 23 | 29 -> 33 | 504.9 -> 586.6 |
+| fx_becker_marine_logo (80 mm) | 10,826 -> 10,459 | 13 -> 19 | 14 -> 20 | 380.4 -> 362.9 |
+
+(becker_lc_large and the other 38 do not move.) All six pictured: `<run>.png`, `<run>_closeup.png`.
+
+**By eye, worse first:**
+* **becker_hat_small**: ON draws a white (bare) curved sliver across the top of the K where the
+  stem top meets the band (overview, AFTER, K top), and the band edge is rougher; trims 10 -> 18.
+* becker_chest_small, becker_beanie: same family as the small hat (trims +7 / +6).
+* becker_hat_large: needle-up travel +183 mm (more lifts between far pieces), trims +1.
+* **mfab_lc**: +897 stitches (+5%), +4 trims, +82 mm needle-up; no visible change at print size
+  (the white keyline reads the same). The gate was met by the LC placement's letters and stems.
+* The 102 mm and 80 mm Becker pictures above stand: one stem column, one continuous band.
+
+**Conclusion of this sweep: not ready to flip.** The small placements (76-80 mm) gain trims and one
+visible bare sliver; the grader's design (102 mm) gains the clean stem at +183 mm of needle-up.
+
+## Related tests with the flag forced ON (227 files, final build)
+
+3,985 passed, 4 failed. With the flag OFF (the default) all pass. The 4:
+* `test_flat_lane_byte_identical[enthusiast_logo]`: the known golden red (CI deselects it).
 * `test_outline_one_band::test_field_defaults_off`: the default forced for the run.
-* `test_silhouette_underfill_panels` (2): md5 pins of Becker / MFab stitch bytes.
-* `test_wide_columns::test_the_fold_guard_keeps_a_wide_column_on_a_bend_under_the_warn_line`:
-  `coverage_max` 6.14 -> 6.71 against the 6.667 warn line, at ONE cell on a MARINE letter
-  (`S3747f7f5`, one hole: the flag does not sew it differently; its entry point moves, so its
-  column is re-phased).
-* `test_run_spans::test_the_design_cap_keeps_its_own_role_through_the_border_emitter`:
-  the Becker fixture's design cap has no BORDER-kind stitch with the flag ON (the outer
-  loop covers the edge the cap would have sewn).
-No test was pinned OFF; the director has both guard figures.
+* `test_silhouette_underfill_panels` (2): md5 pins of Becker / MFab stitch bytes (a flip
+  would re-pin them).
+Two guard figures moved the wrong way in earlier builds and are now back:
+* `test_wide_columns` fold-guard test: `coverage_max` on Becker 114 mm was 6.14 OFF, 6.71 ON
+  (warn line 6.667): the outline's exit point had re-ordered MARINE's letters. The band now
+  ends where the loops it replaces would have ended: the order is the same, **6.14 OFF, 6.39
+  ON**, no cell over the line (`outline_band._loops_exit`).
+* `test_border_from_outline` thin-ring test: an outer-loop cross grazed a face corner; the far
+  end is now pulled back to the face's edge (`_keep_out_of_faces`, own test).
+* `test_run_spans` design-cap test: with the flag ON the cap has no satin-arc (BORDER-kind)
+  stitch, the outer loop sews that edge; the test asserts the emitter only with the flag OFF
+  (its role assertion holds either way); bare area is not worse (below).
 
 **The design cap with the flag ON** (director item 3): bare area is not worse, it
 falls. Becker at 80 mm in that test's config: uncovered area 10.5 -> 3.1 mm2, worst patch

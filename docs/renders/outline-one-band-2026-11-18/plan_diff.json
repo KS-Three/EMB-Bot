@@ -1,21 +1,21 @@
 {
  "becker_hat_large": {
   "stitches": [
-   16265,
-   16195
+   16287,
+   16289
   ],
   "shapes_same": true,
   "runs_total": [
-   182,
-   268
+   164,
+   246
   ],
   "trims": [
-   19,
-   20
+   20,
+   21
   ],
   "jumps": [
    20,
-   20
+   21
   ],
   "outline_runs_by_kind_off": {
    "underlay": 7,
@@ -33,21 +33,21 @@
  },
  "fx_becker_marine_logo": {
   "stitches": [
-   10672,
-   10403
+   10855,
+   10500
   ],
   "shapes_same": true,
   "runs_total": [
-   156,
-   195
+   137,
+   183
   ],
   "trims": [
-   15,
-   19
+   14,
+   20
   ],
   "jumps": [
-   16,
-   22
+   14,
+   20
   ],
   "outline_runs_by_kind_off": {
    "underlay": 6,
