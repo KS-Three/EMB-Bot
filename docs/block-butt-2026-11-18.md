@@ -78,3 +78,49 @@ Pictures: `docs/renders/block-butt-2026-11-18/`.
 - Related tests with the flag forced ON: 12 of 494 fail, all OFF-byte pins or "the fan exists" feature tests
   (`test_off_is_byte_for_byte`, `test_kents_pin_14_e_at_hat_large_size`, ...); no bare-fabric, travel or
   connector guard fails.
+
+## 6. Director's follow-up (same day): all 18 committed tripwire jobs, the other Becker placements, test split, the 3.5 mm number
+
+**18 committed jobs at their own size and garment, OFF vs ON** (`tools.flag_sweep` had not landed; extended the
+sweep script). 5 move (all Becker), 13 are byte-identical. Preflight grade and bare/coverage/uncovered figures do
+not move on any.
+
+| job | stitches | trims | jumps | needle-up mm |
+|---|---|---|---|---|
+| becker_hat_large 101.9 | 16,246 -> 15,820 | 19 -> 19 | 20 -> 20 | 489.6 -> 508.6 |
+| becker_lc_large 95.7 | 14,802 -> 14,291 | 13 -> 14 | 14 -> 15 | 213.8 -> 236.8 |
+| becker_hat_small 76.5 | 10,319 -> 10,165 | 10 -> 10 | 14 -> 14 | 306.3 -> 304.4 |
+| becker_chest_small 76.5 | 10,156 -> 10,039 | 9 -> 8 | 13 -> 12 | 303.5 -> 300.6 |
+| becker_beanie 79.8 | 13,653 -> 13,619 | 13 -> 14 | 15 -> 16 | 385.0 -> 376.8 |
+
+Not moved: gaulke hat / lc / beanie, goldentee, hotel_fremont hat / patch, mfab hat / lc, precision_drone,
+tires_hat_3d, toat_machine hat / beanie, toat_beanie.
+
+**Word pictures** `docs/renders/block-butt-2026-11-18/<job>_word.png`, ORIGINAL | BEFORE | AFTER, for every
+Becker placement. By eye: clear gain at 95.7 and 101.9 mm (R, E, N and the M's top-left clean); at 76.5 and 79.8 mm
+the gain is smaller: the N's diagonal is clean and the E's arms butt, **the R keeps its fan** (the butt is built, then
+the fold look drops it, as at 114 mm) and the E's top-left still fans. No letter is worse. **The M at 80 mm**
+(and at 76.5, 95.7): its right diagonal's slanted top end sews square crosses where OFF fans it, so the small
+tabs OFF leaves at the M's top right are gone; V and stems unchanged. A visible change on a letter the grader did
+not flag; the OFF M fan is what `test_on_an_m_with_an_acute_tip_is_not_read_as_an_e` pins.
+
+**The 12 failing flag-ON tests, split** (related files, flag forced ON, 494 run):
+- *Asserts the E fold fan exists (Kent's 11-14 `corner_fold_apex_side` ruling), 1:*
+  `test_column_corner_fold_apex_side.py::test_kents_pin_14_e_at_hat_large_size` (ON gives 4 straight columns, no
+  `folded`).
+- *Asserts the M's fan exists, 1:* `test_column_apex_cut.py::test_on_an_m_with_an_acute_tip_is_not_read_as_an_e`
+  (fan sweep 27.9 deg ON against > 75).
+- *Pins OFF bytes or today's crosses, 10:* `test_column_apex_cut.py::test_off_sews_exactly_what_main_sewed`
+  [marine76_M, marine76_N, marine96_M]; `test_column_apex_walk.py::test_off_is_byte_for_byte` [marine76_M,
+  marine80_M, marine96_M] and `::test_the_crosses_are_todays[marine96_M]`;
+  `test_column_connectors_buried.py::test_off_leaves_running_stitch_on_finished_satin`;
+  `test_column_italic_lean.py::test_off_is_the_lane_before_the_flag[becker80_lane_letters]` and
+  `::test_on_an_upright_word_is_byte_identical[becker80_lane_letters]`.
+  All ten run Becker MARINE letters, the only heavy ones in the suite.
+
+**"Heavy strokes only" as a number:** `BUTT_MIN_W_MM = 3.5`, against `outline_cut.stroke_width(letter polygon)` in
+mm. Measured widest letter per job (own size): Becker 4.0 (76.5 mm) to 5.3 (101.9 mm); every other committed
+job is 0.8 to 1.7 (gaulke 1.5-1.7, goldentee 1.2, hotel_fremont 0.8, mfab 1.1-1.3, drone 1.6, toat 1.6-1.7;
+tires_hat_3d has no lettering-lane letters). **So no other design has a single letter within 1.8 mm of the gate,
+which is why none moved: today the flag is a Becker-only change, and the gate has not been tested against any
+other heavy block lettering.** A letter above 3.5 mm on other art would be taken by it.
