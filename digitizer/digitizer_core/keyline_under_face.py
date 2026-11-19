@@ -7,17 +7,17 @@ gold and pumpkin faces it fences, so its excess caps them. Moved before those fa
 plans the overlap against the order actually sewn and the face covers the keyline's inner
 excess: the red shows at about the art's width. Order only; no width, floor, pull or cover value.
 
-A layer qualifies when (area-weighted, stitched regions) at least `LAYER_BAND_FRAC` of it is bands
-(mean width 2A/P <= `BAND_MAX_MM`) and its thread is dark (L* <= `DARK_L_MAX`). It moves to just
-before the earliest layer that holds a FACE (2A/P > `BAND_MAX_MM`, lighter than the keyline)
-within `TOUCH_MM` of one of its bands, when that layer sews after it.
+A layer qualifies when (area-weighted, stitched regions) at least `KEY_LAYER_BAND_FRAC` of it is bands
+(mean width 2A/P <= `KEY_BAND_MAX_MM`) and its thread is dark (L* <= `KEY_DARK_L_MAX`). It moves to just
+before the earliest layer that holds a FACE (2A/P > `KEY_BAND_MAX_MM`, lighter than the keyline)
+within `KEY_TOUCH_MM` of one of its bands, when that layer sews after it.
 """
 from __future__ import annotations
 
-BAND_MAX_MM = 0.8       # `stage4_vectorize.CAP_MERGED_BAND_MAX_MM`, the same band rule
-DARK_L_MAX = 40.0       # burnt orange (155,48,28) is 33; the cap rule's 35 sat just under it
-LAYER_BAND_FRAC = 0.8
-TOUCH_MM = 0.3
+KEY_BAND_MAX_MM = 0.8       # `stage4_vectorize.CAP_MERGED_BAND_MAX_MM`, the same band rule
+KEY_DARK_L_MAX = 40.0       # burnt orange (155,48,28) is 33; the cap rule's 35 sat just under it
+KEY_LAYER_BAND_FRAC = 0.8
+KEY_TOUCH_MM = 0.3
 
 
 def _width(r) -> float:
@@ -39,9 +39,9 @@ def keylines_under_face(regions, thread_indices: list[int], chart) -> list[int]:
     def is_key(L: int) -> bool:
         b = sewn[L]
         tot = sum(r.area_mm2 for r in b)
-        if tot <= 0 or lum[L] > DARK_L_MAX:
+        if tot <= 0 or lum[L] > KEY_DARK_L_MAX:
             return False
-        return sum(r.area_mm2 for r in b if _width(r) <= BAND_MAX_MM) >= LAYER_BAND_FRAC * tot
+        return sum(r.area_mm2 for r in b if _width(r) <= KEY_BAND_MAX_MM) >= KEY_LAYER_BAND_FRAC * tot
 
     darkest = min(lum.values())
     # the design's darkest ink is the drawn outline itself (Golden Tee's black swoosh and tee
@@ -49,7 +49,7 @@ def keylines_under_face(regions, thread_indices: list[int], chart) -> list[int]:
     keys = [L for L in layers if is_key(L) and lum[L] > darkest + 1e-6]
     if not keys:
         return list(thread_indices)
-    faces = [r for r in regions if _width(r) > BAND_MAX_MM and r.meta.get("stitched", True)]
+    faces = [r for r in regions if _width(r) > KEY_BAND_MAX_MM and r.meta.get("stitched", True)]
     if not faces:
         return list(thread_indices)
     tree = STRtree([f.polygon for f in faces])
@@ -58,14 +58,14 @@ def keylines_under_face(regions, thread_indices: list[int], chart) -> list[int]:
     for K in keys:
         best = None
         for r in sewn[K]:
-            if _width(r) > BAND_MAX_MM:
+            if _width(r) > KEY_BAND_MAX_MM:
                 continue
-            for j in tree.query(r.polygon.buffer(TOUCH_MM)):
+            for j in tree.query(r.polygon.buffer(KEY_TOUCH_MM)):
                 f = faces[int(j)]
                 F = f.meta["layer"]
                 if F == K or lum[F] <= lum[K] or F in keys:
                     continue
-                if r.polygon.distance(f.polygon) > TOUCH_MM:
+                if r.polygon.distance(f.polygon) > KEY_TOUCH_MM:
                     continue
                 if order.index(F) > order.index(K):
                     continue            # already sews before this face: it is under it
