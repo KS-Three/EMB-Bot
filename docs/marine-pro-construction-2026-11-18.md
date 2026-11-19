@@ -129,7 +129,7 @@ New tests: `tests/test_r_bowl.py` (8), `tests/test_marine_match.py` (10), on `te
 
 ## 4. Per letter: matches the pro / differs / cannot match
 
-Pictures: `docs/renders/marine-match-2026-11-18/<placement>_word.jpg` (ORIGINAL / BEFORE / AFTER at one frame) and `_letters.jpg`
+Pictures: `docs/renders/marine-match-2026-11-18/all-four/<placement>_word.jpg` (ORIGINAL / BEFORE / AFTER at one frame) and `_letters.jpg`
 (each letter, 2x), all five placements and 114 mm; ours only. BEFORE = main (block_butt ON since #1684), AFTER = all four flags.
 
 | letter | status | detail |
