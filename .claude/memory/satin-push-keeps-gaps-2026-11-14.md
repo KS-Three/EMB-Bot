@@ -43,4 +43,4 @@ bars). Pull magnitude untouched (gate 1). Related:
 
 **Gaulke's window, 11-14 (#1557):** two panes are predicted fill at stage 5 and grown 14.8 -> 20.4 mm2; `compact_solids_satin` then sews them as satin on that grown polygon, closing the horizontal divider (0.7 -> 0.4 at stage 5, 0.1-0.2 at the thread; pro 0.7). `compact_satin_keeps_gaps` (built OFF) applies stage 5's `_kept_gaps` to compact satins only: divider 0.6, 0.11% of Gaulke moves. With `satin_push_keeps_gaps` 0.5 the window has four panes, like the pro.
 
-**Kent 2026-11-15:** "Flip both, value 0.5" (`satin_push_keeps_gaps` at 0.5 and `compact_satin_keeps_gaps`). Ruled ON 11-15, flip pending.
+**Kent 2026-11-15:** "Flip both, value 0.5" (`satin_push_keeps_gaps` at 0.5 and `compact_satin_keeps_gaps`). Ruled ON 11-15; flipped ON in code (#1581, 0.5).

@@ -1,5 +1,7 @@
 # Scope digest — early plans, guided studio, font library/editing
 
+> Frozen digest as of 2026-08-17; current status is `MASTER_SCOPE.md`, decisions are `DOCTRINE.md`.
+
 Sources: `docs/superpowers/specs|plans/2026-07-22-*`, `2026-07-24-*`, `2026-07-27-*`.
 
 ## The original intent

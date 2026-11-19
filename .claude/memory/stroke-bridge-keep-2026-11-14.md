@@ -1,6 +1,6 @@
 ---
 name: stroke-bridge-keep-2026-11-14
-description: Arabic calligraphy's broken stems = stage-3 absorb of same-ink crumbs; `stroke_bridge_keep` keeps a same-ink chain bridging two hosts (#1552); pin 2 cured, pin 3 not; ruled ON 11-15, flip pending
+description: Arabic calligraphy's broken stems = stage-3 absorb of same-ink crumbs; `stroke_bridge_keep` keeps a same-ink chain bridging two hosts (#1552); pin 2 cured, pin 3 not; ruled ON 11-15, flipped ON (#1576)
 metadata:
   type: project
 ---
@@ -14,5 +14,5 @@ hosts at its ends on the page (host contact <= 0.35 of its rim, ground
 >= 0.5). Pin 2 is cured; pin 3 is not (no crumbs chain across that gap).
 Controls byte-identical, including low_poly with `speck_prune` ON.
 
-**Kent 2026-11-15:** ticked ON. Ruled ON 11-15, flip pending.
+**Kent 2026-11-15:** ticked ON. Ruled ON 11-15; flipped ON in code (#1576).
 Related: [[speck-prune-2026-11-14]].

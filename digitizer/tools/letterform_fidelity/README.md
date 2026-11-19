@@ -64,7 +64,8 @@ than the medial axis it built them from, is the untried candidate.
 
 ## Running them
 
-From `digitizer/`, with the venv. Outputs land in `$LF_OUT` (default `./out`
+From `digitizer/`, with the venv (the commands below use the Linux layout,
+`.venv/bin/python`; on Windows read it as `.venv/Scripts/python`). Outputs land in `$LF_OUT` (default `./out`
 beside the scripts, gitignored). `s1_cap.py` must run first — everything else
 reads its pickle.
 
@@ -112,8 +113,9 @@ satin length within +/-15. `embot_angles.py` on the same artwork: modal 92 deg,
 **9/43 = 21%**, 18.0%. **A +/-20 window is 22% by chance**, so our letter
 angles are indistinguishable from random and the pro's are not.
 
-`embot_angles.py` reads the planner directly, never a DST, so the known axis
-bug cannot colour the comparison.
+`embot_angles.py` reads the planner directly, never a DST, so no DST codec
+quirk can colour the comparison. (The browser DST codec's axis bug that this
+note used to name was fixed 2026-09-08; the reasoning here stands regardless.)
 
 **Quote `CROSS_MIN_MM` with any figure.** The modal angle is stable across
 0.8 / 1.5 / 2.2 mm, but the agreement count is not (6/7, 6/7, 5/7). And the

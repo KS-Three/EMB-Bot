@@ -1554,6 +1554,9 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   A guard on the length of a tip's stitches comes first, then the table is
   re-run. *(measured 2026-11-14 — PR #1489,
   `docs/apex-cut-corpus-2026-11-14.md`)*
+  *Superseded: Kent withdrew the flip on 2026-11-14 ("I want it exactly like
+  the pros"); apex_cut and its guard stay OFF. See the standing ruling at the
+  top of this section.*
 - **The pro's border and bean choice does not change with the garment, so a
   knit border rule has no pro support. Do not build "lighter borders on
   knits" from a web guide.** Kent asked (2026-11-19) whether a fabric rule
@@ -9236,7 +9239,7 @@ candidate test over EVERY fixture's accepted cases: the first discriminator
 that parts the broken fixture from the clean one can refuse the clean cases
 everywhere else.** *(measured 2026-10-07 — `docs/join-square-enthusiast-2026-10-07.md`; `tests/test_join_corner_bend_cap.py`)*
 
-## 2026-10-08 — On black-and-white art the halo-vs-stroke question has a per-IMAGE answer: `cfg.two_tone_snap`, built OFF
+## 2026-10-08 — On black-and-white art the halo-vs-stroke question has a per-IMAGE answer: `cfg.two_tone_snap`, built OFF (default ON since 2026-10-11, 190c9cd6)
 
 The 10-05/10-06 entry above ended on "what is missing is a per-region test
 that tells a halo band from a drawn stroke". For two-tone art no such test is

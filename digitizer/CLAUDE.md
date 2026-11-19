@@ -1,7 +1,7 @@
 # digitizer/ — venv setup traps
 
 Moved here from the root `CLAUDE.md` (2026-10-26) so it loads when a session works
-in `digitizer/`. The root file keeps the one-line warning.
+in `digitizer/`. The root file keeps a short paragraph (the `python3.12` and `httpx2` traps) and points here.
 
 - **FIXED 2026-11-17 (PR #1615): `digitizer_core` imports on a cloud
 container's `/usr/bin/python3.12` (3.12.3) again.** `plan_stitches` held a

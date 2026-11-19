@@ -1,5 +1,7 @@
 # Scope digest — licence and dependencies
 
+> Frozen digest as of 2026-08-17; current status is `MASTER_SCOPE.md`, decisions are `DOCTRINE.md`.
+
 Sources: `docs/inkstitch-research-2026-08-10.md`, `docs/sam-alternatives-research-2026-08-11.md`, `docs/pystitch-evaluation-2026-08-11.md`, `docs/font-license-audit-2026-07-31.md`, `docs/lawyer-brief-cc-by-sa-2026-08-04.md`, `docs/bluenesia-permission-archive-2026-08-04.md`.
 
 ## Hard licence constraints

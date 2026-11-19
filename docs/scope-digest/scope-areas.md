@@ -1,4 +1,4 @@
-# Scope-area digest — areas 1-5 + research backlog
+# Scope-area digest — areas 1-5 + research backlog (frozen digest as of 2026-08-17; current status is MASTER_SCOPE.md, decisions are DOCTRINE.md)
 
 Sources: the six files in `docs/scope/`, cross-checked against `MASTER_SCOPE.md`.
 Cited as `1-auto`, `2-font`, `3-studio`, `4-export`, `5-review`, `backlog`, `MASTER`.

@@ -1,5 +1,7 @@
 # scope-history digest — decisions, reversals, ordering
 
+> Frozen digest as of 2026-08-17; current status is `MASTER_SCOPE.md`, decisions are `DOCTRINE.md`.
+
 Source for every item: `docs/scope-history.md`, cited as `[sh · <dated entry>]`. No status, counts or measurements carried forward — that file's numbers are dated snapshots by design.
 
 ## Kent's rulings

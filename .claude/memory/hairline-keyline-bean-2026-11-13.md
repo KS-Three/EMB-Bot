@@ -1,6 +1,6 @@
 ---
 name: hairline-keyline-bean-2026-11-13
-description: "2026-11-13 — `border_from_outline_hairline_run` built OFF (Kent: \"Build guard, OFF\"): a 0.4 mm art keyline sewed as 1.5 mm satin loops (OUTLINE_WIDTH_MM floor); ON it is a bean on the vector centreline, corner-exact, sewn last, fill held to the line"
+description: "2026-11-13 — `border_from_outline_hairline_run` built OFF (Kent: \"Build guard, OFF\"), since flipped ON (#1443): a 0.4 mm art keyline sewed as 1.5 mm satin loops (OUTLINE_WIDTH_MM floor); ON it is a bean on the vector centreline, corner-exact, sewn last, fill held to the line"
 metadata:
   type: project
 ---

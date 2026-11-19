@@ -1,5 +1,7 @@
 # Shape Tracer — Hands-On Evaluation
 
+*Evaluated about 2026-08-09 (the date this file was added to the repo); findings are as of then, not a current status.*
+
 Evaluated whether shape-tracer's tracer feature (image → vector shape tracing) is solid enough to port into EMB-Bot's manual digitizing tool. Focus was the tracer only (not the image simplifier feature). Evaluation was hands-on: ran the live app in headless Chromium (Playwright), not just a source read.
 
 ## What was run

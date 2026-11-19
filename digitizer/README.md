@@ -5,8 +5,11 @@ embroidery out. Python, independently testable, independently sellable — see
 `docs/superpowers/plans/2026-07-29-digitizer-step1-skeleton.md` for the plan
 this implements and the blueprint it comes from.
 
-**Status: build steps 1, 3, 4 and 8 of 11 — stages 1–7, fill + satin, and the
-service.** Artwork goes in and a sewable design comes out: background-masked,
+**Status: this paragraph is the original build-step summary and is only a
+starting point; current status and confidence per capability live in the repo's
+`MASTER_SCOPE.md`.** Built: steps 1, 3, 4 and 8 below, plus step 2 (SAM 2, see
+below), step 9 (preflight) and step 10 (the review UI) — stages 1–7, fill +
+satin, and the service. Artwork goes in and a sewable design comes out: background-masked,
 thread-snapped, segmented and vectorized (step 1); sew-ordered, underlapped,
 filled with underlay, sequenced with lock stitches, and exported (step 3);
 ribbons — lettering, borders, thin strokes — sewn as satin columns along their
@@ -15,11 +18,12 @@ the shop actually stocks, with machine files in nine formats (step 8).
 `SHAPE_TOO_THIN_TO_FILL` means "thin but not stroke-like enough for satin":
 compact slivers worth review-screen eyes.
 
-SAM 2 segmentation (step 2) was deferred by Kent in favour of steps 3–4 — the
-`Segmenter` seam means it drops in later without touching stitch code.
-Preflight scoring (step 9, `digitizer_core/preflight.py`) and the EMB-Bot
-review UI (step 10, `app/src/ui/DigitizePanel.svelte`) are both built too —
-this paragraph used to list them as "still to come," which was stale. See
+SAM 2 segmentation (step 2) was first deferred by Kent in favour of steps 3–4,
+and has since been built through the `Segmenter` seam as an optional lane in
+its own isolated venv, off by default (`cfg.photo_segment_sam2`; see "Setup"
+below). Preflight scoring (step 9, `digitizer_core/preflight.py`) and the
+EMB-Bot review UI (step 10, `app/src/ui/DigitizePanel.svelte`) are built too.
+See
 `docs/superpowers/plans/2026-07-30-digitizer-step4-satin.md` for the satin
 design and `2026-07-30-digitizer-step8-service.md` for the service.
 
@@ -27,9 +31,14 @@ design and `2026-07-30-digitizer-step8-service.md` for the service.
 
 ```
 cd digitizer
-python -m venv .venv
-.venv/Scripts/python -m pip install -e ".[dev]"     # Windows
+py -3.12 -m venv .venv                              # Windows
+python3.12 -m venv .venv                            # Linux / macOS
+.venv/Scripts/python -m pip install -e ".[dev]"     # Windows (Linux: .venv/bin/python)
 ```
+
+Name Python 3.12 explicitly, not a bare `python`: another interpreter can leave
+a venv missing `pystitch`, and tests that need it then skip while still
+reporting green. The venv traps are in [`CLAUDE.md`](CLAUDE.md).
 
 Every OCR read goes through `digitizer_core/ocr.py` (2026-11-06). The engine
 itself comes with the `tesserocr` wheel (Tesseract 5.5.3 bundled, in-process,
@@ -78,7 +87,7 @@ not a win, at a real ~40s/job CPU cost — see
 ## Run
 
 ```
-.venv/Scripts/python -m pytest -q                   # 127 tests, all offline
+.venv/Scripts/python -m pytest -q                   # thousands of tests; counts and expected failures: root CLAUDE.md footgun 7, COOKBOOK.md "Running things"
 ```
 
 Digitize one image and dump per-stage debug PNGs:
@@ -143,6 +152,18 @@ directory lands on `sys.path` and `digitizer_core` imports without an install.
 | `GET /jobs/{id}` | `queued`/`running`/`done`/`error`/`cancelled`; when done, `design` + `review` + `stats` |
 | `POST /jobs/{id}/cancel` | Stop a queued or running job at its next `deadline.check` (inside the loops too, so 1-2 s, not a whole stage); harmless on a finished one (service 0.7.0) |
 | `POST /export` | Any EMB-Bot design + a format → the machine file |
+| `POST /classify` | Read the artwork's lane (stage 0) without digitizing it |
+| `POST /recount` | Count the shapes and colours the run would produce at a size, without stitching |
+| `POST /digitize-manual` | Hand-authored shapes (the Studio's manual draw tools) → a job id (202) |
+| `POST /lettering` | Typed text in an outline font → a job id (202); the Studio's outline fonts use it |
+| `GET /fonts/outline` | List the outline fonts the service can digitize |
+| `GET /fonts/outline/{key}/file`, `/fonts/outline/{key}/license` | The font file (for a CSS preview) and its licence text |
+| `GET /calibration/info`, `GET /calibration/card`, `POST /calibration/read` | Calibration card metadata, the card to sew, and reading a photo of the sewn card |
+
+(Listed from `digitizer_service/app.py`; the live OpenAPI page at `/docs` is the
+authority.) `python -m digitizer_service --studio <dir>` also serves a built
+Studio (`app/dist`) at `/` on the same port, the way the packaged Windows app
+runs (`digitizer_service/studio.py`); it is off by default.
 
 `/digitize` returns an EMB-Bot **`Design`**, not a stitch file — see the DST
 codec finding below for why that matters. `review` is the shapes-and-threads
@@ -162,7 +183,8 @@ Posture: binds loopback, no auth. Set `EMBBOT_SERVICE_TOKEN` and every route but
 `/health` requires `X-EMBBOT-Token` — throw that switch before this listens on
 anything but localhost.
 
-Regenerate the thread charts after changing `tools/palettes/`:
+Regenerate the thread charts after changing the repo-root `tools/palettes/`
+(not `digitizer/tools/`):
 
 ```
 .venv/Scripts/python tools/gen_charts.py
@@ -195,43 +217,43 @@ symbol-by-symbol in `docs/pystitch-evaluation-2026-08-11.md`. The historical
 narrative below keeps pyembroidery's name because that is the library the
 2026-07-29 measurement was made with.)
 
-## Open finding: the browser engine's DST codec disagrees with the standard
+## Finding (fixed 2026-09-08): the browser engine's DST codec disagreed with the standard
 
 While verifying export orientation (2026-07-29), a professionally digitized
 third-party file (`Downloads/Other/2024/beckers logo hat.DST`) was decoded two
-ways. Through pyembroidery it renders upright and correctly proportioned at
-101.9 × 62.1 mm. Through EMB-Bot's own `src/dstimport.js` the same file comes
+ways. Through pyembroidery it rendered upright and correctly proportioned at
+101.9 × 62.1 mm. Through EMB-Bot's own `src/dstimport.js` the same file came
 out 62.1 × 101.9 mm — rotated a quarter turn.
 
-The cause is in the bit-weight table. `src/dst.js` puts x in the high nibble of
+The cause was in the bit-weight table. `src/dst.js` put x in the high nibble of
 each record byte and y in the low nibble; pyembroidery (and the published
-Tajima table) do the opposite. Both EMB-Bot's encoder and its decoder use the
-same table, so the browser engine round-trips its own files perfectly and the
-disagreement only shows against other software. Reading an EMB-Bot-written DST
-back through pyembroidery reproduces it: a 127 × 43.4 mm hat design reports as
+Tajima table) do the opposite. Both EMB-Bot's encoder and its decoder used the
+same table, so the browser engine round-tripped its own files perfectly and the
+disagreement only showed against other software. Reading an EMB-Bot-written DST
+back through pyembroidery reproduced it: a 127 × 43.4 mm hat design reported as
 43.4 × 127.0 mm.
 
-This has NOT been changed. Kent has sewn EMB-Bot files on his Tajima, so
-something reconciles this on real hardware, and rotating every design he has
-made on a theory would be reckless. Resolving it needs a sew-out or a third
-opinion (any machine or viewer that is not either of these two
-implementations).
+**It was fixed on 2026-09-08, both halves:** the two weight tables were swapped
+in the writer and in `decodeDelta`, so both now match
+`pystitch.DstWriter.encode_record` bit for bit. The rest of this section is the
+history of how the service was designed around the dispute. The one thing still
+true is that a `.dst` EMB-Bot wrote BEFORE the fix is in the old dialect, so
+re-importing one reads transposed; the fix does not repair old files. The full
+evidence trail is in the repo's `CLAUDE.md` footgun 1 and DOCTRINE 2026-09-07.
 
-**Build step 8 routes around it rather than betting on an answer.** The service
-hands the browser a `Design` — the same structure `buildLetteringDesign`
-produces — not a DST, so the disputed format never crosses the boundary and a
-digitized design cannot arrive transposed. Studio bakes its own DST with its
-own encoder if it wants one, which round-trips with its own decoder. Machine
-files from `/export` are written by pystitch in the standard convention and
-every response says so in `X-Stitch-Convention`; for DST specifically, Studio's
-own encoder stays the default for lettering/manual designs, the one with sewn
-evidence behind it, while projects made entirely of auto-digitized elements now
-route through this service's `/export` instead. **That last clause only became
-true on 2026-09-07:** Studio's gate required EVERY element to be `digitized`,
-and a new project always carries an empty text element a logo customer never
-removes, so the `/export` preference never actually fired and every DST left by
-the browser codec. It counts only elements that SEW now. PES and JEF, the formats the
-service exists to unlock, have no competing implementation and no conflict.
+**Build step 8 routed around the dispute rather than betting on an answer.**
+The service hands the browser a `Design` — the same structure
+`buildLetteringDesign` produces — not a DST, so the disputed format never
+crossed the boundary and a digitized design could not arrive transposed.
+Machine files from `/export` are written by pystitch in the standard convention
+and every response says so in `X-Stitch-Convention`. Projects made entirely of
+auto-digitized elements route through this service's `/export` instead of the
+browser encoder. **That last clause only became true on 2026-09-07:** Studio's
+gate required EVERY element to be `digitized`, and a new project always carries
+an empty text element a logo customer never removes, so the `/export`
+preference never actually fired and every DST left by the browser codec. It
+counts only elements that SEW now. PES and JEF, the formats the service exists
+to unlock, never had a competing implementation and no conflict.
 
 DST verification on this side still goes through pystitch, never through
 the browser codec.
@@ -358,12 +380,16 @@ and the number lives in the fabric presets, which mirror `src/fabrics.js`
 exactly. Moving it moves it for the browser engine too, and where a Tajima
 should stop jumping and start cutting is his call.
 
-**Fill angle is per shape, from the polygon's vertices.** Each region gets its
-own principal axis, so a word of filled letters comes out a patchwork of
-angles, and the axis is computed from the vertex cloud rather than the area —
-`approxPolyDP` puts vertices where curvature is, not where the shape is.
-`cfg.fill_angle_deg` already forces one angle on everything. Which default
-Kent wants — per shape, per color, or one for the design — is a look, not a bug.
+**Fill angle starts per shape, from the polygon's vertices.** Each region gets
+its own principal axis, and the axis is computed from the vertex cloud rather
+than the area — `approxPolyDP` puts vertices where curvature is, not where the
+shape is. On its own that made a word of filled letters a patchwork of angles.
+Since 2026-11-14 `cfg.group_consistent_fill_angle` is ON by default: a group of
+like shapes (a `regular_structure` congruent group, else one spool with similar
+areas and elongations) takes one shared angle, so the sibling-differ cases
+(the same-coloured feet, the two legs) now match; lettering and the photo
+classes are excluded (`digitizer_core/group_consistency.py`).
+`cfg.fill_angle_deg` still forces one angle on everything.
 
 ## Determinism
 
