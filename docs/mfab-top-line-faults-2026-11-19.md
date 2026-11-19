@@ -57,7 +57,7 @@ stem is 35%, with at most 5 layers.
 | 3 | 35, 6 | fanning, piling at the upright / F bar | pile 53%, 12 layers; two satin runs meet at a corner and fan | real, junction construction |
 | 4 | 45, 12.5 | doubled blocks, stepped joint | satin 252 (bar) and 310 (stem) stack two 1.9 mm bars 0.5 mm apart, 3.3 mm of block; the art's block there is about 3.0 mm; pile 61%, 15 layers | real, junction construction |
 | 5 | 36, 17 | stray diagonal in the dash counter | the run is one satin stitch of the F stem (36.11, 16.26) from (34.28, 17.91), 2.46 mm, bridging a 1.65 mm gap in the stem where the dash's bars join; no travel crosses the counter (the 4-point travel at y 18.0 lies in the bar) | junction construction, not a stray; `lettering_columns_connectors_buried` leaves MFab byte-identical |
-| 6 | 70, 16 | A triangle crowded and ragged | fill, 143 stitches; the 5.0 mm satin ceiling refuses `counter_fan_satin` at 104.9 mm; region 17.9 mm2 against the art 24.1 | gate 1, sew-out row 16 |
+| 6 | 70, 16 | A triangle crowded and ragged | fill, 143 stitches; the 5.0 mm satin ceiling refuses `counter_fan_satin` at 104.9 mm; region 17.9 mm2 against the art 24.1 | gate 1, sew-out row 18 |
 | 7 | 91, 11.5 | B upper slot a short lumpy sausage | region 12.39 mm2 against art 12.9; satin width 1.48 against 1.56 | faithful: thread width and the round-capped 11-18 kit |
 | 8 | 89, 18.5 | B lower slot's left end lumpy | the slot's bar meets the leg's fan wedge | real, junction construction |
 | 9 | 100, 14.5 | B right outline kinks at the notch | pile equals a clean stem; the art itself has a 0.5 mm notch there | grader misread |

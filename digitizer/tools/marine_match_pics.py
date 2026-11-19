@@ -62,6 +62,9 @@ def main(argv=None) -> int:
     ap.add_argument("--ppm", type=float, default=20.0)
     ap.add_argument("--width", type=float, help="the design's width in mm in place of the job's (Becker at 114)")
     ap.add_argument("--tag", default="", help="appended to each file name (e.g. _114mm)")
+    ap.add_argument("--extras", nargs="*", default=[], help="cfg.extra flags (names after lettering_columns_) turned ON in AFTER")
+    ap.add_argument("--base", choices=("default", "preflip"), default="preflip",
+                    help="BEFORE: `preflip` = the four MARINE-match fields off (the 2026-11-18 main), `default` = today's defaults")
     ap.add_argument("--letters", type=int, nargs="*", help="keep only these letters in the strips (0 M, 1 A, 2 R, 3 I, 4 N, 5 E)")
     ap.add_argument("--kent-dir", type=Path)
     a = ap.parse_args(argv)
@@ -74,8 +77,8 @@ def main(argv=None) -> int:
     slugs = [s for s in BECKER if not a.only or s in a.only]
     a.out.mkdir(parents=True, exist_ok=True)
     tw.materialise(a.kent_dir or a.out / "_kent", slugs)
-    before = {}                    # main: block_butt is ON by default since #1684
-    after = {**before, **{KEY + f: True for f in a.flags}}
+    before = {KEY[len("extra."):] + f: False for f in ALL} if a.base == "preflip" else {}
+    after = {**before, **{KEY[len("extra."):] + f: True for f in a.flags}, **{KEY + f: True for f in a.extras}}
     for s in slugs:
         garment, width, art = JOBS[s][0], float(a.width or JOBS[s][1]), Path(resolve(JOBS[s][2]))
         orig = pro_pair._scaled(pro_pair._art_ink(art), width, a.ppm, cv2.INTER_AREA)
@@ -91,7 +94,7 @@ def main(argv=None) -> int:
         ww0 = max(p.shape[1] for p in word)
         word = [cv2.copyMakeBorder(p, 0, hh - p.shape[0], 0, ww0 - p.shape[1], cv2.BORDER_CONSTANT, value=(235, 235, 235))
                 for p in word]
-        names = ("ORIGINAL", "BEFORE (block_butt)", "AFTER (" + " + ".join(a.flags) + ")")
+        names = ("ORIGINAL", "BEFORE (" + ("main before the 11-19 flip" if a.base == "preflip" else "main") + ")", "AFTER (" + " + ".join(list(a.flags) + list(a.extras)) + ")")
         rows = []
         for p, nm in zip(word, names):
             rows.append(pro_pair._label(p if p.ndim == 3 else cv2.cvtColor(p, cv2.COLOR_GRAY2BGR), nm))

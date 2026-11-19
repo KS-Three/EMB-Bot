@@ -1,4 +1,4 @@
-"""`cfg.extra["lettering_columns_r_bowl"]` (2026-11-18, built OFF): a block letter with one
+"""`cfg.lettering_columns_r_bowl` (built OFF 2026-11-18 as a `cfg.extra` key, ON since Kent's 2026-11-19 flip): a block letter with one
 counter and a stem-head butt (Becker MARINE's R) sews as the pro sews it -- a slab across
 the top (upright crosses), the stem (level), the bowl as one band whose crosses turn round
 the counter, the leg (level). Read off the pro's R in
@@ -49,11 +49,10 @@ def test_the_scope_is_off_by_default_and_puts_itself_back():
     assert oc._R_BOWL.get() is False
 
 
-def test_plan_stitches_sets_it_from_the_extra_key_for_its_own_plan_only(monkeypatch):
+def test_plan_stitches_sets_it_from_the_field_for_its_own_plan_only(monkeypatch):
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: oc._R_BOWL.get())
-    on = replace(PipelineConfig(), extra={"lettering_columns_r_bowl": True})
-    assert pipeline.plan_stitches(None, on) is True
-    assert pipeline.plan_stitches(None, PipelineConfig()) is False
+    assert pipeline.plan_stitches(None, PipelineConfig()) is True              # ON since Kent's 2026-11-19 flip
+    assert pipeline.plan_stitches(None, replace(PipelineConfig(), lettering_columns_r_bowl=False)) is False
     assert oc._R_BOWL.get() is False
 
 

@@ -14,7 +14,7 @@ float clearance drafted, not built),
 Stitches"), card v7 beside it, and the other `docs/sewout/card-*` folders. MASTER_SCOPE items
 33 (pull comp per rail or total; line 335), 44 (`forbid_gap_mm`, 0.8 mm; line 393) and the
 hairline-bean question (item 24, card block 5; line 133) already name their own sew-outs.
-Rows 1-9, 12, 14 and 15 below are the questions that have NO card block yet.
+Rows 1-9, 12, 14, 15, 16 and 17 below are the questions that have NO card block yet.
 
 ## Grouping: what to sew so that one sitting answers the most rows
 
@@ -229,7 +229,29 @@ other two.
    `r_bowl` flips on its construction.
 5. **Source.** `docs/marine-pro-construction-2026-11-18.md` (#1686), the R rows of sections 3 and 4.
 
-### 16. MFab's A counter on the hat: 5.0 mm satin ceiling against a 7.5 mm triangle
+### 16. To a T hat small caps: the A counter and the C-to-L gap at the hat pull (2026-11-19)
+
+Source: `docs/toat-a-and-c-2026-11-19.md`. The A of "To A T" (stroke 1.5 mm) sews a 1.1 mm2 counter where
+the art has 2.26 mm2 (a 1.25 mm slit becomes 1.03 mm). The C of "LLC" (stroke 1.0 mm) sews its stems at
+2.0-2.1 mm against the art's 1.23 mm and the L-to-C gap at 2.9 mm against 3.8 mm. Cause: the fixed 0.4 mm
+per side pull on the hat (gate 1). Sew with the Toat Machine hat at 89.5 mm; the question is whether the
+slit and the 2.9 mm gap read on cloth. No flag built.
+
+### 17. Becker MARINE's top band: does the seam under it show on cloth?
+1. **Design, spot.** `becker_hat_large` 101.9 mm, the MARINE line (all six letters), and `becker_hat_small` 76.5 mm for the small-size check.
+2. **In doubt.** The professional sews a sheared band (near-upright crosses, one stroke deep, overlapping the stem 1.0-1.5 mm) across the
+   top of all six letters and it reads as part of the letter in thread. Ours, `lettering_columns_top_slab` + `lettering_columns_e_top_arm`
+   (both OFF, `docs/marine-pro-construction-2026-11-18.md` section 5), shows a seam along the band's lower edge in the flat preview
+   (`docs/renders/marine-match-2026-11-18/top-slab/`, `e-top-arm/`). Whether that is the preview, which draws every change of direction, or
+   a real ridge, is not known; ours butts the band to the stems where his overlaps them.
+3. **Sew, look.** Becker hat large at 101.9 mm sewn TWICE, main as it is vs the two flags ON. Look at whether the band's lower edge reads
+   as a seam or as part of the letter; at 76.5 mm whether the M's V and the N and E tops hold together (in the preview the M's V breaks
+   into fans and the N and E tops come apart).
+4. **Unlocks.** The slab family: if the band reads as part of the letter, `top_slab` (with `e_top_arm`, one family) becomes a flip question
+   for Kent; if the seam shows, both stay OFF and the overlap (his 1.0-1.5 mm) is the next thing to build.
+5. **Source.** `docs/marine-pro-construction-2026-11-18.md` sections 1 (rule 2) and 5 (#1689).
+
+### 18. MFab's A counter on the hat: 5.0 mm satin ceiling against a 7.5 mm triangle
 1. **Design, spot.** `mfab_hat` 104.9 mm, the A's counter at about (70, 16): a triangle 7.5 mm
    tall and 3.75 mm wide at most (art 24.1 mm2; sewn region 17.9 mm2).
 2. **In doubt.** The 5.0 mm satin ceiling (gate 1, Kent 2026-11-15 "keep 5.0") refuses
@@ -242,7 +264,7 @@ other two.
 4. **Unlocks.** Whether the satin ceiling can rise for a fanned counter; until then the fill stays.
 5. **Source.** `docs/mfab-top-line-faults-2026-11-19.md`, fault 6; memory `counter-fan-2026-11-14`.
 
-### 17. MFab hat white letters: our satin pitch 0.4 mm against his two passes at about 0.3-0.4
+### 19. MFab hat white letters: our satin pitch 0.4 mm against his two passes at about 0.3-0.4
 1. **Design, spot.** `mfab_hat`, 104.9 mm, the white letters (M-F-A-B), the junctions at about (37, 7.5), (44, 11.5), (34.5, 16.5)
    and (88, 18.5), and the B's left stem (79.3, 10-23).
 2. **In doubt.** Our satin spacing is 0.4 mm same-side (5.1-5.2 stitches per mm of stem per pass; `SATIN_SPACING_MM`); his file's stems run
@@ -255,6 +277,7 @@ other two.
    construction (a satin-piece census of his file first), not density.
 5. **Source.** `docs/mfab-top-line-faults-2026-11-19.md`; PR #1694.
 
+
 ## What this list does not claim
 
 - No row says a sew-out will come out any particular way.
@@ -263,3 +286,11 @@ other two.
   nearest precedent.
 - If an existing sew-out list or card is extended instead of this page, move the rows, do not
   duplicate them.
+
+## Golden Tee red keyline: sewn at the floor, or under the face (added 2026-11-19)
+
+Art keyline 0.37-0.48 mm; we sew 1.2-1.3 mm satin (floor + pull 0.4), last, over the gold; `keyline_under_face` (built OFF)
+puts it under the faces and the red all but disappears; the pro sews GT's at 1.7 mm after the face and has none in GOLF.
+Sew the Golden Tee hat both ways (flag OFF and ON) and look: does the red read as a thin outline at arm's length, or as a heavy
+band (OFF) / is it missing (ON)? Unlocks: whether a thin red run/bean (about 0.45 mm) is worth building.
+Source: `docs/goldentee-red-keyline-2026-11-19.md`.

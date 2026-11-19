@@ -1,4 +1,4 @@
-"""The MARINE match flags (2026-11-18, built OFF; `docs/marine-pro-construction-2026-11-18.md`),
+"""The MARINE match flags (built OFF 2026-11-18, ON since Kent's 2026-11-19 flip; `docs/marine-pro-construction-2026-11-18.md`),
 each pinned on the letter polygons Becker's 102 mm hat hands the lane
 (`testdata/marine102_*_letter(s).json`):
 
@@ -60,17 +60,27 @@ def test_scopes_off_by_default_and_plan_stitches_sets_them(scope, flag, monkeypa
         assert var.get() is True
     assert var.get() is False
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: var.get())
-    assert pipeline.plan_stitches(None, replace(PipelineConfig(), extra={flag: True})) is True
-    assert pipeline.plan_stitches(None, PipelineConfig()) is False
+    assert pipeline.plan_stitches(None, PipelineConfig()) is True              # ON since Kent's 2026-11-19 flip
+    assert pipeline.plan_stitches(None, replace(PipelineConfig(), **{flag: False})) is False
 
 
-def test_block_lean_scope_is_off_by_default_and_set_from_extra(monkeypatch):
+def test_block_lean_scope_is_off_by_default_and_set_from_the_field(monkeypatch):
     assert cl._BLOCK_LEAN.get() is False
     with cl.block_lean_scope(True):
         assert cl._BLOCK_LEAN.get() is True
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda result, cfg: cl._BLOCK_LEAN.get())
-    assert pipeline.plan_stitches(None, replace(PipelineConfig(), extra={"lettering_columns_block_lean": True})) is True
-    assert pipeline.plan_stitches(None, PipelineConfig()) is False
+    assert pipeline.plan_stitches(None, PipelineConfig()) is True
+    assert pipeline.plan_stitches(None, replace(PipelineConfig(), lettering_columns_block_lean=False)) is False
+
+
+def test_all_four_fields_default_on_and_the_pre_flip_arm_turns_them_off():
+    from tests.conftest import PRE_FLIP, MARINE_MATCH_2026_11_19_OFF
+    for k in MARINE_MATCH_2026_11_19_OFF:
+        assert getattr(PipelineConfig(), k) is True
+        assert PRE_FLIP[k] is False
+    import json
+    pins = json.loads((Path(__file__).resolve().parent / "engine_2026_10_27.json").read_text(encoding="utf-8"))
+    assert all(pins[k] is False for k in MARINE_MATCH_2026_11_19_OFF)
 
 
 def test_a_bar_off_leaves_the_left_foot_and_bar_one_piece():
@@ -132,3 +142,59 @@ def test_block_lean_leaves_an_upright_arm_alone():
             b = cl.lean_column(c, 0.0, 0.4)
         if abs(c.axis[0]) > 0.9:               # a near-horizontal stroke: its near-upright cross must not tilt further
             assert [s for s in b.stations] == [s for s in a.stations]
+
+
+# ------------------------------------------------- e_top_arm and top_slab (built OFF 2026-11-19)
+def _poly_en(name: str) -> Polygon:
+    v = json.loads((TD / "marine102_EN_letters.json").read_text(encoding="utf-8"))["marine102_" + name]
+    return Polygon(v["exterior"], v["holes"])
+
+
+def _cut_en(name: str, **scopes):
+    import contextlib
+    with contextlib.ExitStack() as st:
+        st.enter_context(oc.fold_apex_side_scope(True))
+        st.enter_context(oc.block_butt_scope(True))
+        for k, on in scopes.items():
+            st.enter_context(getattr(oc, k + "_scope")(on))
+        return oc.letter_columns(_poly_en(name), 0.4, corner_fold=True, **LANE)
+
+
+def test_e_top_arm_and_top_slab_scopes_are_off_by_default_and_put_themselves_back():
+    for var, scope in ((oc._E_TOP, "e_top"), (oc._TOP_SLAB, "top_slab")):
+        assert var.get() is False
+        with getattr(oc, scope + "_scope")(True):
+            assert var.get() is True
+        assert var.get() is False
+
+
+def test_e_top_arm_on_the_top_arm_is_one_upright_band_over_the_stems_top():
+    off = _cut_en("E", e_top=False)
+    on = _cut_en("E", e_top=True)
+    assert len(off.columns) == len(on.columns) == 4
+    band = min(on.columns, key=lambda c: c.piece.bounds[1] * 1000 - c.piece.area)
+    x0, y0, x1, y1 = on.poly.bounds
+    assert band.piece.bounds[0] <= x0 + 1.5 and band.piece.bounds[2] >= x1 - 1.5      # the whole width of the letter
+    assert _cross_deg(band.stations) > 85                                                # upright crosses
+    stem = max(on.columns, key=lambda c: c.piece.bounds[3] - c.piece.bounds[1])
+    assert _cross_deg(stem.stations) < 3                                                 # the stem below stays level
+
+
+def test_e_top_arm_off_is_block_butts_cut():
+    a, b = _cut_en("E"), _cut_en("E", e_top=False)
+    assert [c.stations for c in a.columns] == [c.stations for c in b.columns]
+
+
+@pytest.mark.parametrize("name", ["M", "A"])
+def test_top_slab_on_one_upright_band_across_the_top_and_off_is_unchanged(name):
+    a = _cut(name)
+    off = _cut(name, top_slab=False)
+    assert [c.stations for c in a.columns] == [c.stations for c in off.columns]
+    on = _cut(name, top_slab=True)
+    x0, y0, x1, y1 = on.poly.bounds
+    bands = [c for c in on.columns if c.piece.bounds[1] <= y0 + 0.05 and c.piece.bounds[3] < y0 + 0.5 * (y1 - y0)]
+    assert len(bands) == 1 and not on.unsewn
+    assert 70 < _cross_deg(bands[0].stations) < 85                                       # sheared, near upright (his -74 to -90)
+    # the band is the letter's own polygon: no cross leaves it
+    from shapely.geometry import LineString
+    assert all(on.poly.buffer(0.05).contains(LineString(st)) for st in bands[0].stations)

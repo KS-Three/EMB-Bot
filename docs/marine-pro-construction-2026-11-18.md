@@ -142,7 +142,57 @@ Pictures: `docs/renders/marine-match-2026-11-18/all-four/<placement>_word.jpg` (
 | **E** | **matches** the arms at 76.5-79.8 now; differs at the corners | `block_butt_small`: stem and three butted arms at 76.5 and 79.8 (before: a 24 mm folded fan and a 23.6 mm fan). Differs: his top arm is one 12.2 mm piece over the stem's top, his lower-left corner three small fans (we butt square) |
 | **Slabs** (top of M A R I N E) | **not built** | the pro's sheared top band; #1659's apex family put ours on and Kent turned it off at the whole word. A narrow in-letter cap is possible (his is 4-5 mm deep and inside the outline), but the A, R and E now read well at the whole word without it; left for the director's call |
 
-## 5. Data
+## 5. 2026-11-19: the flip, and what still differs
+
+**The flip.** Kent, shown the whole word at all five placements, both R close-ups and the three-flag fallback
+(ORIGINAL | BEFORE | AFTER), told the catches (the R's 0.5 mm stand-off is read from his file, not cloth; the E change undoes his
+11-14 fold at the small sizes too; no slabs, so closer to the pro's, not identical): "Flip all four ON (Recommended)". `r_bowl`,
+`block_butt_small`, `a_bar` and `block_lean` are typed `PipelineConfig` fields, default True, each with a dated comment quoting
+him and the caveats; `tests/conftest.py` `MARINE_MATCH_2026_11_19_OFF` is in `PRE_FLIP`; `tests/engine_2026_10_27.json` pins all
+four false. Re-run on the flip branch (`flag_sweep --flag lettering_columns_r_bowl,..._block_butt_small,..._a_bar,..._block_lean`,
+44 runs): 6 Becker movers, 38 identical, 0 errors, the same bytes as section 3's all-four arm (`flag-sweeps/flip-all-four.md`).
+
+**The 11 tests.** They failed only in the forced-ON experiment of section 3, which set the scopes' context variables for the
+whole session and so also moved tests that drive `letter_columns` directly. Under the real default (the fields, read in
+`plan_stitches`) the 35 related files plus `test_pins_are_frozen`, `test_default_path_diff`, `test_determinism_sweep`,
+`test_flat_lane_byte_identical` and `test_crop_interactions` (641 tests) show **one failure, the known local-only
+`enthusiast_logo` golden**, and none of the 11: the OFF-byte pins, the three E-fold asserts (`test_the_e_folds_round_both_corners`,
+`test_only_the_e_moves`, `test_the_folded_e_needs_no_trim`), the MFab band fixture
+(`test_off_is_the_lane_before_the_flag[mfab105_band_letters]`) and the two edge-walk fixtures call `letter_columns` with no
+scope set, so they assert the lane as it was, which is still what the lane does when a caller does not ask for the block
+construction. What they pin is therefore unchanged and still true; the production default now differs from what they pin
+only through `plan_stitches`, which they do not call. MFab hat is byte-identical under the default (sweep above), so no MFab
+change is hidden behind them. Full-suite status is CI's.
+
+### Flags built OFF after the flip (`cfg.extra["lettering_columns_<name>"]`)
+
+**`e_top_arm` and `top_slab` are ONE FAMILY (director, 2026-11-19): either every letter wears the pro's top band or none does. Both
+stay OFF.** At the whole word `e_top_arm` gives the E alone a banded top with a seam under it while M, A, R, I and N have none (its
+saving, -1 trim per placement and -1.8 to -8.7 mm needle-up, is real but small), and `top_slab` gives all six a seam, the #1659 look.
+Whether the seam is a preview matter or a real one is for cloth: sew-out row 17 (Becker hat large 101.9 mm sewn twice, main vs both flags ON).
+
+| flag | function | what | status |
+|---|---|---|---|
+| `e_top_arm` | `outline_cut._e_top_cuts`, `e_top_scope`, `_E_TOP` | the E's top arm one upright column across the letter over the stem's top; arms upright; the stem below level | OFF; 44 runs, 6 Becker movers, 0 errors; pictures `e-top-arm/` |
+| `top_slab` | `outline_cut._slab_cuts`, `_slab_merge`, `top_slab_scope`, `_TOP_SLAB`, `SLAB_DEPTH_W`, `SLAB_CROSS_DEG` | one sheared band (-77 deg, one stroke deep, the letter's own polygon) across the top of every letter | OFF; seam across every letter, M/N/E break up at 76.5 (`top-slab/`); not swept |
+
+### Hand-off: per letter, what matches, what differs, and why it is not built
+
+ON since Kent's flip (`cfg.lettering_columns_*`): `r_bowl` (`outline_cut._bowl_cuts`, `_bowl_band`, `_bowl_column`,
+`_bowl_column_normal`, `BOWL_INNER_INSET_MM`), `block_butt_small` (`_butt_min_w`, `BUTT_MIN_W_SMALL_MM`, `block_small_scope`),
+`a_bar` (`_a_bar_cuts`, `a_bar_scope`), `block_lean` (`column_lean.cross_direction`, `block_lean_scope`, `BLOCK_LEAN_SPAN_DEG`).
+
+| letter | matches the pro | differs by | why not built (function it would live in) |
+|---|---|---|---|
+| **M** | V diagonals level (`block_lean`) | his V is four 3-5 mm pieces and a slab-and-left-diagonal piece (fan 31 deg); ours two diagonals of 11.7-11.9 mm, no slab | the four-piece cut is invisible once the crosses are level (it follows his junction overlaps); the slab is `top_slab` |
+| **A** | bar and legs (`a_bar`): bar 87 deg, 4.9 mm, butting two uncut legs | his bar tucks 1.5 mm under each leg; his right leg fans 37 deg into a two-piece cap | the tuck needs the bar sewn BEFORE the legs: the walk (`columns.column_runs`), not the cut, decides that, and a cut alone puts the overlap on top; the cap is `top_slab` |
+| **R** | stem, level leg, one radial bowl column (`r_bowl`); counter 6.04 / 6.29 / 3.47 / 4.05 / 3.88 mm2 against block_butt's 4.59 / 4.57 / 2.2 / 2.2 / 2.15 | his counter 9.85 / 8.06 / 4.49 / 4.49 / 4.44; his bowl sweeps 134-176 deg (ours about 250, no slab) | the 0.5 mm inset (`BOWL_INNER_INSET_MM`) is read from his file, not cloth: sew-out row 15; the slab is `top_slab` |
+| **I** | one level column | his has a slab piece and 3-4 junction patches | `top_slab` |
+| **N** | diagonal level (`block_lean`), square ends (`block_butt`) | his diagonal fans 78 deg from the slab at its head | the head fan belongs to the slab: `top_slab` (`_slab_cuts`) |
+| **E** | at 76.5-79.8 stem and three butted arms (`block_butt_small`) | his top arm is one piece over the stem's top; his lower-left corner is three small fans | `e_top_arm` (OFF, one family with `top_slab`); the corner fans need the fold's pivot (`outline_cut._fold_corners`, `_fold_pair`), which `block_butt` turns off for the E on purpose |
+
+
+## 6. Data
 
 Piece-level tables for hat large (every column in sewing order), then a per-letter line for the other four. `ends` is
 what the column's end meets (`free` nothing, `butt` another column's body, `corner` / `straight` another column's end,

@@ -4235,6 +4235,22 @@ def sequence(
                                     {"jumps": o_jumps + b_report["jumps"], "empty": False,
                                      "outline_loops": b_report["outline_loops"],
                                      "outline_stems": b_report["stems"]}, False)
+                    # `cfg.outline_strip_column` (built OFF): a strip between two
+                    # holes sewn once, a full-width column over the loops
+                    if getattr(cfg, "outline_strip_column", False) and not shaped_band:
+                        from .outline_strip import strip_column_runs
+                        c_runs, c_report = strip_column_runs(
+                            art, loop_holes, p.shape_id, reach=o_reach,
+                            entry=o_runs[-1].points[-1] if o_runs else entry,
+                            trim_at_mm=trim_at, underlay=satin_underlay != "none",
+                            satin_kw={"underlay_style": satin_underlay, "trim_at_mm": trim_at,
+                                      "spacing_mm": satin_spacing_for(p)},
+                            loop_kw={"split_shared": cfg.outline_loop_split_shared})
+                        if not c_report["empty"]:
+                            return (o_runs + c_runs,
+                                    {"jumps": o_jumps + c_report["jumps"], "empty": False,
+                                     "outline_loops": c_report["loops"],
+                                     "outline_strips": c_report["strips"]}, False)
                     l_runs, l_report = keyline_runs(
                         art, p.shape_id, reach=o_reach,
                         entry=o_runs[-1].points[-1] if o_runs else entry,
