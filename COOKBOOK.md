@@ -2701,14 +2701,19 @@ is the only place Kent's eye is recorded as DATA rather than prose. Spec:
 
 ## The one rule that explains most "quality" bug reports
 
-**Flat, spot-color art in → pro-quality stitches out. Photographic/gradient
-art out of ANY auto-digitizer → mush**, no matter how good the engine gets.
-Kent already chose "optimize for clean input art" over "make it magically
-handle anything" — this is a settled decision, not an open question. If a
-future report is "digitizing looks bad," check the input art's flatness
-*first*, before touching engine code. The built-in **Flatten workflow**
-(Image mode) exists precisely to make this collapse-to-N-colors step visible
-and controllable to the user.
+**Flat, spot-color art in → pro-quality stitches out.** That is the path the
+product is built around, and the triage rule still holds: if a report is
+"digitizing looks bad," check the input art's flatness *first*, before touching
+engine code. The built-in **Flatten workflow** (Image mode) exists to make the
+collapse-to-N-colors step visible and controllable to the user.
+
+**Photographic and gradient art is an active improvement track, not a dead
+end** (Kent 2026-11-19, replacing this section's old "photos come out as mush,
+settled decision" wording). Kent 2026-10-27: "This digitizer needs to be
+building tools that help and improve ALL photos" (memory
+`photo-lane-generalise-2026-10-27`), and ROADMAP Phase 4 (tonal) is open. So a
+photo report is real work for the photo lane, measured across the photo corpus
+(`digitizer/testdata/photo/corpus/`), not tuned on one fixture.
 
 ## Architecture map
 
