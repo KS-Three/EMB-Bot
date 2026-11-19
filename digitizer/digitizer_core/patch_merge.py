@@ -12,14 +12,14 @@ Most sit within a millimetre or two of a stroke's end, at the same cross angle
 (Bridge hat 4 of 5 at 0.16-0.62 mm and 0 to 10 degrees; Tires 2 of 5 at 1.45 and
 2.34 mm).
 
-What it does. A patch whose nearer end lies within `MERGE_MM` of a stroke column's
-END, its first cross turned no more than `TURN_DEG` from that end's, JOINS that
+What it does. A patch whose nearer end lies within `PATCH_MERGE_MM` of a stroke column's
+END, its first cross turned no more than `MERGE_TURN_DEG` from that end's, JOINS that
 column: its stations are appended (or prepended), crosses oriented to the
 column's, with stations interpolated across the gap at the pitch when the gap is
 over a pitch -- every one of them inside the artwork, else the patch stays a patch.
 The column is longer, one column end replaces the patch's two ends and the stroke
 end it butted, and the needle no longer lifts for the patch. Never merged: a
-patch farther than `MERGE_MM` or turned more than `TURN_DEG`, and a stroke that
+patch farther than `PATCH_MERGE_MM` or turned more than `MERGE_TURN_DEG`, and a stroke that
 is closed.
 
 Off, byte-identical (the scope reads False and nothing is merged).
@@ -35,9 +35,9 @@ from dataclasses import replace
 from shapely.geometry import Point
 
 #: a patch joins a stroke end this near (mm)
-MERGE_MM = 2.5
+PATCH_MERGE_MM = 2.5
 #: ... whose cross it continues within this many degrees
-TURN_DEG = 35.0
+MERGE_TURN_DEG = 35.0
 
 _ON: contextvars.ContextVar[bool] = contextvars.ContextVar("patch_merge", default=False)
 
@@ -93,7 +93,7 @@ def merge_patches(cols: list, patches: list, poly, pitch_mm: float) -> tuple[lis
                 for pe in (0, -1):
                     t = p.stations[pe]
                     d = math.dist(_mid(s), _mid(t))
-                    if d <= MERGE_MM and _turn(_ang(s), _ang(t)) <= TURN_DEG \
+                    if d <= PATCH_MERGE_MM and _turn(_ang(s), _ang(t)) <= MERGE_TURN_DEG \
                             and (best is None or d < best[0]):
                         best = (d, ci, end, pe)
         if best is None:
