@@ -203,3 +203,99 @@ def test_relax_corners_is_the_roll_loop(shape, r_corner, step):
     assert got == _relax_corners_rolls(pts, r_corner, k)
     if shape != "circle":
         assert got != [tuple(map(float, q)) for q in pts]          # the case relaxed something
+
+
+# --- fine bar: the ink read on the band's box --------------------------------------------
+
+import cv2  # noqa: E402
+
+from digitizer_core import fine_bar, threads  # noqa: E402
+
+
+def _seeded_ink_full_frame(img_lab, bmask, seed, T, B):
+    """`apply_fine_bar_survive`'s ink read as it was until 2026-11-19: the whole frame."""
+    ink = ((np.linalg.norm(img_lab - T, axis=2) < np.linalg.norm(img_lab - B, axis=2))
+           & (bmask > 0)).astype(np.uint8)
+    _n, lbl = cv2.connectedComponents(ink, connectivity=8)
+    hit = np.unique(lbl[(seed > 0) & (ink > 0)])
+    hit = hit[hit > 0]
+    if not len(hit):
+        return None
+    return np.nonzero(np.isin(lbl, hit))
+
+
+@pytest.mark.parametrize("seed_n", range(6))
+@pytest.mark.parametrize("band", [
+    [(-50, 30), (250, 38), (250, 50), (-50, 42)],      # across the frame, clipped both ends
+    [(60, -40), (75, -40), (90, 300), (75, 300)],      # steep, clipped top and bottom
+    [(0, 0), (40, 0), (40, 12), (0, 12)],              # in a corner, on the frame edge
+    [(150, 100), (199, 100), (199, 119), (150, 119)],  # the far corner
+    [(300, 300), (320, 300), (320, 310), (300, 310)],  # wholly off the frame: no band
+])
+def test_seeded_ink_is_the_full_frame_read(seed_n, band):
+    rng = np.random.default_rng(seed_n)
+    H, W = 120, 200
+    T, B = np.array([20.0, 5.0, -3.0], np.float32), np.array([90.0, -2.0, 4.0], np.float32)
+    # ink strokes and specks on a host ground, blurred: ties and near-ties at the edges
+    frame = np.where(rng.random((H, W))[..., None] < 0.15, T, B).astype(np.float32)
+    frame[30:50, 10:190] = T
+    frame[:, 70:80] = T
+    frame = cv2.GaussianBlur(frame, (5, 5), 1.2)
+    bmask = np.zeros((H, W), np.uint8)
+    cv2.fillPoly(bmask, [np.round(np.array(band, float)).astype(np.int32)], 1)
+    seed = np.zeros((H, W), np.uint8)
+    cv2.fillPoly(seed, [np.array([(20 + 30 * seed_n, 35), (40 + 30 * seed_n, 35),
+                                  (40 + 30 * seed_n, 45), (20 + 30 * seed_n, 45)], np.int32)], 1)
+    got = fine_bar._seeded_ink(frame, bmask, seed, T, B)
+    want = _seeded_ink_full_frame(frame, bmask, seed, T, B)
+    if want is None:
+        assert got is None
+    else:
+        assert got is not None
+        assert np.array_equal(got[0], want[0]) and np.array_equal(got[1], want[1])
+        assert got[0].dtype == want[0].dtype and got[1].dtype == want[1].dtype
+
+
+# --- threads: one Lab conversion per frame inside a job ----------------------------------
+
+def _big_rgb(seed):
+    return np.random.default_rng(seed).integers(0, 256, (400, 300, 3), dtype=np.uint8)
+
+
+def test_lab_memo_answers_what_the_conversion_answers():
+    rgb = _big_rgb(1)
+    plain = threads.rgb_to_lab(rgb.reshape(-1, 3))                 # no scope: no memo
+    with threads.lab_memo_scope():
+        first = threads.rgb_to_lab(rgb.reshape(-1, 3))
+        again = threads.rgb_to_lab(rgb.reshape(-1, 3).copy())       # equal bytes, new array
+        assert np.array_equal(first, plain) and np.array_equal(again, plain)
+        first[:] = -1.0                                             # a caller writing into its copy
+        assert np.array_equal(threads.rgb_to_lab(rgb.reshape(-1, 3)), plain)
+        # strided and float inputs are keyed by their own values and dtype
+        strided = rgb[:, ::2].reshape(-1, 3)
+        assert np.array_equal(threads.rgb_to_lab(strided), threads._rgb_to_lab(strided))
+        f = rgb.reshape(-1, 3).astype(np.float64)
+        assert np.array_equal(threads.rgb_to_lab(f), plain)
+        other = _big_rgb(2).reshape(-1, 3)
+        assert np.array_equal(threads.rgb_to_lab(other), threads._rgb_to_lab(other))
+        with threads.lab_memo_scope():                              # nesting keeps the outer memo
+            assert threads._LAB_MEMO.get() is not None
+        assert threads._LAB_MEMO.get() is not None
+    assert threads._LAB_MEMO.get() is None                          # nothing held past the job
+
+
+def test_lab_memo_small_inputs_take_the_plain_call():
+    with threads.lab_memo_scope():
+        threads.rgb_to_lab(np.array([[10, 20, 30]], np.uint8))
+        assert threads._LAB_MEMO.get() == {}
+
+
+def test_build_generation_runs_inside_the_memo_scope(monkeypatch):
+    from digitizer_core import pipeline
+    seen = []
+    monkeypatch.setattr(pipeline, "classify",
+                        lambda *a, **k: (seen.append(threads._LAB_MEMO.get()), 1 / 0))
+    with pytest.raises(ZeroDivisionError):
+        pipeline.build_generation(np.zeros((8, 8, 3), np.uint8))
+    assert seen and seen[0] is not None
+    assert threads._LAB_MEMO.get() is None
