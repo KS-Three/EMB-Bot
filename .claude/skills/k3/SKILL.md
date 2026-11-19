@@ -100,8 +100,13 @@ going") — that is the authority they're asking for. If Kent ruled directly in 
   above). The message tells future-you to dispatch one
   Sonnet steward: arm/undraft every open PR, find dirty or truly red heads, map branch →
   owning session via `list_sessions`, message the owner, report only exceptions.
-- **Auto-merge only.** The auto-mode classifier blocks hand merges ("Merge Without
-  Review"). Arm while `blocked`; once a PR is `clean` it can't be armed and needs Kent's click.
+- **Arm while `blocked`; the foreman merges a `clean` one** (Kent 2026-11-06, "i'm not
+  merging anything, you do it"; confirmed for CLAUDE.md 2026-11-19). Once every required
+  check is green a PR can't be armed, so the foreman (or director) runs
+  `gh pr merge --squash <n>` on it. Never `--admin`, never past a required check; a PR
+  that turns `blocked` again on a new head gets armed instead. Workers and managers still
+  only arm. If the auto-mode classifier refuses the merge ("Merge Without Review"), say
+  so in one line with the PR number; don't route around it.
 - **Fake reds:** a `digitizer` red whose shards are all `cancelled` is a superseded run
   (concurrency cancel), not a failure. Check the head sha before acting on any red.
 - **Two unrelated PRs red at once** → suspect shared infra (CI, main), diagnose once.
