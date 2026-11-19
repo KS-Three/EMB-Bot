@@ -22,7 +22,8 @@ of evidence expected.
   a polygon covering a gap doesn't mean thread was sewn there.
 - **Measure on the fixture the claim was made against, then on at least one
   other.** `digitizer/testdata/` has real fixtures — `logo_alpha`,
-  `repro_gradient_white_icon.png`, and others under `testdata/photo/`.
+  `testdata/photo/repro_gradient_white_icon.png`, and others under
+  `testdata/photo/`.
   Reusing only the fixture the original claim cited risks confirming a
   cherry-pick.
 - **Compare against a documented baseline, not just "does it look right."**
@@ -30,7 +31,15 @@ of evidence expected.
   worst clearance (mm), trim count, stitch count, bare-fabric exposure
   (mm), region/fragment count. Report before/after deltas, not just a final
   number.
-- **Distrust your own tools too.** `tools/chain_probe.py` had a
+- **Current instruments.** `cd digitizer && python -m tools.flag_sweep
+  --flag NAME --out DIR [--pictures]` says which designs a flag moves (all
+  tripwire placements plus corpus fixtures, OFF vs ON); `python -m
+  tools.eye_pairs_gallery --labelled` builds the before|after page;
+  `digitizer/tools/prime_grader.py` is the session-eye grader. **A claim
+  about a flag flip or about orientation is verified by a picture** (CLAUDE.md
+  "A flip question comes with pictures"; footgun 1: render orientation
+  claims) — numbers alone do not close it.
+- **Distrust your own tools too.** `digitizer/tools/chain_probe.py` had a
   pre-existing bug that made its own before/after comparison a no-op — it
   looked like it was measuring something and wasn't. Read what a
   measurement script actually computes before trusting its output; don't
@@ -45,8 +54,8 @@ of evidence expected.
    engine files to understand what's actually being computed, not just what
    the docstring says.
 3. Run the pipeline on the relevant fixture(s):
-   `cd digitizer && .venv/Scripts/python -m pytest -q` for the test suite,
-   or the Node-side runners (`tools/run-digitize.mjs`, `tools/render-dst.mjs`)
+   `cd digitizer && .venv/Scripts/python -m pytest -q <touched test files>`
+   (not the full suite — ~80 minutes, CI runs it), or the Node-side runners (`tools/run-digitize.mjs`, `tools/render-dst.mjs`)
    for the JS engine — check `tools/` for the current runner scripts before
    assuming a specific one exists.
 4. Where debug output exists (stage-numbered PNGs like `stage1_bg.png`,

@@ -15,6 +15,13 @@ foreman asks Kent and relays his words verbatim (Kent, 2026-10-27: "qestions fro
 workers should roll up to you for me to answer"). Open a PR READY FOR REVIEW against main, arm auto-merge
 (enable_pr_auto_merge) while mergeable_state is blocked, never merge. If CI goes red on
 your PR, fix it.
+A flip question (ON/OFF or a changed default/threshold of a digitizing flag) goes to your
+director WITH before/after pictures (committed under docs/renders/ or an artifact link;
+`python -m tools.flag_sweep` says which designs move); numbers alone do not count and a
+question without pictures goes back to you (CLAUDE.md, Kent 2026-11-16).
+Models are cheap by default (Kent 2026-11-02, "saving on usage"): any session or subagent
+you start passes `model` (Sonnet for build work, Haiku for read-only); never Opus or Fable
+unless Kent named it.
 
 ## Sweep (send_later, 30 min)
 Foreman sweep (quiet mode). Dispatch one Sonnet steward: arm/undraft all open PRs; for
@@ -51,7 +58,7 @@ Duties, every cycle:
 2. Stuck PRs: dirty (conflict) or truly red on the CURRENT head -> message the owning session (send_message) with the failing check and the fix (merge origin/main, never rebase). Ignore fake reds: a digitizer red whose shards are cancelled, or a run on a superseded sha. If the owner is archived/failed/gone, spawn a new session on that SAME branch to finish it (create_session with outcome_branch = that branch).
 3. Make sure every open PR in your area is ready-for-review with auto-merge armed (arm while mergeable_state is blocked). NEVER merge by hand.
 4. Re-task finished workers: an idle session whose PR merged gets a new task in your area via a NEW session (sessions can push only to their own branch), not a message.
-5. Refill: launch new work in your area ONLY while total open PRs (whole repo) < 40, at most 10 new sessions per cycle. Pick tasks from MASTER_SCOPE/ROADMAP that no open PR or branch touches (git fetch --all first). Use claude-opus-5-5 for hard digitizer/engine work, claude-sonnet-5-5 for tests/UX/small fixes. Every new session gets this preamble: scratchpad rules = don't edit MASTER_SCOPE.md, docs/scope-history.md, DOCTRINE.md, CLAUDE.md, COOKBOOK.md; no full local digitizer suite; merge origin/main before every push, never rebase; PR ready-for-review + auto-merge armed while blocked, never merge; fix own red CI; new features default OFF; quiet mode. Tag them ["embot-foreman"].
+5. Refill: launch new work in your area ONLY while total open PRs (whole repo) < 40, at most 10 new sessions per cycle. Pick tasks from MASTER_SCOPE/ROADMAP that no open PR or branch touches (git fetch --all first). Use claude-sonnet-5-5 for build work and claude-haiku-5-5 for read-only work (Kent 2026-11-02: save on usage); Opus only if Kent names it. Every new session gets this preamble: scratchpad rules = don't edit MASTER_SCOPE.md, docs/scope-history.md, DOCTRINE.md, CLAUDE.md, COOKBOOK.md; no full local digitizer suite; merge origin/main before every push, never rebase; PR ready-for-review + auto-merge armed while blocked, never merge; fix own red CI; new features default OFF; quiet mode. Tag them ["embot-foreman"].
 6. ROADMAP gates are refusals: no sew-out-only physical constants, no stage-0 recalibration, no flipping default-OFF tiers ON (Kent decides flips), no raw agreement-number claims, no new client artwork/customer names.
 7. Schedule your next cycle with mcp__claude-code-remote__send_later, delay 30 minutes, message "Manager cycle". Stop re-arming only when your area has no open PRs and no active workers, or the Director tells you to stop.
    SPENDING CAP: stop re-arming at a fixed end time the director sets (default: 5 hours after start) or after 3 consecutive cycles with nothing to do, whichever first; no refill launches in the last 2 hours; send the director a 3-line summary on the last cycle.

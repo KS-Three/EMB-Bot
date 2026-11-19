@@ -106,10 +106,13 @@ fonts, digitized on demand" has the design and the measurements.
 
 ## Compliance note
 
-Shipping a new font needs more than the right `licenseId` —
-`docs/font-license-audit-2026-07-31.md` found the existing 69-font library
-isn't fully compliant yet (missing full license text on disk for 48 fonts,
-several truncated attribution strings). Don't add to that backlog: save the
-font's full `LICENSE` text as a sidecar in `src/fonts/` next to its source
-JSON from the start, and write a complete, untruncated attribution line
-rather than letting it get cut off mid-clause.
+Shipping a new font needs more than the right `licenseId`.
+`docs/font-license-audit-2026-07-31.md` found the then 69-font library
+non-compliant (full license text missing on disk for 48 fonts, truncated
+attribution strings); that backlog is **RESOLVED** (MASTER_SCOPE.md "Font
+license compliance — RESOLVED", confirmed 2026-08-22) and kept resolved by
+construction: 85 `*.LICENSE.txt` sidecars sit in `src/fonts/` (counted
+2026-11-19). Keep it that way: save the font's full `LICENSE` text as a
+sidecar in `src/fonts/` next to its source JSON from the start, and write a
+complete, untruncated attribution line rather than letting it get cut off
+mid-clause.
