@@ -79,7 +79,7 @@ row 8 (added 2026-11-10) has its freeze, installer and launcher built.
 
 ## Explicit non-goals (parking list — not the Ember bar)
 
-Team names, monogram frames, envelopes beyond arc, 3D puff,
+Team names, monogram frames, envelopes beyond arc,
 stitch-level editing, decorative fills, imported-design re-density
 (Wilcom-style stitch processor), a sharing gallery. No user-upload gallery
 is a deliberate choice for the starter design pack (item 3) too —
@@ -112,6 +112,18 @@ ever been given appliqué by accident. It is a capability that exists and must
 be asked for. In scope as of today; its status belongs in `MASTER_SCOPE.md`
 and `docs/scope/` like any other capability, and turning the default on would
 be a separate ruling.
+
+**"3D puff" left this list on 2026-11-19 (Kent's call).** It was parked because
+the project was too early for it, not because it was out of reach; that reason
+no longer holds. Unlike appliqué, nothing generates puff stitches yet: what
+exists is the shared operator-step plumbing (`StitchBlock.step`, the
+never-joined step block in `stage7_sequence.py`), the parametric spec in
+`docs/specialty-techniques-2026-08-01.md` §3, and the reference pro file
+`TIRES HAT 3D` (one thread, a "Puff Grip" tack-down, a foam stop, then the
+puff satin; `docs/stage0-tires-photo-scene-2026-09-11.md` §10). In scope as
+of today, not built. Its physical constants (density, compensation, satin
+width range) and whether the Tajima halts on a same-needle colour change
+remain behind ROADMAP gate 1 until a sew-out.
 
 **Reshape scope, Kent 2026-11-04 (sparse-nodes grilling).** **Knife** (split
 one digitized shape into two along a drawn path) is a **non-goal**: it needs
