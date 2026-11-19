@@ -136,6 +136,10 @@ def test_a_stroke_with_only_its_own_threads_ground_keeps_it():
     assert lay["Sstroke"] > lay["Sband"]
 
 
-def test_flag_is_off_by_default():
+def test_flag_is_on_since_kent_2026_11_19_and_pre_flip_pins_it_off():
     from digitizer_core import PipelineConfig
-    assert not (PipelineConfig().extra or {}).get("underfill_keeps_thin_letters")
+    from tests.conftest import PRE_FLIP, UNDERFILL_THIN_LETTERS_2026_11_19_OFF
+    assert PipelineConfig().underfill_keeps_thin_letters is True
+    assert PRE_FLIP["underfill_keeps_thin_letters"] is False
+    off = PipelineConfig(**UNDERFILL_THIN_LETTERS_2026_11_19_OFF)
+    assert off.underfill_keeps_thin_letters is False

@@ -849,7 +849,8 @@ ONE_LANE_KEY = "dark_ink_line_one_lane"
 
 
 def one_lane_per_line(regions) -> int:
-    """`cfg.extra["dark_ink_line_one_lane"]` (built OFF 2026-11-19), before
+    """`cfg.dark_ink_line_one_lane` (built OFF 2026-11-19, ON the same day,
+    Kent's flip), before
     `settle_dark_ink_bean`: a line of lettering sews in ONE lane. The text
     reader's line (`text_cluster_id`, one thread) whose letters are part
     bean (`bean_dark_ink`) and part not takes the lane its OWN median mean
@@ -938,7 +939,7 @@ def ink_after_ground(regions, innermost: bool = False, other_thread: bool = Fals
     through only under a LATER bean letter. Regions as copies, renumbered;
     nothing to move: the input list itself.
 
-    `other_thread` (`cfg.extra["underfill_keeps_thin_letters"]`, built OFF
+    `other_thread` (`cfg.underfill_keeps_thin_letters`, ON since Kent's flip; built OFF
     2026-11-19): a stroke's ground is a shape of ANOTHER thread when one
     covers it; its own thread's only when none does. The Merchant Marine
     seal's black ring letters named the black under-fill (the keyline ring,

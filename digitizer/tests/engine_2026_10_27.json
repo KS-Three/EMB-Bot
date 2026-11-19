@@ -187,6 +187,8 @@
  "lettering_columns_off_line_mark_single_only": false,
  "thin_letters_after_ground": false,
  "lettering_columns_sew_dropped_hairline": false,
+ "underfill_keeps_thin_letters": false,
+ "dark_ink_line_one_lane": false,
  "lettering_columns_inside_connectors": true,
  "lettering_columns_inside_stagger": true,
  "lettering_columns_italic_lean": false,

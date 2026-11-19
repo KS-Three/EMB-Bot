@@ -1597,8 +1597,8 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # lettering. Here, not in `build_generation`, for `tag_bean_letters`'
     # reason: the pinned tier only exists after the edits.
     if cfg.dark_ink_bean:
-        # built OFF 2026-11-19: one line of lettering, one lane (NSA, GAO)
-        if (cfg.extra or {}).get("dark_ink_line_one_lane"):
+        # ON since 2026-11-19 (Kent's flip): one line of lettering, one lane (NSA, GAO)
+        if cfg.dark_ink_line_one_lane:
             one_lane_per_line(regions)
         settle_dark_ink_bean(regions)
 
@@ -2533,7 +2533,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     if cfg.dark_ink_bean:
         stitched_regions = ink_after_ground(
             stitched_regions, innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")),
-            other_thread=bool((cfg.extra or {}).get("underfill_keeps_thin_letters")))
+            other_thread=cfg.underfill_keeps_thin_letters)
     # `cfg.thin_letters_after_ground` (ON since 2026-11-18, Kent's flip): a thin
     # letter sewn before its ground loses most of its stroke to the ground's
     # pull allowance; it sews after the ground instead.

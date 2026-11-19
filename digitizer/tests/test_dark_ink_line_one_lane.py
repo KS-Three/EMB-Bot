@@ -82,6 +82,10 @@ def test_a_shape_the_review_pinned_is_never_moved():
     assert all(r.meta.get(BEAN_LETTER_KEY) for r in regs[:3])
 
 
-def test_flag_is_off_by_default():
+def test_flag_is_on_since_kent_2026_11_19_and_pre_flip_pins_it_off():
     from digitizer_core import PipelineConfig
-    assert not (PipelineConfig().extra or {}).get("dark_ink_line_one_lane")
+    from tests.conftest import ONE_LANE_2026_11_19_OFF, PRE_FLIP
+    assert PipelineConfig().dark_ink_line_one_lane is True
+    assert PRE_FLIP["dark_ink_line_one_lane"] is False
+    off = PipelineConfig(**ONE_LANE_2026_11_19_OFF)
+    assert off.dark_ink_line_one_lane is False

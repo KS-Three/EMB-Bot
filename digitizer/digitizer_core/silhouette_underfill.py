@@ -481,7 +481,7 @@ def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False, keep_
     `riders` (shape ids, `cfg.silhouette_underfill_panels`) are never merged:
     they sew on their own, on top. Empty: as before.
 
-    `keep_thin` (`cfg.extra["underfill_keeps_thin_letters"]`, built OFF
+    `keep_thin` (`cfg.underfill_keeps_thin_letters`, ON since Kent's flip; built OFF
     2026-11-19): a shape of the under-fill's colour is never merged when it
     is a thin stroke in a hole of another colour's fill inside the ring
     (`_keep_thin`: a line of lettering). The Merchant Marine seal at 90 mm: the black
@@ -652,7 +652,7 @@ def apply_cfg(regions, unsewn, cfg, outlines, pinned=()):
     as before and the outlines untouched. `pinned`: see `apply`.
     `cfg.silhouette_underfill_ground_guard` goes to every `plan` read."""
     guard = bool(getattr(cfg, "silhouette_underfill_ground_guard", False))
-    keep_thin = bool((getattr(cfg, "extra", None) or {}).get("underfill_keeps_thin_letters"))
+    keep_thin = bool(getattr(cfg, "underfill_keeps_thin_letters", False))
     riders = []
     if (getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white
             and cfg.border_from_outline):
