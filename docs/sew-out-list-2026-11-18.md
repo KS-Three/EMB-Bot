@@ -229,6 +229,19 @@ other two.
    `r_bowl` flips on its construction.
 5. **Source.** `docs/marine-pro-construction-2026-11-18.md` (#1686), the R rows of sections 3 and 4.
 
+### 16. MFab's A counter on the hat: 5.0 mm satin ceiling against a 7.5 mm triangle
+1. **Design, spot.** `mfab_hat` 104.9 mm, the A's counter at about (70, 16): a triangle 7.5 mm
+   tall and 3.75 mm wide at most (art 24.1 mm2; sewn region 17.9 mm2).
+2. **In doubt.** The 5.0 mm satin ceiling (gate 1, Kent 2026-11-15 "keep 5.0") refuses
+   `counter_fan_satin` from about 94 mm, so the counter sews as a 143-stitch fill whose rows run
+   about 30 degrees off the pro's fan (counter-fan note). The prime grader's 11-18 card calls the
+   result "crowded, ragged slanted stitches with a rough upper edge".
+3. **Sew, look.** The A's triangle with the fan (5.0 mm raised to about 7.5 mm for this one
+   shape) against the fill: ragged tip, the thread build-up in the point, the pull on a 3.75 mm
+   wide satin.
+4. **Unlocks.** Whether the satin ceiling can rise for a fanned counter; until then the fill stays.
+5. **Source.** `docs/mfab-top-line-faults-2026-11-19.md`, fault 6; memory `counter-fan-2026-11-14`.
+
 ## What this list does not claim
 
 - No row says a sew-out will come out any particular way.

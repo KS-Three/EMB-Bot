@@ -116,4 +116,4 @@ the OLDEST lines whole to the archive.
 - [Under-fill ground guard](underfill-ground-guard-2026-11-16.md) — ON (Kent 11-16): a ring on the ground it would jump reads no ring; NASA orbit + stars back
 
 - [Wedge cap](wedge-cap-2026-11-18.md) — Toat Machine h stem steps + seam: the Column lane sews a junction wedge into the stem; `lettering_columns_stem_wedge_cap` ON 11-18 (Kent "Flip ON"), hairline bound 0.6, only the hat moves of 44
-- [Z joints, rail-pair bars](z-joints-rail-pair-2026-11-14.md) — and_pizza Z fanned at one joint: its top bar read CURVED (coherence 0.46, spine bent); `rail_pair_bars` (extra, OFF) reads two long parallel rails as a bar; guard still refuses Z tips
+- [Z joints, rail-pair bars](z-joints-rail-pair-2026-11-14.md) — and_pizza Z fanned at one joint: its top bar read CURVED (coherence 0.46, spine bent); `rail_pair_bars` (extra, OFF) reads two long parallel rails as a bar; guard still refuses Z tips- [MFab top line](mfab-top-line-2026-11-19.md) — nine grader faults sorted (3 misreads, 1 gate-1, 5 = satin-ladder junction, not fixed); `satin_overlap_run` (extra, OFF) drops hidden re-sewn satin, picture unchanged
