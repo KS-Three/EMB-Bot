@@ -3198,6 +3198,20 @@ describe("3D puff in the digitize config, the shape overrides and the warning te
     expect(rv.shapes[2]).toMatchObject({ puffEligible: null, puffReason: "" });
   });
 
+  it("with puff OFF, stored puff overrides never reach the config or the cache key", async () => {
+    const { buildDigitizeConfig, configKey } = await import("./digitizer.js");
+    const ticked = { params: { puff: false }, shapeOverrides: { a: { puff: true }, b: { puff: true, border: "bean" } } };
+    const plain = { params: { puff: false }, shapeOverrides: { b: { border: "bean" } } };
+    expect(buildDigitizeConfig(ticked, {})).toEqual(buildDigitizeConfig(plain, {}));
+    expect(configKey(buildDigitizeConfig(ticked, {}))).toBe(configKey(buildDigitizeConfig(plain, {})));
+    // only puff ticks: no shape_overrides key at all
+    const only = { params: { puff: false }, shapeOverrides: { a: { puff: true } } };
+    expect(buildDigitizeConfig(only, {})).toEqual(buildDigitizeConfig({ params: { puff: false } }, {}));
+    // switched back on, the stored tick is sent again
+    const on = buildDigitizeConfig({ params: { puff: true, puff_mode: "select" }, shapeOverrides: { a: { puff: true } } }, {});
+    expect(on.shape_overrides).toEqual({ a: { puff: true } });
+  });
+
   it("has customer text for both puff warnings", async () => {
     const { describeWarnings } = await import("./digitizer.js");
     const [a, b, c] = describeWarnings([

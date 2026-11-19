@@ -260,7 +260,19 @@ export function buildDigitizeConfig(element, project) {
   // cache hit.
   const edits = canonicalShapeEdits(element || {});
   if (edits.deleted_shape_ids) cfg.deleted_shape_ids = edits.deleted_shape_ids;
-  if (edits.shape_overrides) cfg.shape_overrides = edits.shape_overrides;
+  // With the 3D Puff master switch OFF, stored per-shape puff ticks stay in
+  // the project (turning it back on restores them) but never reach the wire:
+  // the OFF config and cache key must equal a never-puffed design's.
+  let shapeOverrides = edits.shape_overrides;
+  if (shapeOverrides && !p.puff) {
+    const kept = {};
+    for (const [sid, e] of Object.entries(shapeOverrides)) {
+      const { puff: _puff, ...rest } = e;
+      if (Object.keys(rest).length) kept[sid] = rest;
+    }
+    shapeOverrides = Object.keys(kept).length ? kept : null;
+  }
+  if (shapeOverrides) cfg.shape_overrides = shapeOverrides;
   // Shape identity edits (contract v1.5) — same "sticky, ride every future
   // re-digitize" posture as deleted_shape_ids: a merge/split is not a
   // one-shot mutation, it is a standing decision that re-applies to whatever
@@ -277,8 +289,8 @@ export function buildDigitizeConfig(element, project) {
   // index at a different manufacturer's numbers — so a config carrying
   // recolors pins the brand the indexes were computed for.
   if (
-    edits.shape_overrides &&
-    Object.values(edits.shape_overrides).some((e) => e.thread_index != null) &&
+    shapeOverrides &&
+    Object.values(shapeOverrides || {}).some((e) => e.thread_index != null) &&
     element && element.review && element.review.brandId
   ) {
     cfg.thread_brand = element.review.brandId;
