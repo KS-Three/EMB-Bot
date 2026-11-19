@@ -594,6 +594,9 @@ def _bowl_column_normal(piece: Polygon, hole: Polygon, W: float, pitch_mm: float
                   rail_a=[a for a, _ in out], rail_b=[b for _, b in out])
 
 
+# ONE FAMILY WITH `top_slab` / `e_top_arm` (director, 2026-11-19): either every letter wears the pro's top band or none does. At the whole word `e_top_arm` gives the E alone a banded top
+# with a seam under it while M, A, R, I, N have none, and `top_slab` gives all six a seam (the #1659 look). BOTH STAY OFF; neither is a flip question until
+# a sew-out (`docs/sew-out-list-2026-11-18.md` row 16) shows whether the seam is a preview matter or a real one.
 # `e_top_arm` (`cfg.extra["lettering_columns_e_top_arm"]`, 2026-11-19, built OFF): the pro's E sews its top
 # arm as ONE column across the whole width of the letter, over the stem's top, with near-vertical crosses
 # (12.2 mm at 101.9, crosses -79 deg 5.3 mm long; the stem below it starts where the arm ends,
@@ -634,6 +637,9 @@ def _e_top_cuts(poly: Polygon, W: float, cuts: list):
     return out, ((hit[0] + v[0]) / 2, (hit[1] + v[1]) / 2 - 0.35 * W)
 
 
+# ONE FAMILY WITH `top_slab` / `e_top_arm` (director, 2026-11-19): either every letter wears the pro's top band or none does. At the whole word `e_top_arm` gives the E alone a banded top
+# with a seam under it while M, A, R, I, N have none, and `top_slab` gives all six a seam (the #1659 look). BOTH STAY OFF; neither is a flip question until
+# a sew-out (`docs/sew-out-list-2026-11-18.md` row 16) shows whether the seam is a preview matter or a real one.
 # `top_slab` (`cfg.extra["lettering_columns_top_slab"]`, 2026-11-19, built OFF): the pro's sheared slab across the top
 # of every MARINE letter (`docs/marine-pro-construction-2026-11-18.md`, rule 2): one column across the whole
 # letter's top, `SLAB_DEPTH_W` stroke widths deep (his spine at y 16.1 from a cap top of 13.5, cross 4.5-5.4 mm),

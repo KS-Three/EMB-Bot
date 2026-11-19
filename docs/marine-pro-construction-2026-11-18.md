@@ -166,16 +166,31 @@ change is hidden behind them. Full-suite status is CI's.
 
 ### Flags built OFF after the flip (`cfg.extra["lettering_columns_<name>"]`)
 
-| flag | what | status |
-|---|---|---|
-| `e_top_arm` | the E's top arm one upright column across the whole letter, over the stem's top; the mid and bottom arms upright too; the stem below the band level (his -79 / -88 / -88 deg; `outline_cut._e_top_cuts`) | **a flip candidate**: 44-run sweep, 6 Becker movers, 38 identical, 0 errors; trims -1 at every placement, jumps -1 or -2, needle-up -1.8 to -8.7 mm, stitches -47 to +47. Pictures `docs/renders/marine-match-2026-11-18/e-top-arm/` |
-| `top_slab` | one sheared band (cross -77 deg, one stroke width deep, the letter's own polygon) across the top of every letter | **not a flip candidate**: pictures at 101.9 and 76.5 (`top-slab/`). A seam shows across every letter at the band's lower edge, the M's V breaks into fans at 76.5, the N and E tops come apart; it reads as a cap on the letter, which is what Kent rejected in #1659. Stays OFF |
+**`e_top_arm` and `top_slab` are ONE FAMILY (director, 2026-11-19): either every letter wears the pro's top band or none does. Both
+stay OFF.** At the whole word `e_top_arm` gives the E alone a banded top with a seam under it while M, A, R, I and N have none (its
+saving, -1 trim per placement and -1.8 to -8.7 mm needle-up, is real but small), and `top_slab` gives all six a seam, the #1659 look.
+Whether the seam is a preview matter or a real one is for cloth: sew-out row 16 (Becker hat large 101.9 mm sewn twice, main vs both flags ON).
 
-**Not built, and why.**
-- *E corner fans* (his three small pieces at the lower left): a corner fan needs the fold look's pivot on the inner corner, which `block_butt` turns off on purpose for the E; not attempted.
-- *N head fan* (his diagonal fans 78 deg from the slab at its head): it belongs to the slab. Without a slab the N's head is the square end block_butt gave it; `top_slab` would carry it, and `top_slab` stays OFF.
-- *M's V in his four pieces*: the cuts are invisible once the crosses are level (both ours and his lie level through the V after `block_lean`); his cuts follow his junction overlaps, not a different look. Built, it would add pieces and trims for no visible gain.
-- *A's tuck under the legs* (his bar sews first, then the legs cover its ends 1.5 mm): the overlap shows only if the bar sews before the legs, and the walk, not the cut, decides that order. A cut alone would show the overlap on TOP of the legs.
+| flag | function | what | status |
+|---|---|---|---|
+| `e_top_arm` | `outline_cut._e_top_cuts`, `e_top_scope`, `_E_TOP` | the E's top arm one upright column across the letter over the stem's top; arms upright; the stem below level | OFF; 44 runs, 6 Becker movers, 0 errors; pictures `e-top-arm/` |
+| `top_slab` | `outline_cut._slab_cuts`, `_slab_merge`, `top_slab_scope`, `_TOP_SLAB`, `SLAB_DEPTH_W`, `SLAB_CROSS_DEG` | one sheared band (-77 deg, one stroke deep, the letter's own polygon) across the top of every letter | OFF; seam across every letter, M/N/E break up at 76.5 (`top-slab/`); not swept |
+
+### Hand-off: per letter, what matches, what differs, and why it is not built
+
+ON since Kent's flip (`cfg.lettering_columns_*`): `r_bowl` (`outline_cut._bowl_cuts`, `_bowl_band`, `_bowl_column`,
+`_bowl_column_normal`, `BOWL_INNER_INSET_MM`), `block_butt_small` (`_butt_min_w`, `BUTT_MIN_W_SMALL_MM`, `block_small_scope`),
+`a_bar` (`_a_bar_cuts`, `a_bar_scope`), `block_lean` (`column_lean.cross_direction`, `block_lean_scope`, `BLOCK_LEAN_SPAN_DEG`).
+
+| letter | matches the pro | differs by | why not built (function it would live in) |
+|---|---|---|---|
+| **M** | V diagonals level (`block_lean`) | his V is four 3-5 mm pieces and a slab-and-left-diagonal piece (fan 31 deg); ours two diagonals of 11.7-11.9 mm, no slab | the four-piece cut is invisible once the crosses are level (it follows his junction overlaps); the slab is `top_slab` |
+| **A** | bar and legs (`a_bar`): bar 87 deg, 4.9 mm, butting two uncut legs | his bar tucks 1.5 mm under each leg; his right leg fans 37 deg into a two-piece cap | the tuck needs the bar sewn BEFORE the legs: the walk (`columns.column_runs`), not the cut, decides that, and a cut alone puts the overlap on top; the cap is `top_slab` |
+| **R** | stem, level leg, one radial bowl column (`r_bowl`); counter 6.04 / 6.29 / 3.47 / 4.05 / 3.88 mm2 against block_butt's 4.59 / 4.57 / 2.2 / 2.2 / 2.15 | his counter 9.85 / 8.06 / 4.49 / 4.49 / 4.44; his bowl sweeps 134-176 deg (ours about 250, no slab) | the 0.5 mm inset (`BOWL_INNER_INSET_MM`) is read from his file, not cloth: sew-out row 15; the slab is `top_slab` |
+| **I** | one level column | his has a slab piece and 3-4 junction patches | `top_slab` |
+| **N** | diagonal level (`block_lean`), square ends (`block_butt`) | his diagonal fans 78 deg from the slab at its head | the head fan belongs to the slab: `top_slab` (`_slab_cuts`) |
+| **E** | at 76.5-79.8 stem and three butted arms (`block_butt_small`) | his top arm is one piece over the stem's top; his lower-left corner is three small fans | `e_top_arm` (OFF, one family with `top_slab`); the corner fans need the fold's pivot (`outline_cut._fold_corners`, `_fold_pair`), which `block_butt` turns off for the E on purpose |
+
 
 ## 6. Data
 
