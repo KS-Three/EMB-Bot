@@ -43,3 +43,4 @@ Still open on the Drone: the navy sky is black from stage 2; "A" of AND a shade 
 Related: [[vlm-judge-100-2026-11-06]], [[eye-first-diagnosis-2026-11-13]], [[bevel-ring-fold-2026-11-13]].
 
 - **2026-11-18:** kit renders flat-ended (butt) strips (`stitchviz.render_design(caps="butt")`, kit-only) after readers called round-cap bumps "saw-toothed"; rubric 2026-11-18 adds "what the pictures cannot show truthfully". Next card is the first under it, not comparable with earlier.
+- **2026-11-19:** repeat test (27 sonnet readers, one kit; `repeat`, `docs/prime-grader/repeat-2026-11-19.md`): grade kappa 0.64 [-0.17, 1.00] n 9, 1 design in 7 moves a step unchanged, 62% of fault places one-reader only. Kent: "Two readers, twice a week (Recommended)": Monday and Thursday, `scorecard --verdicts V1 V2`, a fault counts only when both place it, a grade only when both give it; about 1.9M tokens a run (RUNBOOK A).

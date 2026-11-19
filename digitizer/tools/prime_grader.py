@@ -3,7 +3,7 @@
     python -m tools.prime_grader capture   --out RUN [--only SLUG ...]
     python -m tools.prime_grader kit       --run RUN --out KIT
     python -m tools.prime_grader record    --kit KIT --verdict FILE.json
-    python -m tools.prime_grader scorecard --kit KIT --out DIR [--prev PREV.json] [--date D]
+    python -m tools.prime_grader scorecard --kit KIT --out DIR [--verdicts V1 V2] [--prev PREV.json] [--date D]
     python -m tools.prime_grader kent      --kit KIT --marks MARKS.json [...] [--json OUT]
     python -m tools.prime_grader repeat    --kit KIT --verdicts V1 V2 V3 [...] [--json OUT]
 
@@ -164,6 +164,46 @@ def clean_verdict(body: dict, item: dict) -> dict:
     return {"grade": grade, "whole": list(whole), "reason": reason[:600], "faults": faults}
 
 
+#: Kent 2026-11-19, shown the repeat test (`docs/prime-grader/repeat-2026-11-19.md`):
+#: "Two readers, twice a week". A fault counts only when both place it, a grade
+#: move only when both agree.
+AGREEMENT_RULE = (f"two blind readers per design; a fault counts only when both place one of the same class "
+                  f"within {RADIUS_MM:g} mm; a grade counts only when both give it")
+
+
+def combine_two(a: dict, b: dict, radius: float = RADIUS_MM) -> dict:
+    """Two clean verdicts of ONE design -> one record. Faults both readers
+    place (same `CLASS_OF` class within `radius`, one-to-one, nearest pairs
+    first) are kept, at the midpoint, with the LOWER of the two severities
+    (the higher only when both say it). The rest go to `one_reader`, tagged
+    with the reader (1 or 2): kept, never acted on. The grade is the agreed
+    one; when they differ `grade` is None and `disagree` is True."""
+    pairs = []
+    for i, f in enumerate(a["faults"]):
+        for j, g in enumerate(b["faults"]):
+            if CLASS_OF[f["what"]] == CLASS_OF[g["what"]]:
+                d = math.hypot(f["x_mm"] - g["x_mm"], f["y_mm"] - g["y_mm"])
+                if d <= radius:
+                    pairs.append((d, i, j))
+    used_a, used_b, faults = set(), set(), []
+    for _, i, j in sorted(pairs):
+        if i in used_a or j in used_b:
+            continue
+        used_a.add(i)
+        used_b.add(j)
+        f, g = a["faults"][i], b["faults"][j]
+        low = max(f, g, key=lambda x: SEVERITIES.index(x["severity"]))
+        faults.append({"x_mm": round((f["x_mm"] + g["x_mm"]) / 2, 2), "y_mm": round((f["y_mm"] + g["y_mm"]) / 2, 2),
+                       "what": low["what"], "severity": low["severity"],
+                       "note": f"1: {f['note']} | 2: {g['note']}"[:600], "seen_in": f["seen_in"]})
+    one = [{**f, "reader": 1} for i, f in enumerate(a["faults"]) if i not in used_a] + \
+          [{**g, "reader": 2} for j, g in enumerate(b["faults"]) if j not in used_b]
+    agree = a["grade"] == b["grade"]
+    return {"grade": a["grade"] if agree else None, "grades": [a["grade"], b["grade"]], "disagree": not agree,
+            "whole": sorted(set(a["whole"]) & set(b["whole"])),
+            "reason": f"1: {a['reason']} | 2: {b['reason']}", "faults": faults, "one_reader": one}
+
+
 def rollup(kit: dict, readings: dict) -> dict:
     """Per design: grade and gross faults by class. Over the set: the grade
     spread and, per class, how many designs carry a gross fault of it."""
@@ -179,15 +219,19 @@ def rollup(kit: dict, readings: dict) -> dict:
                 by[c] = by.get(c, 0) + 1
         for c in by:
             classes.setdefault(c, []).append(it["id"])
-        grades[rec["grade"]] += 1
-        rows.append({"id": it["id"], "size": it["size"], "grade": rec["grade"],
-                     "step": GRADES.index(rec["grade"]), "whole": rec["whole"],
+        disagree = bool(rec.get("disagree"))
+        if not disagree:
+            grades[rec["grade"]] += 1
+        rows.append({"id": it["id"], "size": it["size"],
+                     "grade": " / ".join(rec["grades"]) if disagree else rec["grade"],
+                     "step": None if disagree else GRADES.index(rec["grade"]), "disagree": disagree,
+                     "one_reader": len(rec.get("one_reader") or []), "whole": rec["whole"],
                      "ruins": sum(f["severity"] == "ruins" for f in rec["faults"]),
                      "noticeable": sum(f["severity"] == "noticeable" for f in rec["faults"]),
                      "nitpick": sum(f["severity"] == "nitpick" for f in rec["faults"]),
                      "gross_by_class": dict(sorted(by.items())), "reason": rec["reason"]})
-    steps = [r["step"] for r in rows]
-    return {"designs": len(rows), "grades": grades,
+    steps = [r["step"] for r in rows if r["step"] is not None]
+    return {"designs": len(rows), "grades": grades, "disagree": [r["id"] for r in rows if r["disagree"]],
             "mean_step": round(sum(steps) / len(steps), 2) if steps else None,
             "classes": {c: sorted(v) for c, v in sorted(classes.items(), key=lambda kv: (-len(kv[1]), kv[0]))},
             "rows": rows}
@@ -202,6 +246,8 @@ def movement(now: dict, prev: dict | None) -> list[dict]:
     out = []
     for r in now["rows"]:
         o = old.get(r["id"])
+        if r.get("disagree") or (o is not None and o.get("disagree")):
+            continue                     # readers disagree: no grade, so no move (Kent 2026-11-19)
         if o is None:
             out.append({"id": r["id"], "new": True, "grade": r["grade"]})
             continue
@@ -580,22 +626,30 @@ def cmd_record(a) -> int:
 
 def scorecard_markdown(card: dict) -> str:
     ru = card["rollup"]
+    two = card.get("readers", 1) == 2
+    who = "Two blind readers per design" if two else "A Claude session"
     L = [f"# Prime grader scorecard, {card['date']}", "",
-         f"A Claude session graded {ru['designs']} designs by eye against the original artwork, under rubric "
+         f"{who} graded {ru['designs']} designs by eye against the original artwork, under rubric "
          f"{card['rubric_version']} (`{card['rubric_sha256'][:12]}`), on tree `{(card.get('tree_sha') or '?')[:8]}`. "
-         "Each figure is an instrument reading, not a quality claim (ROADMAP gate 4). The grader's repeat "
+         + (f"**Readers: 2.** Rule: {card['agreement_rule']} (Kent 2026-11-19). " if two else "")
+         + "Each figure is an instrument reading, not a quality claim (ROADMAP gate 4). The grader's repeat "
          "agreement with itself was measured once (`repeat-2026-11-19.md`): two readings of the same render differ by one "
          "grade step on about one design in seven, so a one-step move on one night is not evidence by itself.", "",
          "## Grades", "",
          "| " + " | ".join(GRADES) + " | mean step (0 = Great, 4 = Terrible) |", "|" + "---|" * (len(GRADES) + 1),
-         "| " + " | ".join(str(ru["grades"][g]) for g in GRADES) + f" | {ru['mean_step']} |", "",
+         "| " + " | ".join(str(ru["grades"][g]) for g in GRADES) + f" | {ru['mean_step']} |", ""]
+    if ru.get("disagree"):
+        L += [f"Readers disagree on {len(ru['disagree'])} design(s), left out of the grade row and of any move: "
+              + ", ".join(f"`{i}`" for i in ru["disagree"]) + ".", ""]
+    L += [
          "## Designs", "",
          "| design | size | grade | computed yardstick | ruins | noticeable | nitpick | gross fault classes | whole-design |",
          "|---|---|---|---|---|---|---|---|---|"]
     for r in ru["rows"]:
         y = (card.get("yardstick") or {}).get(r["id"]) or {}
         ys = f"{y.get('grade')} {y.get('score')}" if y.get("grade") else "-"
-        L.append(f"| `{r['id']}` | {r['size']} | {r['grade']} | {ys} | {r['ruins']} | {r['noticeable']} | "
+        gr = f"{r['grade']} (readers disagree)" if r.get("disagree") else r["grade"]
+        L.append(f"| `{r['id']}` | {r['size']} | {gr} | {ys} | {r['ruins']} | {r['noticeable']} | "
                  f"{r['nitpick']} | {', '.join(f'{c} {n}' for c, n in r['gross_by_class'].items()) or '-'} | "
                  f"{', '.join(r['whole']) or '-'} |")
     L += ["", "## Gross faults by class (designs affected)", ""]
@@ -605,6 +659,10 @@ def scorecard_markdown(card: dict) -> str:
     pr = card.get("prev_rubric_version")
     if card.get("prev_date") is None:
         L.append("No earlier scorecard was given.")
+    elif card.get("readers", 1) != card.get("prev_readers", 1):
+        L.append(f"**Not comparable.** This is the first card of the two-reader series (Kent 2026-11-19); "
+                 f"{card['prev_date']} was read by {card.get('prev_readers', 1)} reader(s) per design, so no move "
+                 "is listed. Read this card as a new baseline.")
     elif pr and pr != card["rubric_version"]:
         L.append(f"**Not comparable.** This is the first card under rubric {card['rubric_version']}; "
                  f"{card['prev_date']} was read under {pr} (and the kit's renders changed with it), so no move "
@@ -625,19 +683,46 @@ def scorecard_markdown(card: dict) -> str:
                 L.append(f"- `{m['id']}`: " + "; ".join(bits))
     L += ["", "## Why each grade", ""]
     L += [f"- `{r['id']}` ({r['grade']}): {r['reason']}" for r in ru["rows"]]
-    L += ["", "## Every fault", ""]
+    L += ["", "## Faults both readers place" if two else "## Every fault", ""]
     for it_id, rec in card["readings"].items():
         if rec["faults"]:
             L.append(f"**`{it_id}`**")
             L += [f"- ({f['x_mm']}, {f['y_mm']}) mm, {f['what']}, {f['severity']}, seen in {f['seen_in']}: {f['note']}"
                   for f in rec["faults"]]
             L.append("")
+    if two:
+        L += ["## One reader only (not acted on)", "",
+              "Placed by one of the two readers and not by the other (same class within "
+              f"{RADIUS_MM:g} mm). Kept for the record; a fault here does not start a worker.", ""]
+        for it_id, rec in card["readings"].items():
+            if rec.get("one_reader"):
+                L.append(f"**`{it_id}`**")
+                L += [f"- reader {f['reader']}: ({f['x_mm']}, {f['y_mm']}) mm, {f['what']}, {f['severity']}, "
+                      f"seen in {f['seen_in']}: {f['note']}" for f in rec["one_reader"]]
+                L.append("")
     return "\n".join(L).rstrip() + "\n"
 
 
 def cmd_scorecard(a) -> int:
     kit_dir, out = Path(a.kit), Path(a.out)
-    kit, readings = _load(kit_dir / "kit.json"), _load(kit_dir / "readings.json")
+    kit = _load(kit_dir / "kit.json")
+    readers = 1
+    if a.verdicts:
+        if len(a.verdicts) != 2:
+            print("--verdicts takes exactly two folders (Kent 2026-11-19: two readers)", file=sys.stderr)
+            return 2
+        if kit["rubric_sha256"] != RUBRIC_SHA256 or rubric_sha() != RUBRIC_SHA256:
+            print("the rubric is not the pinned one; a changed rubric is a new dated version", file=sys.stderr)
+            return 2
+        sets, problems = _load_verdicts(kit, a.verdicts)
+        for d, ps in problems.items():
+            for p in ps:
+                print(f"{d}: {p}", file=sys.stderr)
+        readers = 2
+        readings = {"items": {i["id"]: combine_two(sets[0][i["id"]], sets[1][i["id"]]) for i in kit["items"]
+                              if i["id"] in sets[0] and i["id"] in sets[1]}}
+    else:
+        readings = _load(kit_dir / "readings.json")
     missing = [i["id"] for i in kit["items"] if i["id"] not in readings["items"]]
     if missing and not a.partial:
         print(f"not recorded yet: {', '.join(missing)} (--partial to write anyway)", file=sys.stderr)
@@ -654,6 +739,8 @@ def cmd_scorecard(a) -> int:
             "rollup": ru, "yardstick": ys, "readings": readings["items"],
             "prev_date": (prev or {}).get("date"), "prev_tree_sha": (prev or {}).get("tree_sha"),
             "prev_rubric_version": (prev or {}).get("rubric_version"),
+            "readers": readers, "agreement_rule": AGREEMENT_RULE if readers == 2 else None,
+            "prev_readers": (prev or {}).get("readers", 1) if prev else None,
             "movement": movement(ru, prev), "not_recorded": missing}
     out.mkdir(parents=True, exist_ok=True)
     _dump(card, out / f"scorecard-{date}.json")
@@ -999,6 +1086,7 @@ def main(argv=None) -> int:
     p.add_argument("--prev")
     p.add_argument("--date")
     p.add_argument("--partial", action="store_true")
+    p.add_argument("--verdicts", nargs="+", help="two verdict folders: one two-reader card (RUNBOOK A, Kent 2026-11-19)")
     p = sub.add_parser("kent")
     p.add_argument("--kit", required=True)
     p.add_argument("--marks", nargs="+", required=True)

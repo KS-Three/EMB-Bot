@@ -2924,9 +2924,9 @@ From `digitizer/`:
 
     python -m tools.prime_grader capture   --out eye_pairs_out/prime-<date>/run
     python -m tools.prime_grader kit       --run eye_pairs_out/prime-<date>/run --out eye_pairs_out/prime-<date>/kit
-    # a session reads tools/prime_grader_rubric.md, then per design: look, write a verdict json, and
-    python -m tools.prime_grader record    --kit eye_pairs_out/prime-<date>/kit --verdict FILE.json
-    python -m tools.prime_grader scorecard --kit eye_pairs_out/prime-<date>/kit --out ../docs/prime-grader --prev ../docs/prime-grader/latest.json
+    # two rounds of fresh readers (verdicts-r1, verdicts-r2; RUNBOOK A), each checking its verdict with
+    python -m tools.prime_grader record    --kit eye_pairs_out/prime-<date>/kit --verdict FILE.json --check
+    python -m tools.prime_grader scorecard --kit eye_pairs_out/prime-<date>/kit --verdicts V1 V2 --out ../docs/prime-grader --prev ../docs/prime-grader/latest.json
     python -m tools.prime_grader kent      --kit eye_pairs_out/prime-<date>/kit --marks ../docs/defect-marks-2026-11-1*/marks.json
     python -m tools.prime_grader repeat    --kit eye_pairs_out/prime-repeat-<date>/kit --verdicts V1 V2 V3   # the grader vs itself (RUNBOOK C)
 
@@ -2957,6 +2957,17 @@ From `digitizer/`:
   paragraph of the rubric, a new dated version, so **the next card is the first
   under it and is not comparable with earlier ones**. Synthetic demo:
   `python -m tools.satin_caps_demo --out docs/renders/satin-caps-2026-11-18`.
+- **Two readers, Monday and Thursday (Kent 2026-11-19).** The repeat test
+  (`docs/prime-grader/repeat-2026-11-19.md`, `repeat`) found 62% of one
+  reader's fault places marked by no second reader and about one design in
+  seven moving a grade step on an unchanged render. Kent: "Two readers, twice
+  a week". `scorecard --verdicts V1 V2` builds one card: the faults both
+  readers place (same `CLASS_OF` class within 3 mm, at the midpoint, the lower
+  severity unless both say the higher), each design's grade only where both
+  agree ("readers disagree" designs leave the grade row and `movement()`), and
+  a separate "One reader only (not acted on)" list. About 1.9M tokens a run.
+  The first two-reader card is not comparable with a one-reader one. Without
+  `--verdicts`, `scorecard` reads `readings.json` as before.
 - **What it is not:** a quality claim, a gate, or a judge of close A/B picks.
   The kit folder holds client artwork; only the text scorecard is committed
   (`docs/prime-grader/`).

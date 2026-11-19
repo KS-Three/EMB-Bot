@@ -268,3 +268,91 @@ def test_repeat_is_a_subcommand(tmp_path, capsys):
     with pytest.raises(SystemExit):
         pg.main(["repeat", "--help"])
     assert "--verdicts" in capsys.readouterr().out
+
+
+# ---- two readers per design (Kent 2026-11-19: "Two readers, twice a week") --------------------
+
+def _rec(grade, faults, whole=()):
+    return pg.clean_verdict(verdict(grade=grade, faults=faults, whole=list(whole)), ITEM)
+
+
+def test_combine_two_keeps_only_faults_both_place_at_the_midpoint_and_the_lower_severity():
+    a = _rec("Okay", [_f(10, 10, "jagged", "ruins"), _f(30, 20, "missing", "ruins"), _f(50, 30, "gap")])
+    b = _rec("Okay", [_f(12, 10, "wavy", "noticeable"),   # edge class, 2 mm: agreed
+                      _f(31, 20, "missing", "ruins"),      # agreed, both say ruins
+                      _f(50, 30, "colour")])               # same spot, other class: not agreed
+    rec = pg.combine_two(a, b)
+    assert rec["grade"] == "Okay" and not rec["disagree"]
+    got = {pg.CLASS_OF[f["what"]]: f for f in rec["faults"]}
+    assert set(got) == {"edge", "missing"}
+    assert (got["edge"]["x_mm"], got["edge"]["severity"]) == (11.0, "noticeable")   # lower of ruins / noticeable
+    assert got["missing"]["severity"] == "ruins"                                      # both said it
+    assert sorted((f["reader"], f["what"]) for f in rec["one_reader"]) == [(1, "gap"), (2, "colour")]
+
+
+def test_combine_two_pairs_one_to_one():
+    a = _rec("Okay", [_f(10, 10), _f(11, 10)])
+    b = _rec("Okay", [_f(10.5, 10)])
+    rec = pg.combine_two(a, b)
+    assert len(rec["faults"]) == 1 and len(rec["one_reader"]) == 1
+
+
+def test_a_disagreeing_design_leaves_the_grade_row_and_movement():
+    kit = {"items": [ITEM, {**ITEM, "id": "L_y"}]}
+    readings = {"items": {"L_x": pg.combine_two(_rec("Okay", []), _rec("Bad", [])),
+                          "L_y": pg.combine_two(_rec("Bad", []), _rec("Bad", []))}}
+    ru = pg.rollup(kit, readings)
+    assert ru["disagree"] == ["L_x"]
+    assert ru["grades"]["Bad"] == 1 and ru["grades"]["Okay"] == 0 and ru["mean_step"] == 3.0
+    row = ru["rows"][0]
+    assert row["grade"] == "Okay / Bad" and row["step"] is None
+    prev = {"rollup": {"rows": [{**row, "grade": "Good", "step": 1, "disagree": False, "gross_by_class": {}},
+                                {**ru["rows"][1], "grade": "Okay", "step": 2}]}}
+    assert [m["id"] for m in pg.movement(ru, prev)] == ["L_y"]                 # L_x is not a move
+
+
+def _two_reader_card(prev_readers):
+    kit = {"items": [ITEM]}
+    readings = {"items": {"L_x": pg.combine_two(_rec("Okay", [_f(10, 5)]), _rec("Bad", [_f(40, 30, "gap")]))}}
+    return {"date": "2026-11-20", "rubric_version": pg.RUBRIC_VERSION, "rubric_sha256": pg.RUBRIC_SHA256,
+            "tree_sha": "abcdef123456", "rollup": pg.rollup(kit, readings), "yardstick": {},
+            "readings": readings["items"], "prev_date": "2026-11-19", "prev_rubric_version": pg.RUBRIC_VERSION,
+            "movement": [], "readers": 2, "agreement_rule": pg.AGREEMENT_RULE, "prev_readers": prev_readers}
+
+
+def test_the_two_reader_card_states_its_rule_and_lists_one_reader_faults_apart():
+    md = pg.scorecard_markdown(_two_reader_card(1))
+    assert "**Readers: 2.**" in md and "within 3 mm" in md
+    assert "## Faults both readers place" in md and "## One reader only (not acted on)" in md and "reader 2: (40.0, 30.0) mm, gap" in md
+    assert "Okay / Bad (readers disagree)" in md and "Readers disagree on 1 design" in md
+    assert "first card of the two-reader series" in md                       # against a one-reader card
+    assert "two-reader series" not in pg.scorecard_markdown(_two_reader_card(2))
+    json.dumps(_two_reader_card(2))
+
+
+def test_a_one_reader_card_reads_as_before():
+    kit, readings = _kit_and_readings()
+    card = {"date": "2026-11-17", "rubric_version": pg.RUBRIC_VERSION, "rubric_sha256": pg.RUBRIC_SHA256,
+            "tree_sha": "abcdef123456", "rollup": pg.rollup(kit, readings), "yardstick": {},
+            "readings": readings["items"], "prev_date": None, "movement": []}
+    md = pg.scorecard_markdown(card)
+    assert "One reader only" not in md and "Readers: 2" not in md and "A Claude session graded" in md
+
+
+def test_scorecard_builds_one_card_from_two_verdict_folders(tmp_path, monkeypatch):
+    kit_dir = tmp_path / "kit"
+    kit_dir.mkdir()
+    kit = {"rubric_version": pg.RUBRIC_VERSION, "rubric_sha256": pg.RUBRIC_SHA256, "kit_sha256": "k",
+           "items": [ITEM]}
+    (kit_dir / "kit.json").write_text(json.dumps(kit))
+    for n, (grade, fx) in enumerate((("Okay", 10), ("Okay", 11)), 1):
+        d = tmp_path / f"verdicts-r{n}"
+        d.mkdir()
+        (d / "L_x.json").write_text(json.dumps(verdict(grade=grade, faults=[_f(fx, 5)])))
+    out = tmp_path / "out"
+    assert pg.main(["scorecard", "--kit", str(kit_dir), "--out", str(out), "--date", "2026-11-20",
+                    "--verdicts", str(tmp_path / "verdicts-r1"), str(tmp_path / "verdicts-r2")]) == 0
+    card = json.loads((out / "latest.json").read_text())
+    assert card["readers"] == 2 and card["readings"]["L_x"]["faults"][0]["x_mm"] == 10.5
+    assert pg.main(["scorecard", "--kit", str(kit_dir), "--out", str(out),
+                    "--verdicts", str(tmp_path / "verdicts-r1")]) == 2
