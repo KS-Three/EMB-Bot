@@ -17,8 +17,9 @@ prompts on workers are the foreman's to clear, not his.
 - Foreman merges: CLEAN PR, `gh pr merge --squash <n>`; BLOCKED, `--auto`. Never
   `--admin` and never past a required check: branch protection still gates (PR 1291
   went CLEAN to BLOCKED on a new head between two calls; arm it then).
-- This overrides the repo `CLAUDE.md` line "Merging is still Kent's" for foreman
-  and director sessions. Workers still only arm.
+- Since 2026-11-19 the repo `CLAUDE.md` carries this as the one exception to
+  "Merging is still Kent's" (Kent confirmed it that day): foreman and director
+  sessions only. Workers still only arm.
 - Workers start in `bypassPermissions` where the tool allows it (`start_session`
   `permission_mode` is local-only; cloud sessions are not in `list_sessions`, so
   their mode cannot be set from the foreman; say so instead of claiming it).
