@@ -2712,9 +2712,12 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
             # blocks with no uncut jump; this reaches the knockdown's, with
             # the whole design now sewn after it.
             if cfg.cut_every_jump:
-                # Operator-step blocks (appliqué, puff) are left out: a jump
-                # must never be buried or walked across laid fabric or foam.
-                _cut_or_bury_jumps([b for b in blocks if b.step is None],
+                # Puff blocks are left out: a jump must never be buried or
+                # walked across laid foam. Appliqué's stepped blocks stay in,
+                # as they were before puff existed (its puff-OFF path is
+                # unchanged); stage 7 already leaves them with no uncut jump.
+                _cut_or_bury_jumps([b for b in blocks if not (
+                                        b.step and str(b.step.get("code", "")).startswith("PUFF"))],
                                    step=cut_every_jump_step_mm(cfg))
 
     # The plan's palette is the list of cones this plan actually sews, one per
