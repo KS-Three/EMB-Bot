@@ -113,6 +113,7 @@ from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
 from .stage6_satin import (_dt_stats, classify_ribbon, is_rectangle_bar, is_small_solid, is_straight_slot,
+                           rectangle_zigzag_underlay, ribbon_width_mm,
                            satin_shape, satin_shape_judged,
                            small_solid_satin)
 from .stage6_streamline import streamline_fill
@@ -4668,6 +4669,20 @@ def sequence(
                     if (not s_report["empty"] and s_report.get("columns") == 1
                             and not s_report.get("columns_unsewn") and not s_report.get("cuts")):
                         s_report["rectangle_bar" if _rect else "straight_slot"] = 1
+                        _ul_style = "none" if small and not cfg.satin_underlay_short_columns else satin_underlay
+                        _sat = [i for i, r in enumerate(s_runs) if r.kind == stitches.SATIN]
+                        if _rect and _sat and _ul_style != "none":
+                            # the skeleton tier's zigzag where it would lay
+                            # one (`stage6_satin._stroke_underlay`): the
+                            # column path lays only a centre walk
+                            _w = ribbon_width_mm(p.polygon) + 2.0 * rail_comp_mm
+                            if _ul_style == "zigzag" or _w > machine.SATIN_ZIGZAG_ABOVE_MM:
+                                _ul = rectangle_zigzag_underlay(p.polygon, s_runs[_sat[0]].points[0],
+                                                                p.shape_id)
+                                if _ul:
+                                    # in place of everything the lane laid
+                                    # before its satin: it ends on the satin's start end
+                                    s_runs = _ul + s_runs[_sat[0]:]
                         return s_runs, s_report, False
                 _cored_s = cored_holes_of(p.polygon)
                 runs, report = satin_shape_judged(

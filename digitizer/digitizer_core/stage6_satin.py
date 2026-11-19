@@ -6753,6 +6753,42 @@ def is_rectangle_bar(poly: Polygon, max_width_mm: float) -> bool:
     return rect.hausdorff_distance(poly) <= RECT_MAX_DEV_MM
 
 
+def rectangle_zigzag_underlay(poly: Polygon, start: tuple[float, float],
+                              shape_id: str) -> list[StitchRun]:
+    """`cfg.satin_rectangles`' underlay where the skeleton tier lays a
+    zigzag (`_stroke_underlay`: style zigzag, or a column past
+    `machine.SATIN_ZIGZAG_ABOVE_MM`): a centre run from the end nearer
+    `start` (where the satin begins) to the far end, then a zigzag back,
+    each leg 0.82 of the width (corpus law 23's 0.09 inset from each rail)
+    at `machine.SATIN_ZIGZAG_PITCH_MM`, ending at the start end. The column
+    path lays only a centre walk; without this the flag's 4.6 mm stripes
+    lost their zigzag, and with it most of the 16-30% fewer stitches."""
+    c = list(poly.minimum_rotated_rectangle.exterior.coords)[:4]
+    sides = [(c[i], c[(i + 1) % 4]) for i in range(4)]
+    short = sorted(sides, key=lambda s: math.dist(*s))[:2]
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in short]
+    s_end, f_end = sorted(mids, key=lambda m: math.dist(m, start))
+    length = math.dist(s_end, f_end)
+    width = math.dist(*short[0])
+    inset = 0.4                                  # `columns._UNDERLAY_INSET_MM`
+    if length <= 2 * inset:
+        return []
+    ux, uy = (f_end[0] - s_end[0]) / length, (f_end[1] - s_end[1]) / length
+    vx, vy = -uy, ux
+    a = (s_end[0] + ux * inset, s_end[1] + uy * inset)
+    b = (f_end[0] - ux * inset, f_end[1] - uy * inset)
+    n = max(2, int(math.ceil((length - 2 * inset) / machine.UNDERLAY_STITCH_MM)))
+    runs = [StitchRun(points=_resample([a, b], n), kind=stitches.UNDERLAY, shape_id=shape_id)]
+    half = 0.5 * width * (1.0 - 2 * 0.09)
+    steps = max(2, int(math.ceil((length - 2 * inset) / machine.SATIN_ZIGZAG_PITCH_MM)))
+    pts = []
+    for i, (px, py) in enumerate(_resample([b, a], steps)):
+        side = 1.0 if i % 2 == 0 else -1.0
+        pts.append((px + vx * half * side, py + vy * half * side))
+    runs.append(StitchRun(points=pts, kind=stitches.UNDERLAY, shape_id=shape_id))
+    return runs
+
+
 def small_solid_satin(poly: Polygon, shape_id: str, *, spacing_mm: float,
                       max_width_mm: float,
                       start_near: tuple[float, float] | None

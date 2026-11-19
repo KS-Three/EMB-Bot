@@ -45,10 +45,11 @@ stays the platform red.
 **Exception TAKEN 2026-11-19, `satin_rectangles` ON (Kent 2026-11-19, "Flip ON
 (Recommended)", shown his flag and the 9 of 44 sweep runs it moves):** the
 `logo_whitebg.png` and `logo_alpha.png` entries were re-captured after a true
-rectangle began sewing by the straight column path with square ends. Both
-fixtures' green bar is one: `logo_whitebg.png` 5509 -> 5419 stitches,
-`logo_alpha.png` 6186 -> 6096. `ribbon_curve.png` is unmoved (byte-identical)
-and is the control; the pre-change tree (main at 283a54df) reproduced both old
+rectangle began sewing by the straight column path with square ends (and the
+skeleton tier's zigzag underlay where it lays one). Both fixtures' green bar is
+one: `logo_whitebg.png` 5509 -> 5427 stitches, `logo_alpha.png` 6186 -> 6104.
+`ribbon_curve.png` is unmoved (byte-identical) and is the control; the
+pre-change tree (main at 1089931d) reproduced both old
 entries on this machine before the capture (`tools/recapture_flat_lane_key.py
 --pre-change-tree`). `enthusiast_logo` stays the platform red.
 

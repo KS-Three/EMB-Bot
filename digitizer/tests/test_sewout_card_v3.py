@@ -41,8 +41,26 @@ PIECES = {
 
 @pytest.fixture(scope="module")
 def card(tmp_path_factory):
+    # The committed readback predates `satin_rectangles` (ON since Kent's
+    # 2026-11-19 flip): the card's bars sew as rectangles and its readback
+    # falls 3,074 -> 2,883 stitches, past the +-3% band. The card is about its
+    # blocks and arms, so it is read on the engine the readback was taken on.
+    from functools import partial
+
+    from digitizer_core import PipelineConfig
+
+    from .conftest import SATIN_RECTANGLES_2026_11_19_OFF
+
     out = tmp_path_factory.mktemp("cardv3")
-    rb = v3.generate(out, None, COMMITTED / "cuts", quiet=True)
+    mp = pytest.MonkeyPatch()
+    # v3 builds blocks itself and through the v2 and hairline cards
+    for mod in (v3, v3.v2, v3.hc):
+        if hasattr(mod, "PipelineConfig"):
+            mp.setattr(mod, "PipelineConfig", partial(PipelineConfig, **SATIN_RECTANGLES_2026_11_19_OFF))
+    try:
+        rb = v3.generate(out, None, COMMITTED / "cuts", quiet=True)
+    finally:
+        mp.undo()
     return out, rb
 
 
