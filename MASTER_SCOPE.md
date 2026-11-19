@@ -522,11 +522,20 @@ adds under a second to the service job (click to stitches: Becker 16 s, MFab
 24, Golden Tee 38). It is one
 core of Python and GEOS, spread over many passes, no stage the hog. Eight
 exact cuts took 14% off the nine (stitches md5-identical). More cores for the
-letter cuts measured a 7% ceiling and is not built. Three of the four still
-over 25 s spend half their time in generation. Fewer passes is a quality
-trade, Kent's call. **Parked by Kent 2026-11-16 ("Park speed").** Time trees
-back to back on an idle laptop, by md5.
-*(measured 2026-11-16 — `docs/speed-pass-2026-11-16.md`, `tests/test_speed_exact_1116.py`)*
+letter cuts measured a 7% ceiling and is not built. Fewer passes is a quality
+trade, Kent's call. *(measured 2026-11-16 — `docs/speed-pass-2026-11-16.md`, `tests/test_speed_exact_1116.py`)*
+**Un-parked 2026-11-19: four more exact cuts, stitches md5-identical on the
+four jobs over 25 s.** CPU seconds, median of three back-to-back rounds:
+Fremont 53.9 -> 44.7 (-17%), Drone 53.6 -> 41.8 (-22%), Golden Tee 49.3 ->
+41.5 (-16%), MFab 35.3 -> 33.5 (-5%; its time is the lettering lane). The
+largest cut is the size ring's corner relaxation (0.8-1.6 M `np.roll` calls
+per job, most of `finish_generation`). The others: a Lab conversion done once
+per frame, the stage 2 edge snap made incremental, and the fine-bar ink test
+on the band's box. **Those are loaded-laptop figures** (about 25 sweeps from
+other sessions running). Idle wall seconds are not measured. Projected from
+the shares: MFab 26, Fremont 25, Drone 28, Golden Tee 32. Time the trees back
+to back on an idle laptop, by md5.
+*(measured 2026-11-19 — `docs/speed-pass-2026-11-19.md`, `tests/test_speed_exact_1119.py`)*
 
 ### CI feedback speed
 
