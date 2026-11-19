@@ -603,6 +603,13 @@ PRE_FLIP["stage0_texture_gate"] = False
 # arms in `tests/test_classifier_scale_invariance.py`) name the flag themselves.
 # `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["stage0_scale_relative_grad"] = False
+# `stage0_grain_needs_texture` joined the flipped set 2026-11-19 (Kent's "Flip
+# ON (Recommended)" on `docs/stage0-grain-needs-texture-2026-11-19.md`): ON, an
+# opaque file the grain gate alone sent to `photo_scene` (MFab hat at native,
+# small logos downscaled) routes flat, so an arm measured on the photo lane's
+# plan of one was measured on the pre-flip tree. Tests ABOUT the gate
+# (`tests/test_stage0_grain_needs_texture.py`) name the flag themselves.
+PRE_FLIP["stage0_grain_needs_texture"] = False
 # `flat_page_fringe_soft_ramp` and `flat_ramp_blend_dissolve` joined with it
 # (Kent 2026-11-06, "Re-open flip + both flags (Recommended)",
 # `docs/flat-fringe-soft-ramp-2026-11-06.md`): both act on the flat lane of an

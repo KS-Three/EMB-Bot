@@ -55,7 +55,11 @@ SWEEP = [
 #: (rendered 2026-11-04). The same family as the 100.8 mm WELDING merge another
 #: session is diagnosing; expected to fail until that lands. strict: when it
 #: starts passing, this mark must go.
-KNOWN_WRONG_ORDER = {(60.0, None)}
+#: EMPTIED 2026-11-19: `stage0_grain_needs_texture` (ON, Kent) routes MFab hat
+#: flat by default, so the default row at 60 mm sews as the forced-flat row
+#: does, black, white, black, and the strict xfail XPASSED. The photo-route
+#: wrong order it recorded is still reachable with that flag False.
+KNOWN_WRONG_ORDER: set = set()
 #: 30 and 36.7 mm since 2026-11-13 (`border_from_outline_hairline_run` ON, Kent:
 #: "sewn thin, but do not include letters for this"): at these widths the white
 #: keyline is 0.16-0.45 mm, a hairline, so it sews as one bean line and sews

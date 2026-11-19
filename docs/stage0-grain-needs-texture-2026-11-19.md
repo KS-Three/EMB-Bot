@@ -1,4 +1,9 @@
-# Stage 0's photo gate, scale half — `cfg.stage0_grain_needs_texture` (built OFF 2026-11-19)
+# Stage 0's photo gate, scale half — `cfg.stage0_grain_needs_texture` (built OFF, FLIPPED ON 2026-11-19)
+
+**Kent's ruling 2026-11-19: "Flip ON (Recommended)"**, taken on the
+ORIGINAL | BEFORE | AFTER renders of both moved designs (§6) with the 146-px
+photograph cost in front of him. The OFF arm is pinned in
+`tests/engine_2026_10_27.json` and `PRE_FLIP`.
 
 ROADMAP phase 2 (framing). Every number here is an instrument reading, not a
 quality claim (gate 4). No constant moves (gate 2): the flag changes which
