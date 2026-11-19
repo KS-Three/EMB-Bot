@@ -1476,11 +1476,12 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   these pins; test it frozen on the next two-reader card.** Against the 10
   agreed tangle faults on 6 designs of `scorecard-2026-11-19` (pin rule,
   constants and verdict committed first, `a633ca70`): hit 0.60 against
-  thread-area chance 0.36, kappa +0.37, item-bootstrap CI [-0.02, +0.46]: not
+  thread-area chance 0.36, kappa +0.37, item-bootstrap CI on hit minus
+  chance [-0.02, +0.46]: not
   shown, and the margin rests on four designs. On Kent's sitting-1 tangle
   pins (9 on 3 designs, a secondary) it clears chance, +0.42 [+0.21, +0.73],
   which is a reason to re-test, not a replication. What it cannot do as built:
-  tell a pile-up from a clean junction where three columns meet (37-97 flags
+  tell a pile-up from a clean junction where three columns meet (37-100 flags
   per design), and a letter-shape fault whose note only mentions a fan (Becker
   R) is out of its reach. *(measured 2026-11-19 —
   `docs/tangle-fault-reader-2026-11-19.md`, tree `f8373d58`)*

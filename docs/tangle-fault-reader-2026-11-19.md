@@ -91,8 +91,9 @@ null, `chance_area` 0.363 (`chance_pick` 0.361): kappa **+0.37**, item-bootstrap
 touches 0, so the pre-registered rule says not shown. Leaving one design out:
 the lower bound stays above 0 only without Becker or without Fremont (the two
 misses); dropping any of MFab, Golden Tee, Toat machine or Toat beanie takes
-it below 0. At 2.0 mm kappa +0.24 [-0.11, +0.45]; at 5.0 mm +0.75 [+0.03, +0.43]
-(sensitivity, not the verdict). Mean strength AUC 0.63.
+it below 0. At 2.0 mm kappa +0.24, CI on (hit - null) [-0.11, +0.45]; at 5.0 mm
+kappa +0.75, CI on (hit - null) [+0.03, +0.43] (sensitivity, not the verdict).
+Every bracket on this page is that interval on the difference, not on kappa. Mean strength AUC 0.63.
 
 **Set K (secondary): above chance, three designs.** Hit 5 of 9 against 0.237
 (`chance_area`; `chance_pick` 0.236): kappa **+0.42**, CI **[+0.21, +0.73]**,
@@ -109,7 +110,7 @@ separate items).
 tangles both readers place than random thread does, on every set and radius,
 but on the set the pre-registration chose to decide, 10 pins on 6 designs do
 not exclude chance, and the margin rests on four designs. The reader flags
-37-97 places per design (Tires 3): it also fires on legitimate junctions where
+37-100 places per design across both trees (Tires 3-4): it also fires on legitimate junctions where
 three columns meet, which is where most tangles are, so it does not separate
 a pile-up from a clean three-way join. The misses: Becker's R counter
 (a letter-shape fault whose note mentions a fan, nearest flag 28.9 mm) and the
