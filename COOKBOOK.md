@@ -11,8 +11,9 @@ self-contained handoff.
 11-19, 837 commits). That pass corrected claims the code had overtaken (flag
 defaults, CI shape) and moved dated history to `docs/cookbook-history.md`; it
 did not re-read every section against the code, so a claim here without a
-date or a pointer is still worth checking. `.claude/hooks/nudge-cookbook-stale.js` nags once 20
-source commits have piled up past the last touch; the foreman then assigns
+date or a pointer is still worth checking. `.claude/hooks/nudge-cookbook-stale.js` nags once 150
+source commits have landed past the end SHA in the line above (keep that
+`a..b` format when you refresh: the hook reads it); the foreman then assigns
 ONE named session per refresh (the K3 standing rule under "Branches &
 worktrees"), and every other session puts status in its PR body, not here.
 
