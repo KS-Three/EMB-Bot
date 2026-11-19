@@ -1005,7 +1005,7 @@ def _sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float
     its face. `keep` (`cfg.satin_push_keeps_gaps`, None: off): the
     push held out of the letter's bays and its gaps to same-thread ink, as
     from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`). `held`
-    (`cfg.extra["satin_rectangles"]`, None: off): `_push_rails`' seam hold,
+    (`cfg.satin_rectangles`, None: off): `_push_rails`' seam hold,
     the colour already down, as the skeleton tier gets it under
     `cfg.satin_seam_hold`.
     -> (a_pts, b_pts). `tools/column_ends.py` reads it too."""
@@ -3590,7 +3590,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"cover_hops": True} if cover_hops else {}),
                   # `cfg.satin_push_keeps_gaps`: the push kept out of bays and gaps
                   **({"pull_keep": pull_keep} if pull_keep is not None else {}),
-                  # `cfg.extra["satin_rectangles"]`: a rectangle's rails held at its seam
+                  # `cfg.satin_rectangles`: a rectangle's rails held at its seam
                   **({"rail_held": rail_held} if rail_held is not None else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 

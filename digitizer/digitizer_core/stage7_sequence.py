@@ -4641,14 +4641,14 @@ def sequence(
                 # (`stage6_satin.is_straight_slot`). Not lettering, not a
                 # forced tier, no house angle to honour. A slot the lane does
                 # not build as exactly one whole column takes the tier below.
-                # `cfg.extra["satin_rectangles"]` (built OFF 2026-11-19): a
-                # true rectangle of any length (`stage6_satin.is_rectangle_bar`,
-                # a flag's stripe) takes the same path, its rails held at a
+                # `cfg.satin_rectangles` (ON since 2026-11-19): a true
+                # rectangle of any length (`stage6_satin.is_rectangle_bar`, a
+                # flag's stripe) takes the same path, its rails held at a
                 # seam with the colour already down as the tier below holds
                 # them (`cfg.satin_seam_hold`), so its ends sew square.
                 _x = cfg.extra or {}
                 _slot = bool(_x.get("satin_straight_slots")) and is_straight_slot(p.polygon, shape_max)
-                _rect = (not _slot and bool(_x.get("satin_rectangles"))
+                _rect = (not _slot and bool(cfg.satin_rectangles)
                          and is_rectangle_bar(p.polygon, shape_max))
                 if ((_slot or _rect) and tier == "auto"
                         and not is_lettering(p.region, cfg) and satin_angle_deg is None):

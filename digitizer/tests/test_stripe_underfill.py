@@ -120,6 +120,9 @@ def flag():
 
 
 def _sew(art, **flags):
+    # `stripe_underfill` (built OFF) was measured on the skeleton tier's red
+    # bands; `satin_rectangles` (ON since 2026-11-19) sews them by the column path
+    flags.setdefault("satin_rectangles", False)
     cfg = PipelineConfig(target_width_mm=100, forced_class="flat", edge_cap="none",
                          garment_id="hat_front", garment_rgb=(120, 120, 120), **flags)
     return digitize(art.copy(), cfg)[1]

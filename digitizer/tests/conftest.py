@@ -1253,6 +1253,11 @@ PRE_FLIP.update(BLOCK_BUTT_2026_11_18_OFF)
 MARINE_MATCH_2026_11_19_OFF = {"lettering_columns_r_bowl": False, "lettering_columns_block_butt_small": False,
                                "lettering_columns_a_bar": False, "lettering_columns_block_lean": False}
 PRE_FLIP.update(MARINE_MATCH_2026_11_19_OFF)
+# `satin_rectangles` (Kent 2026-11-19, shown his Flag.webp at 113.5 mm and the 9
+# of 44 sweep runs it moves, before | after: "Flip ON (Recommended)"): a true
+# rectangle sews square ends. `tests/test_satin_rectangles.py`.
+SATIN_RECTANGLES_2026_11_19_OFF = {"satin_rectangles": False}
+PRE_FLIP.update(SATIN_RECTANGLES_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

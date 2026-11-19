@@ -6711,8 +6711,7 @@ def is_straight_slot(poly: Polygon, max_width_mm: float) -> bool:
     return poly.area >= SLOT_MIN_HULL_SHARE * poly.convex_hull.area
 
 
-#: `is_rectangle_bar` (`cfg.extra["satin_rectangles"]`, built OFF
-#: 2026-11-19). A rectangle fills its own minimum rectangle: Flag.webp's
+#: `is_rectangle_bar` (`cfg.satin_rectangles`, ON since 2026-11-19). A rectangle fills its own minimum rectangle: Flag.webp's
 #: stripes read 0.997-0.999 at 96 and 113.5 mm; a rounded bar is 0.95 at
 #: elongation 4 and nearer 0.99 only when very long, where its round ends are
 #: a hair of the length. Kent 2026-11-19: "a square needs to be square".
@@ -6725,7 +6724,7 @@ RECT_MAX_DEV_MM = 0.1
 
 
 def is_rectangle_bar(poly: Polygon, max_width_mm: float) -> bool:
-    """`cfg.extra["satin_rectangles"]`'s test: a straight bar with square
+    """`cfg.satin_rectangles`' test: a straight bar with square
     corners -- the shape fills `RECT_MIN_SHARE` of its minimum rotated
     rectangle and lies within `RECT_MAX_DEV_MM` of it -- of ANY length, no
     hole, its short side within the satin ceiling and at least

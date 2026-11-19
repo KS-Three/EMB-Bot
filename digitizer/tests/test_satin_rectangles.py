@@ -1,4 +1,4 @@
-"""A rectangle sews as a rectangle: `cfg.extra["satin_rectangles"]` (built OFF 2026-11-19).
+"""A rectangle sews as a rectangle: `cfg.satin_rectangles` (ON since 2026-11-19, Kent: "Flip ON").
 
 Kent's Flag.webp at 113.5 mm (the Studio, 2026-11-19, "I thought you fixed the
 Flag!?"; then "a square needs to be square"): the skeleton tier's spine forks
@@ -20,8 +20,9 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage6_satin import is_rectangle_bar, is_straight_slot
 
 
-def test_built_off():
-    assert not (PipelineConfig().extra or {}).get("satin_rectangles")
+def test_ships_on():
+    # Kent's flip, 2026-11-19; conftest's PRE_FLIP holds the OFF arm.
+    assert PipelineConfig().satin_rectangles is True
 
 
 @pytest.mark.parametrize("poly", [
@@ -73,7 +74,7 @@ def stripes():
 def _sew(art, on: bool):
     cfg = PipelineConfig(target_width_mm=100, forced_class="flat", edge_cap="none",
                          garment_id="left_chest", garment_rgb=(235, 232, 223),
-                         **({"extra": {"satin_rectangles": True}} if on else {}))
+                         satin_rectangles=on)
     return digitize(art.copy(), cfg)[1]
 
 
