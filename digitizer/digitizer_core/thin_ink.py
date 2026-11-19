@@ -849,13 +849,19 @@ def settle_dark_ink_bean(regions) -> int:
 REORDERED_KEY = "dark_ink_ground_reordered"
 
 
-def ink_after_ground(regions, innermost: bool = False):
+def ink_after_ground(regions, innermost: bool = False, other_thread: bool = False):
     """`cfg.dark_ink_bean`, at plan time: a bean stroke (`bean_dark_ink`)
     whose ground (`_ground_of`) sews in the same or a later layer moves to
     a layer of its own right after the ground's -- the shape
     `silhouette_underfill` gives a rider -- because stage 5 sews a ground
     through only under a LATER bean letter. Regions as copies, renumbered;
-    nothing to move: the input list itself."""
+    nothing to move: the input list itself.
+
+    `other_thread` (`cfg.extra["underfill_keeps_thin_letters"]`, built OFF
+    2026-11-19): a stroke's ground is never a shape of its own thread. The
+    Merchant Marine seal's black ring letters named the black under-fill
+    (the keyline ring, whose outline covers the whole seal) as their ground
+    and sewed right after it, under the white disc. False: as before."""
     from dataclasses import replace
 
     from .beanletters import BEAN_LETTER_KEY
@@ -867,11 +873,13 @@ def ink_after_ground(regions, innermost: bool = False):
     to: dict[str, tuple] = {}
     reordered: dict[str, str] = {}      # stroke id -> the ground `innermost` alone found for it
     for b in ink:
-        g = _ground_of(b, grounds, innermost)
+        mine = ([g_ for g_ in grounds if g_.thread_index != b.thread_index]
+                if other_thread else grounds)
+        g = _ground_of(b, mine, innermost)
         if g is not None and g.meta["layer"] >= b.meta["layer"]:
             to[b.shape_id] = ("ink", g.meta["layer"], b.thread_index)
             if innermost:
-                plain = _ground_of(b, grounds)
+                plain = _ground_of(b, mine)
                 if plain is None or plain.meta["layer"] < b.meta["layer"]:
                     # only the innermost reading moved this stroke: stage 5's
                     # angle pin is for its ground and no other (`REORDERED_KEY`)
