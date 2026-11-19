@@ -180,3 +180,54 @@ def test_between_mode_keeps_the_gap_but_not_a_shapes_own_hole():
     off = _plan([_fill(art)])["F"]
     between = _plan([_fill(art)], growth_keeps_gaps_between=True)["F"]
     assert between.wkb == off.wkb, "no shapes near: the hole is grown over as before"
+
+
+def test_between_gates_hold_only_big_shapes_with_a_wide_gap():
+    """`growth_keeps_gaps_between_min_mm2` / `_min_gap_mm` (built OFF, read only
+    with `growth_keeps_gaps_between`): a gap is held only between two shapes
+    that are each at least the area, and only if the art gap is at least the
+    width. Absent or 0, every pair as `growth_keeps_gaps_between` has it."""
+    gap = 1.0
+    def scene():
+        return [_fill(box(0, 0, 10, 8), "A", thread=0, layer=0),
+                _fill(box(10 + gap, 0, 20, 8), "B", thread=1, layer=1)]   # 80 mm2 each
+    base = _plan(scene(), growth_keeps_gaps_between=True)
+    assert base["A"].distance(base["B"]) >= gap - 1e-6
+    # gates the pair passes: as ungated
+    passes = _plan(scene(), growth_keeps_gaps_between=True,
+                   growth_keeps_gaps_between_min_mm2=60, growth_keeps_gaps_between_min_gap_mm=0.9)
+    assert _md5(passes) == _md5(base)
+    off = _md5(_plan(scene()))
+    # a pair under the area gate, or a gap under the width gate: grown as OFF
+    small = _plan(scene(), growth_keeps_gaps_between=True, growth_keeps_gaps_between_min_mm2=100)
+    narrow = _plan(scene(), growth_keeps_gaps_between=True, growth_keeps_gaps_between_min_gap_mm=1.2)
+    assert _md5(small) == off and _md5(narrow) == off
+    # the gates alone, without the flag, change nothing
+    assert _md5(_plan(scene(), growth_keeps_gaps_between_min_mm2=100,
+                      growth_keeps_gaps_between_min_gap_mm=1.2)) == off
+
+
+def test_between_taper_ramps_the_growth_back_instead_of_stepping():
+    """`growth_keeps_gaps_between_taper_mm` (built OFF, read only with the flag):
+    where the held gap ends, the growth rises back to the full pull over this
+    length rather than stepping 0.4 mm. Absent: the step, as before."""
+    gap = 1.0
+    def scene():
+        return [_fill(box(0, 0, 10, 8), "A", thread=0, layer=0),
+                _fill(box(10 + gap, 0, 20, 3), "B", thread=1, layer=1)]
+    step = _plan(scene(), growth_keeps_gaps_between=True)["A"]
+    ramp = _plan(scene(), growth_keeps_gaps_between=True,
+                 growth_keeps_gaps_between_taper_mm=1.5)["A"]
+    def edge_x(poly, y):
+        from shapely.geometry import LineString
+        cut = poly.intersection(LineString([(0, y), (30, y)]))
+        return cut.bounds[2]
+    # past the gap's end the edge climbs gradually: one level short of full at 3.9 mm
+    assert edge_x(step, 7.9) >= 10 + PULL - 0.05 and edge_x(ramp, 7.9) >= 10 + PULL - 0.05
+    mids = [edge_x(ramp, y) for y in (3.2, 3.8, 4.4, 5.0)]
+    assert mids == sorted(mids), mids
+    assert ramp.area != step.area
+    assert _md5({"A": ramp}) != _md5({"A": step})
+    # the gap itself is held in both
+    both = _plan(scene(), growth_keeps_gaps_between=True, growth_keeps_gaps_between_taper_mm=1.5)
+    assert both["A"].distance(both["B"]) >= gap - 1e-6

@@ -69,6 +69,7 @@ the OLDEST lines whole to the archive.
 - [Logo batch 4](logo-batch-4-2026-11-18.md) — Commerce ring text; `thin_letters_after_ground` OFF
 - [Logo batch 5](logo-batch-5-2026-11-18.md) — Peace Corps R; `lettering_columns_sew_dropped_branch` OFF
 - [Logo batch 6](logo-batch-6-2026-11-18.md) — overview only; lines half bold, half thin
+- [Logo batch 7](logo-batch-7-2026-11-18.md) — overview only; ATF ring text lost
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [MARINE match](marine-match-2026-11-18.md) — pro construction per letter in numbers; four built-OFF flags (r_bowl, block_butt_small, a_bar, block_lean); R counter needs the pull (sew-out row 14)
 - [MFab counter ring room](mfab-counter-ring-room-2026-11-14.md) — "random stitch" = photo-lane significant border on the A's 3.35 mm counter lightened to a bean loop inside its fill; `border_significant_ring_room` OFF drops it; our satin tier there was worse

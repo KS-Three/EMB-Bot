@@ -1,4 +1,5 @@
-"""`cfg.extra["thin_letters_after_ground"]` (built OFF 2026-11-18).
+"""`cfg.thin_letters_after_ground` (built OFF 2026-11-18 as a `cfg.extra` key;
+ON the same day, Kent's flip: "Flip ON now").
 
 Light lettering on a darker ring: white is the first thread, so the letters
 sewed first and the ring filled round them afterwards. Each fill row is laid
@@ -100,9 +101,13 @@ def test_dark_ink_strokes_are_not_this_rules():
     assert thin_letters_after_ground(regs) is regs
 
 
-def test_flag_is_off_by_default():
+def test_default_is_on_since_kent_2026_11_18_and_the_pre_flip_engine_pins_it_off():
     from digitizer_core import PipelineConfig
-    assert not (PipelineConfig().extra or {}).get("thin_letters_after_ground")
+    from tests.conftest import PRE_FLIP, THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF
+    assert PipelineConfig().thin_letters_after_ground is True
+    assert PRE_FLIP["thin_letters_after_ground"] is False
+    off = PipelineConfig(**THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF)
+    assert off.thin_letters_after_ground is False
 
 
 def test_a_narrow_column_is_not_a_ground():

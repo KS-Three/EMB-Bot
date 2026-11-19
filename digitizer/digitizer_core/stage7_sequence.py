@@ -4393,6 +4393,10 @@ def sequence(
                     # sews nothing, is cut and sewn in the lane
                     **({"dropped_branch": True}
                        if (cfg.extra or {}).get("lettering_columns_sew_dropped_branch") else {}),
+                    # `cfg.extra["lettering_columns_sew_dropped_hairline"]` (built OFF
+                    # 2026-11-18): the same for a hairline stroke joined at one end
+                    **({"dropped_hairline": True}
+                       if (cfg.extra or {}).get("lettering_columns_sew_dropped_hairline") else {}),
                     # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
                     **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
@@ -4685,6 +4689,7 @@ def sequence(
                     tip_caps=cfg.satin_tip_caps,
                     tip_corner_gate=cfg.satin_tip_corner_gate,
                     thin_arm_stop=cfg.satin_thin_arm_stop,
+                    tip_floor_cross=cfg.satin_tip_floor_cross,
                     hairline_tier=cfg.satin_hairline_tier,
                     # The ceiling the classifier admitted at is the one the
                     # emitter sews at — one number, threaded, never two

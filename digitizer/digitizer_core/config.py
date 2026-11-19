@@ -1268,6 +1268,28 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_dark_ink_bean.py`; sheet: `docs/renders/dark-ink-bean-2026-10-28/`.
     dark_ink_bean: bool = True
+    # The lettering of one thread written on one ground, sewn BEFORE that
+    # ground, moves to a layer right after it when the line's median stroke
+    # is under `thin_ink.THIN_LETTER_PULLS` (6) x the pull the ground's rows
+    # add back (1.8 mm at 0.3) (`thin_ink.thin_letters_after_ground`; built
+    # OFF 2026-11-18 as `cfg.extra["thin_letters_after_ground"]`, #1658).
+    # **ON since 2026-11-18, Kent's flip**: he first ruled "Add to paired
+    # check"; shown ART | BEFORE | AFTER for the three designs it changes of
+    # 82 and asked whether to change that ruling, "Flip ON now". White is
+    # the first thread, so white ring letters sewed first and the ring's fill
+    # rows, laid long at both ends for pull, covered about half of each
+    # stroke: the Commerce seal's bold ring text read as hairlines
+    # (39,010 -> 39,221 stitches, trims 114 -> 100) and the ATF seal's whole
+    # ring line was lost (45,593 -> 45,335, trims 122 -> 116); AmeriCorps
+    # 31,849 -> 31,347, trims 36 -> 21. 82 designs (seven Commons logo
+    # batches, 16 repo logos): those three change, 79 do not. Catches: one
+    # more thread block on each design it moves; the 6 x pull limit is a
+    # layout candidate, not a sewn number; the `scratch_kent` paired corpus
+    # was not run. Promoted from `cfg.extra` so the default can be ON. False
+    # is the engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_thin_letters_after_ground.py`.
+    thin_letters_after_ground: bool = True
     # `dark_ink_bean_by_width` (built OFF 2026-11-16): which dark-ink strokes
     # sew as a bean is decided by WIDTH, not thread contrast. Contrast stood
     # in for "pen line versus designed lettering" and gets real lettering
@@ -3649,6 +3671,16 @@ class PipelineConfig:
     # both ways. False is the engine as it was; PRE_FLIP
     # (THIN_ARM_STOP_2026_11_17_OFF) pins it False.
     satin_thin_arm_stop: bool = True
+    # `satin_tip_floor_cross` (2026-11-18, built OFF; LEAVE OFF: 33 of 44 designs
+    # move for a sub-mm change nobody sees at print size, `docs/gaulke-fine-
+    # detail-2026-11-18.md`): where a FREE end's spine stops short of a pointed
+    # art tip, the column is carried on to the tip with crosses at
+    # `machine.SATIN_MIN_CROSS_MM` (unchanged, gate 1), as the professional's
+    # Gaulke wing does (a 0.9 mm cross from the tip; ours began 0.75 mm in).
+    # Only where the art runs on at least `stage6_satin._TIP_EXTEND_MIN_MM`
+    # (0.5 mm) past the spine, at most `_TIP_EXTEND_MAX_MM` (1.5). Off,
+    # byte-identical. Tests: `tests/test_satin_tip_floor_cross.py`.
+    satin_tip_floor_cross: bool = False
     # `outline_loop_split_shared` (2026-11-18, prime grader: Becker large's
     # outline between the B and the E, pin x 21 y 8.5 -- "the satin columns
     # overlap in a thick knot"; Kent pinned the border 11-10, "the stitches
