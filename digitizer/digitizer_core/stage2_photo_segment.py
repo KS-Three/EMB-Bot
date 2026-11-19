@@ -1673,6 +1673,93 @@ def split_tonal_regions(
     return out, split_count
 
 
+# --- Dark neutral split (`cfg.dark_neutral_split`, 2026-11-19) -----------------
+#
+# The census that chose these bounds is `tools/dark_split_census.py` over the 44
+# sweep designs: 9 regions are dark and neutral at all; these bounds fire on
+# exactly the two Precision Drone runs. Not a lightness rule in the merge (that
+# cuts every dark gradient): a cut of ONE already-formed region, only when
+# every one of the bounds below holds.
+DARK_SPLIT_T = 8.0              # neutral L* at or above this is the mid tone
+DARK_SPLIT_NEUTRAL_C = 8.0      # Lab chroma at or below this is neutral
+DARK_SPLIT_MIN_REGION_MM2 = 100.0
+DARK_SPLIT_MAX_MEAN_L = 35.0    # the region is dark
+DARK_SPLIT_MIN_NEUTRAL = 0.5    # share of its pixels that are neutral
+DARK_SPLIT_MIN_PIECE_MM2 = 10.0
+DARK_SPLIT_MIN_TONE_MM2 = 60.0  # each tone, as pieces that clear the floor
+DARK_SPLIT_MIN_GAP_L = 12.0     # mean neutral L* of mid tone minus of the rest
+DARK_SPLIT_MAX_PIECES = 14
+DARK_SPLIT_MIN_SOLIDITY = 0.6   # area-weighted piece area / convex hull area
+DARK_SPLIT_CLEAN_PX = 3
+
+
+def split_dark_neutral_regions(
+    p: Prep, kept: list[RegionMask], enabled: bool = False,
+) -> tuple[list[RegionMask], int]:
+    """-> (regions, split_count). Cuts a dark neutral region into its mid-dark
+    pieces (each connected piece its own region) and the near-black remainder.
+    Subsets of the parent, disjoint, union exactly the parent (so no artwork is
+    lost and stage 5 sees no new overlap). `enabled` False returns `kept`."""
+    if not enabled or p.px_per_mm <= 0:
+        return kept, 0
+    k = 1.0 / (p.px_per_mm * p.px_per_mm)
+    kern = np.ones((DARK_SPLIT_CLEAN_PX, DARK_SPLIT_CLEAN_PX), np.uint8)
+    out: list[RegionMask] = []
+    n_split = 0
+    for r in kept:
+        if r.area * k < DARK_SPLIT_MIN_REGION_MM2:
+            out.append(r)
+            continue
+        lab = rgb_to_lab(p.rgb[r.frame_slice()][r.crop].reshape(-1, 3))
+        L = lab[:, 0]
+        if float(L.mean()) > DARK_SPLIT_MAX_MEAN_L:
+            out.append(r)
+            continue
+        neutral = np.hypot(lab[:, 1], lab[:, 2]) <= DARK_SPLIT_NEUTRAL_C
+        if float(neutral.mean()) < DARK_SPLIT_MIN_NEUTRAL:
+            out.append(r)
+            continue
+        full = np.full(r.crop.shape, -1.0, np.float64)
+        full[r.crop] = np.where(neutral, L, -1.0)
+        m8 = (r.crop & (full >= DARK_SPLIT_T)).astype(np.uint8)
+        m8 = cv2.morphologyEx(cv2.morphologyEx(m8, cv2.MORPH_OPEN, kern), cv2.MORPH_CLOSE, kern)
+        m8 &= r.crop.astype(np.uint8)
+        num, comp, st, _ = cv2.connectedComponentsWithStats(m8)
+        big = [i for i in range(1, num) if st[i, cv2.CC_STAT_AREA] * k >= DARK_SPLIT_MIN_PIECE_MM2]
+        if not big or len(big) > DARK_SPLIT_MAX_PIECES:
+            out.append(r)
+            continue
+        areas = [st[i, cv2.CC_STAT_AREA] * k for i in big]
+        mid_area = sum(areas)
+        mid = np.isin(comp, big) & r.crop
+        rest_neutral = neutral & (L < DARK_SPLIT_T)
+        if mid_area < DARK_SPLIT_MIN_TONE_MM2 or rest_neutral.sum() * k < DARK_SPLIT_MIN_TONE_MM2:
+            out.append(r)
+            continue
+        if float(full[mid].mean()) - float(L[rest_neutral].mean()) < DARK_SPLIT_MIN_GAP_L:
+            out.append(r)
+            continue
+        sol = []
+        for i, a in zip(big, areas):
+            cs, _ = cv2.findContours((comp == i).astype(np.uint8), cv2.RETR_EXTERNAL,
+                                     cv2.CHAIN_APPROX_SIMPLE)
+            cnt = max(cs, key=cv2.contourArea)
+            hull = cv2.contourArea(cv2.convexHull(cnt))
+            sol.append(cv2.contourArea(cnt) / hull if hull > 0 else 0.0)
+        if float(np.average(sol, weights=areas)) < DARK_SPLIT_MIN_SOLIDITY:
+            out.append(r)
+            continue
+        rest = r.crop & ~mid
+        parts = [(comp == i) & r.crop for i in big]
+        if rest.any():
+            parts.append(rest)
+        for m in parts:
+            out.append(RegionMask(crop=m, origin=r.origin, frame_shape=r.frame_shape,
+                                  layer=r.layer, source=r.source))
+        n_split += 1
+    return out, n_split
+
+
 # --- Stage-2 shade demand (cfg.shade_palette_demand) --------------------------
 #
 # Option (b) of docs/superpowers/plans/2026-08-23-shade-palette-binding.md:
@@ -2269,6 +2356,10 @@ def kept_masks_to_quant(
     kept, tonal_splits = split_tonal_regions(
         p, kept, split_tonal=split_tonal,
         veto_px=tonal_veto_px(p, cfg.tonal_split_veto_mm))
+    # The dark neutral cut (`cfg.dark_neutral_split`): only where the ordinary
+    # tonal split is NOT in force, so the two never act on one region.
+    if cfg.dark_neutral_split and not split_tonal:
+        kept, _dark_splits = split_dark_neutral_regions(p, kept, enabled=True)
 
     # --- 6. Palette selection (chart-restricted weighted k-medoids) -----------
     # (Step 5, the face-local threshold drop, already ran inside the RAG
