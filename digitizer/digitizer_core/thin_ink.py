@@ -751,6 +751,14 @@ DARK_INK_BEAN_MAX_WIDTH_MM = 1.5 * machine.SATIN_MIN_CROSS_MM
 #: no gap in either measure; NOAA 0.66, FEMA 0.57, the thin pen-line groups
 #: 0.27-0.73 stay bean. A layout threshold judged from renders.
 DARK_INK_BEAN_MAX_CORE_MM = 2.0 * machine.SATIN_MIN_CROSS_MM
+#: ... and only a group of at least this many strokes is read by its core:
+#: a ring line of lettering. Smaller groups keep the mean width. Same sweep:
+#: every clear gain was a ring line of 36-65 strokes (SEC 36, Florida 40,
+#: Court of Federal Claims 53, Agriculture 55, Nevada 65); every design that
+#: read worse was a group of 14 or fewer (Fish & Wildlife 14, the Hotel
+#: Fremont patch's EAT | STAY | PLAY 6, Energy Star 2, House and OPM 1).
+#: Nothing between 15 and 36: the middle of that gap.
+DARK_INK_CORE_MIN_STROKES = 24
 
 
 def _core_width_mm(poly) -> float:
@@ -787,7 +795,9 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False,
 
     `by_core` (`cfg.extra["dark_ink_bean_by_core"]`, read only with
     `by_width`): the group's median CORE width (`_core_width_mm`) against
-    `DARK_INK_BEAN_MAX_CORE_MM` instead. False: as before."""
+    `DARK_INK_BEAN_MAX_CORE_MM` instead, for a group of at least
+    `DARK_INK_CORE_MIN_STROKES` strokes; a smaller group keeps the mean
+    width. False: as before."""
     from shapely.geometry import Polygon
 
     from .beanletters import BEAN_LETTER_KEY
@@ -798,6 +808,7 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False,
     group_bean: dict = {}
     if by_width:
         widths: dict = {}
+        means: dict = {}
         for r in regions:
             if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
                     or not isinstance(r.polygon, Polygon)):
@@ -808,8 +819,15 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False,
             widths.setdefault((g.shape_id, r.thread_index), []).append(
                 _core_width_mm(r.polygon) if by_core
                 else 2.0 * float(r.polygon.area) / float(r.polygon.length))
-        gate = DARK_INK_BEAN_MAX_CORE_MM if by_core else DARK_INK_BEAN_MAX_WIDTH_MM
-        group_bean = {k: float(np.median(v)) < gate for k, v in widths.items()}
+            if by_core:
+                means.setdefault((g.shape_id, r.thread_index), []).append(
+                    2.0 * float(r.polygon.area) / float(r.polygon.length))
+        group_bean = {}
+        for k, v in widths.items():
+            if by_core and len(v) >= DARK_INK_CORE_MIN_STROKES:
+                group_bean[k] = float(np.median(v)) < DARK_INK_BEAN_MAX_CORE_MM
+            else:
+                group_bean[k] = float(np.median(means.get(k, v))) < DARK_INK_BEAN_MAX_WIDTH_MM
     tagged = 0
     for r in regions:
         if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"

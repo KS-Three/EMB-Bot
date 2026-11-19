@@ -14,7 +14,9 @@ from digitizer_core import machine
 from digitizer_core.beanletters import BEAN_LETTER_KEY
 from digitizer_core.regions import Region
 from digitizer_core.thin_ink import (DARK_INK_BEAN_MAX_CORE_MM, DARK_INK_BEAN_MAX_WIDTH_MM,
-                                     _core_width_mm, bean_dark_ink)
+                                     DARK_INK_CORE_MIN_STROKES, _core_width_mm, bean_dark_ink)
+
+LINE = DARK_INK_CORE_MIN_STROKES
 
 
 def _reg(sid, poly, thread, **meta):
@@ -36,7 +38,7 @@ def _serif_i(x):
 
 
 def _seal(shapes):
-    ground = box(-5, -5, 40, 10)
+    ground = box(-5, -5, 4.0 * len(shapes) + 5, 10)
     for s in shapes:
         ground = ground.difference(s)
     return [_reg("Sground", ground, 0)] + [
@@ -54,7 +56,7 @@ def test_a_solid_star_reads_thin_by_mean_and_bold_by_core():
 
 
 def test_off_serif_letters_bean_on_they_do_not():
-    letters = [_serif_i(4.0 * i) for i in range(5)]
+    letters = [_serif_i(4.0 * i) for i in range(LINE)]
     assert all(2 * p.area / p.length < DARK_INK_BEAN_MAX_WIDTH_MM for p in letters)
     off = _seal(letters)
     bean_dark_ink(off, by_width=True)
@@ -66,8 +68,16 @@ def test_off_serif_letters_bean_on_they_do_not():
 
 def test_on_a_pen_line_still_beans():
     """NOAA-like strokes: 0.45 mm lines, core under the gate."""
-    lines = [box(4.0 * i, 0.0, 4.0 * i + 0.45, 4.0) for i in range(5)]
+    lines = [box(4.0 * i, 0.0, 4.0 * i + 0.45, 4.0) for i in range(LINE)]
     on = _seal(lines)
+    bean_dark_ink(on, by_width=True, by_core=True)
+    assert all(r.meta.get(BEAN_LETTER_KEY) for r in on[1:])
+
+
+def test_a_small_group_keeps_the_mean_width():
+    """Hotel Fremont's EAT | STAY | PLAY (6 strokes) turned to blobs read by core."""
+    letters = [_serif_i(4.0 * i) for i in range(LINE - 1)]
+    on = _seal(letters)
     bean_dark_ink(on, by_width=True, by_core=True)
     assert all(r.meta.get(BEAN_LETTER_KEY) for r in on[1:])
 
