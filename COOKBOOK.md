@@ -2928,6 +2928,7 @@ From `digitizer/`:
     python -m tools.prime_grader record    --kit eye_pairs_out/prime-<date>/kit --verdict FILE.json
     python -m tools.prime_grader scorecard --kit eye_pairs_out/prime-<date>/kit --out ../docs/prime-grader --prev ../docs/prime-grader/latest.json
     python -m tools.prime_grader kent      --kit eye_pairs_out/prime-<date>/kit --marks ../docs/defect-marks-2026-11-1*/marks.json
+    python -m tools.prime_grader repeat    --kit eye_pairs_out/prime-repeat-<date>/kit --verdicts V1 V2 V3   # the grader vs itself (RUNBOOK C)
 
 - **Population:** one job per pro-paired artwork whose art and pro file are
   both committed (9 today; Bridge and ProSeal are not in the repo). MFab and

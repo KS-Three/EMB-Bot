@@ -195,3 +195,76 @@ def test_a_card_after_a_different_rubric_says_not_comparable():
     assert "`L_y`: new" not in md
     card["prev_rubric_version"] = pg.RUBRIC_VERSION
     assert "Not comparable" not in pg.scorecard_markdown(card)
+
+
+# ---- repeat: the grader's agreement with itself (2026-11-19) ----------------------------------
+
+def _f(x, y, what="jagged", sev="noticeable"):
+    return {"x_mm": x, "y_mm": y, "what": what, "severity": sev, "note": "n", "seen_in": "A1"}
+
+
+def test_pooled_kappa_is_one_for_identical_readers_and_symmetric():
+    g = [[0, 0, 0], [2, 2, 2], [4, 4, 4], [1, 1, 1]]
+    assert pg.pooled_kappa(g) == 1.0
+    g2 = [[0, 1, 0], [2, 2, 3], [4, 3, 4], [1, 1, 2]]
+    k = pg.pooled_kappa(g2)
+    assert 0 < k < 1
+    assert pg.pooled_kappa([row[::-1] for row in g2]) == k        # reader order does not matter
+    lo, hi = pg.pooled_kappa_ci(g2, boots=200)
+    assert lo <= k <= hi
+
+
+def test_pair_kappas_names_every_pair_with_n_and_its_widest_gap():
+    rows = pg.pair_kappas([[0, 1, 0], [2, 2, 4], [4, 3, 4], [1, 1, 2]])
+    assert [r["pair"] for r in rows] == [[1, 2], [1, 3], [2, 3]]
+    assert all(r["n"] == 4 for r in rows)
+    assert rows[1]["max_steps"] == 2 and rows[1]["same"] == 2
+
+
+def test_second_reader_rows_counts_gross_faults_only_and_needs_the_same_class_for_hit_class():
+    r1 = [_f(10, 10, "jagged"), _f(40, 30, "missing", "ruins"), _f(5, 5, "gap", "nitpick")]
+    r2 = [_f(11, 11, "wavy", "nitpick"),          # edge class, 1.4 mm away: a same-class hit, not gross
+          _f(41, 30, "colour", "noticeable")]     # different class: a hit, not a class hit
+    rows = pg.second_reader_rows([r1, r2])
+    mine = [r for r in rows if r["reader"] == 0]
+    assert len(mine) == 2                         # the nitpick gap seeds nothing
+    by = {r["class"]: r for r in mine}
+    assert by["edge"]["hit_class"] and not by["edge"]["hit_class_gross"]
+    assert by["missing"]["hit"] and not by["missing"]["hit_class"]
+    assert len([r for r in rows if r["reader"] == 1]) == 1       # r2's one gross fault, against r1
+
+
+def test_fault_clusters_takes_one_fault_per_reader_and_does_not_chain():
+    # Three readers along one border, 2.5 mm apart: A-B and B-C are within 3 mm, A-C is not.
+    readers = [[_f(0, 0)], [_f(2.5, 0, sev="nitpick")], [_f(5, 0)]]
+    cl = pg.fault_clusters(readers)
+    assert sorted(c["readers"] for c in cl) == [1, 2]            # A+B, then C alone: no chain to all three
+    same = [[_f(0, 0), _f(0.5, 0)], [_f(1, 0)], [_f(1, 1, "missing")]]
+    cl = pg.fault_clusters(same)
+    assert sorted(c["readers"] for c in cl) == [1, 1, 2]         # reader 1's second fault and the other class are places of their own
+
+
+def test_repeat_report_end_to_end_without_chance():
+    kit = {"items": [ITEM, {**ITEM, "id": "L_y"}]}
+    v = lambda iid, grade, faults: pg.clean_verdict(verdict(item=iid, grade=grade, faults=faults),  # noqa: E731
+                                                     ITEM if iid == "L_x" else {**ITEM, "id": "L_y"})
+    sets = [{"L_x": v("L_x", "Okay", [_f(10, 5)]), "L_y": v("L_y", "Bad", [_f(30, 20, "missing", "ruins")])},
+            {"L_x": v("L_x", "Okay", [_f(11, 5)]), "L_y": v("L_y", "Okay", [])},
+            {"L_x": v("L_x", "Good", []), "L_y": v("L_y", "Bad", [_f(30, 21, "missing")])}]
+    res = pg.repeat_report(kit, sets)
+    assert res["readers"] == 3 and res["designs"] == 2
+    d = {x["id"]: x for x in res["designs_detail"]}
+    assert d["L_x"]["grades"] == ["Okay", "Okay", "Good"] and d["L_x"]["spread"] == 1
+    assert d["L_x"]["places_found_by"] == {"3": 0, "2": 1, "1": 0}
+    assert res["second_reader"]["rows"] == 8                     # 4 gross faults x 2 other readers
+    assert res["second_reader"]["hit_class"] == 0.5
+    assert "chance" not in res["second_reader"]
+    text = pg.repeat_text(res)
+    assert "kappa pooled" in text and "n 2 designs x 3 readers" in text
+    json.dumps(res)
+
+
+def test_repeat_is_a_subcommand(tmp_path, capsys):
+    with pytest.raises(SystemExit):
+        pg.main(["repeat", "--help"])
+    assert "--verdicts" in capsys.readouterr().out

@@ -5,6 +5,7 @@
     python -m tools.prime_grader record    --kit KIT --verdict FILE.json
     python -m tools.prime_grader scorecard --kit KIT --out DIR [--prev PREV.json] [--date D]
     python -m tools.prime_grader kent      --kit KIT --marks MARKS.json [...] [--json OUT]
+    python -m tools.prime_grader repeat    --kit KIT --verdicts V1 V2 V3 [...] [--json OUT]
 
 Why it exists (Kent, 2026-11-17: "When I ask claude to grade the image it is
 almost SPOT ON ... we need the yardstick to match"). No computed yardstick has
@@ -28,6 +29,11 @@ it a magnifier:
 * `kent` scores the readings against Kent's defect-marks sittings: grade
   agreement as linear-weighted kappa, and his gross pins found within
   `RADIUS_MM`, each beside its chance figure (ROADMAP gate 4).
+* `repeat` scores N fresh blind readings of ONE kit against each other: the
+  grader's agreement with itself, i.e. the noise floor a nightly move must
+  clear (pooled pairwise grade kappa with a bootstrap over designs; each gross
+  fault's chance of a second reader placing a same-class fault within
+  `RADIUS_MM`, beside chance; per design, places found by all, some, one).
 
 Every figure this prints is an instrument reading. It flips no flag and makes
 no quality claim; picking between two close variants stays Kent's. The kit
@@ -578,7 +584,8 @@ def scorecard_markdown(card: dict) -> str:
          f"A Claude session graded {ru['designs']} designs by eye against the original artwork, under rubric "
          f"{card['rubric_version']} (`{card['rubric_sha256'][:12]}`), on tree `{(card.get('tree_sha') or '?')[:8]}`. "
          "Each figure is an instrument reading, not a quality claim (ROADMAP gate 4). The grader's repeat "
-         "agreement with itself is not measured yet, so a one-step move on one night is not evidence by itself.", "",
+         "agreement with itself was measured once (`repeat-2026-11-19.md`): two readings of the same render differ by one "
+         "grade step on about one design in seven, so a one-step move on one night is not evidence by itself.", "",
          "## Grades", "",
          "| " + " | ".join(GRADES) + " | mean step (0 = Great, 4 = Terrible) |", "|" + "---|" * (len(GRADES) + 1),
          "| " + " | ".join(str(ru["grades"][g]) for g in GRADES) + f" | {ru['mean_step']} |", "",
@@ -720,6 +727,254 @@ def cmd_kent(a) -> int:
     return 0
 
 
+# ------------------------------------------------------------------ repeat ----
+# How much the verdict moves when NOTHING in the engine changed: N fresh blind
+# readers on ONE kit. Pure helpers first (plain data, tested without a kit).
+
+def pair_kappas(grades: list[list[int]]) -> list[dict]:
+    """Linear-weighted kappa for every reader pair over the designs.
+    `grades` is designs x readers, steps 0..4."""
+    n = len(grades[0]) if grades else 0
+    out = []
+    for i in range(n):
+        for j in range(i + 1, n):
+            a, b = [g[i] for g in grades], [g[j] for g in grades]
+            out.append({"pair": [i + 1, j + 1], "kappa": weighted_kappa(a, b), "ci95": kappa_ci(a, b),
+                        "n": len(a), "same": sum(x == y for x, y in zip(a, b)),
+                        "max_steps": max((abs(x - y) for x, y in zip(a, b)), default=0)})
+    return out
+
+
+def pooled_kappa(grades: list[list[int]]) -> float | None:
+    """Every reader pair's ratings stacked into one two-column table (both
+    orders, so no reader is 'first'), then linear-weighted kappa."""
+    a, b = [], []
+    for g in grades:
+        for i in range(len(g)):
+            for j in range(len(g)):
+                if i != j:
+                    a.append(g[i])
+                    b.append(g[j])
+    return weighted_kappa(a, b)
+
+
+def pooled_kappa_ci(grades: list[list[int]], boots: int = BOOT_DRAWS, seed: int = SEED) -> list | None:
+    """95% bootstrap over DESIGNS (a design keeps all its readers together)."""
+    import numpy as np
+    if len(grades) < 3:
+        return None
+    rng = np.random.default_rng(seed)
+    vals = []
+    for _ in range(boots):
+        v = pooled_kappa([grades[i] for i in rng.integers(0, len(grades), len(grades))])
+        if v is not None:
+            vals.append(v)
+    if not vals:
+        return None
+    return [round(float(np.percentile(vals, 2.5)), 4), round(float(np.percentile(vals, 97.5)), 4)]
+
+
+def second_reader_rows(readers: list[list[dict]], radius: float = RADIUS_MM) -> list[dict]:
+    """One row per (gross fault of reader r, other reader s): does s place a
+    fault within `radius` (any severity), one of the same class (`CLASS_OF`),
+    and a GROSS one of the same class. `readers` is one fault list per
+    reader, for one design. The same test `pin_rows` puts a Kent pin to."""
+    out = []
+    for r, faults in enumerate(readers):
+        gross = [f for f in faults if f["severity"] in GROSS]
+        for s, other in enumerate(readers):
+            if s == r or not gross:
+                continue
+            for f, row in zip(gross, pin_rows(gross, other, radius)):
+                same = [o for o in other if CLASS_OF[o["what"]] == row["class"]
+                        and math.hypot(o["x_mm"] - f["x_mm"], o["y_mm"] - f["y_mm"]) <= radius]
+                out.append({"reader": r, "other": s, "class": row["class"], "hit": row["hit"],
+                            "hit_class": row["hit_class"],
+                            "hit_class_gross": any(o["severity"] in GROSS for o in same)})
+    return out
+
+
+def fault_clusters(readers: list[list[dict]], radius: float = RADIUS_MM) -> list[dict]:
+    """Group one design's faults into places, at most one fault per reader per
+    place and no chaining: a GROSS fault seeds a place (ruins first, then
+    reader order) and each other reader contributes its nearest unused
+    same-class fault (any severity) within `radius` OF THE SEED. One row per
+    place: its class, the seed's severity and how many readers found it."""
+    rank = {"ruins": 0, "noticeable": 1}
+    seeds = sorted((rank[f["severity"]], r, k) for r, fs in enumerate(readers) for k, f in enumerate(fs)
+                   if f["severity"] in GROSS)
+    used: set = set()
+    out = []
+    for _, r, k in seeds:
+        if (r, k) in used:
+            continue
+        f = readers[r][k]
+        cls = CLASS_OF[f["what"]]
+        used.add((r, k))
+        members = [r]
+        for s, other in enumerate(readers):
+            if s == r:
+                continue
+            cand = [(math.hypot(o["x_mm"] - f["x_mm"], o["y_mm"] - f["y_mm"]), j) for j, o in enumerate(other)
+                    if (s, j) not in used and CLASS_OF[o["what"]] == cls]
+            cand = [c for c in cand if c[0] <= radius]
+            if cand:
+                used.add((s, min(cand)[1]))
+                members.append(s)
+        out.append({"class": cls, "severity": f["severity"], "x_mm": f["x_mm"], "y_mm": f["y_mm"],
+                    "readers": len(members)})
+    return out
+
+
+def _load_verdicts(kit: dict, folders: list[str]) -> tuple[list[dict], dict]:
+    """Per folder, {item id: clean verdict}. A malformed or absent verdict is
+    reported, not guessed at."""
+    items = {i["id"]: i for i in kit["items"]}
+    sets, problems = [], {}
+    for d in folders:
+        got = {}
+        for iid, item in items.items():
+            p = Path(d) / f"{iid}.json"
+            if not p.exists():
+                problems.setdefault(str(d), []).append(f"{iid}: no verdict")
+                continue
+            try:
+                got[iid] = clean_verdict(_load(p), item)
+            except ValueError as e:
+                problems.setdefault(str(d), []).append(f"{iid}: {e}")
+        sets.append(got)
+    return sets, problems
+
+
+def repeat_report(kit: dict, sets: list[dict], chance=None) -> dict:
+    """The repeat-agreement report over the designs every reader graded.
+    `chance(design_id, faults) -> float` is the probability that a random
+    stitched point has one of `faults` within RADIUS_MM; None leaves the
+    chance figures out (the pure tests)."""
+    n = len(sets)
+    ids = [i["id"] for i in kit["items"] if all(i["id"] in s for s in sets)]
+    grades = [[GRADES.index(s[i]["grade"]) for s in sets] for i in ids]
+    designs, by_class = [], {}
+    tot = {"rows": 0, "hit": 0, "hit_class": 0, "hit_class_gross": 0, "chance": 0.0, "chance_class": 0.0}
+    for iid, g in zip(ids, grades):
+        readers = [s[iid]["faults"] for s in sets]
+        for row in second_reader_rows(readers):
+            if chance is not None:
+                other = readers[row["other"]]
+                row["chance"] = chance(iid, other)
+                row["chance_class"] = chance(iid, [o for o in other if CLASS_OF[o["what"]] == row["class"]])
+            c = by_class.setdefault(row["class"], {"rows": 0, "hit_class": 0, "hit_class_gross": 0,
+                                                   "chance_class": 0.0})
+            c["rows"] += 1
+            c["hit_class"] += row["hit_class"]
+            c["hit_class_gross"] += row["hit_class_gross"]
+            c["chance_class"] += row.get("chance_class", 0.0)
+            tot["rows"] += 1
+            for k in ("hit", "hit_class", "hit_class_gross"):
+                tot[k] += row[k]
+            tot["chance"] += row.get("chance", 0.0)
+            tot["chance_class"] += row.get("chance_class", 0.0)
+        cl = fault_clusters(readers)
+        designs.append({"id": iid, "grades": [GRADES[x] for x in g], "steps": g, "spread": max(g) - min(g),
+                        "gross_per_reader": [sum(f["severity"] in GROSS for f in r) for r in readers],
+                        "faults_per_reader": [len(r) for r in readers],
+                        "places_found_by": {str(k): sum(c["readers"] == k for c in cl) for k in range(n, 0, -1)},
+                        "places": cl})
+
+    def rate(num, den):
+        return round(num / den, 4) if den else None
+
+    def above(h, c):
+        return round((h - c) / (1 - c), 4) if h is not None and c is not None and c < 1 else None
+
+    R = tot["rows"]
+    head = {"rows": R, "hit": rate(tot["hit"], R), "hit_class": rate(tot["hit_class"], R),
+            "hit_class_gross": rate(tot["hit_class_gross"], R)}
+    if chance is not None:
+        head.update({"chance": rate(tot["chance"], R), "chance_class": rate(tot["chance_class"], R)})
+        head["above_chance_class"] = above(head["hit_class"], head["chance_class"])
+    cls = {}
+    for c, v in sorted(by_class.items(), key=lambda kv: (-kv[1]["rows"], kv[0])):
+        row = {"rows": v["rows"], "hit_class": rate(v["hit_class"], v["rows"]),
+               "hit_class_gross": rate(v["hit_class_gross"], v["rows"])}
+        if chance is not None:
+            row["chance_class"] = rate(v["chance_class"], v["rows"])
+            row["above_chance_class"] = above(row["hit_class"], row["chance_class"])
+        cls[c] = row
+    spreads = [d["spread"] for d in designs]
+    return {"readers": n, "designs": len(ids), "radius_mm": RADIUS_MM,
+            "grade_kappa_pooled": pooled_kappa(grades), "grade_kappa_pooled_ci95": pooled_kappa_ci(grades),
+            "grade_pairs": pair_kappas(grades),
+            "grade_spread": {str(k): spreads.count(k) for k in range(len(GRADES))},
+            "second_reader": head, "second_reader_by_class": cls,
+            "places_found_by": {str(k): sum(d["places_found_by"][str(k)] for d in designs)
+                                for k in range(n, 0, -1)},
+            "designs_detail": designs}
+
+
+def repeat_text(res: dict) -> str:
+    n = res["readers"]
+    L = [f"{n} blind readers, {res['designs']} designs, one kit (nothing in the engine changed between readers)",
+         f"grade, linear-weighted kappa pooled over reader pairs: {res['grade_kappa_pooled']}"
+         f" CI95 {res['grade_kappa_pooled_ci95']} (n {res['designs']} designs x {n} readers)"]
+    for p in res["grade_pairs"]:
+        L.append(f"  readers {p['pair'][0]} vs {p['pair'][1]}: kappa {p['kappa']} CI95 {p['ci95']} (n {p['n']}),"
+                 f" same grade {p['same']} of {p['n']}, widest gap {p['max_steps']} step(s)")
+    L.append("grade spread across the readers (max - min, in steps): "
+             + ", ".join(f"{k}: {v} design(s)" for k, v in res["grade_spread"].items() if v))
+    s = res["second_reader"]
+    L.append(f"each gross fault against each other reader ({s['rows']} rows, within {res['radius_mm']} mm):"
+             f" any fault there {s['hit']}, same class {s['hit_class']}, same class and gross {s['hit_class_gross']}")
+    if "chance" in s:
+        L.append(f"  chance: any fault {s['chance']}, same class {s['chance_class']};"
+                 f" same class above chance {s['above_chance_class']}")
+    for c, v in res["second_reader_by_class"].items():
+        ch = f"; chance {v['chance_class']}, above chance {v['above_chance_class']}" if "chance_class" in v else ""
+        L.append(f"  {c}: {v['rows']} rows, same class {v['hit_class']} (gross {v['hit_class_gross']}){ch}")
+    L.append("places seeded by a gross fault, by how many readers found them: "
+             + ", ".join(f"{k} of {n}: {v}" for k, v in res["places_found_by"].items()))
+    for d in res["designs_detail"]:
+        L.append(f"  {d['id']}: {' / '.join(d['grades'])} (spread {d['spread']}); gross faults per reader"
+                 f" {d['gross_per_reader']}; places found by "
+                 + ", ".join(f"{k}: {v}" for k, v in d["places_found_by"].items()))
+    return "\n".join(L)
+
+
+def cmd_repeat(a) -> int:
+    import cv2
+    from tools.fault_reader_harness import chance_rate
+    kit_dir = Path(a.kit)
+    kit = _load(kit_dir / "kit.json")
+    if len(a.verdicts) < 2:
+        print("repeat needs at least two verdict folders", file=sys.stderr)
+        return 2
+    sets, problems = _load_verdicts(kit, a.verdicts)
+    for d, ps in problems.items():
+        for p in ps:
+            print(f"{d}: {p}", file=sys.stderr)
+    masks: dict = {}
+    cache: dict = {}
+
+    def chance(iid, faults):
+        if not faults:
+            return 0.0
+        key = (iid, tuple(sorted((f["x_mm"], f["y_mm"]) for f in faults)))
+        if key not in cache:
+            if iid not in masks:
+                masks[iid] = cv2.imread(str(kit_dir / "img" / f"{iid}_thread.png"), cv2.IMREAD_GRAYSCALE) > 0
+            cache[key] = chance_rate([{"x_mm": f["x_mm"], "y_mm": f["y_mm"]} for f in faults],
+                                     masks[iid], 1, PXMM, PAD_MM)
+        return cache[key]
+
+    res = repeat_report(kit, sets, chance)
+    res.update({"kit_sha256": kit["kit_sha256"], "rubric_version": kit["rubric_version"],
+                "verdict_folders": [str(d) for d in a.verdicts], "problems": problems})
+    if a.json:
+        _dump(res, Path(a.json))
+    print(repeat_text(res))
+    return 2 if problems else 0
+
+
 def main(argv=None) -> int:
     from tools._console import utf8_console
     utf8_console()
@@ -748,9 +1003,13 @@ def main(argv=None) -> int:
     p.add_argument("--kit", required=True)
     p.add_argument("--marks", nargs="+", required=True)
     p.add_argument("--json")
+    p = sub.add_parser("repeat", help="the grader's agreement with itself: N verdict folders on ONE kit")
+    p.add_argument("--kit", required=True)
+    p.add_argument("--verdicts", nargs="+", required=True, help="one folder of <ID>.json per reader round")
+    p.add_argument("--json")
     a = ap.parse_args(argv)
     return {"capture": cmd_capture, "kit": cmd_kit, "record": cmd_record, "scorecard": cmd_scorecard,
-            "kent": cmd_kent}[a.cmd](a)
+            "kent": cmd_kent, "repeat": cmd_repeat}[a.cmd](a)
 
 
 if __name__ == "__main__":

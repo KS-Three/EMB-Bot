@@ -109,3 +109,35 @@ without opening `$K/marks/marks.json` first. Then:
 Report the grade kappa with its interval and n, the pins found at his spot
 beside chance, and the by-class rows. Copy `marks.json` and the report to
 `docs/prime-grader/sitting-<date>/` (text only, no pictures).
+
+## C. The repeat test (the grader's agreement with itself)
+
+How far the verdict moves when NOTHING in the engine changed: N fresh blind
+readers on ONE kit. The first run is `repeat-2026-11-19.md`; repeat it after a
+rubric change or a change of reader model, since either makes it a different
+instrument. From `digitizer/`, with `R=eye_pairs_out/prime-repeat-<D>`:
+
+1. Python as in A.1; one capture and one kit as in A.2, into `$R/run` and
+   `$R/kit`.
+2. For each round `k` of N (three is the measured setup), make `$R/verdicts-r<k>`
+   and grade every design with a fresh reader, exactly as in A.3 (same brief,
+   same `model`), except that the verdict goes to `$R/verdicts-r<k>/<ID>.json`.
+   Run one round at a time (nine readers in one message). When a round is
+   done, move its folder out of `digitizer/` (a scratch folder), so a later
+   reader cannot list it; move them back before step 3. Do not look at the
+   kit's pictures, `_sealed.json` or any scorecard until every verdict exists.
+   Do NOT run `record`: the rounds are not a nightly card.
+3. Score them against each other:
+
+       .venv/bin/python -m tools.prime_grader repeat --kit $R/kit \
+         --verdicts $R/verdicts-r1 $R/verdicts-r2 $R/verdicts-r3 --json $R/repeat.json
+
+   It prints the grade kappa pooled over reader pairs (linear-weighted, CI95
+   by bootstrap over designs, with n) and each pair's; each design's grades
+   and spread; for every gross fault (ruins or noticeable) and every other
+   reader, whether that reader put a fault of the same class within 3 mm,
+   beside chance (a random stitched point's rate), overall and by class; and
+   per design how many places seeded by a gross fault all, some or one of the
+   readers found. Exit 2 means a verdict was missing or malformed; it says which.
+4. Write the result as `docs/prime-grader/repeat-<D>.md` (numbers and words,
+   no pictures). Commit only that and any code; never `$R`.
