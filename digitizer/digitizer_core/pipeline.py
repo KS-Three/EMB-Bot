@@ -2266,7 +2266,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
     from .outline_cut import a_cap_centered_scope    # `cfg.extra["lettering_columns_a_cap_centered"]` (built OFF), the same way
-    from .outline_cut import r_bowl_scope, block_small_scope, a_bar_scope   # `cfg.extra["lettering_columns_r_bowl" / "_block_butt_small" / "_a_bar"]` (built OFF), the same way
+    from .outline_cut import r_bowl_scope, block_small_scope, a_bar_scope, e_top_scope, top_slab_scope   # `cfg.lettering_columns_r_bowl` / `_block_butt_small` / `_a_bar` (ON since 2026-11-19), the same way
     from .outline_cut import block_butt_scope        # `cfg.lettering_columns_block_butt` (ON since 2026-11-18), the same way
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
     from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
@@ -2298,7 +2298,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(apex_cut_scope(cfg.lettering_columns_apex_cut))
         _enter(curve_chord_scope(cfg.curve_chord_mm))
         _enter(apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))))
-        _enter(block_lean_scope(bool((cfg.extra or {}).get("lettering_columns_block_lean"))))
+        _enter(block_lean_scope(cfg.lettering_columns_block_lean))      # the four MARINE-match fields: ON since 2026-11-19, Kent's flip
         _enter(lean_flat_ends_scope(bool((cfg.extra or {}).get("lettering_columns_lean_flat_ends"))))
         _enter(rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))))
         _enter(apex_pro_scope(cfg.lettering_columns_apex_pro))
@@ -2310,9 +2310,11 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(a_cap_centered_scope(bool((cfg.extra or {}).get("lettering_columns_a_cap_centered"))))
         # `cfg.lettering_columns_block_butt` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key)
         _enter(block_butt_scope(cfg.lettering_columns_block_butt))
-        _enter(r_bowl_scope(bool((cfg.extra or {}).get("lettering_columns_r_bowl"))))
-        _enter(a_bar_scope(bool((cfg.extra or {}).get("lettering_columns_a_bar"))))
-        _enter(block_small_scope(bool((cfg.extra or {}).get("lettering_columns_block_butt_small"))))
+        _enter(r_bowl_scope(cfg.lettering_columns_r_bowl))
+        _enter(a_bar_scope(cfg.lettering_columns_a_bar))
+        _enter(e_top_scope(bool((cfg.extra or {}).get("lettering_columns_e_top_arm"))))      # built OFF 2026-11-19
+        _enter(top_slab_scope(bool((cfg.extra or {}).get("lettering_columns_top_slab"))))      # built OFF 2026-11-19
+        _enter(block_small_scope(cfg.lettering_columns_block_butt_small))
         _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
         _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
