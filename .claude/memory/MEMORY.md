@@ -39,8 +39,8 @@ the OLDEST lines whole to the archive.
 - [Director night 11-13](director-night-2026-11-13.md) — no single switch; eye-first gave 11 PRs; agent eye PARTIAL (0.35), now gross-fault judge (Kent 11-14); repeats/fatter disproved; Kent 11-14: 5 flips, edge-walk, apex_cut guard
 - [Enclosed keeps known colour](enclosed-known-colour-2026-11-17.md) — `enclosed_white_keeps_known_colour` ON (Kent 11-17 "Flip ON"): black letter band stays black under the white sew thread; 1 of 50 census runs moves (lego 29,407 -> 26,739 st)
 - [Eye-first diagnosis](eye-first-diagnosis-2026-11-13.md) — Kent 11-13: trace a bad render by eye beside the ORIGINAL first
-- [Fat-ink ledger](fat-ink-ledger-2026-11-14.md) — width ledger, 7 designs: our thread area = the pro's on Becker/Bridge; width enters at stage-5 fill/column pull + stage-6 satin rails; `pull_comp_along_stitch_only`, `growth_keeps_gaps` built OFF
-- [Fine bars whole](fine-bar-survive-2026-11-14.md) — `fine_bar_survive` ON (#1565): To a T bars split (stages 2-4), kinked (AA sliver), lost at stage 5 (white under-fill covers them); broken bar redrawn from art, kept at stage 5; 5/5 pins fixed by eye
+- [Fat-ink ledger](fat-ink-ledger-2026-11-14.md) — width ledger, 7 designs: our thread area = the pro's on Becker/Bridge; width enters at stage-5 pull + stage-6 rails
+- [Fine bars whole](fine-bar-survive-2026-11-14.md) — `fine_bar_survive` ON (#1565): To a T bars split/kinked/lost at stages 2-5; redrawn from art; 5/5 pins fixed
 - [Flag under-fill](flag-stripe-underfill-2026-11-12.md) — flag ends/seam trio ON 11-17 (Kent); `stripe_underfill` stays OFF (ragged red, +32%); built OFF = not delivered, ask the flip
 - [Flat ends, pro's construction](flat-ends-pro-2026-11-14.md) — pro edge = cross ends on the line / last cross ON a flat face; text_lean undid the mitre; `lean_flat_ends` (extra; Kent ruled ON 11-15, held OFF); Becker #10/#11 flat
 - [Flip candidates 11-14](flip-candidates-2026-11-14.md) — inshape_piece_lift ON (Kent 11-14 "Flip ON"): Becker/MFab 13.7-60.6 mm stitches gone, +1-2 trims; apex_cut corpus 25 of 43 moved: 10 better, 4 worse, guard withdrawn, stays OFF
@@ -48,7 +48,7 @@ the OLDEST lines whole to the archive.
 - [Flow](flow-2026-11-19.md) — Kent 11-19: "flow" = like shapes sew alike, every repeat clean; `satin_rectangles` ON; "a square needs to be square": read the primitive first; stars blunt
 - [Foreman wake-up](foreman-wakeup-while-wave-out-2026-11-12.md) — Kent 11-12 "stale for 10 hours": 7 cloud sessions merged while the foreman idled; a wave out = set a wake-up (CronCreate sweep / gh run watch) before ending the turn, delete when empty
 - [Fremont room](fremont-room-2026-11-14.md) — EST 1895 `no_room`: its own white field (0.48 of hull) read as obstacle; `small_text_reset_ground_ring` + `_bean_follows` (spines read at drawn size) ON (#1565): date reads clean at 2x; pro 2.4x
-- [Gaulke T junctions, through_last](gaulke-through-last-2026-11-19.md) — pro sews the branch then the through stroke WHOLE; our cut matched, the walk split it; `lettering_columns_through_last` built OFF (E needs reading_order); STEEI was ef11041f-only
+- [Gaulke through_last](gaulke-through-last-2026-11-19.md) — T/E: branch first, through stroke whole; walk split it; built OFF
 - [Golden Tee swoosh hairline](goldentee-swoosh-hairline-2026-11-18.md) — pin (10,8): pro sews the outer hairline as ~1.0 mm satin too (ours 1.33); saw teeth = satin end caps; docs only, no flag
 - [GOLF layer and shadow](golf-layer-shadow-2026-11-18.md) — Golden Tee: cap-merged teal sewed over the gold, grey fringe = blur; `cap_merged_layer_home` + `shadow_to_page` ON 11-18 (Kent 'Flip both ON'); TM = thread limit
 - [Group consistency](group-consistency-2026-11-13.md) — "like things differ" pins: 2 tier straddles, 2 thread, 2 fill angle, 2 fixed; all 4 ON 11-14, body+thread with guards (Kent); decide by ink; tone = row order
