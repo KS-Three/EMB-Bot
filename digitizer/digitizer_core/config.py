@@ -1658,6 +1658,11 @@ class PipelineConfig:
     # coherent and far apart (`stage2_photo_segment.dark_split_bounds`) and the
     # ordinary tonal split is not in force. 2 of the 44 sweep runs qualify
     # (docs/renders/dark_neutral_split-2026-11-19/). False is the engine as it was.
+    # NOT A FLIP CANDIDATE (director, 2026-11-19): drone_render at 80 mm is worse
+    # (navy base goes charcoal, camera-housing outline and body top lines are
+    # lost) and the hat's gain is the arms only. At 62 mm the drone's body is
+    # 1-2 mm gloss edges, a thread-width limit; fuse, chroma guard and this
+    # tonal split have not given it a shape.
     dark_neutral_split: bool = False
     # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
     # Precision Drone: "the lower left propeller is a thick black slab ...
