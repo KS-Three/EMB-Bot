@@ -69,6 +69,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("wedge_cap", "_ON"),
     ("end_overlap", "_ON"),
     ("end_overlap", "_ALIGN"),
+    ("hairline_leave", "_ON"),
     ("outline_cut", "_APEX_PRO_JOINTS"),
     ("outline_cut", "_FOLD_CAP_FLARED"),
     ("outline_cut", "_APEX_BAND_KNOTS"),
