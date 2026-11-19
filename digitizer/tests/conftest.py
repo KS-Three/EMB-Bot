@@ -1253,6 +1253,11 @@ PRE_FLIP.update(BLOCK_BUTT_2026_11_18_OFF)
 MARINE_MATCH_2026_11_19_OFF = {"lettering_columns_r_bowl": False, "lettering_columns_block_butt_small": False,
                                "lettering_columns_a_bar": False, "lettering_columns_block_lean": False}
 PRE_FLIP.update(MARINE_MATCH_2026_11_19_OFF)
+# `lettering_columns_absorb_unsewn` (2026-11-19: Kent delegated the review pack, "You review
+# them yourself, Claude is just as good, if not better than me.", then "Open flip PR"):
+# `tests/test_absorb_unsewn.py`.
+ABSORB_UNSEWN_2026_11_19_OFF = {"lettering_columns_absorb_unsewn": False}
+PRE_FLIP.update(ABSORB_UNSEWN_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
