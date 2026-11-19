@@ -1246,6 +1246,13 @@ PRE_FLIP.update(LAYER_SHADOW_2026_11_18_OFF)
 # point. `tests/test_block_butt.py`.
 BLOCK_BUTT_2026_11_18_OFF = {"lettering_columns_block_butt": False}
 PRE_FLIP.update(BLOCK_BUTT_2026_11_18_OFF)
+# The four MARINE-match fields (Kent 2026-11-19, shown the MARINE word at all five Becker placements:
+# "Flip all four ON (Recommended)"): `lettering_columns_r_bowl`, `_block_butt_small`, `_a_bar`, `_block_lean`.
+# A test that pins today's Becker bytes, an OFF fan or the E's fold reads them off here.
+# `tests/test_r_bowl.py`, `tests/test_marine_match.py`.
+MARINE_MATCH_2026_11_19_OFF = {"lettering_columns_r_bowl": False, "lettering_columns_block_butt_small": False,
+                               "lettering_columns_a_bar": False, "lettering_columns_block_lean": False}
+PRE_FLIP.update(MARINE_MATCH_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

@@ -77,6 +77,8 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_R_BOWL"),
     ("outline_cut", "_BLOCK_SMALL"),
     ("outline_cut", "_A_BAR"),
+    ("outline_cut", "_E_TOP"),
+    ("outline_cut", "_TOP_SLAB"),
     ("outline_cut", "_FLARE_TOP_FOLD"),
     ("outline_cut", "_ABSORB_UNSEWN"),
     ("outline_cut", "_NECK_ARMED"),
