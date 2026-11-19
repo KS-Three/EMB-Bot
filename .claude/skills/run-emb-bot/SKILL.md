@@ -208,28 +208,37 @@ itself if `digitizer/.venv` exists (it checks both `bin/python` and
 
 ### Reading a digitizer run
 
-`3 failed, 1218 passed, 8 skipped, 8 xfailed` in ~7min (`-n auto`, 2026-08-20,
-this container). **Judge the run by its failure classes, not the count** —
-COOKBOOK.md "Running things" is the authority. The three that fail here are
-all expected class #1, golden/byte-identical mismatches on a machine that
-didn't capture the golden:
+`2 failed, 9295 passed, 48 skipped, 10 xfailed, 13 xpassed` in 79 minutes,
+9368 collected (measured 2026-11-17 — one full run on a cloud container:
+four cores, `-n auto`, CPython 3.12.3 venv pinned to `requirements.txt`).
+Budget about 80 minutes and read that as healthy, not hung (CLAUDE.md
+"Commands"). **Judge the run by its failure classes, not the count** —
+COOKBOOK.md "Running things" is the authority. The two that fail on a cloud
+container are both expected class #1, golden/byte-identical mismatches on a
+machine that didn't capture the golden:
 
 ```
 tests/test_flat_lane_byte_identical.py::…[photo/enthusiast_logo.png]
-tests/test_pushcomp.py::…[logo_whitebg.png-towel]
 tests/test_stage2_photo_segment.py::…[photo/enthusiast_logo.png]
 ```
 
-There are now **three different** golden-failure sets in play: CI deselects
-its own 3 by node ID, Kent's Windows machine fails a different 3, and this
-Linux container fails the 3 above. Don't assume another environment's list
-matches yours — and don't "fix" a golden to make it pass.
+It was three until 2026-10-08, when the towel row of `tests/test_pushcomp.py`
+was re-pinned and its CI deselect removed. That test passes now, so a red
+there is a real regression, and so is any third failure (CLAUDE.md
+footgun 7).
+
+CI deselects the same two by node ID, so a cloud-container run and a green CI
+job agree. Kent's Windows machine fails a different 3 (that claim predates
+the 2026-11-17 run, which was Linux only, and has not been re-checked). Don't
+assume another environment's list matches yours — and don't "fix" a golden to
+make it pass.
 
 A failure **outside** that class, or in `node --test` / `npm test` (both
 expected clean), is a regression.
 
-The 8 skips include the OCR tests, which need the `tesseract` binary — a
-separate non-pip install, absent here.
+The skip count (48 in that run) moves with the environment. The OCR tests
+skip where no OCR engine is found (`tesseract-ocr` is a separate non-pip
+install), and COOKBOOK.md's classes 2 and 3 list the expected reasons.
 
 ## Run (human path — Kent's Windows machine)
 
@@ -376,16 +385,20 @@ These are the ones that cost real time here.
   `EADDRINUSE`. The driver spawns `detached: true` and kills the whole process
   group. By hand: `lsof -ti:5173 -sTCP:LISTEN | xargs -r kill`.
 
-- **Do not run the 18-minute digitizer suite against a tree you are still
-  editing.** Same family as the polling rule below — reading a moving target —
-  but the target is the working tree, and the failure looks like a REGRESSION
-  rather than a flake. On 2026-09-07 a full run came back `4 failed` against
-  the three expected platform reds; the fourth was `test_scope_budget`, which
+- **Do not run the full digitizer suite against a tree you are still
+  editing.** (It took 18 minutes when this was written, and 79 on a cloud
+  container on 2026-11-17.) Same family as the polling rule below — reading a
+  moving target — but the target is the working tree, and the failure looks
+  like a REGRESSION rather than a flake. On 2026-09-07 a full run came back
+  `4 failed` against the three platform reds expected at the time (two since
+  2026-10-08, "Reading a digitizer run" above); the fourth was
+  `test_scope_budget`, which
   reads `MASTER_SCOPE.md` off disk and happened to execute while that file was
   mid-merge-resolution. Both the working tree and the committed tree were at
   exactly 800 and the test passed on its own a minute later.
 
-  A fourth failure is the documented tripwire for a real regression
+  A failure beyond the expected set (a fourth then, a third today) is the
+  documented tripwire for a real regression
   (CLAUDE.md footgun 7), so this wastes exactly the attention that tripwire is
   for. Either start the run and stop touching the repo, or run it from a clean
   worktree — and when a doc-reading test is the odd one out, re-run that test
