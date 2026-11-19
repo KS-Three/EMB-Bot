@@ -113,8 +113,12 @@ Two reasons this is not cosmetic:
   green there is nothing left to arm, and the PR simply sits waiting for a human
   click. Hit on PR #289, 2026-08-28.
 
-**Merging is still Kent's.** Ready-for-review and auto-merge are yours to set;
-clicking merge is not.
+**Merging is still Kent's — with one exception.** Ready-for-review and auto-merge
+are yours to set; clicking merge is not. **The exception (Kent 2026-11-06, "i'm not
+merging anything, you do it"; written here 2026-11-19):** a k3 foreman or director
+session may `gh pr merge --squash` a PR that is CLEAN (all required checks green,
+not a draft) and so missed the auto-merge window. Never `--admin`, never past a
+required check. Workers and every other session still only arm auto-merge.
 
 **Arm auto-merge by DEFAULT — Kent's ruling 2026-09-04.** Do not withhold the
 arm to force a human look at a trade-off; flag the trade-off in the PR body
