@@ -1173,7 +1173,11 @@ def build_generation(
     if cfg.keyline_fragment_drop and classification.class_ not in PHOTO_CLASSES:
         from .keyline_fragment import drop_keyline_fragments
         ipm = float(getattr(p, "input_px_per_mm", 0.0) or 0.0) or float(p.px_per_mm)
-        drop_keyline_fragments(regions, chart_for(cfg), mm_per_src_px=1.0 / ipm if ipm > 0 else None)
+        drop_keyline_fragments(regions, chart_for(cfg), mm_per_src_px=1.0 / ipm if ipm > 0 else None,
+                               # built OFF 2026-11-19: a sub-pixel sliver goes
+                               # even in the design's darkest ink
+                               **({"subpixel_darkest": True}
+                                  if (cfg.extra or {}).get("keyline_fragment_subpixel") else {}))
 
     # `cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review
     # pack (review-1115): ticked ON; built OFF 2026-11-14 as
