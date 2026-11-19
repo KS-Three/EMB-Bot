@@ -76,4 +76,43 @@ Scored by `python -m tools.fault_reader_harness score --fault tangle`, radius
 
 ## Result
 
-(appended after the run)
+Run once, 2026-11-19, after the pre-registration commit `a633ca70`. Both
+captures ran on Kent's desktop (`prime_grader capture` at `f8373d58`; the same
+capture driven against a `950855bf` checkout for set K). The `f8373d58`
+capture reproduces the card: all 9 preflight grades and scores equal the
+card's. On `950855bf`, MFab re-captured 20,801 stitches against the kit's
+20,557 and was **refused** by the rule, so set K is 9 pins on 3 designs (the
+other 8 designs matched). Numbers: `tangle-fault-reader-2026-11-19/score.json`;
+the script that made them: `score_run.py` beside it.
+
+**Set G (decides): NOT SHOWN.** Hit 6 of 10 at 3.0 mm against the stricter
+null, `chance_area` 0.363 (`chance_pick` 0.361): kappa **+0.37**, item-bootstrap
+95% CI on (hit - null) **[-0.02, +0.46]**, 10 pins on 6 designs. The interval
+touches 0, so the pre-registered rule says not shown. Leaving one design out:
+the lower bound stays above 0 only without Becker or without Fremont (the two
+misses); dropping any of MFab, Golden Tee, Toat machine or Toat beanie takes
+it below 0. At 2.0 mm kappa +0.24 [-0.11, +0.45]; at 5.0 mm +0.75 [+0.03, +0.43]
+(sensitivity, not the verdict). Mean strength AUC 0.63.
+
+**Set K (secondary): above chance, three designs.** Hit 5 of 9 against 0.237
+(`chance_area`; `chance_pick` 0.236): kappa **+0.42**, CI **[+0.21, +0.73]**,
+mean strength AUC 0.84. Becker carries 7 of the 9 pins (3 hit; two of his
+"Random cross over stitch" pins are 8.4 and 12.0 mm from any flag); Toat
+machine 1 of 1, Toat beanie 1 of 1. A three-design bootstrap is not a
+replication.
+
+**Pooled G + K (secondary):** 11 of 19 against 0.303, kappa +0.40, CI
+[+0.14, +0.47], 9 items (the two sets' renders are different trees, scored as
+separate items).
+
+**Reading it.** The direction spread of the top thread lands nearer the
+tangles both readers place than random thread does, on every set and radius,
+but on the set the pre-registration chose to decide, 10 pins on 6 designs do
+not exclude chance, and the margin rests on four designs. The reader flags
+37-97 places per design (Tires 3): it also fires on legitimate junctions where
+three columns meet, which is where most tangles are, so it does not separate
+a pile-up from a clean three-way join. The misses: Becker's R counter
+(a letter-shape fault whose note mentions a fan, nearest flag 28.9 mm) and the
+Fremont rope end (3.35 mm). **No constant is changed on these pins.** The
+reader ships as a reporting tool only. Its next test is the next two-reader
+card (Monday), frozen as is.
