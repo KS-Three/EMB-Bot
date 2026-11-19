@@ -1648,6 +1648,17 @@ class PipelineConfig:
     # mover, but leaves golden_tee and the Drone's own pins. Not a flip
     # candidate yet: the Drone's gain costs trims and stacked-thread area.
     merge_chroma_guard: bool = False
+    # `dark_neutral_split` (built OFF 2026-11-19, the prime grader's Precision
+    # Drone: "body, camera and arms come out as disconnected fragments"). The
+    # drone's body and arm panels (neutral, L* ~20) end up in the ONE 800 mm2
+    # near-black stage-2 region (neutral L* < 3) with the shadows, ring and dark
+    # glass, so the body has no shape of its own. With this on, stage 2 cuts a
+    # large DARK NEUTRAL region into its near-black remainder and its mid-dark
+    # panels (neutral L* >= `DARK_SPLIT_T`), only where both tones are large,
+    # coherent and far apart (`stage2_photo_segment.dark_split_bounds`) and the
+    # ordinary tonal split is not in force. 2 of the 44 sweep runs qualify
+    # (docs/renders/dark_neutral_split-2026-11-19/). False is the engine as it was.
+    dark_neutral_split: bool = False
     # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
     # Precision Drone: "the lower left propeller is a thick black slab ...
     # instead of a thin grey blade"). Traced: the blade's silver highlight is
