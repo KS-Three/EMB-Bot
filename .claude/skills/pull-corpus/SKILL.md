@@ -6,9 +6,11 @@ description: Get Kent's image and stitch-file assets — corpus photos, referenc
 # Pulling corpus and reference assets
 
 EMB-Bot's code arrives in every session automatically; its **images do not**.
-That asymmetry is why `becker logo.png` and the 37-file `scratch_corpus/` have
+That asymmetry is why the becker logo (now committed as
+`digitizer/testdata/becker_marine_logo.png`) and the 37-file `scratch_corpus/`
 sat in MASTER_SCOPE's "Waiting on Kent" queue for months — not because the work
-is hard, but because nobody in a session could see the file. This skill closes
+is hard, but because nobody in a session could see the file. `scratch_corpus/`
+is still a gitignored, local-only, non-disposable corpus. This skill closes
 that gap.
 
 **The short version, if you read nothing else:** git is the channel for
@@ -33,10 +35,10 @@ still deserves the question.
 
 | The asset | Channel | Why |
 |---|---|---|
-| Real photos / art meant to be **permanent test fixtures** | **git** | Already this repo's established practice — `digitizer/testdata/photo/` holds 13 MB of committed PNGs (`drone_render.png` alone is 2.4 MB), added deliberately in commits like `fd17a66 test fixture: snowy owl photo`. MASTER_SCOPE's standing ruling clears real-photo provenance. |
+| Real photos / art meant to be **permanent test fixtures** | **git** | Already this repo's established practice — `digitizer/testdata/photo/` holds many MB of committed PNGs (`drone_render.png` alone is 2.4 MB), added deliberately in commits like `fd17a66 test fixture: snowy owl photo`. MASTER_SCOPE's standing ruling clears real-photo provenance. |
 | The becker pro DST/PES, and comparison references like it | **git → `digitizer/testdata/reference/`** | Cleared by Kent above. Reference stitch files, not pipeline inputs — keep them out of `testdata/photo/` so they are not mistaken for fixtures. |
 | A third party's file Kent has **not** cleared | **ask first** | Publishing is irreversible; git history keeps it even after a delete. One question costs less than a takedown. |
-| Genuinely temporary scratch — one-off probes, throwaway renders | **Drive → `scratch_corpus/`** | Gitignored on purpose. |
+| Genuinely temporary scratch — one-off probes, throwaway renders | **the session scratchpad** | Never Drive (binary through Drive corrupts, see below) and never `scratch_corpus/` — that is the 37-file third-party DST corpus, gitignored on purpose and NOT disposable (CLAUDE.md footgun 5). |
 
 **Default to git.** It is versioned, needs no tooling, has no size ceiling worth
 worrying about, and every future session gets the files for free. The Drive path
@@ -208,15 +210,19 @@ proves nothing.
 ## After a pull — the step that is easy to miss
 
 `digitizer/tools/corpus_scorecard.py` scores fixtures against a stored
-baseline, but its `FIXTURES` list is **hardcoded** (`corpus_scorecard.py:64`).
+baseline, but its `FIXTURES` list is **hardcoded** (the `FIXTURES` list in `corpus_scorecard.py`).
 A new fixture dropped into `digitizer/testdata/photo/` is invisible to the
 scorecard until it is added to that list. So:
 
 1. Append the new fixture to `FIXTURES`.
-2. Run `diff` first — new fixtures report as NEW against the baseline, which is
+2. Run the diff first — new fixtures report as NEW against the baseline, which is
    the correct signal and worth reading before overwriting it.
-3. Recapture the baseline only when the new state is deliberately the reference:
-   `.venv/bin/python tools/corpus_scorecard.py capture`
+3. Recapture the baseline only when the new state is deliberately the reference.
+   Both steps are a workflow button since 2026-11-05 (COOKBOOK.md, "diff-then-capture"):
+   `gh workflow run scorecard-capture.yml --ref <branch> -f mode=diff`, then
+   `-f mode=capture`; download the `scorecard-<mode>-<run id>` artifact and commit
+   the JSON with every mover attributed. Running `tools/corpus_scorecard.py` by
+   hand in a session is no longer the recipe.
 
 MASTER_SCOPE's "Evaluation corpus & harness" entry describes exactly this: the
 harness half is built, the corpus half is the gap. A pull that lands real
