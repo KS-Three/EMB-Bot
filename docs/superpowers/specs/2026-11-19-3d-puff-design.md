@@ -142,3 +142,15 @@ foam, then "Black 3D" puff satin (5,359 st at 114.3 mm), 11 trims.
   to the `APPLIQUE_*` ones.
 - A "Flag Before After" picture set (CLAUDE.md "A flip question comes with
   pictures") before any default changes.
+
+## Addendum 2026-11-19: raised preview (Kent)
+
+Kent asked that the Studio preview show puff in three dimensions and chose the
+**raised look** over printed measurements. This replaces the "Preview: a raised
+look is out of scope" call above. Puffed shapes render in the realistic canvas
+preview (`app/src/lib/preview.js`) as standing proud of the flat work: a longer,
+darker drop shadow and a stronger highlight, drawn last in their block, through
+the existing `raised` style mechanism the border tier already uses (`ROLE_STYLES`).
+Thread colour is never altered (Kent judges colour off this canvas). The grip
+and the inset walk sit under the foam and draw subdued, like underlay. It is an
+artist's impression until a sew-out photo calibrates it.
