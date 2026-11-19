@@ -534,6 +534,14 @@ class PipelineConfig:
     # side-by-side page shows the change; the OFF arm is pinned in
     # `tests/engine_2026_10_27.json`.
     stage0_texture_gate: bool = True
+    # Stage 0's photo gate, the scale half (built OFF 2026-11-19, ROADMAP
+    # phase 2; `docs/stage0-grain-needs-texture-2026-11-19.md`). The grain
+    # gate reads a 3x3 window in pixels, so a small logo's anti-aliased edges
+    # count as grain and it routes `photo_scene` (MFab hat at native, TOAT
+    # machine, Gaulke, Fremont at 146-250 px). ON, an OPAQUE file enters
+    # photo territory only when `texture_frac` agrees; a cut-out keeps the
+    # grain gate alone (`legacy`). Needs `stage0_texture_gate`. Kent's flip.
+    stage0_grain_needs_texture: bool = False
     # Stage 0's flat/gradient gate on a scale-relative read (built OFF
     # 2026-11-06, ROADMAP phase 2; `docs/stage0-scale-relative-grad-2026-11-06.md`).
     # FLIPPED ON 2026-11-06 by Kent, together with the flat lane's soft-edge
