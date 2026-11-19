@@ -234,16 +234,26 @@ def apply_fine_bar_survive(regions: list, p, cfg) -> list[dict]:
                          [pcx - ux * ext + uy * half, pcy - uy * ext - ux * half]])
         bmask = np.zeros((H, W), np.uint8)
         cv2.fillPoly(bmask, [np.round(band).astype(np.int32)], 1)
-        sub = img_lab
-        ink = ((np.linalg.norm(sub - T, axis=2) < np.linalg.norm(sub - B, axis=2)) & (bmask > 0)).astype(np.uint8)
+        # Speed, exact (2026-11-19): every ink pixel is inside the band, so
+        # the colour test, the components and the seed read only the band's
+        # box -- the same pixels in the same raster order, offset back below.
+        # (The whole frame per bar was 2-4 s of Golden Tee's generation.)
+        by, bx = np.nonzero(bmask.any(axis=1))[0], np.nonzero(bmask.any(axis=0))[0]
+        if not len(by):
+            continue
+        r0, r1, c0, c1 = int(by[0]), int(by[-1]) + 1, int(bx[0]), int(bx[-1]) + 1
+        sub = img_lab[r0:r1, c0:c1]
+        ink = ((np.linalg.norm(sub - T, axis=2) < np.linalg.norm(sub - B, axis=2))
+               & (bmask[r0:r1, c0:c1] > 0)).astype(np.uint8)
         _n, lbl = cv2.connectedComponents(ink, connectivity=8)
         seed = np.zeros((H, W), np.uint8)
         cv2.fillPoly(seed, [np.round(np.asarray(poly.exterior.coords) * ppm + [cx, cy]).astype(np.int32)], 1)
-        hit = np.unique(lbl[(seed > 0) & (ink > 0)])
+        hit = np.unique(lbl[(seed[r0:r1, c0:c1] > 0) & (ink > 0)])
         hit = hit[hit > 0]
         if not len(hit):
             continue
         ys, xs = np.nonzero(np.isin(lbl, hit))
+        ys, xs = ys + r0, xs + c0
         bar = fit_bar(xs.astype(float), ys.astype(float), ppm, cx, cy)
         if bar is None or not bar.is_valid or bar.is_empty:
             continue

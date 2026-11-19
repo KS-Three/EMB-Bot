@@ -26,7 +26,10 @@ brand's chart so existing call sites and goldens are unaffected.
 """
 from __future__ import annotations
 
+import contextvars
+import hashlib
 import json
+from contextlib import contextmanager
 from dataclasses import dataclass
 from functools import lru_cache
 from pathlib import Path
@@ -50,8 +53,47 @@ class Thread:
 
 def rgb_to_lab(rgb: np.ndarray) -> np.ndarray:
     """(N,3) uint8/float RGB (0-255) -> (N,3) float CIELAB."""
-    arr = np.asarray(rgb, dtype=np.float64).reshape(1, -1, 3) / 255.0
+    src = np.asarray(rgb)
+    memo = _LAB_MEMO.get()
+    if memo is None or src.size < _LAB_MEMO_MIN:
+        return _rgb_to_lab(src)
+    key = (src.shape, src.dtype.str,
+           hashlib.blake2b(np.ascontiguousarray(src).data, digest_size=16).digest())
+    hit = memo.get(key)
+    if hit is None:
+        hit = _rgb_to_lab(src)
+        memo.clear()                     # one frame held, the latest
+        memo[key] = hit
+    return hit.copy()
+
+
+def _rgb_to_lab(src: np.ndarray) -> np.ndarray:
+    arr = np.asarray(src, dtype=np.float64).reshape(1, -1, 3) / 255.0
     return rgb2lab(arr).reshape(-1, 3)
+
+
+# Speed, exact (2026-11-19). Generation converts the same working frame to
+# Lab four times (Golden Tee's hat: 4.8 Mpx, ~0.5 s each, from stage 1, thin
+# ink and two stage-4 reads). Inside `lab_memo_scope` a large input is keyed
+# by its shape, dtype and bytes and its Lab computed once; every caller gets
+# its own copy, so nothing it writes reaches the next. The scope is one
+# `build_generation` call: nothing is held between jobs. Below `_LAB_MEMO_MIN`
+# values (a palette, one colour) the call is as it was.
+_LAB_MEMO: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
+    "threads_lab_memo", default=None)
+_LAB_MEMO_MIN = 3 * 100_000
+
+
+@contextmanager
+def lab_memo_scope():
+    if _LAB_MEMO.get() is not None:
+        yield
+        return
+    token = _LAB_MEMO.set({})
+    try:
+        yield
+    finally:
+        _LAB_MEMO.reset(token)
 
 
 class Chart:
