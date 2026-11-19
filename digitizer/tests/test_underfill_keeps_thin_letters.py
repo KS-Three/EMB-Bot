@@ -65,6 +65,18 @@ def test_on_thin_letters_in_the_discs_holes_are_kept():
     assert _merged(seal(), keep_thin=True) == []
 
 
+def test_on_thin_shapes_with_no_letter_among_them_still_merge():
+    """A thin star point or feather alone in a hole is no line of lettering
+    (the OPM seal's star points sewed white on top)."""
+    assert _merged(seal(tagged=False), keep_thin=True) == ["L0", "L1", "L2", "L3"]
+
+
+def test_on_an_untagged_letter_on_the_same_ground_is_kept_with_the_line():
+    regs = seal()
+    regs[2].meta.pop("text_cluster_id")
+    assert _merged(regs, keep_thin=True) == []
+
+
 def test_on_bold_letters_still_merge():
     """MFab's letters: 2-6 mm wide, they show through their holes."""
     assert _merged(seal(width=BOLD), keep_thin=True) == ["L0", "L1", "L2", "L3"]

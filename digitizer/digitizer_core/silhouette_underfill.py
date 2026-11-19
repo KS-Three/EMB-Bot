@@ -402,7 +402,30 @@ def _on_jumped_ground(ring, host, inner, regions) -> bool:
 
 #: `cfg.extra["underfill_keeps_thin_letters"]` (built OFF 2026-11-19).
 def _thin_in_ground_hole(r, others) -> bool:
-    """Is `r` a stroke too thin to show through the hole it sits in? Its
+    """Is `r` a stroke too thin to show through the hole it sits in?
+    (`_hole_ground` names the shape.)"""
+    return _hole_ground(r, others) is not None
+
+
+def _keep_thin(same, grounds):
+    """The shapes of `same` kept out of the under-fill: thin strokes in a
+    ground's holes (`_hole_ground`), only where that ground holds at least
+    one LETTER (`_is_letter`) of the same thread kept this way -- a line of
+    lettering, and the untagged letters the text read missed with it. A thin
+    star point or feather alone in a hole is no line: on the OPM seal they
+    sewed white on top where the art draws them pale (24 of 91 designs moved
+    without this, most on shapes that are not letters)."""
+    by_ground: dict = {}
+    for r in same:
+        g = _hole_ground(r, grounds)
+        if g is not None:
+            by_ground.setdefault((g.shape_id, r.thread_index), []).append(r)
+    return {r.shape_id for rs in by_ground.values() if any(_is_letter(r) for r in rs)
+            for r in rs}
+
+
+def _hole_ground(r, others):
+    """The shape of `others` in whose holes `r` sits too thin to show, or None. Its
     measured width (`stitchwidth`) is under `thin_ink.THIN_LETTER_PULLS` x its
     pull -- the measure `thin_letters_after_ground` moves a line by -- and it
     lies in the holes of one of `others` (at most `ON_RING_MAX` of it on that
@@ -417,7 +440,7 @@ def _thin_in_ground_hole(r, others) -> bool:
         return bool(m.get(MEASURED_KEY) and m.get(PULL_KEY)
                     and float(m[MEASURED_KEY]) < THIN_LETTER_PULLS * float(m[PULL_KEY]))
     if not narrow(r):
-        return False
+        return None
 
     def in_holes(o):
         shell = Polygon(o.polygon.exterior)
@@ -425,9 +448,12 @@ def _thin_in_ground_hole(r, others) -> bool:
             return False
         held = shell.intersection(r.polygon).area - o.polygon.intersection(r.polygon).area
         return held >= (1.0 - ON_RING_MAX) * r.polygon.area
-    return any(o.polygon is not None and o.polygon.geom_type == "Polygon" and o.polygon.interiors
-               and (o.meta or {}).get("sew_enclosed_white") != "field" and not narrow(o)
-               and in_holes(o) for o in others)
+    for o in others:
+        if (o.polygon is not None and o.polygon.geom_type == "Polygon" and o.polygon.interiors
+                and (o.meta or {}).get("sew_enclosed_white") != "field" and not narrow(o)
+                and in_holes(o)):
+            return o
+    return None
 
 
 def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False, keep_thin=False):
@@ -458,7 +484,7 @@ def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False, keep_
     `keep_thin` (`cfg.extra["underfill_keeps_thin_letters"]`, built OFF
     2026-11-19): a shape of the under-fill's colour is never merged when it
     is a thin stroke in a hole of another colour's fill inside the ring
-    (`_thin_in_ground_hole`). The Merchant Marine seal at 90 mm: the black
+    (`_keep_thin`: a line of lettering). The Merchant Marine seal at 90 mm: the black
     keyline round the eagle and the disc is one ring, black covers most of
     its outline, and its 27 black ring letters (0.7 mm strokes, each in a
     hole of the white disc) merged into the black under-fill. The white disc
@@ -502,8 +528,8 @@ def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False, keep_
             same = [r for r in same
                     if r.polygon.intersection(over).area < COVERED_KEEP_MIN * r.polygon.area]
         if keep_thin and same:
-            grounds = [r for r in inner if r.thread_index != colour]
-            same = [r for r in same if not _thin_in_ground_hole(r, grounds)]
+            kept = _keep_thin(same, [r for r in inner if r.thread_index != colour])
+            same = [r for r in same if r.shape_id not in kept]
         if ring.thread_index != colour and not same:
             continue
         if ring.thread_index == colour:
