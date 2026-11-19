@@ -87,6 +87,10 @@ export function combineDesigns(designs) {
   // only when there is something to carry, so a project of browser-built
   // designs on an engine without spans does no work at all.
   let runs = list.some((d) => Array.isArray(d.runs)) ? [] : null;
+  // `steps` (one per colour row; `adapter.plan_to_design` via
+  // `stage6_applique.plan_steps`): carried only when some input has them,
+  // so a project without operator steps combines byte-for-byte as before.
+  const steps = list.some((d) => Array.isArray(d.steps)) ? [] : null;
   let nSatin = 0, nFill = 0, nTrims = 0, haveDebug = false;
 
   list.forEach((d, i) => {
@@ -110,9 +114,16 @@ export function combineDesigns(designs) {
     //
     // The TRIM stays either way: the needle still has to travel between two
     // elements without dragging thread across the garment.
+    //
+    // An operator-step block (a foam stop, a tear-away, an appliqué piece)
+    // never merges either way: its stop IS the point, and folding plain
+    // stitching into it would sew that stitching under foam or fabric.
     const first = (d.colors || [])[0];
     const prev = colors[colors.length - 1];
-    const mergesWithPrevious = i > 0 && !!first && !!prev && sameThread(prev, first);
+    const ownSteps = steps ? stepsOf(d) : null;
+    const plainJoin = !steps || ((ownSteps[0]?.code ?? "COLOR") === "COLOR"
+      && (steps[steps.length - 1]?.code ?? "COLOR") === "COLOR");
+    const mergesWithPrevious = i > 0 && !!first && !!prev && sameThread(prev, first) && plainJoin;
     // Where this design's colours will land. Read BEFORE the push below, and
     // shifted by one when the splice merged its first block into the previous
     // design's last — the same shift the colours themselves take.
@@ -150,7 +161,10 @@ export function combineDesigns(designs) {
     // a continuation of the previous one — the colours array has to lose the
     // duplicate with it, or `colors[i]` stops naming block i.
     const own = d.colors || [];
-    for (let c = mergesWithPrevious ? 1 : 0; c < own.length; c++) colors.push(own[c]);
+    for (let c = mergesWithPrevious ? 1 : 0; c < own.length; c++) {
+      colors.push(own[c]);
+      if (steps) steps.push(ownSteps[c]);
+    }
     if (d._debug) {
       haveDebug = true;
       nSatin += d._debug.nSatin || 0;
@@ -174,8 +188,77 @@ export function combineDesigns(designs) {
   // read as "this design contains no runs" and a renderer keying off the
   // index would draw nothing over a design full of stitches.
   if (runs) combined.runs = runs;
+  if (steps) combined.steps = finishSteps(steps, stitches);
   if (haveDebug) combined._debug = { nSatin, nFill, nTrims };
   return combined;
+}
+
+const COLOR_CHANGE = "color_change";
+const END = "end";
+const DESIGN_COMPLETE = "Design complete";
+
+// One input's steps, one per colour row: its own (copied) when it carries a
+// list that matches its colours, else the thread-change rows
+// `stage6_applique.plan_steps` synthesizes for an ordinary block. A list
+// that does not match its colours cannot say which row it describes.
+function stepsOf(d) {
+  const own = d.colors || [];
+  if (Array.isArray(d.steps) && d.steps.length === own.length) {
+    return d.steps.map((s) => ({ ...s }));
+  }
+  return own.map((c, k) => {
+    const thread = c.name || "Color " + (k + 1);
+    return {
+      code: "COLOR",
+      label: "Thread " + thread,
+      action: "Change thread to " + thread,
+      function: COLOR_CHANGE,
+      flags: [],
+      material: "",
+      piece: "",
+      layers: [],
+      spm: null,
+      thread,
+      rgb: [c.r, c.g, c.b],
+    };
+  });
+}
+
+// Renumber the combined rows and re-apply plan_steps' last-row rule: each
+// input's own last row said "the file is over" (`function: end`), which is
+// true only of the combined design's last row. A mid-stream one goes back to
+// a colour change, its "Design complete" dropped (a real step keeps its own
+// instruction); the final row becomes the end, as plan_steps writes it.
+function finishSteps(steps, stitches) {
+  const counts = new Array(steps.length).fill(0);
+  let row = 0;
+  for (const s of stitches) {
+    if (s.type === "color") row++;
+    else if (s.type === "stitch" && row < counts.length) counts[row]++;
+  }
+  const last = steps.length - 1;
+  return steps.map((s, i) => {
+    const out = { ...s, index: i + 1, stitches: counts[i] };
+    let action = String(out.action || "");
+    if (out.function === END) {
+      if (out.code === "COLOR") {
+        action = "Change thread to " + (out.thread ?? i + 1);
+      } else {
+        action = action.replace(/\.?\s*Design complete\.?$/, "").trim();
+      }
+      out.function = COLOR_CHANGE;
+    }
+    if (i === last) {
+      out.function = END;
+      if (out.code === "COLOR") action = DESIGN_COMPLETE;
+      else {
+        const kept = action.trim().replace(/, then continue$/, "").replace(/\.+$/, "");
+        action = kept ? kept + ". " + DESIGN_COMPLETE + "." : DESIGN_COMPLETE;
+      }
+    }
+    out.action = action;
+    return out;
+  });
 }
 
 // One element's spans, moved onto the combined record array. Returns the
