@@ -37,4 +37,4 @@ specks (low_poly is native). Sheets:
 [[sliver-prune-2026-11-10]], [[transparent-white-infill-2026-11-11]],
 [[fine-bar-survive-2026-11-14]], [[proofread-2026-11-13]].
 
-**Kent 2026-11-15:** `speck_prune` ticked ON (with `stroke_bridge_keep` and `lone_glyph_keep`). Ruled ON 11-15, flip pending.
+**Kent 2026-11-15:** `speck_prune` ticked ON (with `stroke_bridge_keep` and `lone_glyph_keep`). Ruled ON 11-15; flipped ON in code (#1593: fragment rule, photos skipped).
