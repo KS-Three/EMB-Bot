@@ -54,7 +54,7 @@ def strip_pieces(art: Polygon, rings) -> list[Polygon]:
     """The band's strips between holes (module notes). `rings` is
     [(hole polygon, loop width, ...)]."""
     import cv2
-    from skimage.morphology import medial_axis
+    from .fast_skimage import medial_axis
     if len(art.interiors) < 1 or not rings:
         return []
     w = max(float(r[1]) for r in rings)
@@ -71,7 +71,8 @@ def strip_pieces(art: Polygon, rings) -> list[Polygon]:
     edge = np.full((ny, nx), 255, np.uint8)
     cv2.polylines(edge, [px(art.exterior.coords)], True, 0, 1)
     d_outer = cv2.distanceTransform(edge, cv2.DIST_L2, 5) * _STEP_MM
-    skel, dist = medial_axis(band.astype(bool), return_distance=True)
+    # seeded: an unseeded call breaks ties from OS entropy (test_every_engine_medial_axis_call_is_seeded)
+    skel, dist = medial_axis(band.astype(bool), return_distance=True, rng=0)
     r = dist * _STEP_MM
     # both feet on holes: the outer edge is farther than the inscribed radius
     keep = (skel & (r <= w) & (r >= w / 2.0) & (d_outer > r + 2 * _STEP_MM)).astype(np.uint8)
