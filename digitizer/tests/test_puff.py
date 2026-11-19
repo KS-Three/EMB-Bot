@@ -144,14 +144,34 @@ def test_puff_counter_closed():
         ), "no tack-down run round this ring"
 
 
+def test_puff_no_short_stitches():
+    # §3.6: short stitches dig into the foam. Every top-satin penetration
+    # stays on the shape's edge (ties and cap rows excluded).
+    runs = _puff(BAR)
+    top_i = max(range(len(runs)), key=lambda i: len(runs[i].points))
+    top = runs[top_i]
+    pts = top.points[top.tie_in_pts:]
+    if top_i == len(runs) - 1:
+        pts = pts[:-machine.PUFF_TIE_STITCHES]
+    # 0.2, not 0.15: satin_shape's own rail sits 0.17 mm in on one side of
+    # this bar (y=0.167). A short stitch is retracted 0.77 mm.
+    worst = max(BAR.boundary.distance(Point(p)) for p in pts)
+    assert worst <= 0.2, f"a penetration {worst:.2f} mm inside the edge"
+
+
 def test_puff_tackdown_is_inset():
     from digitizer_core.stage6_puff import puff_tackdown
     tack = puff_tackdown([BAR], ["p"], PipelineConfig(puff=True))
     assert len(tack) == 1
     inset = BAR.buffer(-machine.PUFF_INSET_MM, join_style=2)
-    for p in tack[0].points:
+    pts = tack[0].points
+    for p in pts:
         assert abs(inset.exterior.distance(Point(p))) < 1e-6
-    assert tack[0].points[0] == tack[0].points[-1]  # the ring closes
+    # §3.7: two passes -- round the ring and back over the same path.
+    n = len(pts) // 2
+    assert len(pts) == 2 * n + 1
+    assert pts[0] == pts[n] == pts[-1]
+    assert pts[n:] == pts[:n + 1][::-1]
 
 
 def _bounce(seq) -> bool:

@@ -239,7 +239,10 @@ def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
         patch_junctions=cfg.satin_patch_junctions,
         stroke_order=cfg.satin_stroke_order,
         corner_twigs=cfg.satin_corner_twigs,
-        junction_stack=True)
+        junction_stack=True,
+        # §3.6 "short stitches OFF": at 0.18 mm the guard would retract every
+        # other penetration 0.6 mm into the shape, crushing the foam there.
+        short_stitches=False)
     # satin_shape is memoized: copy before tying, never mutate its runs.
     satin = [StitchRun(points=list(r.points), kind=r.kind, jump=r.jump, trim=r.trim,
                        shape_id=r.shape_id, shade_thread_index=r.shade_thread_index,
@@ -299,13 +302,15 @@ def _walk_ring(coords, cursor) -> list[tuple[float, float]]:
         out += [(a[0] + (b[0] - a[0]) * s / steps, a[1] + (b[1] - a[1]) * s / steps)
                 for s in range(1, steps + 1)]
     out[-1] = out[0]
-    return out
+    # §3.7 "twice around": the second pass comes back over the same path.
+    return out + out[-2::-1]
 
 
 def puff_tackdown(polys: list, shape_ids: list[str], cfg) -> list[StitchRun]:
     """The foam tack-down (spec "Tack-down", §3.7's walk): one run round every
     ring of every puffed shape, inset PUFF_INSET_MM, at
-    PUFF_TACKDOWN_STITCH_MM, each ring started nearest the needle. Untied:
+    PUFF_TACKDOWN_STITCH_MM, two passes (round and back over the same path,
+    §3.7 "twice around"), each ring started nearest the needle. Untied:
     it sews as ordinary flat stitching before the foam stop."""
     runs: list[StitchRun] = []
     cursor = None
