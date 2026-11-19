@@ -1,4 +1,43 @@
-# NEXT THING TO TRY (read this first): the h's hairline route
+# RESULT 2026-11-19: `lettering_columns_hairline_leave` built OFF, measured, NOT clearly better, left OFF
+
+`cfg.extra["lettering_columns_hairline_leave"]`, `digitizer_core/hairline_leave.py`, applied to the
+columns after `wedge_cap` in `script_strokes_shape`. It is a station-level fix, not a change inside
+`pen_strokes`: reading the stations showed the "ride along the stem" is a shallow diagonal crossing
+(hat col 3 stations 32-44, mid (0.4,5.9) -> (4.2,3.6), stem col 5 at x 1.8-2.6) where the skeleton
+runs through the merged blob, so the hairline's crosses there are 2.1 mm long (its own 0.6-0.8) and
+at 63-72 deg against the stem's 16. A column whose stations pass through a HEAVIER column's ribbon
+(median cross >= 1.4x its own) now leaves at the last thin station before the merge: the blob run is
+replaced by the straight line to the first thin station after it, cross length and angle eased between
+the two, each cross clipped to the art. Column ends are never touched.
+
+Turned overlap (mm2 at crosses > 30 deg apart; `tools.script_flow`'s pairing, columns after `wedge_cap`
+and the flag), same method as above:
+
+| | h arch x stem (3 x 5) | whole word |
+|---|---|---|
+| hat OFF -> ON | 5.95 -> 0 | 19.25 -> 12.73 |
+| toat_machine_beanie OFF -> ON | 7.58 -> 0 | 15.49 -> 7.91 |
+| toat_beanie | 1.38 -> 1.38 (byte-identical) | 8.96 -> 8.96 |
+| bridge_hat, bridge_lc, tires_hat_3d | byte-identical, every pair unchanged | |
+
+Caution on the 0: the eased cross angle is the hairline's own (about 44 deg) against the stem's 16, a
+28 deg turn, just under the 30 deg line, so part of the drop is the line, not only the area. The
+pro's 1.95 is the target; the stations did stop lying wide over the stem.
+
+Cost: hat 17,100 -> 17,158 stitches, trims 18 -> 19, jumps 45 -> 46 (WORSE by one each), needle-up
+267.9 -> 264.7 mm; beanie 16,862 -> 16,861, trims, jumps unchanged. The 3 x 6 pair (hat 3.56, beanie 2.70)
+and the i-n-e column's e crossbar are not reached.
+
+**Print size: not clearly better.** `docs/renders/hairline-leave-2026-11-19/` (ORIGINAL | BEFORE | AFTER,
+and an h close-up, OFF left, ON right): at print size the word is indistinguishable ON and OFF, and
+even in the close-up the h junction differs by a few stitches. With one trim and one jump more on the
+hat, **left OFF, no flip recommended.** The 44-run flag sweep was not run (about 90 minutes, flag stays
+OFF); Bridge and Tires were checked by column measurement and stitch counts only. Tests:
+`tests/test_hairline_leave.py`.
+
+---
+
+# NEXT THING TO TRY: the h's hairline route (superseded above for the hairline; the rest stands)
 
 Both flags built here stay OFF and neither is a flip candidate (marginal at print size; `junction_align`
 also raises the hat's `coverage_max` 7.19 -> 7.68). The valuable finding is where the real pile-up is:
