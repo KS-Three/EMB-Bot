@@ -72,6 +72,7 @@ the OLDEST lines whole to the archive.
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [MARINE match](marine-match-2026-11-18.md) — pro construction per letter in numbers; r_bowl, block_butt_small, a_bar, block_lean ON since Kent 11-19 ("Flip all four ON"); R counter held by a 0.5 mm inset read from his file (sew-out row 15)
 - [MFab counter ring room](mfab-counter-ring-room-2026-11-14.md) — "random stitch" = photo-lane significant border on the A's 3.35 mm counter lightened to a bean loop inside its fill; `border_significant_ring_room` OFF drops it; our satin tier there was worse
+- [MFab top line](mfab-top-line-2026-11-19.md) — nine grader faults sorted (3 misreads, 1 gate-1, 5 = satin-ladder junction, unfixed); `satin_overlap_run` (extra, OFF) drops hidden re-sewn satin, picture same
 - [Monarch size cliff](monarch-size-cliff-2026-11-13.md) — wing cell lost at 90.50/91.75 mm; hand-back OFF by Kent 11-14: don't flip, don't re-narrow; lane branch-drop is the real fix ("the & was better on": his eye favoured ON)
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main
 - [No warnings reaches readouts](no-warnings-reaches-readouts.md) — Kent's 10-02 ruling covers always-on info rows too: defect 46 shipped as preflight METRICS only, customer sees nothing
@@ -98,14 +99,12 @@ the OLDEST lines whole to the archive.
 - [Scorecard recapture 11-12](scorecard-recapture-2026-11-12.md) — ruler 292418a8 -> ffefc3b1, run 43253187536: 10/20/8/10/4 -> 8/20/6/10/8, mean 71.9 -> 68.7 FELL; flag-off CI arms name #1301, #1263, #1329, #1378; 1 row part unattributed
 - [Second digitize timing](second-digitize-timing-2026-11-13.md) — 11-12's 44 s = laptop contention (same run 19 -> 55 s as load moved); Cancel held the worker 1.4-5.5 s: seams added in neck splits, letterform priors, keyline -> 0.2 s
 - [Shaped outline gear](shaped-outline-gear-2026-11-13.md) — `border_from_outline_follow_shape` ON (Kent 11-16): gear laid out from its OUTER edge, ring read off a chord
-- [Sliver prune](sliver-prune-2026-11-10.md) — `sliver_prune` OFF: Pooh 54 mm white edge runs = page-halo masks, red arm spike = shirt tendril on a crease; enlarged x1.25+ only; 80 mm sheet 20/20 same; his on-screen run was gradient, not flat
 - [Small bowls](small-bowls-2026-11-14.md) — Bukit's beyondcoal bowls lost in the cross floor; `lettering_columns_ring_floor` widens a ring's thin crosses (o 0.70 -> 1.00 cover); ticked ON 11-15, pending
 - [Small marks](small-marks-2026-11-14.md) — Bukit's 0.5 mm dots (stage 3) and neon (R) gaps (stage 1); pro's smallest block 1.0 mm = gate 1; tiny_detail_keep stays OFF, tiny run marks not built (Kent 11-15)
 
 - [Small-text hand-over](small-text-handover-2026-11-14.md) — ProSeal's 4.01 mm cap line fell between restore and re-set; retrace 0.9-1.25 caps at true size; Kent 11-15 "Flip both ON", pending
 - [Space fault reader](space-fault-reader-2026-11-12.md) — bays/gaps filled vs 44 letter pins: +0.32 over pick, CI [+0.22,+0.47] = shown, not a hold-out; 1112 replication = no verdict (2 of 9 items pinned)
 - [Speck prune](speck-prune-2026-11-14.md) — missing/invented pins traced: kanji in-fill (29) cured on main; low_poly 7 black dots = stage-3 rescue keeping hairline crossings; `speck_prune` OFF cures 7/7
-- [Starter pack sourcing](starter-pack-sourcing-2026-11-10.md) — Kent 11-10: 12 designs, strict CC0/PD-mark art digitized by EMB-Bot itself; no open stitch files, commission or CC-BY; no logos; provenance per design
 - [Starter weak spots](starter-weak-spots-2026-11-12.md) — baseball flat + monarch borders_last off SHIPPED 11-12; "drift" was a width slip: re-digitize at the original target, not manifest width_mm
 - [Stroke bridge keep](stroke-bridge-keep-2026-11-14.md) — arabic stems = stage-3 absorb of same-ink crumbs; keep a chain bridging two hosts; pin 2 cured, pin 3 not; ticked ON 11-15, pending
 - [Subject loss](subject-loss-2026-11-14.md) — toadstool B 76: "lettering" note now keyed on text tags; `subject_edge_recall` metric-only; photo sitting 11-15: 14/14 LOST, 0 Good = no verdict; Kent "Park it, metric only"

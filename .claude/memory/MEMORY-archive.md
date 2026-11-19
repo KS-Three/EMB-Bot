@@ -35,7 +35,9 @@ live index; new archive lines go at the bottom.
 - [Real-artwork parity](real-artwork-parity.md) — honest baseline 42.5; a pro scores only 75-84 vs a pro, so 95 is above the ceiling; synthetic refs flatter
 - [Satin/fill oracle split](satin-fill-oracle-2026-11-06.md) — C3 bound: cutting our grounds along the pro's 10+ cell blobs lifts mean kappa 0.381 -> 0.482 (5 cells 0.561, 20 cells 0.427): no verdict; reads the pro, a max
 - [Satin gate attribution](satin-gate-attribution.md) — DT regularity loses pro satin ground; `explained` promotion 45.8 → 48.1; flat-art sub-1mm floor DISPROVED
+- [Sliver prune](sliver-prune-2026-11-10.md) — `sliver_prune` OFF: Pooh 54 mm white edge runs = page-halo masks, red arm spike = shirt tendril on a crease; enlarged x1.25+ only; 80 mm sheet 20/20 same; his on-screen run was gradient, not flat
 - [Stage-0 texture gate](stage0-texture-gate-2026-10-28.md) — grain gate missed 15/18 downsampled photos; `texture_frac` >= 0.13 route + two-ink veto ON (`stage0_texture_gate`); 6 "logo" rows are photographs by medium; cut-outs keep the old tree
+- [Starter pack sourcing](starter-pack-sourcing-2026-11-10.md) — Kent 11-10: 12 designs, strict CC0/PD-mark art digitized by EMB-Bot itself; no open stitch files, commission or CC-BY; no logos; provenance per design
 - [Excess on gradient](thread-match-excess-gradient-2026-10-29.md) — defect 28 ON 10-30: F-with-block 14 -> 4, md5s same
 - [Underlay under fills](underlay-under-fills-2026-10-05.md) — gradient fills sewed with ZERO underlay; pro sews a crossing pass, built as `cross_tatami`, in no preset; preview cannot show underlay
 - [Eye, 100 pairs](vlm-judge-100-2026-11-06.md) — Opus session, 99 pairs: kappa +0.34 [+0.17, +0.49] above chance; sides +0.65 n 22; proposal only

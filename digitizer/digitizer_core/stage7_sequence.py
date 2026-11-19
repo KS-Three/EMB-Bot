@@ -5382,6 +5382,14 @@ def sequence(
                     q = nearest_points(p.polygon, group[nxt].polygon)[1]
                     exit_near = (float(q.x), float(q.y))
             runs, report, filled = stitch_one(p, cursor, exit_near)
+            # `cfg.extra["satin_overlap_run"]` (built OFF 2026-11-19): a satin
+            # stretch of this shape lying wholly on its own earlier satin is
+            # sewn as running stitch (`column_overlap`); off, unread
+            if runs and (cfg.extra or {}).get("satin_overlap_run"):
+                from .column_overlap import overlap_run
+                runs, _n_ov = overlap_run(runs)
+                if _n_ov:
+                    report["overlap_run_dropped"] = _n_ov
             # A stripe field's fill gets no rim: its bands cover the long
             # edges and its ends are cut, as the bands' are (`STRIPE_HOST_KEY`).
             if cfg.silhouette_underfill_rim and not p.region.meta.get(STRIPE_HOST_KEY):
