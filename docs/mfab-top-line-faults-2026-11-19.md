@@ -4,8 +4,14 @@ Scorecard `docs/prime-grader/scorecard-2026-11-18.md`, `L_mfab_hat` (105.3 x 40.
 small AND WELDING LLC line is `docs/mfab-bottom-line-2026-11-18.md` (#1673) and is not reopened.
 Measured on main `e4b0428e`: `mfab_hat` at 104.9 mm, `pro_pair.digitize`, 20,564 stitches, 25 trims.
 
-**No professional comparison.** The MFab pro files are not under `digitizer/testdata/reference/` (only Becker is), so every
-number below is the art against ours. The art is 403 px wide (0.26 mm a pixel).
+**Pro side (added after the director's correction).** The MFab pro files are in the committed zip, not under
+`testdata/reference/` (the first version of this note said there were none). Numbers only, read with pystitch
+from `mf4b logo hat.PES` (104.9 x 40.2 mm, 5 colour blocks: black body 9,199 stitches, white letters 5,883,
+three small black blocks of 1,366 / 797 / 322), nothing extracted is committed or rendered. Same pile measure over
+the pro's white block, same windows: the pro's stems are dense (3+ deep on 0.81 of the covered area on a clean M stem
+against our 0.35), and **its junctions are not heavier than its stems**: F3 0.65, F4 0.77, F8 0.60, F9 0.62 (max 14,
+17, 8, 6 layers), against ours 0.53, 0.61, 0.92, 0.35 over a 0.35 stem. So the pro does not pile at a junction and
+ours does at 3, 4 and 8, which supports calling those real. The art is 403 px wide (0.26 mm a pixel).
 
 **What sews the top line.** The white letters are one enclosed-white field (`S1a1cc475`, `sew_enclosed_white: field`)
 sewn by the ordinary satin ladder, not the Column lane: one satin run per walk (M 563 points, F 252 + 310, A 426,

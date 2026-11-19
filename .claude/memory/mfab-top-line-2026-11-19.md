@@ -14,5 +14,5 @@ metadata:
 - **Real cause (1, 3, 4, 5, 8), NOT fixed:** a junction the art draws as one ~3.0 mm block is sewn as two 1.9 mm bars 0.5 mm apart plus fans.
 - **Gate 1:** fault 6, the A counter's fill, is the 5.0 mm satin ceiling refusing `counter_fan_satin` at 104.9 mm: sew-out row 16.
 - **Built OFF:** `cfg.extra["satin_overlap_run"]` (`column_overlap.py`): -126 stitches hat, -209 LC, trims unchanged, no bare cloth, the picture is identical (the hidden layer goes). Not a flip candidate; the sweep was not run.
-- No MFab pro file in the repo: all numbers are art vs ours.
+- The pro file is in the committed zip (not testdata/reference): its junctions are no denser than its stems (3+ deep share F3 0.65, F4 0.77, F8 0.60 vs stem 0.81); ours 0.53 / 0.61 / 0.92 vs 0.35.
 Related: [[counter-fan-2026-11-14]], [[off-line-mark-2026-11-18]].
