@@ -1069,6 +1069,37 @@ test("a border reads as RAISED: a deeper shadow than plain satin, cast ON the fi
   expect(shadows[iRaisedShadow]).toBeLessThanOrEqual(0.42); // a shadow, never an outline
 });
 
+test("puff reads as RAISED, stronger than a border, with colour and width untouched (Task 9)", () => {
+  const puff = kindStyle("satin", "puff");
+  const border = kindStyle("satin", "border");
+  const plain = kindStyle("satin", "");
+  expect(puff.raised).toBe(true);
+  expect(puff.shadow).toBeGreaterThan(border.shadow);
+  expect(puff.sheen).toBeGreaterThan(border.sheen);
+  expect(puff.rim).toBeLessThan(border.rim);
+  expect(puff.z).toBeGreaterThan(border.z);
+  expect(puff.w).toBe(1);               // width multiplier untouched
+  expect(puff.tone).toBe(plain.tone);   // no recolouring of the thread
+  // The foam's grip and walk (underlay kind) stay subdued, not raised.
+  expect(kindStyle("underlay", "puff_under").raised).toBe(false);
+  const u = kindStyle("underlay", "");
+  expect(kindStyle("underlay", "puff_under")).toMatchObject({ w: u.w, sheen: u.sheen, rim: u.rim, shadow: u.shadow, z: u.z });
+});
+
+test("a puff group's shadow is drawn after the fill it falls on, and deeper than the ordinary one", () => {
+  const design = kindedDesign([["underlay", "puff_under"], ["fill"], ["satin", "puff"]], [200, 10, 10]);
+  const ctx = makeCallLog();
+  renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, {});
+  const strokes = strokesOf(ctx);
+  const shadows = strokes.map((v) => alphaOf(v.color));
+  const iFillPaint = firstIndexOf(strokes, (v) => v.color === "rgb(200,10,10)");
+  const iRaisedShadow = firstIndexOf(shadows, (a) => a != null && a > 0.3);
+  expect(iFillPaint).toBeGreaterThan(-1);
+  expect(iRaisedShadow).toBeGreaterThan(iFillPaint);
+  const preAlpha = shadows.find((a) => a != null);
+  expect(preAlpha).toBeLessThan(shadows[iRaisedShadow]);
+});
+
 test("a bean run draws as a thin single line — narrower than the column kinds, never wider", () => {
   const run = kindStyle("run", "");
   expect(run.w).toBeLessThan(kindStyle("satin", "").w);

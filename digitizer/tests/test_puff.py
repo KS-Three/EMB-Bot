@@ -99,7 +99,9 @@ def _covered(segment: LineString, pts, reach=0.3, step=0.05) -> float:
 def test_puff_no_underlay():
     runs = _puff(BAR)
     assert runs
-    assert all(r.kind != stitches.UNDERLAY for r in runs)
+    # The §3.7 inset walk is the underlay's replacement and is tagged
+    # underlay-like for the preview; no OTHER run is underlay.
+    assert all(r.kind != stitches.UNDERLAY or r.role == "puff_under" for r in runs)
 
 
 def test_puff_density():
@@ -141,7 +143,7 @@ def test_puff_counter_closed():
                    for r in runs)
 
     # The §3.7 walk (after the stop, in the puff satin) closes the counter...
-    walk = [r for r in _puff(RING) if r.kind == stitches.RUN]
+    walk = [r for r in _puff(RING) if r.role == "puff_under"]
     for ring in (RING.exterior, RING.interiors[0]):
         assert round_ring(walk, ring), "no inset walk round this ring"
     # ...and the pre-stop grip goes round the outer ring only.
@@ -191,11 +193,11 @@ def test_puff_shape_starts_with_inset_walk(poly):
     for r in runs:
         if r.kind == stitches.TRAVEL:
             continue
-        if r.kind != stitches.RUN:
+        if r.role != "puff_under":
             break
         walks.append(r)
     assert len(walks) == len(rings)
-    assert all(r.kind != stitches.RUN for r in runs[runs.index(walks[-1]) + 1:])
+    assert all(r.role != "puff_under" for r in runs[runs.index(walks[-1]) + 1:])
     for r, ring in zip(walks, rings):
         pts = r.points[r.tie_in_pts:]
         # On the inset ring, or on its thinned copy (_WALK_TOLERANCE_MM).
@@ -208,6 +210,31 @@ def test_puff_shape_starts_with_inset_walk(poly):
     # Tied once in, at the walk; no second tie-in at the satin.
     assert runs[0] is walks[0] and runs[0].tie_in_pts == machine.PUFF_TIE_STITCHES
     assert all(r.tie_in_pts == 0 for r in runs[1:] if not r.trim)
+
+
+@pytest.mark.parametrize("poly", [BAR, RING], ids=["bar", "ring"])
+def test_puff_runs_carry_role(poly):
+    """Task 9: the preview raises puff by role. Top satin and end-caps are
+    "puff"; the inset walk and the pre-stop grip are "puff_under" with an
+    underlay-like kind (so they draw subdued); joins stay unroled."""
+    from digitizer_core.stage6_puff import puff_tackdown
+    runs = _puff(poly)
+    sat = [r for r in runs if r.kind == stitches.SATIN]
+    assert sat and all(r.role == "puff" for r in sat)
+    under = [r for r in runs if r.role == "puff_under"]
+    assert under and all(r.kind == stitches.UNDERLAY for r in under)
+    assert all(r.role == "" for r in runs if r.kind == stitches.TRAVEL)
+    assert all(r.role in ("puff", "puff_under", "") for r in runs)
+    tack = puff_tackdown([poly], ["p"], PipelineConfig(puff=True))
+    assert tack and all(r.role == "puff_under" and r.kind == stitches.UNDERLAY for r in tack)
+
+
+def test_puff_roles_reach_the_design(tires_puff):
+    from digitizer_core import adapter
+    _result, plan = tires_puff
+    design = adapter.plan_to_design(plan)
+    roles = {s.get("role") for s in design["runs"]}
+    assert {"puff", "puff_under"} <= roles
 
 
 def _bounce(seq) -> bool:

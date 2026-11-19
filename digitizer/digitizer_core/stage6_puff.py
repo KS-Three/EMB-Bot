@@ -13,8 +13,14 @@ import math
 from shapely.geometry import LinearRing, LineString, Point
 
 from . import machine
-from .stitches import RUN, SATIN, TRAVEL, StitchRun, tie_run
+from .stitches import SATIN, TRAVEL, UNDERLAY, StitchRun, tie_run
 from .stitchwidth import measure_width_mm
+
+# Task 9 (raised preview): roles the Studio preview draws puff by. "puff" is
+# the top satin and end-caps (raised); "puff_under" is the grip and the inset
+# walk, tagged with the underlay kind so they draw subdued. Metadata only.
+ROLE_PUFF = "puff"
+ROLE_PUFF_UNDER = "puff_under"
 
 
 def _max_inscribed_diameter_mm(geom) -> float:
@@ -252,7 +258,8 @@ def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
     # satin_shape is memoized: copy before tying, never mutate its runs.
     satin = [StitchRun(points=list(r.points), kind=r.kind, jump=r.jump, trim=r.trim,
                        shape_id=r.shape_id, shade_thread_index=r.shade_thread_index,
-                       role=r.role, piece=r.piece, tie_in_pts=r.tie_in_pts)
+                       role=ROLE_PUFF if r.kind != TRAVEL else r.role,
+                       piece=r.piece, tie_in_pts=r.tie_in_pts)
              for r in satin if r.points]
     if not satin:
         return []
@@ -284,7 +291,8 @@ def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
     for walk in _inset_walk(poly, shape_id, order[0][0] if order else satin[0].points[0]):
         _join(runs, walk, poly, shape_id)
     for pts in order:
-        _join(runs, StitchRun(points=pts, kind=SATIN, shape_id=shape_id), poly, shape_id)
+        _join(runs, StitchRun(points=pts, kind=SATIN, shape_id=shape_id,
+                                  role=ROLE_PUFF), poly, shape_id)
     if runs:
         _join(runs, satin[0], poly, shape_id)
         runs += satin[1:]
@@ -357,7 +365,8 @@ def _inset_walk(poly, shape_id: str, cursor) -> list[StitchRun]:
         pts = _walk_ring(list(ring.coords)[:-1], cursor)
         if len(pts) < 4:
             continue
-        runs.append(StitchRun(points=pts, kind=RUN, shape_id=shape_id))
+        runs.append(StitchRun(points=pts, kind=UNDERLAY, shape_id=shape_id,
+                               role=ROLE_PUFF_UNDER))
         cursor = pts[-1]
     return runs
 
@@ -377,7 +386,8 @@ def puff_tackdown(polys: list, shape_ids: list[str], cfg) -> list[StitchRun]:
                              stitch_mm=machine.PUFF_GRIP_STITCH_MM, passes=1)
             if len(pts) < 4:
                 continue
-            run = StitchRun(points=pts, kind=RUN, shape_id=sid)
+            run = StitchRun(points=pts, kind=UNDERLAY, shape_id=sid,
+                            role=ROLE_PUFF_UNDER)
             if cursor is not None:
                 run.jump = True
                 run.trim = math.dist(cursor, pts[0]) >= machine.TRIM_AT_MM

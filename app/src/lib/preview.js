@@ -219,6 +219,12 @@ const KIND_STYLES = {
 const ROLE_STYLES = {
   border:   { sheen: 1.12, rim: 0.9, shadow: 1.7, z: 2, raised: true },
   edge_cap: { sheen: 1.12, rim: 0.9, shadow: 1.7, z: 2, raised: true },
+  // 3D puff (Kent 2026-11-19): foam under the satin stands further proud than
+  // a border, so the same cue, stronger. Thread colour and width untouched.
+  // An artist's impression until a sew-out photo calibrates it. The puff grip
+  // and inset walk are role "puff_under" on the underlay KIND, which is
+  // exempt below, so they draw subdued without an entry here.
+  puff:     { sheen: 1.25, rim: 0.85, shadow: 2.6, z: 3, raised: true },
 };
 
 // ...but a role does NOT raise a run that is underneath by nature. The border
