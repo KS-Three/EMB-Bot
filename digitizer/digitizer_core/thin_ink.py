@@ -858,10 +858,13 @@ def ink_after_ground(regions, innermost: bool = False, other_thread: bool = Fals
     nothing to move: the input list itself.
 
     `other_thread` (`cfg.extra["underfill_keeps_thin_letters"]`, built OFF
-    2026-11-19): a stroke's ground is never a shape of its own thread. The
-    Merchant Marine seal's black ring letters named the black under-fill
-    (the keyline ring, whose outline covers the whole seal) as their ground
-    and sewed right after it, under the white disc. False: as before."""
+    2026-11-19): a stroke's ground is a shape of ANOTHER thread when one
+    covers it; its own thread's only when none does. The Merchant Marine
+    seal's black ring letters named the black under-fill (the keyline ring,
+    whose outline covers the whole seal) as their ground and sewed right
+    after it, under the white disc. The Agriculture seal's grey strokes on a
+    grey band have no other ground: refused one outright, they stayed ahead
+    of their band and a cream patch beside it went bare. False: as before."""
     from dataclasses import replace
 
     from .beanletters import BEAN_LETTER_KEY
@@ -873,8 +876,11 @@ def ink_after_ground(regions, innermost: bool = False, other_thread: bool = Fals
     to: dict[str, tuple] = {}
     reordered: dict[str, str] = {}      # stroke id -> the ground `innermost` alone found for it
     for b in ink:
-        mine = ([g_ for g_ in grounds if g_.thread_index != b.thread_index]
-                if other_thread else grounds)
+        mine = grounds
+        if other_thread:
+            others = [g_ for g_ in grounds if g_.thread_index != b.thread_index]
+            if _ground_of(b, others, innermost) is not None:
+                mine = others
         g = _ground_of(b, mine, innermost)
         if g is not None and g.meta["layer"] >= b.meta["layer"]:
             to[b.shape_id] = ("ink", g.meta["layer"], b.thread_index)

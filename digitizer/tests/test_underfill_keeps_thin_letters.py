@@ -126,6 +126,16 @@ def test_a_dark_ink_strokes_ground_is_never_its_own_thread():
     assert after["Sring"] < after["Sdisc"] < after["L0"]
 
 
+def test_a_stroke_with_only_its_own_threads_ground_keeps_it():
+    """The Agriculture seal: grey strokes on a grey band, no other ground."""
+    band = _reg("Sband", _holed(box(0, 0, 40, 10), box(5, 4, 6, 8)), BLACK, 2)
+    stroke = _reg("Sstroke", box(5, 4, 6, 8), BLACK, 0, dark_ink=True,
+                  **{BEAN_LETTER_KEY: [[(5.5, 4.0), (5.5, 8.0)]]})
+    lay = {r.shape_id: r.meta["layer"]
+           for r in ink_after_ground([stroke, band], other_thread=True)}
+    assert lay["Sstroke"] > lay["Sband"]
+
+
 def test_flag_is_off_by_default():
     from digitizer_core import PipelineConfig
     assert not (PipelineConfig().extra or {}).get("underfill_keeps_thin_letters")
