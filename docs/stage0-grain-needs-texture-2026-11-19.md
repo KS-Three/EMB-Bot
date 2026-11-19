@@ -127,3 +127,14 @@ call, not the flat lane alone. **Kent: "Keep OFF (Recommended)"**. The
 starburst was seen only on a synthetic fixture, and on real art the flag costs
 trims for no visible gain. The narrower form (a speck one shape fully
 encloses) is unbuilt.
+
+**Kent, on the pictures (2026-11-19): "The sunset image improved with the
+starburst fix (the only image)".** `photo_sunset_backlit` (synthetic) is the
+one design he read as better ON. The hold stands. If it is revisited, the
+place to start is what changed on the sunset (−770 stitches, +89.6 mm
+needle-up, +1 trim), measured beside the narrower enclosed-speck form.
+
+**CI after the flip:** `test_underfill_small_size` 36.7 mm default row graded
+C on Linux against its B floor. The default route is now flat, so the row
+takes the forced-flat row's C floor. On Kent's Windows box it read B. A
+preflight grade, not a quality claim (gate 4).
