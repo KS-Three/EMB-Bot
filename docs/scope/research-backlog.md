@@ -296,7 +296,14 @@ here.
 
 ---
 
-### Cross-validation harness left behind by the pystitch swap — flagged 2026-08-18
+### Cross-validation harness left behind by the pystitch swap — flagged 2026-08-18, CLOSED
+
+**Closed.** Both halves of the fix below are on `main`: `tools/crossval-stitch-formats.mjs`
+probes `pystitch` (it probed `pyembroidery` until 2026-08-21, per its own header), and the
+`engine` CI job runs `actions/setup-python` and `pip install pystitch==1.0.1` before
+`node --test`, with the tests throwing rather than skipping when `CI` is set. The text below
+is the 2026-08-18 finding as it stood. *(confirmed 2026-11-19 —
+`tools/crossval-stitch-formats.mjs`, `.github/workflows/python-package-conda.yml` `engine` job)*
 
 `test/crossval-stitch-formats.test.js` is the only automated check on
 EMB-Bot's third-party-visible DST/PES/EXP output — it holds the DST axis
@@ -317,7 +324,7 @@ Because it self-skips rather than failing, a machine without that incidental
 global install reports **green having asserted nothing** — the same
 green-suite-hides-a-real-defect class ROADMAP gate 3 was written for.
 
-**Fix (not yet done):** repoint both files at `pystitch` — MIT, already a
+**Fix (done since, see Closed above):** repoint both files at `pystitch` — MIT, already a
 declared dependency, and every symbol the decoder imports was confirmed
 present in 1.0.1 — and give the `engine` job a `setup-python` step, or move
 the harness into the `digitizer` job.
@@ -333,7 +340,7 @@ resolution path is unchanged and remains Kent's call.
 *(confirmed 2026-08-14 — `docs/turtlestitch-stitch-appearance-research-2026-08-14.md`;
 moved here from MASTER_SCOPE 2026-08-25 under the line budget)*
 
-## Closed-loop sew-out calibration — proposed 2026-09-30, probe built, waiting on a photo
+## Closed-loop sew-out calibration — proposed 2026-09-30, reader, card v2 and phases 3–4 built, waiting on a photo of a sewn card
 
 The one capability no digitizing tool ships: the customer sews the gate card
 on their own goods, photographs it, and the tool writes a machine + fabric
