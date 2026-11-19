@@ -517,3 +517,40 @@ def test_puff_satin_never_tatami_even_past_flat_ceiling():
     assert blocks[1].step["code"] == "PUFF"
     assert stitches.SATIN in {r.kind for r in blocks[1].runs}
     assert stitches.FILL not in {r.kind for r in blocks[1].runs}
+
+
+# --- Task 5: per-shape override through the shape-layers contract (v1.11) ----
+
+def _edit_region(sid="S1", **meta):
+    from digitizer_core.regions import Region
+    poly = box(0, 0, 30, 5)
+    return Region(shape_id=sid, polygon=poly, thread_index=0, thread_number="1",
+                  area_mm2=poly.area, meta={"layer": 0, **meta})
+
+
+def _apply(overrides, regions=None):
+    from digitizer_core.regions import apply_shape_edits
+    regions = regions or [_edit_region()]
+    out, _t, _w = apply_shape_edits(regions, [0], [], overrides, [])
+    return out
+
+
+def test_puff_override_sets_meta():
+    assert _apply({"S1": {"puff": True}})[0].meta["puff"] is True
+    assert _apply({"S1": {"puff": False}})[0].meta["puff"] is False
+    cleared = _apply({"S1": {"puff": None}}, [_edit_region(puff=True)])
+    assert "puff" not in cleared[0].meta
+
+
+def test_puff_override_rejects_non_bool():
+    with pytest.raises(ValueError, match="puff"):
+        _apply({"S1": {"puff": "yes"}})
+
+
+def test_puff_meta_carried():
+    from digitizer_core.regions import apply_shape_merges
+    a = _edit_region("A", puff=True)
+    b = _edit_region("B", puff=True)
+    b.polygon = box(30, 0, 60, 5)
+    merged, _w = apply_shape_merges([a, b], [["A", "B"]])
+    assert len(merged) == 1 and merged[0].meta.get("puff") is True

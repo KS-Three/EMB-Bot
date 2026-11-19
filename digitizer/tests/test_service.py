@@ -2092,3 +2092,22 @@ def test_recount_rejects_what_digitize_rejects_at_submit(client):
     assert r.status_code == 400
     r = _recount(client, {"nonsense": 1})
     assert r.status_code == 400
+
+
+def test_puff_override_400(client):
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps(
+                            {"shape_overrides": {"S1": {"puff": "yes"}}})})
+    assert r.status_code == 400, r.text
+    assert "puff" in r.text
+
+
+def test_shape_rows_carry_puff_eligibility(client):
+    shapes = _digitize(client, {"target_width_mm": 80.0, "preflight": False}
+                       )["review"]["shapes"]
+    assert shapes
+    for s in shapes:
+        assert isinstance(s["puff_eligible"], bool)
+        assert isinstance(s["puff_reason"], str)
+        assert (s["puff_reason"] == "") == s["puff_eligible"]
