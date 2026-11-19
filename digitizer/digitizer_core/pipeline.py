@@ -1786,6 +1786,11 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         thread_indices = borders_last_layers(
             regions, thread_indices, cfg,
             design_class=gen.classification_class)
+    if cfg.keyline_under_face and not (
+            is_photographic(cfg, gen.classification_class)
+            or bool(cfg.extra.get("photo_sequencing"))):
+        from .keyline_under_face import keylines_under_face
+        thread_indices = keylines_under_face(regions, thread_indices, chart_for(cfg))
     # Explicit sew-order layers wait until the palette is settled: moving a
     # shape between layers must reorder sewing, never drop a thread from the
     # color list (see `apply_layer_overrides`).

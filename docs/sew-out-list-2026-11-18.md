@@ -259,3 +259,11 @@ slit and the 2.9 mm gap read on cloth. No flag built.
   nearest precedent.
 - If an existing sew-out list or card is extended instead of this page, move the rows, do not
   duplicate them.
+
+## Golden Tee red keyline: sewn at the floor, or under the face (added 2026-11-19)
+
+Art keyline 0.37-0.48 mm; we sew 1.2-1.3 mm satin (floor + pull 0.4), last, over the gold; `keyline_under_face` (built OFF)
+puts it under the faces and the red all but disappears; the pro sews GT's at 1.7 mm after the face and has none in GOLF.
+Sew the Golden Tee hat both ways (flag OFF and ON) and look: does the red read as a thin outline at arm's length, or as a heavy
+band (OFF) / is it missing (ON)? Unlocks: whether a thin red run/bean (about 0.45 mm) is worth building.
+Source: `docs/goldentee-red-keyline-2026-11-19.md`.

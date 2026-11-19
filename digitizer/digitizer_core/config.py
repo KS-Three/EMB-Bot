@@ -1575,6 +1575,16 @@ class PipelineConfig:
     # `tests/test_layer_shadow.py`.
     cap_merged_layer_home: bool = True
     shadow_to_page: bool = True
+    # NOT A FLIP CANDIDATE (director, 2026-11-19): ON erases the dark-red outline the art
+    # draws (GOLF and GT), it does not thin it. Left OFF; no thin-red variant is to be built.
+    # `keyline_under_face` (built OFF 2026-11-19, the prime grader's Golden Tee: the
+    # red keylines still sew heavy and GOLF reads red-edged). `borders_last` sews the
+    # burnt-orange keyline layer LAST, over the gold and pumpkin faces; ON, a layer of
+    # dark thin bands (<= 0.8 mm, L* <= 40) moves to sew just before the earliest
+    # lighter face-sized layer it touches, so the face covers the keyline's inner
+    # excess. Order only: no satin floor, pull or cover value (gate 1). Flip is
+    # Kent's. `keyline_under_face.py`; tests `tests/test_keyline_under_face.py`.
+    keyline_under_face: bool = False
     # `color_cap_least_loss` (built 2026-11-17, the prime grader's first
     # scorecard: Precision Drone "no blue thread anywhere"). The colour cap
     # keeps the N threads with the most sewn area, so several near-identical
