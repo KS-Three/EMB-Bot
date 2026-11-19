@@ -33,6 +33,8 @@ if str(DIGITIZER) not in sys.path:
 
 from tools import letter_pieces as lp  # noqa: E402
 
+#: the flags that are typed `PipelineConfig` fields (Kent's 2026-11-19 flip); any other `--set NAME=JSON` is `cfg.extra["lettering_columns_NAME"]`
+TYPED = ("r_bowl", "block_butt_small", "a_bar", "block_lean")
 BECKER = ("becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small", "becker_beanie")
 NAMES = "MARINE"
 FLAG = "lettering_columns_block_butt"      # a typed field since #1684 (ON on main); "off" arm sets it false
@@ -238,7 +240,7 @@ def main(argv=None) -> int:
     on_extra = {}
     for item in a.set:
         k, _, v = item.partition("=")
-        on_extra[f"extra.{k}"] = json.loads(v)
+        on_extra[f"lettering_columns_{k}" if k in TYPED else f"extra.lettering_columns_{k}"] = json.loads(v)
     for s in slugs:
         doc = {"slug": s, "pro": read_file(pro_path(s, None))}
         if not a.no_ours:

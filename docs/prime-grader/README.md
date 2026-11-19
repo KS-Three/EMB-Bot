@@ -8,6 +8,17 @@ pictures hold client artwork and stay in the gitignored
 Every figure here is an instrument reading, not a quality claim (ROADMAP
 gate 4). No flag is flipped on it.
 
+## Two readers, Monday and Thursday (Kent, 2026-11-19)
+
+From the first two-reader card on, each design is graded by two blind readers
+(RUNBOOK A). Kent's ruling, shown the repeat test (`repeat-2026-11-19.md`):
+"Two readers, twice a week". A card lists only the faults **both** readers
+place (same class within 3 mm) as findings; each reader's other faults are in
+a separate "One reader only (not acted on)" section. A design's grade counts
+only when both readers give it; where they differ it is marked "readers
+disagree" and is left out of the grade row and of the moves against the last
+card. The first two-reader card is not comparable with any one-reader card.
+
 ## Rubric 2026-11-18: the next card is a new baseline
 
 The rubric changed on 2026-11-18 (`RUBRIC_VERSION` 2026-11-18, sha `9a169b106243`),

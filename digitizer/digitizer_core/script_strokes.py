@@ -1179,6 +1179,11 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # stations turn to the longer stroke's cross angle instead (the pro's way)
     if end_overlap.align_armed():
         cols, _turned = end_overlap.align_columns(cols, poly)
+    # `cfg.extra["lettering_columns_hairline_leave"]` (built OFF): a hairline that
+    # merges into a heavier stroke leaves it at once (`hairline_leave`)
+    from . import hairline_leave
+    if hairline_leave.armed():
+        cols, _left = hairline_leave.leave_columns(cols, poly)
     kw = dict(trim_at_mm=trim_at_mm, spacing_mm=spacing_mm, split_above_mm=split_above_mm,
               pull_mm=pull_mm, pull_floor_mm=pull_floor_mm,
               **({"inside_connectors": True} if inside_connectors else {}),
