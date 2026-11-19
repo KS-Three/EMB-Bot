@@ -439,6 +439,15 @@ PUFF_JUNCTION_OVERLAP_MM = 0.4  # unmeasured — §3; replace from TIRES HAT 3D
 PUFF_INSET_MM = 0.2  # unmeasured — §3; replace from TIRES HAT 3D
 PUFF_TIE_STITCHES = 5  # unmeasured — §3; replace from TIRES HAT 3D
 PUFF_FOAM_MM = 3.0  # unmeasured — §3; replace from TIRES HAT 3D
+# End-cap (§3.5 method 1, capping): stitches along the spine at each open
+# column end, stepped across the end at the cap spacing (perforation, not
+# coverage, so 4x sparser than the top satin). The depth is §3.5's 0.7 mm
+# "overhang", read as the cap's reach in under the column end from the art
+# edge; the outboard row lands ON the edge, never past it.
+PUFF_CAP_SPACING_MM = 0.30  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_CAP_DEPTH_MM = 0.7  # unmeasured — §3; replace from TIRES HAT 3D
+# §3.7 tack-down walk stitch length ("20 point walk").
+PUFF_TACKDOWN_STITCH_MM = 2.0  # unmeasured — §3; replace from TIRES HAT 3D
 # The wide-column ceiling (quality review 2026-09-08 item 4; plan
 # 2026-09-09-wide-column-policy.md), live only under `cfg.wide_columns`,
 # DEFAULT OFF. Read off five commissioned Becker files sewn on garments —
