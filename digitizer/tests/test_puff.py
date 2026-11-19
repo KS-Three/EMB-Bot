@@ -101,7 +101,7 @@ def test_puff_no_underlay():
     assert runs
     # The §3.7 inset walk is the underlay's replacement and is tagged
     # underlay-like for the preview; no OTHER run is underlay.
-    assert all(r.kind != stitches.UNDERLAY or r.role == "puff_under" for r in runs)
+    assert all((r.kind == stitches.UNDERLAY) == (r.role == "puff_under") for r in runs)
 
 
 def test_puff_density():

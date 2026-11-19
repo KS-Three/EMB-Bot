@@ -18,7 +18,10 @@ from .stitchwidth import measure_width_mm
 
 # Task 9 (raised preview): roles the Studio preview draws puff by. "puff" is
 # the top satin and end-caps (raised); "puff_under" is the grip and the inset
-# walk, tagged with the underlay kind so they draw subdued. Metadata only.
+# walk, tagged with the underlay kind so they draw subdued. Metadata only: the
+# UNDERLAY kind on the walk and grip is a preview-styling label, NOT spec
+# underlay (puff has none); any future underlay counter or stat must exclude
+# role "puff_under".
 ROLE_PUFF = "puff"
 ROLE_PUFF_UNDER = "puff_under"
 
