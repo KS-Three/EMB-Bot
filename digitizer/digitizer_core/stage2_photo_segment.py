@@ -2661,6 +2661,7 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
     # their neighbours are read again. The first pass reads the whole frame.
     # `tests/test_speed_exact_1119.py` holds it to the full-frame loop.
     ys = xs = None
+    my = mx = None              # last pass's moved pixels, set at its end
     for _ in range(max_passes):
         deadline.check("stage 2")
         pad_lab[1:-1, 1:-1] = out
