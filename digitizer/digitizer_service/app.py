@@ -959,9 +959,10 @@ def _sew_facts(plan, region_ids: set[str] | None = None) -> dict[str, dict]:
 
 def _puff_facts(region, cfg) -> dict:
     """`puff_eligible` / `puff_reason` for one shape row (contract v1.11).
-    No cfg (hand-built result) -> not computed, reported ineligible."""
-    if cfg is None:
-        return {"puff_eligible": False, "puff_reason": "puff not evaluated"}
+    Only when `cfg.puff` is on: with it off (or no cfg) the keys are absent
+    and the review payload is exactly what it was."""
+    if cfg is None or not getattr(cfg, "puff", False):
+        return {}
     from digitizer_core.stage6_puff import puff_column, puff_eligible
     try:
         ok, why = puff_eligible(region, cfg)
@@ -1044,8 +1045,8 @@ def _review_payload(result, plan=None, cfg=None) -> dict:
                 # Contract v1.11 (2026-11-19; server-computed, read-only):
                 # whether this shape CAN take 3D puff foam, and when not,
                 # why in words -- width band (`puff_eligible`) AND a column
-                # shape (`puff_column`). Independent of `cfg.puff`, so the
-                # Studio can grey the per-shape toggle before puff is on.
+                # shape (`puff_column`). Present ONLY when `cfg.puff` is on
+                # (absent otherwise: an ordinary job pays nothing).
                 # The writable half is `shape_overrides[sid].puff`.
                 **_puff_facts(r, cfg),
                 # Text-cluster detection (server-computed, read-only — no

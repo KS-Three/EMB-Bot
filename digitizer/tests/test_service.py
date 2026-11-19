@@ -2104,8 +2104,12 @@ def test_puff_override_400(client):
 
 
 def test_shape_rows_carry_puff_eligibility(client):
-    shapes = _digitize(client, {"target_width_mm": 80.0, "preflight": False}
-                       )["review"]["shapes"]
+    off = _digitize(client, {"target_width_mm": 80.0, "preflight": False}
+                    )["review"]["shapes"]
+    assert off
+    assert all("puff_eligible" not in s and "puff_reason" not in s for s in off)
+    shapes = _digitize(client, {"target_width_mm": 80.0, "preflight": False,
+                                "puff": True})["review"]["shapes"]
     assert shapes
     for s in shapes:
         assert isinstance(s["puff_eligible"], bool)
