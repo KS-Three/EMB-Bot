@@ -150,6 +150,25 @@ def test_walk_satin_is_every_spans_last_visit():
     assert sorted((sat[1]["i0"], sat[1]["i1"])) == [0, 10], "the bar in one leg, end to end"
 
 
+def test_walk_entered_at_a_branch_tip_sews_it_straight_in():
+    # the E: column 0 the folded top arm -> stem -> bottom arm, split at its
+    # junction (node 1); the middle arm, column 1, tip node 3. The postman's
+    # walk enters at the arm's tip and ends at the junction (not a column end)
+    nodes = [(3.0, 0.0), (0.0, 2.5), (3.0, 5.0), (3.0, 2.5)]
+    spans = [_span(0, 0, 16, 0, 1), _span(0, 16, 31, 1, 2), _span(1, 0, 5, 1, 3)]
+    junctions = [dict(ci=1, end=0, through=0, k=16)]
+    comp = [(2, 3, 1), (0, 1, 0), (0, 0, 1), (1, 1, 2), (1, 2, 1)]
+    walk = _through_last_walk(comp, nodes, spans, junctions, None)
+    assert walk[0] == (2, 3, 1), "the arm sewn straight in from its tip, no run-out"
+    for (_s, _a, b), (_s2, a2, _b2) in zip(walk, walk[1:]):
+        assert b == a2
+    assert walk[-1][2] in (0, 2), "a walk that ended at the junction ends at a column end"
+    legs = columns._trail_legs(walk, spans)
+    sat = [lg for lg in legs if lg["sat"]]
+    assert [lg["ci"] for lg in sat] == [1, 0]
+    assert sorted((sat[1]["i0"], sat[1]["i1"])) == [0, 31], "the folded column in one leg"
+
+
 def test_walk_refuses_two_through_columns():
     # an H: the bar butts BOTH stems
     nodes = [(0, 0), (0, 2), (0, 4), (3, 0), (3, 2), (3, 4)]

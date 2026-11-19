@@ -125,7 +125,15 @@ Not a flip request yet: the before/after pages come first (CLAUDE.md).
   lie along it (entered from the R, right to left), ON entered from the E and
   laid none. On main 283a54df the L is one folded column both ways (19 -> 20
   trims at 80 mm). Fixed upstream, not by the flag.
-- **Reach into photos:** on main without the rembg pointer,
-  `photo_chrome_specular` has no lettering regions and the flag moves nothing
-  (84 trims both). The pack's 39 -> 42 used the primary checkout's rembg; not
-  re-measured with it.
+- **Reach into photos: the flag stays inside letter spans; photo pieces are
+  tagged as letters.** With the primary checkout's rembg
+  (`tools.lettering_board.rembg_from_primary`), `photo_chrome_specular` at
+  80 mm LC has 21 regions, 6 of them `is_lettering`: tall specular streaks
+  (5.7-14.2 x 26.6-58.8 mm) that `textcluster` marks `text_candidate` in two
+  clusters, so the Column lane takes them with the flag OFF too, and the flag
+  reorders them (39 -> 42 trims). `photo_sunset_backlit`: three specks
+  (0.5-0.8 x 0.9-1.1 mm) as `lettering_group` + `rescued_small_shape`. Both
+  class `photo_scene`; a class guard in the flag would also stop real
+  lettering (MFab's hat logo classes `photo_scene`, config.py). The fix
+  belongs in the tagger, not in this flag; not built here. Without rembg,
+  `photo_chrome_specular` has no lettering and the flag moves nothing.
