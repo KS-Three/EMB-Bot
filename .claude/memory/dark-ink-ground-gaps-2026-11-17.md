@@ -115,7 +115,8 @@ answer; look at the real Becker jobs with it) and `off_line_mark_row_only`
 2026-11-18 (Kent: "Flip ON now", it is a config field ON now), and
 `lettering_columns_sew_dropped_branch` is covered by
 `lettering_columns_sew_dropped_hairline`, ON since 11-19 (Kent: "Flip ON
-now"), so TEN to run; a job that moves is re-run one flag at a
+now"), and `keyline_fragment_subpixel` joined 11-19
+([[logo-batch-7-2026-11-18]], Kent: "Add to paired check"), so ELEVEN to run; a job that moves is re-run one flag at a
 time to say which moved it. Look at the real Becker jobs for the bare A
 counter named above.
 
