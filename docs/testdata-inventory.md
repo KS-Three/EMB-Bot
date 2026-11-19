@@ -1,6 +1,6 @@
 # Test-data inventory
 
-Every fixture under `digitizer/testdata/`, plus the app and engine test fixtures: what it exercises, what the repo records about where it came from, and which tests read it.
+Every fixture under `digitizer/testdata/` as of 2026-10-08, plus the files listed under "Added after 2026-10-08" at the end, and the app and engine test fixtures: what it exercises, what the repo records about where it came from, and which tests read it.
 
 **This repo is public.** Nothing here adds artwork; this page only describes files already committed. Do not add client artwork, customer names, third-party stitch files or credentials without asking Kent (CLAUDE.md).
 
@@ -130,3 +130,16 @@ Every fixture under `digitizer/testdata/`, plus the app and engine test fixtures
 - **Synthetic fixtures cannot recalibrate stage 0** (ROADMAP gate 2): they are printed but excluded from the margin.
 - **Fonts under `test/fixtures/fonts/`** are CC-BY-SA-covered test fixtures pulled from the shipping library on 2026-08-04; do not move them back into `src/fonts/`.
 - Licence grants for third-party stitch files and client logos are not recorded in the repo beyond Kent’s clearance notes above; this page does not settle them.
+
+## Added after 2026-10-08 (not yet described)
+
+Files present under `digitizer/testdata/` on 2026-11-19 (main `0476df7c`) that this page has no row for. Listed from `ls`, not described: what each exercises and which tests read it is not recorded here, so grep for the basename before relying on one.
+
+- **`art/commons_lettering/`** (10 files): `bukit_asam_logo_cmyk_01.png`, `but_seriously_logo.png`, `hed_p_e_logo.png`, `jakarta_logo.png`, `k_line_logo.png`, `logo_ahora.png`, `music_logo.png`, `n_sync_logo.png`, `pizza_logo.png`, and `manifest.json` (the place to look for each logo's recorded source and licence).
+- **`photo/corpus/corpus.json`** and **`photo/photo_detect_census_2026-11-06.json`**.
+- **`synthetic/`**: `hair_fine.png`, `hair_strands.png`, `thin_script.png`, `lowercase_aileron.png` and `lowercase_aileron.json`, `lowercase_aileron_b_120_unrounded.json`, `lowercase_aileron_letters_50.json`, `lowercase_aileron_letters_80.json`, `lowercase_aileron_letters_120.json`.
+- **Top-level lane and letter JSONs** (the lettering and lane pins):
+  - Apex and bay: `apex_letters.json`, `apex_walk_letters.json`, `bay_mouth_letters.json`.
+  - Becker: `becker_hat_large_lane_A_entries.json`, `becker_hat_large_lane_E.json`, `becker_hat_large_lane_N.json`, `becker_I_letters.json`, `becker80_lane_letters.json`, `becker96_A_letter.json`.
+  - Other jobs: `bukit_tagline_lane_small_bowls.json`, `drone62_band_letters.json`, `fremont_H_slab_feet.json`, `fremont81_end_letters.json`, `fremont92_band_letters.json`, `fremont92_grown_letters.json`, `fremont92_reset_letters.json`, `marine102_EN_letters.json`, `marine102_MA_letters.json`, `marine102_R_letter.json`, `mfab105_band_letters.json`, `pizza80_lane_p.json`.
+  - Lane and ledger data: `handback_monarch_cells.json`, `lean_flat_ends_lanes.json`, `lettering_board_lines.json`, `lettering_truth_boxes.json`, `owl_ring_routes.json.gz`, `sewn_invalid_footprint_crest.json`, `small_print_synthetic_ref.json`, `tripwire_ledger.json`, `word_legibility_words.json`.

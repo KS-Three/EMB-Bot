@@ -1,4 +1,4 @@
-# Craft laws — digest
+# Craft laws — digest (frozen digest as of 2026-08-17/18; current status is MASTER_SCOPE.md, decisions are DOCTRINE.md)
 
 Sources: `docs/corpus-laws-round3-2026-08-01.md` (r3), `docs/specialty-techniques-2026-08-01.md` (spec), `docs/lettering-mastery-2026-08-01.md` (let), `docs/fill-techniques-2026-08-01.md` (fill), `docs/law19-fill-spacing-2026-08-02.md` (l19), `docs/chaining-laws-2026-08-01.md` (chain), `docs/machine-physics-playbook-2026-07-31.md` (phys), `docs/sewout-card-2026-07-31.md` (card), `docs/dt-first-architecture-2026-08-01.md` (dt), `docs/dt-first-verdict-2026-08-11.md` (dtv), `digitizer/docs/pro-digitizing-playbook.md` (play).
 

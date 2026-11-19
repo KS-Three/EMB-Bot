@@ -17,8 +17,10 @@ review → download) with a live stitch preview, no account and no subscription.
 | **Studio** | `app/` | The product UI: Svelte 5 + Vite. Loads the engine from `src/` and has no CDN runtime dependencies. |
 | **Python digitizer** | `digitizer/` | Image auto-digitizing engine (`digitizer_core/`) plus an optional FastAPI service (`digitizer_service/`, loopback only, port 8721) that the Studio uses for the image auto-digitize path. Own venv, own tests, own [README](digitizer/README.md). |
 
-Text and lettering work without the Python service; only image
-auto-digitizing needs it.
+Only the `.embf` satin-text library (`src/fonts/`) works without the Python
+service. Image auto-digitizing needs it, and so do the outline fonts, which the
+Studio sets through the service's `POST /lettering` (`app/src/lib/outlineFonts.js`,
+2026-11-06). The service-only export formats (JEF, XXX, VP3) need it too.
 
 ## Setup and run
 
@@ -115,12 +117,17 @@ Only fonts classified **verified** ship; the tier rules are in `COOKBOOK.md`.
 |---|---|---|
 | **.DST** | Tajima | Primary and most reliable; default. |
 | **.EXP** | Melco | Standard support, including trims. |
-| **.PES** | Brother | Best effort: reverse-engineered, always test-stitch first. |
+| **.PES** | Brother | Medium-High confidence: the browser writer is reverse-engineered, and its framing defects were fixed and cross-checked by decoding with `pystitch` (2026-08-05), but it has not been loaded on a real Brother. Always test-stitch first. |
+| **.JEF** | Janome | Written by the digitizer service (pyembroidery), so the Download step disables it when the service is down. |
+| **.XXX** | Singer | Service-written, same as JEF. |
+| **.VP3** | Husqvarna Viking / Pfaff | Service-written, same as JEF. |
 | **.PNG / .SVG** | n/a | Preview image / vector outline (not stitch files). |
 | **PDF worksheet** | n/a | Printable sheet with preview, dimensions, counts and thread sequence. |
 
-The digitizer service can also export other formats (JEF, PEC, VP3, XXX,
-U01); `GET /health` lists them.
+JEF, XXX and VP3 are buttons on the Studio's Download step
+(`app/src/ui/DownloadStep.svelte`). PEC and U01 are out of scope (PRODUCT.md,
+launch row 1), though the service's `GET /health` may still list formats
+pyembroidery can write.
 
 ## Honest limits
 
