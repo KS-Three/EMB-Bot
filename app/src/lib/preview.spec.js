@@ -1100,6 +1100,47 @@ test("a puff group's shadow is drawn after the fill it falls on, and deeper than
   expect(preAlpha).toBeLessThan(shadows[iRaisedShadow]);
 });
 
+test("a puff column reads DOMED on black thread: a wider, brighter crown band than satin, hue untouched", () => {
+  const black = [0, 0, 0];
+  const puff = threadLayers(black, LIGHT_ANGLE + Math.PI / 2, 10, kindStyle("satin", "puff"));
+  const satin = threadLayers(black, LIGHT_ANGLE + Math.PI / 2, 10, kindStyle("satin", ""));
+  const lum = (c) => Number(/rgb\((\d+)/.exec(c)[1]);
+  // Layers 3 and 4 are the lit band; on black thread only lightening can show.
+  expect(puff[3].width).toBeGreaterThan(satin[3].width * 1.5);
+  expect(lum(puff[3].color)).toBeGreaterThan(lum(satin[3].color));
+  expect(lum(puff[4].color)).toBeGreaterThan(lum(satin[4].color));
+  expect(lum(puff[3].color)).toBeGreaterThan(90);   // a visible grey band on black
+  // Hue: on a coloured thread the lit layers only lighten (no channel falls),
+  // and the true-colour layer is exactly satin's.
+  const red = [200, 20, 20];
+  const pr = threadLayers(red, 0.7, 10, kindStyle("satin", "puff"));
+  const sr = threadLayers(red, 0.7, 10, kindStyle("satin", ""));
+  expect(pr[2].color).toBe(sr[2].color);
+  for (const i of [3, 4]) {
+    const [r, g, b] = /rgb\((\d+),(\d+),(\d+)\)/.exec(pr[i].color).slice(1).map(Number);
+    expect(r).toBeGreaterThanOrEqual(200); expect(g).toBeGreaterThanOrEqual(20); expect(b).toBeGreaterThanOrEqual(20);
+  }
+  // A non-puff style is untouched by the dome path.
+  expect(kindStyle("satin", "").dome).toBe(0);
+  expect(kindStyle("satin", "border").dome).toBe(0);
+  expect(kindStyle("satin", "puff").shadow).toBeGreaterThanOrEqual(3);
+});
+
+test("puff's drop shadow is deep and wide but its peak alpha stays <= 0.42, so on white cloth it is a shadow not an outline", () => {
+  // 0.42 is the ceiling strokeShadow already enforces for every raised role
+  // (a border sits at 0.37). Pushing puff's strength to 3.6 deepens the OFFSET
+  // (the shadow reads wider) while the cap keeps the darkest pixel at 42%
+  // black: on white that is a mid-grey (~147/255), never a black rim.
+  const design = kindedDesign([["fill"], ["satin", "puff"]], [240, 240, 240]);
+  const ctx = makeCallLog();
+  renderRealistic({ width: 300, height: 220, getContext: () => ctx }, design, {});
+  const alphas = strokesOf(ctx).map((v) => alphaOf(v.color)).filter((a) => a != null);
+  expect(Math.max(...alphas)).toBeLessThanOrEqual(0.42);
+  expect(Math.max(...alphas)).toBeGreaterThan(0.3);
+  const off = (st) => (10 * 0.18 + 0.5) * st.shadow;
+  expect(off(kindStyle("satin", "puff"))).toBeGreaterThan(off(kindStyle("satin", "border")) * 1.8);
+});
+
 test("a bean run draws as a thin single line — narrower than the column kinds, never wider", () => {
   const run = kindStyle("run", "");
   expect(run.w).toBeLessThan(kindStyle("satin", "").w);
