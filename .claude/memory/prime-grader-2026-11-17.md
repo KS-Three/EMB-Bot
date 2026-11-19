@@ -33,6 +33,10 @@ Still open on the Drone: the navy sky is black from stage 2; "A" of AND a shade 
 - The first run's nine readers were started with no `model`, so they ran on the session's own model: a
   breach of [[agents-cheap-models-2026-11-02]] (that note had not been read). RUNBOOK A.3 now requires the
   worker model on every reader. The 11-17 card and later cards are different instruments.
+- Kent 2026-11-19, after a status that ended on "the biggest unlock is the sew-out page": "Yes, i know. We are
+  not ready for sew out, don't push me por favor." Record a sew-out question on `docs/sew-out-list-2026-11-18.md`
+  and move on; do not close a report by steering him to the machine or counting what it would unlock. He decides
+  when. (Interpretation: one line saying a fault waits for cloth is fine; a nudge is not.)
 - Kent heard "stop trying to make a formula imitate Claude" as mean. Lead with what he asked for; do not
   frame his ask as a mistake.
 - Golden Tee's scorecard faults are what `bevel_ring_fold` (his 11-14 tickbox, OFF) cures: not a new fault.
