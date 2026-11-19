@@ -31,6 +31,10 @@ def _max_inscribed_diameter_mm(geom) -> float:
     return best
 
 
+# `cfg.puff_mode`'s closed set; the service refuses anything else with a 400.
+PUFF_MODES = ("all", "select")
+
+
 def wants_puff(region, cfg) -> bool:
     """Master switch gates everything; then mode and per-shape meta."""
     if not cfg.puff:

@@ -2122,3 +2122,29 @@ def test_shape_rows_carry_puff_eligibility(client):
         assert isinstance(s["puff_eligible"], bool)
         assert isinstance(s["puff_reason"], str)
         assert (s["puff_reason"] == "") == s["puff_eligible"]
+
+
+@pytest.mark.parametrize("mode", ["ALL", "some", "", None, 1, True])
+def test_puff_mode_outside_its_set_is_400(mode):
+    # R17: `wants_puff` reads anything but "select" as "all", so a typo
+    # would silently puff every shape; the service refuses it instead.
+    from fastapi import HTTPException
+    from digitizer_service.app import _parse_config
+    with pytest.raises(HTTPException) as exc:
+        _parse_config(json.dumps({"puff": True, "puff_mode": mode}))
+    assert exc.value.status_code == 400
+    assert "puff_mode" in exc.value.detail
+
+
+@pytest.mark.parametrize("mode", ["all", "select"])
+def test_puff_mode_in_its_set_is_accepted(mode):
+    from digitizer_service.app import _parse_config
+    assert _parse_config(json.dumps({"puff": True, "puff_mode": mode}))["puff_mode"] == mode
+
+
+def test_puff_mode_400_over_http(client):
+    with ART.open("rb") as f:
+        r = client.post("/digitize", files={"image": (ART.name, f, "image/png")},
+                        data={"config": json.dumps({"puff": True, "puff_mode": "every"})})
+    assert r.status_code == 400, r.text
+    assert "puff_mode" in r.text

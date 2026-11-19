@@ -42,6 +42,7 @@ from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import legibility, machine, stage1_photo_prep, stage2_sam2_segment
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.manual import build_manual_result
+from digitizer_core.stage6_puff import PUFF_MODES
 from digitizer_core import outline_fonts
 from digitizer_core.photo_signals import resolve as resolve_photo_signals
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
@@ -773,6 +774,13 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
                 status_code=400,
                 detail=f"thread_wt must be one of {list(machine.THREAD_WEIGHTS)}.",
             )
+    # `puff_mode` (3D puff): `wants_puff` reads anything but "select" as
+    # "all", so a typo would silently puff every shape. A 400 instead.
+    if "puff_mode" in data and data["puff_mode"] not in PUFF_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"puff_mode must be one of {list(PUFF_MODES)}.",
+        )
     # `garment_rgb` reaches `PipelineConfig` as whatever JSON carried, so a
     # malformed one (a hex string, four channels, 300) would surface as a
     # TypeError deep in `stage4_vectorize.garment_sews_enclosed` — a 500.
