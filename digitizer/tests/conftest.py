@@ -1263,6 +1263,11 @@ PRE_FLIP.update(SATIN_RECTANGLES_2026_11_19_OFF)
 # `tests/test_absorb_unsewn.py`.
 ABSORB_UNSEWN_2026_11_19_OFF = {"lettering_columns_absorb_unsewn": False}
 PRE_FLIP.update(ABSORB_UNSEWN_2026_11_19_OFF)
+# `satin_stars` (Kent 2026-11-19, shown the flag's 50 stars at 113.5 and 96 mm and
+# ENTHUSIAST's four-point star, before | after: "Flip ON (Recommended)"): a star
+# sews point by point with a needle on every tip. `tests/test_satin_stars.py`.
+SATIN_STARS_2026_11_19_OFF = {"satin_stars": False}
+PRE_FLIP.update(SATIN_STARS_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

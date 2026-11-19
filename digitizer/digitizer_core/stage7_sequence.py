@@ -113,8 +113,8 @@ from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
 from .stage6_satin import (_dt_stats, classify_ribbon, is_rectangle_bar, is_small_solid, is_straight_slot,
-                           rectangle_zigzag_underlay, ribbon_width_mm,
-                           satin_shape, satin_shape_judged,
+                           read_star, rectangle_zigzag_underlay, ribbon_width_mm,
+                           satin_shape, satin_shape_judged, star_satin,
                            small_solid_satin)
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
@@ -4340,6 +4340,23 @@ def sequence(
             # (`handback_trying`); the ladder then reads it as untagged.
             handed_back = (p.shape_id in handback_trying
                            or _ribbon_handback(p.region, cfg, satin_max, design_class))
+            # `cfg.satin_stars` (ON since 2026-11-19): a regular pointed
+            # star sews point by point, one satin pass per point, a needle on
+            # every tip (`stage6_satin.read_star` / `star_satin`). Flag.webp's 50 stars came here tagged as
+            # lettering (a row of like small marks), and the Column lane and
+            # the skeleton tier both stopped every point where its taper fell
+            # under the cross floor: the stars sewed blunt. Read on the
+            # ARTWORK. No house cross angle applies (a group's, the design's,
+            # the review's): each point has its own axis.
+            if cfg.satin_stars and tier == "auto" and cfg.satin:
+                _star = read_star(p.region.polygon, satin_max)
+                if _star is not None:
+                    st_runs, st_report = star_satin(
+                        p.region.polygon, _star, p.shape_id, spacing_mm=satin_spacing_for(p),
+                        start_near=entry,
+                        end_near=exit_near if cfg.satin_exit_toward_next else None)
+                    if not st_report["empty"]:
+                        return st_runs, st_report, False
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
                     and not handed_back and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds

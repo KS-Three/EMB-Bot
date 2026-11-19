@@ -6789,6 +6789,159 @@ def rectangle_zigzag_underlay(poly: Polygon, start: tuple[float, float],
     return runs
 
 
+#: `read_star` / `star_satin` (`cfg.satin_stars`, ON since 2026-11-19;
+#: Kent: "a triangle needs 3 points"). Flag.webp's 50 stars at
+#: 113.5 mm are 3.3 mm five-point stars traced as clean 10-vertex polygons;
+#: the skeleton tier sewed 19 crosses on all five arms and stopped each arm
+#: where its taper fell under `machine.SATIN_MIN_CROSS_MM`, about 0.8 mm
+#: short of the tip, so every point sewed blunt. A star's points alternate
+#: with its inner corners round its centre: `STAR_*` bound how regular.
+STAR_MIN_POINTS = 4
+STAR_MAX_POINTS = 8
+STAR_RADIUS_SPREAD = 0.15      # each tip (and each inner corner) within 15% of their mean radius
+STAR_MAX_INNER_RATIO = 0.75    # inner corners well inside the tips: a pointed star, not a gear
+STAR_MAX_DEV_MM = 0.12         # the outline within this of the ideal star it reads
+#: a cross narrower than this at a point's taper is dropped (the satin tier's
+#: own floor is 0.5): kept this narrow, the point's satin narrows into its tip
+#: and covers the walk; at 0.3 the last 0.5 mm was the walk's lone strand
+STAR_MIN_CROSS_MM = 0.15
+
+
+def read_star(poly: Polygon, max_width_mm: float):
+    """A star-shaped polygon -> (centre, [tips], [inner corners]), tips in
+    angle order and inner corner i between tip i and tip i + 1; None if not
+    a regular pointed star of `STAR_MIN_POINTS`..`STAR_MAX_POINTS` points
+    no wider than `max_width_mm` across a point's base."""
+    if poly.is_empty or poly.geom_type != "Polygon" or poly.interiors or poly.area <= 0:
+        return None
+    size = math.sqrt(poly.area)
+    ring = poly.exterior.simplify(0.03 * size, preserve_topology=True)
+    pts = list(ring.coords)[:-1]
+    n = len(pts)
+    if n % 2 or not 2 * STAR_MIN_POINTS <= n <= 2 * STAR_MAX_POINTS:
+        return None
+    c = poly.centroid
+    cx, cy = c.x, c.y
+    radii = [math.hypot(x - cx, y - cy) for x, y in pts]
+    # tips are the far vertices; they must alternate with the near ones
+    for start in (0, 1):
+        tips_i = list(range(start, n, 2))
+        inner_i = list(range(1 - start, n, 2))
+        if min(radii[i] for i in tips_i) > max(radii[i] for i in inner_i):
+            break
+    else:
+        return None
+    r_out = float(np.mean([radii[i] for i in tips_i]))
+    r_in = float(np.mean([radii[i] for i in inner_i]))
+    if r_out <= 0 or r_in / r_out > STAR_MAX_INNER_RATIO:
+        return None
+    if (max(abs(radii[i] - r_out) for i in tips_i) > STAR_RADIUS_SPREAD * r_out
+            or max(abs(radii[i] - r_in) for i in inner_i) > STAR_RADIUS_SPREAD * max(r_in, 1e-9)):
+        return None
+    ang = lambda p: math.atan2(p[1] - cy, p[0] - cx)  # noqa: E731
+    tips = sorted((pts[i] for i in tips_i), key=ang)
+    a0 = ang(tips[0])
+    inner = sorted((pts[i] for i in inner_i), key=lambda p: (ang(p) - a0) % (2 * math.pi))
+    k = len(tips)
+    ideal = Polygon([q for i in range(k) for q in (tips[i], inner[i])])
+    if not ideal.is_valid or ideal.hausdorff_distance(poly) > STAR_MAX_DEV_MM:
+        return None
+    if any(math.dist(inner[i - 1], inner[i]) > max_width_mm for i in range(k)):
+        return None
+    return (cx, cy), tips, inner
+
+
+def star_satin(poly: Polygon, star, shape_id: str, *, spacing_mm: float,
+               start_near: tuple[float, float] | None,
+               end_near: tuple[float, float] | None = None) -> tuple[list[StitchRun], dict]:
+    """A star (`read_star`) sewn point by point, the way a digitizer splits a
+    small star: each point is the kite centre - inner corner - tip - inner
+    corner, sewn as one satin pass with every cross square to the point's
+    axis and a needle ON its tip, so the tip is a needle hole, not the end
+    of a taper the cross floor cut off. The needle reaches a tip by a walk
+    up the axis from the centre, under the point's own crosses, which run
+    down to `STAR_MIN_CROSS_MM` so the satin narrows into the point.
+    The star is entered ON the tip nearest the needle (that point sews
+    inward) and left ON the tip nearest `end_near` (that point sews outward,
+    centre to tip): entered and left at its centre, the flag's stars sat
+    7.6 mm apart centre to centre and every hop between them took a trim
+    (+16 on the flag). Every other point starts and ends at the centre, so
+    there is no travel on top and no trim inside the star. Kites tile the
+    star exactly. No pull comp: a point's crosses are under a millimetre
+    (`small_solid_satin`'s rule)."""
+    (cx, cy), tips, inner = star
+    k = len(tips)
+    report = {"loops": 0, "jumps": 0, "empty": True, "too_thin": False}
+    order = list(range(k))
+    if start_near is not None:
+        first = min(order, key=lambda i: math.dist(start_near, tips[i]))
+        order = order[first:] + order[:first]
+    if end_near is not None and k > 2:
+        # the last point sewn is the one nearest the way out, never the first
+        last = min(order[1:], key=lambda i: math.dist(end_near, tips[i]))
+        order = [i for i in order if i != last] + [last]
+    runs: list[StitchRun] = []
+    for pos, i in enumerate(order):
+        tx, ty = tips[i]
+        kite = Polygon([(cx, cy), inner[i - 1], (tx, ty), inner[i]]).buffer(0)
+        length = math.hypot(tx - cx, ty - cy)
+        if kite.is_empty or length < 1e-6:
+            continue
+        ux, uy = (tx - cx) / length, (ty - cy) / length
+        vx, vy = -uy, ux
+        reach = length + 1.0
+        crosses = []
+        n = max(1, int(math.ceil(length / spacing_mm - 1e-9)))
+        for s in range(n):
+            # from the tip inward; the first station three quarters of a
+            # pitch in, where the taper still holds a cross over the floor
+            t = length - (s + 0.75) * length / n
+            mx, my = cx + ux * t, cy + uy * t
+            line = LineString([(mx - vx * reach, my - vy * reach), (mx + vx * reach, my + vy * reach)])
+            seg = line.intersection(kite)
+            ends = [q for g in getattr(seg, "geoms", [seg]) if g.geom_type == "LineString"
+                    for q in (g.coords[0], g.coords[-1])]
+            if len(ends) < 2:
+                continue
+            p0 = min(ends, key=lambda q: q[0] * vx + q[1] * vy)
+            p1 = max(ends, key=lambda q: q[0] * vx + q[1] * vy)
+            if math.dist(p0, p1) < STAR_MIN_CROSS_MM:
+                continue
+            crosses.append(((p0[0], p0[1]), (p1[0], p1[1])))
+        if not crosses:
+            continue
+        # `crosses` run tip -> centre. Every point is ONE pass of the same
+        # satin, so all five (and every star) sew alike -- Kent: "make sure
+        # the star has flow". An out-and-back pass per point interleaved two
+        # directions of cross and read busy. The way in to the tip:
+        #   entered on it: the needle lands there;
+        #   any other: a walk up the axis from the centre, under the point's
+        #         own crosses, which run down to `STAR_MIN_CROSS_MM` at the
+        #         tip so the walk is covered and the satin narrows into it;
+        #   the way out: the same crosses outward, the needle left on the tip.
+        outward = end_near is not None and k > 2 and pos == len(order) - 1
+        cs = crosses[::-1] if outward else crosses
+        pts = []
+        for j, (a, b) in enumerate(cs):
+            pts.extend((a, b) if j % 2 == 0 else (b, a))
+        if not outward:
+            lead = [(tx, ty), pts[0]] if pos == 0 and start_near is not None else [(cx, cy), (tx, ty), pts[0]]
+            runs.append(StitchRun(points=lead, kind=stitches.UNDERLAY, shape_id=shape_id))
+        runs.append(StitchRun(points=pts, kind=stitches.SATIN, shape_id=shape_id))
+        # out: onto the tip itself, the point's own last stitch; in: back to
+        # the centre for the next point, a step inside the star. Neither is a
+        # link between shapes: as TRAVEL the preflight's link reading counted
+        # the four steps and the tip (1.5 mm on ENTHUSIAST, chaining off).
+        if outward:
+            runs.append(StitchRun(points=[pts[-1], (tx, ty)], kind=stitches.SATIN, shape_id=shape_id))
+        else:
+            runs.append(StitchRun(points=[pts[-1], (cx, cy)], kind=stitches.UNDERLAY, shape_id=shape_id))
+    if runs:
+        report["empty"] = False
+        report["star_points"] = k
+    return runs, report
+
+
 def small_solid_satin(poly: Polygon, shape_id: str, *, spacing_mm: float,
                       max_width_mm: float,
                       start_near: tuple[float, float] | None
