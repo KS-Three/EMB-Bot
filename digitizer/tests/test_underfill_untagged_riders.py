@@ -66,11 +66,13 @@ BLACK_WHITE_BLACK = ["0020 Black", "0015 White", "0020 Black"]
 def _mfab(width_mm, untagged):
     # photo_prep=False: the no-cutout lane CI runs (no rembg venv there);
     # the cutout lane is tests/test_mfab_cutout_lane.py.
+    # stage0_grain_needs_texture=False: this prices the PHOTO route the hat took
+    # before Kent's 2026-11-19 flip routed it flat; the riders live on that route.
     cfg = PipelineConfig(photo_prep=False, target_width_mm=width_mm, max_colors=6, satin=True,
                          detail_layer=False, edge_cap="none", sew_enclosed_white=True,
                          sew_enclosed_rgb=(255, 255, 255), faces_route_flat=True,
                          garment_id="hat_front", garment_rgb=(235, 232, 223),
-                         underfill_untagged_riders=untagged)
+                         underfill_untagged_riders=untagged, stage0_grain_needs_texture=False)
     pix = cv2.imread(str(TESTDATA / "art" / "logo_mfab_hat.png"), cv2.IMREAD_UNCHANGED)
     seen = {}
     real = su.find_riders

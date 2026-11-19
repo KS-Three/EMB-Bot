@@ -95,7 +95,10 @@ def test_fur_ramp_discs_are_the_second_known_false_capture():
     """`photo/fur_ramp.png`: eight 14.4 mm discs, all tagged by the house
     group alone (census 2026-10-13); the guard clears all eight."""
     path = TESTDATA / "photo/fur_ramp.png"
-    kw = dict(garment_id="left_chest", max_colors=6)
+    # stage0_grain_needs_texture=False: the census was the photo route; the flip
+    # (2026-11-19) routes fur_ramp flat, where one disc is a ring round a
+    # rescued centre speck and is not a solid blob (`rescue_needs_drawn_edge`).
+    kw = dict(garment_id="left_chest", max_colors=6, stage0_grain_needs_texture=False)
     assert len(_taken(path, lettering_columns_skip_blobs=False, **kw)) == 8
     assert _taken(path, **kw) == set()
 
