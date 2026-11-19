@@ -1120,6 +1120,15 @@ def _patches(poly: Polygon, cols, spacing_mm: float, pull_mm: float | None = Non
     return out
 
 
+def _merge_patches(cols, patches, poly, pitch_mm):
+    """`cfg.extra["script_strokes_patch_merge"]` (built OFF): a patch that continues a stroke's
+    end joins that column instead of sewing as a column of its own (`patch_merge`)."""
+    from . import patch_merge
+    if patch_merge.armed():
+        cols, patches, _n = patch_merge.merge_patches(cols, patches, poly, pitch_mm)
+    return cols, patches
+
+
 def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                          spacing_mm: float, split_above_mm: float | None = None,
                          pull_mm: float = 0.0, pull_floor_mm: float = 0.0,
@@ -1184,6 +1193,7 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
         _fabric_pull = pull_mm
         kw["pull_of"] = lambda w: min(_fabric_pull, pull_for_width(w, _fabric_pull))
     patches = _patches(poly, cols, spacing_mm)
+    cols, patches = _merge_patches(cols, patches, poly, spacing_mm)
     crowded = False
     if drawn_width and crowd_share([sewn_ribbon(c.stations, pull_mm)
                                     for c in cols + patches]) > CROWD_WORD_SHARE:
@@ -1197,6 +1207,7 @@ def script_strokes_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
             if end_overlap.align_armed():
                 cols, _turned = end_overlap.align_columns(cols, poly)
             patches = _patches(poly, cols, spacing_mm, pull_mm)
+            cols, patches = _merge_patches(cols, patches, poly, spacing_mm)
     from .stage6_satin import COUNTER_PULL
     _cp_token = COUNTER_PULL.set(counter_pull)
     try:
