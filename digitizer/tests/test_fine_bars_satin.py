@@ -84,6 +84,8 @@ def _cfg(**kw) -> PipelineConfig:
     # the flag ends/seam trio (ON since 2026-11-17) insets every free satin end; pinned before it
     for name in ("satin_cap_skew_inset", "satin_seam_hold", "satin_free_end_chord_aim"):
         kw.setdefault(name, PRE_FLIP[name])
+    # `satin_rectangles` (ON since 2026-11-19) sews the bars as rectangles; pinned before it
+    kw.setdefault("satin_rectangles", PRE_FLIP["satin_rectangles"])
     kw.setdefault("edge_cap", "bean")   # ...with the bean cap that engine sewed (default "none" since 2026-10-29)
     return PipelineConfig(underlay=False, garment_rgb=GARMENT, **kw)
 

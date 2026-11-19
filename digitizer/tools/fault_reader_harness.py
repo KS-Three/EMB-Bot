@@ -292,7 +292,49 @@ def select_inconsistency_pins(marks: dict, prefix: str = "L_") -> list[dict]:
     return out
 
 
+# Sixth fault: stitches that tangle, pile up or cross where they should flow
+# (Kent's "Random Cross over stitch", "no flow here in the stitching"; the
+# two-reader prime grader's "tangle of fanned stitches", "crossed stitch bars
+# pile up"). Rules 1-3 of `docs/tangle-fault-reader-2026-11-19.md`. One rule
+# for Kent's pins and for the grader's agreed faults (`grader_marks`).
+TANGLE_RE = re.compile(r"tangl|pile|\bcross(ing|ed)\b|cross[- ]?over|cross stitch|\bfan(s|ned|ning|-shaped)?\b"
+                       r"|radial|radiat|jumble|mush|random stitch|stitch(ing|es)? (angle|direction)"
+                       r"|angles|\bflow\b|what the stitches are doing|overlapping (fanned )?stitch")
+TANGLE_BARE_KINDS = ("pen_flow", "direction")
+
+
+def tangle_reason(pin: dict) -> str | None:
+    """-> which rule admits this pin as a tangled / piled / crossing-stitch
+    pin, or None. Rule 1: an edge kind is the edge reader's, never this one's.
+    Rule 2: the note names a tangle. Rule 3: a bare pin of a flow kind."""
+    note = (pin.get("note") or "").lower()
+    kind = pin.get("what") or ""
+    if kind in EDGE_KINDS:
+        return None
+    if TANGLE_RE.search(note):
+        return "tangle word"
+    if not note and kind in TANGLE_BARE_KINDS:
+        return "bare flow kind"
+    return None
+
+
+def select_tangle_pins(marks: dict, prefix: str = "L_") -> list[dict]:
+    """The tangle pins of `marks.json` (or of `grader_marks(card)`), one
+    judgement each: a pin is admitted on its own note or kind only."""
+    return select_pins(marks, tangle_reason, prefix)
+
+
+def grader_marks(card: dict) -> dict:
+    """A prime-grader scorecard (`docs/prime-grader/scorecard-*.json`) as a
+    marks file: each design's faults BOTH readers placed become its pins (same
+    mm frame as `defect_marks.mark_mm`). One-reader faults are left out."""
+    return {"items": {iid: {"pins": [{k: f.get(k) for k in ("x_mm", "y_mm", "what", "severity", "note")}
+                                     for f in rec.get("faults") or []]}
+                      for iid, rec in (card.get("readings") or {}).items()}}
+
+
 FAULTS = {
+    "tangle": (select_tangle_pins, "docs/tangle-fault-reader-2026-11-19.md"),
     "edge": (select_edge_pins, "docs/defect-marks-2026-11-10/edge-reader-preregistration.md"),
     "letters": (select_letter_pins, "docs/defect-marks-2026-11-10/letter-reader-preregistration.md"),
     "infill": (select_infill_pins, "docs/infill-fault-reader-2026-11-11/preregistration.md"),

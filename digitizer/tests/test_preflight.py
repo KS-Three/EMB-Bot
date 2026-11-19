@@ -19,6 +19,7 @@ import pytest
 
 from digitizer_core import machine
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
+from tests.conftest import PRE_FLIP
 from tests.conftest import FLIP_2026_10_26  # and the 2026-10-26 two (bay mouth, white sewn)
 from tests.conftest import WAVE3_2026_10_26_OFF
 from tests.conftest import TEXT_GAPS_2026_11_15_OFF  # the six 2026-11-15 text/gap flips
@@ -2405,11 +2406,19 @@ def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
     assert m_on["uncovered_holes"] <= m["uncovered_holes"]
 
 
-def test_a_clean_fixture_leaves_no_artwork_uncovered(whitebg, plan):
+def test_a_clean_fixture_leaves_no_artwork_uncovered():
     """The promise every threshold here is validated against, for this check:
-    clean work reports zero, not 'a little'."""
-    stitch_plan, _planned, _warnings = plan
-    report = run_preflight(whitebg, stitch_plan, cfg(**PLAN_CFG_KW), image=ART)
+    clean work reports zero, not 'a little'.
+
+    Read on the engine before `satin_rectangles` (ON since 2026-11-19): with
+    it the green bar's needle leaves from the other end, the 1 mm square block
+    `Sdf9f8b3c` beside it is entered from there, and its rim cell patch grows
+    0.19 -> 0.38 mm2 -- still a rim, still no hole (measured 2026-11-19). The
+    ceiling below was calibrated on that block's old entry."""
+    from digitizer_core.pipeline import digitize
+    off = cfg(**PLAN_CFG_KW, satin_rectangles=PRE_FLIP["satin_rectangles"])
+    result, stitch_plan = digitize(ART, off)
+    report = run_preflight(result, stitch_plan, off, image=ART)
 
     assert _uncovered(report) is None
     m = report["metrics"]

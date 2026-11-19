@@ -589,7 +589,8 @@ def _gate_confidence(value: float, threshold: float, margin: float) -> float:
 
 
 def decide_photo(ucm: float, texture: float, two_tone: float, cutout: bool,
-                 gate_on: bool = True) -> tuple[bool, float, str]:
+                 gate_on: bool = True,
+                 grain_needs_texture: bool = False) -> tuple[bool, float, str]:
     """The photo/non-photo gate -> (is_photo, gate confidence, route).
 
     `route` names what decided it: `legacy` (a cut-out file, or the texture
@@ -599,6 +600,16 @@ def decide_photo(ucm: float, texture: float, two_tone: float, cutout: bool,
     capped by the veto's distance from firing; a non-photo verdict's is the
     weakest non-firing route's, or the veto's when the veto decided.
     `tools/classify_lens.py` re-derives this and self-checks against it.
+
+    `grain_needs_texture` (`cfg.stage0_grain_needs_texture`, built OFF
+    2026-11-19): on an opaque file the grain gate alone no longer decides
+    photo; texture has to agree. Route `grain_held` names a verdict the grain
+    gate alone would have called photo. Every real opaque photograph read
+    here clears the texture gate at every export width (Commons corpus and
+    `owl_kent`, min 0.169), so the grain-only route catches no photograph,
+    and it does catch small real logos whose anti-aliased edges read as grain
+    (`logo_mfab_hat` 0.298 at native, texture 0.063). A cut-out file is
+    untouched (`legacy`). `docs/stage0-grain-needs-texture-2026-11-19.md`.
     """
     by_grain = ucm >= UCM_PHOTO_MIN
     grain_conf = _gate_confidence(ucm, UCM_PHOTO_MIN, UCM_MARGIN)
@@ -612,6 +623,8 @@ def decide_photo(ucm: float, texture: float, two_tone: float, cutout: bool,
         return False, min(grain_conf, texture_conf), "none"
     if two_tone_fires:
         return False, veto_conf, "veto"
+    if grain_needs_texture and not by_texture:
+        return False, texture_conf, "grain_held"
     route = "+".join(name for name, fired in (("grain", by_grain), ("texture", by_texture)) if fired)
     strongest = max(conf for conf, fired in ((grain_conf, by_grain), (texture_conf, by_texture)) if fired)
     return True, min(strongest, veto_conf), route
@@ -785,7 +798,8 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     signals.update(sweep_signals)
 
     is_photo, photo_gate_conf, route = decide_photo(
-        ucm, texture, two_tone, cutout, bool(cfg.stage0_texture_gate))
+        ucm, texture, two_tone, cutout, bool(cfg.stage0_texture_gate),
+        bool(getattr(cfg, "stage0_grain_needs_texture", False)))
     signals["photo_route"] = route
     # The sweep reports seeds that cross the GRAIN gate. Once the texture
     # route or the veto decided the verdict, the seed cannot move it, so the

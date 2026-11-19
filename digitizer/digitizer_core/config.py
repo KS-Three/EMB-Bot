@@ -534,6 +534,14 @@ class PipelineConfig:
     # side-by-side page shows the change; the OFF arm is pinned in
     # `tests/engine_2026_10_27.json`.
     stage0_texture_gate: bool = True
+    # Stage 0's photo gate, the scale half (built OFF 2026-11-19, ROADMAP
+    # phase 2; `docs/stage0-grain-needs-texture-2026-11-19.md`). The grain
+    # gate reads a 3x3 window in pixels, so a small logo's anti-aliased edges
+    # count as grain and it routes `photo_scene` (MFab hat at native, TOAT
+    # machine, Gaulke, Fremont at 146-250 px). ON, an OPAQUE file enters
+    # photo territory only when `texture_frac` agrees; a cut-out keeps the
+    # grain gate alone (`legacy`). Needs `stage0_texture_gate`. Kent's flip.
+    stage0_grain_needs_texture: bool = False
     # Stage 0's flat/gradient gate on a scale-relative read (built OFF
     # 2026-11-06, ROADMAP phase 2; `docs/stage0-scale-relative-grad-2026-11-06.md`).
     # FLIPPED ON 2026-11-06 by Kent, together with the flat lane's soft-edge
@@ -4145,6 +4153,22 @@ class PipelineConfig:
     # above). False is the engine as it was; PRE_FLIP
     # (FLAG_ENDS_SEAM_2026_11_17_OFF) pins it False.
     satin_free_end_chord_aim: bool = True
+    # `satin_rectangles` (2026-11-19, Kent's Flag.webp at 113.5 mm: "I thought
+    # you fixed the Flag!?", then "a square needs to be square"): a true
+    # rectangle of any length (`stage6_satin.is_rectangle_bar`: fills 0.97 of
+    # its minimum rectangle and lies within 0.1 mm of it) sews by the
+    # straight-slot column path, rails held at a seam with the colour already
+    # down as `satin_seam_hold` holds the skeleton tier's. The skeleton spine
+    # forked into each stripe's corners: ends rounded by up to 0.46 mm and the
+    # flag's right edge wandering 2.9 mm; ON every end is square to 0.04 mm,
+    # stripe heights unchanged. 9 of 44 sweep runs move (Fremont's bars,
+    # Toat's dash and period, Summit's I, logo_alpha's bar; the Toat Machine
+    # beanie's M takes a short stray bar, +2 trims).
+    # **ON since 2026-11-19** (Kent, shown the flag and the 9 movers before |
+    # after: "Flip ON (Recommended)"). False is the engine as it was; PRE_FLIP
+    # (SATIN_RECTANGLES_2026_11_19_OFF) pins it False.
+    # Tests: `tests/test_satin_rectangles.py`.
+    satin_rectangles: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
