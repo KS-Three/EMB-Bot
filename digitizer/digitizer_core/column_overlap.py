@@ -28,7 +28,7 @@ from . import stitches
 
 HALF_MM = 0.2          # half a 0.4 mm laid thread (columns.satin_cover's default)
 MIN_STITCHES = 8       # ~3 mm of a 0.4 mm pitch: a junction's short lap stays
-STEP_MM = 2.0          # columns._UNDERPATH_STEP_MM
+OVERLAP_RUN_STEP_MM = 2.0          # columns._UNDERPATH_STEP_MM
 
 
 def _thin(mids: list[tuple[float, float]], step: float) -> list[tuple[float, float]]:
@@ -75,7 +75,7 @@ def overlap_run(runs: list, min_stitches: int = MIN_STITCHES) -> tuple[list, int
                     mids = [((P[m][0] + P[m + 1][0]) / 2.0, (P[m][1] + P[m + 1][1]) / 2.0)
                             for m in range(j, k)]
                     new.append(P[j])
-                    new.extend(_thin(mids, STEP_MM))
+                    new.extend(_thin(mids, OVERLAP_RUN_STEP_MM))
                     new.append(P[k])
                     for m in range(j, k):
                         kept[m] = False
