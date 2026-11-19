@@ -48,3 +48,17 @@ def test_puff_eligible_width():
 def test_puff_eligible_ignores_flat_satin_ceiling():
     # 8 mm is past the flat satin ceiling (5.0) but inside the puff band.
     assert puff_eligible(_region(8), PipelineConfig(puff=True)) == (True, "")
+
+
+def test_puff_eligible_ring_uses_ring_width_not_hole_blind_circle():
+    from shapely.geometry import Point
+    ring = Point(0, 0).buffer(10, 64).difference(Point(0, 0).buffer(6, 64))
+    reg = SimpleNamespace(polygon=ring, meta={})
+    assert puff_eligible(reg, PipelineConfig(puff=True)) == (True, "")
+
+
+def test_puff_eligible_multipolygon_does_not_raise():
+    from shapely.geometry import MultiPolygon
+    mp = MultiPolygon([box(0, 0, 30, 4), box(0, 20, 30, 24)])
+    reg = SimpleNamespace(polygon=mp, meta={})
+    assert puff_eligible(reg, PipelineConfig(puff=True)) == (True, "")
