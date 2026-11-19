@@ -1086,7 +1086,9 @@ def build_generation(
         if cfg.dark_ink_bean:
             bean_dark_ink(regions, by_width=cfg.dark_ink_bean_by_width,
                           # built OFF 2026-11-17: a stroke's ground is the innermost shape under it
-                          innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
+                          innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")),
+                          # built OFF 2026-11-19: judge by core width (Nevada's serif letters)
+                          by_core=bool((cfg.extra or {}).get("dark_ink_bean_by_core")))
     resnap_warnings = revalidate_threads(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),

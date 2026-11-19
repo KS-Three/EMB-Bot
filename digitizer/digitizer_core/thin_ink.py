@@ -740,7 +740,26 @@ def thin_letters_after_ground(regions):
 DARK_INK_BEAN_MAX_WIDTH_MM = 1.5 * machine.SATIN_MIN_CROSS_MM
 
 
-def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> int:
+#: `cfg.extra["dark_ink_bean_by_core"]` (built OFF 2026-11-19): with
+#: `by_width`, a group beans when the median CORE width of its strokes --
+#: twice the radius of the largest circle inside each
+#: (`shapely.maximum_inscribed_circle`) -- is under this: room for two
+#: minimum satin crosses. Mean width (2 x area / perimeter) reads a serif
+#: letter by its serifs and a star by its points: the Nevada seal's bold
+#: ring letters and solid stars read 0.51 mm and sewed as one-line runs;
+#: their core reads 1.18. Census 2026-11-19, 143 groups over 101 designs:
+#: no gap in either measure; NOAA 0.66, FEMA 0.57, the thin pen-line groups
+#: 0.27-0.73 stay bean. A layout threshold judged from renders.
+DARK_INK_BEAN_MAX_CORE_MM = 2.0 * machine.SATIN_MIN_CROSS_MM
+
+
+def _core_width_mm(poly) -> float:
+    import shapely
+    return 2.0 * float(shapely.maximum_inscribed_circle(poly, 0.01).length)
+
+
+def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False,
+                  by_core: bool = False) -> int:
     """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
     ground, the way the reference digitizer sews a drawn line
     (`bean_rule`). Each `meta["dark_ink"]` region gets its polygon's
@@ -764,7 +783,11 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> i
     WIDTH. The strokes on one ground in one thread are a group; the group's
     median mean width (2 x area / perimeter) under
     `DARK_INK_BEAN_MAX_WIDTH_MM` beans every member, at or over it none,
-    whatever the contrast. Ground, spines and keys as above."""
+    whatever the contrast. Ground, spines and keys as above.
+
+    `by_core` (`cfg.extra["dark_ink_bean_by_core"]`, read only with
+    `by_width`): the group's median CORE width (`_core_width_mm`) against
+    `DARK_INK_BEAN_MAX_CORE_MM` instead. False: as before."""
     from shapely.geometry import Polygon
 
     from .beanletters import BEAN_LETTER_KEY
@@ -783,9 +806,10 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> i
             if g is None or r.polygon.length <= 0:
                 continue
             widths.setdefault((g.shape_id, r.thread_index), []).append(
-                2.0 * float(r.polygon.area) / float(r.polygon.length))
-        group_bean = {k: float(np.median(v)) < DARK_INK_BEAN_MAX_WIDTH_MM
-                      for k, v in widths.items()}
+                _core_width_mm(r.polygon) if by_core
+                else 2.0 * float(r.polygon.area) / float(r.polygon.length))
+        gate = DARK_INK_BEAN_MAX_CORE_MM if by_core else DARK_INK_BEAN_MAX_WIDTH_MM
+        group_bean = {k: float(np.median(v)) < gate for k, v in widths.items()}
     tagged = 0
     for r in regions:
         if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
