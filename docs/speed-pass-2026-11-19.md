@@ -28,10 +28,9 @@ Fremont 57.1 53.9 51.9 / 44.7 44.2 48.1; Drone 54.8 52.3 53.6 / 41.6 41.8
 41.9; Golden Tee 49.3 57.4 48.9 / 39.3 46.0 41.5. The plan column does not
 move past noise. The cuts are in generation and finish.
 
-**Idle wall seconds are NOT measured yet.** If the same shares held on an
-idle laptop, the 11-16 idle figures would become about MFab 26 s, Fremont
-25, Drone 28 and Golden Tee 32. That is a projection, not a measurement.
-Time the two trees back to back on a quiet machine before quoting it.
+**Idle wall seconds are NOT measured yet**, so nothing here says whether any
+job now meets Kent's 25 s bar. Time the two trees back to back on a quiet
+machine before quoting a wall figure.
 
 ## Where it went
 

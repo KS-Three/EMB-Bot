@@ -531,10 +531,9 @@ Fremont 53.9 -> 44.7 (-17%), Drone 53.6 -> 41.8 (-22%), Golden Tee 49.3 ->
 largest cut is the size ring's corner relaxation (0.8-1.6 M `np.roll` calls
 per job, most of `finish_generation`). The others: a Lab conversion done once
 per frame, the stage 2 edge snap made incremental, and the fine-bar ink test
-on the band's box. **Those are loaded-laptop figures** (about 25 sweeps from
-other sessions running). Idle wall seconds are not measured. Projected from
-the shares: MFab 26, Fremont 25, Drone 28, Golden Tee 32. Time the trees back
-to back on an idle laptop, by md5.
+on the band's box. **Loaded machine, CPU seconds, not idle wall time** (about 25
+sweeps from other sessions running): whether any of the four now meets the
+25 s bar is not measured. Time the trees back to back on an idle laptop, by md5.
 *(measured 2026-11-19 — `docs/speed-pass-2026-11-19.md`, `tests/test_speed_exact_1119.py`)*
 
 ### CI feedback speed
