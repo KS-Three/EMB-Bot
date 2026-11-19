@@ -3731,6 +3731,18 @@ class PipelineConfig:
     # Tests: `tests/test_outline_one_band.py`. Evidence:
     # `docs/renders/outline-one-band-2026-11-18/README.md`.
     outline_one_band: bool = False
+    # `outline_strip_column` (2026-11-19, built OFF, NOT A FLIP CANDIDATE: whole word not clearly
+    # better, MFab hat +4 trims, all five Becker placements move; MFab top line, prime-grader
+    # faults 4, 5, 8): a strip of an outline band between two holes, one to two
+    # loop widths across, straight and at least two of its own widths long, is
+    # sewn ONCE as a full-width satin column laid over the hole loops, which stop
+    # `SPLIT_LAP_MM` inside it -- the professional's MFab construction (F arm
+    # 3.80 mm, B slots 2.83 mm, one column each; `docs/mfab-junction-census-2026-11-19.md`).
+    # The loops are kept whole elsewhere and no outer loop is added (that is
+    # `outline_one_band`, a different flag). A hairline stem under one loop width
+    # (BECKER's) is left to the loops. Off, byte-identical.
+    # Module: `digitizer_core/outline_strip.py`. Tests: `tests/test_outline_strip_column.py`.
+    outline_strip_column: bool = False
     # `satin_hairline_tier` (2026-10-08, MASTER_SCOPE defect 24 -- the tier
     # the 2026-09-03 mechanism left open). A stroke that loses crosses to
     # `SATIN_MIN_CROSS_MM` and whose MEDIAN cross is under the hairline line

@@ -25,7 +25,6 @@ the OLDEST lines whole to the archive.
 - [Size-ring corner loss](border-by-size-corner-loss-2026-11-17.md) — Intel's 7 mm square = cushion under the 2.1 mm ring; `border_by_size_corner_loss` ON 11-17 (Kent "Flip ON") refuses rounding loss > 0.083 (Intel 0.12, next 0.058); 1 of 44 jobs moves
 - [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: a drawn black line re-snapped to grey, not a border; pro borders per patch; both fixes (`resnap_hairline_never_lightens`, fix B) ruled OFF by Kent 11-11
 - [Colour cap fuse split tones](color-cap-fuse-split-tones-2026-11-18.md) — Drone THERMAL E/R = two gradient bands the cap folded to one thread; `color_cap_fuse_split_tones` ON 11-18 (Kent "Flip ON"); edge-to-edge only, never a dot in a ring
-- [Compare ends on regenerate](compare-ends-on-regenerate-2026-11-08.md) — Kent 11-08 "Keep as is": Compare view (#1345) is an Original sub-mode, a regeneration ends it; don't build survival
 - [Connector edge-walk](connector-edge-walk-2026-11-14.md) — `connectors_edge_walk` ON 11-14 (Kent "Flip ON"): the walk ordered so the next stroke covers each join; 28 designs 268/44/32 mm, trims 589/639/596
 - [Connectors on top](connectors-on-top-2026-11-14.md) — Becker #14/#15 = Column-lane hops across finished satin; `lettering_columns_connectors_buried` OFF: 268 -> 44 mm, +50 trims; MFab #2 = photo border lightened to a bean loop
 - [Corner-fold kappa](corner-fold-kappa-2026-11-15.md) — Becker hat kappa drop 0.337->0.289 = scorecard REGISTRATION (0.1 mm moves the 2 mm grid), not the fold: one frame +0.006/-0.008; tripwire frame pin ON 11-15 (Kent "Flip ON now")
@@ -82,6 +81,7 @@ the OLDEST lines whole to the archive.
 - [Outline inlets kept](outline-inlets-2026-11-14.md) — 'shape detail lost' 18 pins: 9 satin ends (apex/flat-ends lanes), 3 an outline inlet the polygon keeps and thread sews over (gear teeth, beak, notch); `outline_inlets_kept` OFF
 - [Outline loop split shared](outline-loop-split-shared-2026-11-18.md) — Becker B/E stem covered by two face loops; `outline_loop_split_shared` OFF cuts crosses at the shared line; 3 of 35 move, none worse; top V still a fan
 - [Outline one band](outline-one-band-2026-11-18.md) — Becker border as the pro sews it: stem columns + ONE outer loop; `outline_one_band` OFF; 2 of 35 move; trims +12, two guard figures
+- [Outline strip column](outline-strip-column-2026-11-19.md) — MFab white = keyline loops; pro: one full-width column per strip + outer loop; `outline_strip_column` OFF, stays OFF (F arm one block; word not clearly better, +4 trims)
 - [Page line](page-line-open-2026-11-17.md) — Kent 11-17: `page_line_open` ON, the art's thin white line stays bare fabric as in the pro's one-thread DST; only Gaulke moves; hairline thinner than pro's (pull comp)
 - [Pen stroke](pen-stroke-2026-11-13.md) — drag draws a Column/Line; Join tick built OFF (Kent 11-13): touching Columns sew as one path, own touch rule not the glyph's; same-colour shapes still stop
 - [Point-touch split](point-touch-split-2026-11-14.md) — NSYNC's star touching the N at one point made one region and a satin fan; split under 0.15 mm into bodies; ticked ON 11-15, pending
