@@ -428,6 +428,17 @@ SATIN_SPACING_MM = 0.4
 # browser engine still classifies at 3.0 (satinMaxWidthMm) — divergence is
 # deliberate, corpus-driven, and Python-side only until its own sew-out.
 SATIN_MAX_WIDTH_MM = 5.0
+
+# 3D puff constants (spec 2026-11-19-3d-puff-design.md §3). ROADMAP gate-1
+# physical constants: every one is unmeasured until TIRES HAT 3D is measured
+# (ledger R1: the file is not available yet).
+PUFF_MIN_WIDTH_MM = 3.0  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_MAX_WIDTH_MM = 11.0  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_SATIN_SPACING_MM = 0.18  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_JUNCTION_OVERLAP_MM = 0.4  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_INSET_MM = 0.2  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_TIE_STITCHES = 5  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_FOAM_MM = 3.0  # unmeasured — §3; replace from TIRES HAT 3D
 # The wide-column ceiling (quality review 2026-09-08 item 4; plan
 # 2026-09-09-wide-column-policy.md), live only under `cfg.wide_columns`,
 # DEFAULT OFF. Read off five commissioned Becker files sewn on garments —
