@@ -38,8 +38,14 @@ def main(argv=None) -> int:
     res = {"job": a.job, "width_mm": width, "garment": garment, "arms": {}}
     for arm in a.arms:
         name, _, flags = arm.partition("=")
-        extra = {f"lettering_columns_{f}": False for f in ALL.split(",")}   # BEFORE = the four off (block_butt itself is ON since #1684)
-        extra.update({f"lettering_columns_{f}": True for f in flags.split(",") if f})
+        fl = [f for f in flags.split(",") if f]
+        # `default` as a flag name = today's defaults (the four MARINE-match fields ON since 2026-11-19); otherwise the
+        # four start OFF and only the named ones are ON
+        extra = {} if "default" in fl else {f"lettering_columns_{f}": False for f in ALL.split(",")}
+        for f in fl:
+            if f == "default":
+                continue
+            extra[f"lettering_columns_{f}" if f in ALL.split(",") else f"extra.lettering_columns_{f}"] = True
         d = pro_pair.digitize(art, width, garment, extra)
         with tempfile.TemporaryDirectory() as t:
             dst = Path(t) / "x.dst"
