@@ -39,19 +39,26 @@ package to be installed."*
 recommended `pip install -e ".[service,dev]"` is complete, and this entry
 used to say the opposite. `testclient.py` tries `httpx2`, then FALLS BACK to
 `httpx`, and raises only when neither is installed; `dev` ships
-`httpx>=0.27`, so you get a `StarletteDeprecationWarning` and all 123 tests.
-Verified 2026-08-31 by uninstalling `httpx2` and re-collecting:
-`123 tests collected`, warning only. Don't spend a session chasing a
+`httpx>=0.27`, so you get a `StarletteDeprecationWarning` and every test in
+`tests/test_service.py`. Verified 2026-08-31 by uninstalling `httpx2` and
+re-collecting: `123 tests collected` (the file's size that day), warning
+only. Don't spend a session chasing a
 phantom — but do keep the tripwire below, because the `[service]`-only path
 still fails exactly as described, and an older `starlette` has no fallback.
 
 When it DOES bite, it is a COLLECTION error on `tests/test_service.py`, so
-its **123 tests never run** — and pytest reports that as a bland `4 errors`
+**none of its tests run** (123 on 2026-08-31, 180 on 2026-11-17) — and
+pytest reports that as a bland `4 errors`
 line beside a large passing count, which is very easy to wave past. A
 session did exactly that and then published an understated number in a PR
-body. **Symptom:** a collection count ~123 short of the reference below
-(`1309` against 1432 when this was found; `1441` against 1564 on
-2026-08-31). **Fix:** `pip install httpx2`, or install the `dev` extra.
+body. **Symptom:** a collection count short of the reference in root
+`CLAUDE.md` (footgun 7) by the size of that file. The gap was 123 when this
+was found (`1309` against 1432) and on 2026-08-31 (`1441` against 1564).
+The file holds **180** tests as of 2026-11-17, against 9368 collected in a
+full run that day, so expect a gap of about 180 now and read it as a gap,
+not a fixed total *(measured 2026-11-17 — full local run, 3.12.3 venv pinned
+to `requirements.txt`; root `CLAUDE.md` footgun 7)*.
+**Fix:** `pip install httpx2`, or install the `dev` extra.
 CI is unaffected — it installs from `requirements.txt`, which pins
 `starlette==1.3.1` and `httpx==0.28.1`, a combination whose TestClient works.
 *(found 2026-08-26 by chasing a suspicious number in my own PR body;

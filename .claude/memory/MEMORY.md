@@ -72,6 +72,7 @@ the OLDEST lines whole to the archive.
 - [Logo batch 7](logo-batch-7-2026-11-18.md) — overview only; ATF ring text lost
 - [Logo batch 8](logo-batch-8-2026-11-19.md) — overview only; Merchant Marine ring text lost
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
+- [MARINE match](marine-match-2026-11-18.md) — pro construction per letter in numbers; r_bowl, block_butt_small, a_bar, block_lean ON since Kent 11-19 ("Flip all four ON"); R counter held by a 0.5 mm inset read from his file (sew-out row 15)
 - [MFab counter ring room](mfab-counter-ring-room-2026-11-14.md) — "random stitch" = photo-lane significant border on the A's 3.35 mm counter lightened to a bean loop inside its fill; `border_significant_ring_room` OFF drops it; our satin tier there was worse
 - [Monarch size cliff](monarch-size-cliff-2026-11-13.md) — wing cell lost at 90.50/91.75 mm; hand-back OFF by Kent 11-14: don't flip, don't re-narrow; lane branch-drop is the real fix ("the & was better on": his eye favoured ON)
 - [Next work comes from main, not handoffs](next-work-from-main-not-handoffs.md) — Kent: don't build on past sessions; "what's next" comes from ROADMAP/PRODUCT/MASTER_SCOPE on main

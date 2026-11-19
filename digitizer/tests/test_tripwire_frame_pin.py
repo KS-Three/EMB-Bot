@@ -41,9 +41,15 @@ def arms(tmp_path_factory):
     garment, width, art, *_ = pb.JOBS[JOB]
     data = (DIGITIZER / "testdata" / art.partition(":")[2]).read_bytes()
 
-    def cfg(on):
+    from tests.conftest import MARINE_MATCH_2026_11_19_OFF
+
+    def cfg(on, marine_match=False):
         p = _parse_config(json.dumps(pro_pair.request(width, garment, None)))
         p[FLAG] = on
+        if not marine_match:
+            # the columns as they were when this pair was measured: the four MARINE-match fields (ON since Kent's
+            # 2026-11-19 flip) butt the E at 76.5 mm instead of folding it, so the fold flag would move nothing
+            p.update(MARINE_MATCH_2026_11_19_OFF)
         return PipelineConfig(**p)
 
     off, on = cfg(False), cfg(True)
@@ -61,6 +67,9 @@ def arms(tmp_path_factory):
         pb.write_side(work, "ours", dst)
         out[name] = work
         out[name + "_stitches"] = plan.stats.stitch_count
+    # under today's defaults (block_butt_small ON) the fold flag changes nothing on this pair
+    out["default_off_stitches"] = plan_stitches(result, cfg(False, True)).stats.stitch_count
+    out["default_on_stitches"] = plan_stitches(result, cfg(True, True)).stats.stitch_count
     return out
 
 
@@ -74,7 +83,15 @@ def _pin(score):
 
 
 def test_the_fold_moves_this_pair_as_the_arms_measured(arms):
-    assert arms["on_stitches"] > arms["off_stitches"]           # the fold sews the E's corners
+    # the arms are the pre-flip columns (`MARINE_MATCH_2026_11_19_OFF`): the fold sews the E's corners
+    assert arms["on_stitches"] > arms["off_stitches"]
+
+
+def test_under_the_defaults_the_e_is_butted_and_the_fold_flag_moves_nothing(arms):
+    """Kent 2026-11-19, "Flip all four ON (Recommended)", told `block_butt_small` undoes his 11-14 E fold at
+    76.5-79.8 mm too: this E (3.46 mm a stroke) is a stem and three butted arms under the defaults, so the
+    fold flag, ON or OFF, sews the same thing. The assertion above is the fold as built (the PRE_FLIP arm)."""
+    assert arms["default_on_stitches"] == arms["default_off_stitches"]
 
 
 def test_with_no_frame_the_score_is_the_original_path(arms):

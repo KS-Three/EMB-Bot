@@ -302,6 +302,419 @@ def _butt_mitres(poly: Polygon, W: float, cuts: list) -> list:
 
 
 
+# `r_bowl` (`cfg.extra["lettering_columns_r_bowl"]`, 2026-11-18, built OFF; read the pro's R in
+# `docs/marine-pro-construction-2026-11-18.md`): a block letter with ONE counter and a stem-head
+# `butt` cut (an R, a P) sews as the pro sews it: a SLAB across the whole top (stem top and the
+# bowl's top wall, near-vertical crosses), the stem below it, the bowl as one band round the
+# counter (crosses radial to the wall, not level across it), and the leg its own column.
+# Layout only (gate 1): the cuts add no stitch, floor or compensation.
+_R_BOWL: contextvars.ContextVar[bool] = contextvars.ContextVar("r_bowl", default=False)
+
+
+@contextlib.contextmanager
+def r_bowl_scope(on: bool):
+    """`cfg.extra["lettering_columns_r_bowl"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _R_BOWL.set(True)
+    try:
+        yield
+    finally:
+        _R_BOWL.reset(token)
+
+
+def _bowl_cuts(poly: Polygon, W: float, cuts: list, reflex: list) -> list:
+    """`r_bowl`: replace a stem-head `butt` (or `mitre`) cut with the pro's R cuts, or return
+    `cuts` unchanged when the letter is not that shape. One counter; a `butt` cut up from a
+    hole vertex (`_butt_mitres` found the stem). Adds the leg's line, from the reflex vertex on
+    the far side of the bowl below the counter to the notch vertex beside the stem's `through`
+    cut. The stem sews to its top as block_butt has it; the rest is the bowl band and the leg."""
+    holes = list(poly.interiors)
+    if len(holes) != 1 or not any(c[2] == "butt" for c in cuts):
+        return cuts
+    H = Polygon(holes[0])
+    hx0, hy0, hx1, hy1 = H.bounds
+    # the leg: the reflex vertex below the counter and right of its middle, the notch vertex beside the stem
+    through = [c for c in cuts if c[2] == "through"]
+    if not through:
+        return cuts
+    r_pts = [tuple(r["p"]) if isinstance(r, dict) and "p" in r else tuple(r) for r in reflex]
+    below = [q for q in r_pts if q[1] > hy1 + 0.2 * W and q[0] > (hx0 + hx1) / 2]
+    if not below:
+        return cuts
+    rv = max(below, key=lambda q: q[1])
+    ext = list(poly.exterior.coords)[:-1]
+    notch = []
+    for t in through:
+        for end in (0, 1):
+            o = t[end]
+            if o[1] > hy1 and any(math.dist(o, q) < 1e-6 for q in ext):
+                i = next(i for i, q in enumerate(ext) if math.dist(o, q) < 1e-6)
+                notch += [ext[(i - 1) % len(ext)], ext[(i + 1) % len(ext)]]
+    notch = [q for q in notch if q[1] > hy1 and q[0] > hx0 - W and math.dist(q, rv) > 0.8 * W]
+    if not notch:
+        return cuts
+    nv = min(notch, key=lambda q: math.dist(q, rv))
+    if not _inside(poly, rv, nv) or math.dist(rv, nv) > 1.4 * W:
+        return cuts
+    leg = (rv, nv, "through", math.dist(rv, nv))
+    return cuts + [leg]            # the stem's `butt` cut stays: no slab (slabs are a whole-word question)
+
+
+BOWL_INNER_INSET_MM = 0.5       # a bowl cross starts this far off the counter's edge (see `_bowl_column`)
+
+
+def _bowl_column(piece: Polygon, hole: Polygon, W: float, pitch_mm: float) -> Column | None:
+    """`r_bowl`: the band round a counter as ONE column whose crosses lie along rays from the
+    counter's centre at EVEN angular steps (the pro's bowl: 134-176 deg of sweep, crosses normal
+    to the wall), each starting `BOWL_INNER_INSET_MM` off the counter's edge. The inset is the
+    pro's: his counter is 9.85 mm2 against the art's 6.63 because his bowl crosses stop short of
+    it (his cross 4.4 mm over a 5.3 mm wall), where ours stop on the edge and the pull's push
+    takes the counter down to 3-4. Digitizing geometry, not the pull constant. The step is the
+    pitch at the band's far edge. None when the rays do not cover the band."""
+    c = hole.centroid
+    cx, cy = c.x, c.y
+    far = 4.0 * W + max(piece.bounds[2] - piece.bounds[0], piece.bounds[3] - piece.bounds[1])
+    r_out = max(math.dist((cx, cy), q) for q in piece.exterior.coords)
+
+    def cross(th):
+        d = (math.cos(th), math.sin(th))
+        seg = LineString([(cx, cy), (cx + d[0] * far, cy + d[1] * far)]).intersection(piece)
+        parts = [g for g in getattr(seg, "geoms", [seg]) if g.geom_type == "LineString" and g.length > 0.2]
+        if not parts:
+            return None
+        g = min(parts, key=lambda g: math.dist(g.coords[0], (cx, cy)))
+        a, b = g.coords[0], g.coords[-1]
+        if math.dist(a, (cx, cy)) > 1.5 * W:         # the band starts at the counter's edge
+            return None
+        a = (a[0] + d[0] * BOWL_INNER_INSET_MM, a[1] + d[1] * BOWL_INNER_INSET_MM)
+        if math.dist(a, b) < 0.4 * W:
+            return None
+        return a, b
+
+    step = pitch_mm / max(r_out, 1.0)
+    run = []
+    th = -math.pi
+    while th < math.pi:
+        x = cross(th)
+        if x is not None:
+            run.append((th, x))
+        th += step
+    if len(run) < 6:
+        return None
+    groups, cur = [], [run[0]]
+    for a, b in zip(run, run[1:]):
+        if b[0] - a[0] > 1.5 * step:
+            groups.append(cur)
+            cur = []
+        cur.append(b)
+    groups.append(cur)
+    out = [x for _t, x in max(groups, key=len)]
+    if len(out) < 6:
+        return None
+    from shapely.ops import unary_union
+    reach = unary_union([LineString([a, b]).buffer(0.2) for a, b in out])
+    if piece.difference(reach.union(hole.buffer(BOWL_INNER_INSET_MM + 0.05))).area > 0.12 * piece.area:
+        return None
+    return Column(stations=out, piece=piece, kind="curved", axis=None, width_mm=W,
+                  rail_a=[a for a, _ in out], rail_b=[b for _, b in out])
+
+
+# `a_bar` (`cfg.extra["lettering_columns_a_bar"]`, 2026-11-18, built OFF): the pro's A sews its
+# crossbar as a horizontal column of upright crosses between two legs that run uncut from
+# the foot to the top (`docs/marine-pro-construction-2026-11-18.md`, rule 5). The lane cuts a
+# flat-topped block A's lower left at the counter's bottom (an `again` cut, level), so the left
+# foot and the bar are one fanned piece and the leg is two. ON, that cut is the leg's inner edge
+# instead, from the counter's bottom-left vertex down to the base notch's top-left vertex (as the
+# right side already is), and the bar between the two sews upright.
+_A_BAR: contextvars.ContextVar[bool] = contextvars.ContextVar("a_bar", default=False)
+
+
+@contextlib.contextmanager
+def a_bar_scope(on: bool):
+    """`cfg.extra["lettering_columns_a_bar"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _A_BAR.set(True)
+    try:
+        yield
+    finally:
+        _A_BAR.reset(token)
+
+
+def _a_bar_cuts(poly: Polygon, W: float, cuts: list, reflex: list):
+    """`a_bar`: -> (cuts, bar_point) with the A's left foot cut off its bar along the leg's
+    inner edge, or (cuts, None) when the letter is not that shape."""
+    holes = list(poly.interiors)
+    if len(holes) != 1:
+        return cuts, None
+    H = Polygon(holes[0])
+    hx0, hy0, hx1, hy1 = H.bounds
+    hv = [q for q in list(holes[0].coords)[:-1] if q[1] >= hy1 - 0.15 * W]
+    if len(hv) != 2:
+        return cuts, None
+    lv, rv = sorted(hv)
+    ext = list(poly.exterior.coords)[:-1]
+    notch = [q for i, q in enumerate(ext)            # the base notch's top edge: a vertex no lower than its neighbours
+             if q[1] > hy1 + 0.3 * W and hx0 - W < q[0] < hx1 + W
+             and q[1] <= ext[i - 1][1] + 0.05 and q[1] <= ext[(i + 1) % len(ext)][1] + 0.05]
+    if len(notch) < 2:
+        return cuts, None
+    nl, nr = min(notch), max(notch)
+    # the lane's own cut from the counter's bottom-left vertex: a slanted `through` to the right notch vertex
+    thr = [c for c in cuts if c[2] == "through" and math.dist(c[0], lv) < 1e-6]
+    if len(thr) != 1:
+        return cuts, None
+    if not _inside(poly, lv, nl) or math.dist(lv, nl) > 1.6 * W:
+        return cuts, None
+    out = [c for c in cuts if c is not thr[0]]
+    out.append((lv, nl, "through", math.dist(lv, nl)))
+    # the bar's right edge: the lane's `ext` cut, or one of our own
+    if not any(math.dist(c[0], rv) < 1e-6 or math.dist(c[1], rv) < 1e-6 for c in out if c[2] != "through"):
+        if _inside(poly, rv, nr) and math.dist(rv, nr) < 1.6 * W:
+            out.append((rv, nr, "through", math.dist(rv, nr)))
+    bar_pt = ((lv[0] + rv[0] + nl[0] + nr[0]) / 4, (lv[1] + rv[1] + nl[1] + nr[1]) / 4)
+    return out, bar_pt
+
+
+def _bowl_column_normal(piece: Polygon, hole: Polygon, W: float, pitch_mm: float) -> Column | None:
+    """`r_bowl`: the band round a counter with each cross NORMAL to the counter's edge it starts
+    on, a fan only at the counter's corners (the crosses pivot there): parallel crosses on a
+    straight edge push the same way under the pull, where crosses converging on one point
+    (`_bowl_column`) pile their inner ends into a small counter and close it. None when the
+    crosses leave more than a sixth of the band bare."""
+    ring = hole.exterior
+    coords = list(ring.coords)[:-1]
+    n = len(coords)
+    near = piece.buffer(0.04)
+    # the arc of the hole's ring the band lies along: the longest cyclic run of ring points within 0.04 mm of it
+    total = ring.length
+    ns = int(total / 0.05)
+    flags = [near.contains(ring.interpolate(total * k / ns)) for k in range(ns)]
+    if not any(flags) or all(flags):
+        return None
+    k0 = next(k for k in range(ns) if flags[k] and not flags[k - 1])
+    k1 = k0
+    while flags[(k1 + 1) % ns] and (k1 + 1 - k0) < ns - 1:
+        k1 += 1
+    s0, s1 = total * k0 / ns, total * (k1 % ns) / ns
+    if s1 < s0:
+        s1 += total
+    dv = [ring.project(Point(q)) for q in coords]
+    arc = [ring.interpolate(s0 % total).coords[0]]
+    for q, d in sorted(zip(coords, dv), key=lambda t: (t[1] - s0) % total):
+        if 0.02 < (d - s0) % total < (s1 - s0) - 0.02:
+            arc.append(q)
+    arc.append(ring.interpolate(s1 % total).coords[0])
+    if len(arc) < 2:
+        return None
+    # the ring runs one way: the wall is on the outside, the unit normal points away from the hole
+    sign = 1.0 if LinearRing(coords).is_ccw else -1.0
+
+    def normal(a, b):
+        dx, dy = b[0] - a[0], b[1] - a[1]
+        L = math.hypot(dx, dy) or 1.0
+        return (sign * dy / L, -sign * dx / L)
+    far = 4.0 * W
+    out = []
+
+    def cross(p, d):
+        ray = LineString([p, (p[0] + d[0] * far, p[1] + d[1] * far)])
+        seg = ray.intersection(piece.buffer(0.02))
+        parts = [g for g in getattr(seg, "geoms", [seg]) if g.geom_type == "LineString" and g.length > 0.05]
+        if not parts:
+            return None
+        g = min(parts, key=lambda g: math.dist(g.coords[0], p))
+        if math.dist(g.coords[0], p) > 0.1:
+            return None
+        a, b = g.coords[0], g.coords[-1]
+        return (p, b) if math.dist(p, b) >= 0.4 * W else None
+
+    prev_n = None
+    for a, b in zip(arc, arc[1:]):
+        nrm = normal(a, b)
+        if prev_n is not None:
+            # a corner: the crosses pivot on the vertex from the last edge's normal to this one's
+            phi = math.acos(max(-1.0, min(1.0, prev_n[0] * nrm[0] + prev_n[1] * nrm[1])))
+            k = int(phi * 1.5 * W / pitch_mm)         # the far end of a cross is about 1.5 W from the pivot
+            sgn = 1.0 if (prev_n[0] * nrm[1] - prev_n[1] * nrm[0]) > 0 else -1.0
+            for m in range(1, k):
+                th = sgn * phi * m / k
+                d = (prev_n[0] * math.cos(th) - prev_n[1] * math.sin(th),
+                     prev_n[0] * math.sin(th) + prev_n[1] * math.cos(th))
+                x = cross(a, d)
+                if x is not None:
+                    out.append(x)
+        L = math.dist(a, b)
+        steps = max(1, int(L / pitch_mm))
+        for m in range(steps):
+            f = m / steps
+            x = cross((a[0] + (b[0] - a[0]) * f, a[1] + (b[1] - a[1]) * f), nrm)
+            if x is not None:
+                out.append(x)
+        prev_n = nrm
+    # each end of the arc: the crosses keep turning, on the arc's end point, from the edge's normal to the cut
+    # the band ends on, so the wedge between the last cross and the cut is sewn (not left bare)
+    def end_fan(e, nrm, last):
+        pc = piece.exterior
+        s_e = pc.project(Point(e))
+        best = None
+        for sgn in (1, -1):
+            q = pc.interpolate((s_e + sgn * 0.6) % pc.length).coords[0]
+            d = (q[0] - e[0], q[1] - e[1])
+            L = math.hypot(*d) or 1.0
+            d = (d[0] / L, d[1] / L)
+            ang = math.acos(max(-1.0, min(1.0, nrm[0] * d[0] + nrm[1] * d[1])))
+            if ang < math.radians(60) and (best is None or ang < best[0]):
+                best = (ang, d)
+        if best is None:
+            return []
+        ang, d = best
+        sgn = 1.0 if (nrm[0] * d[1] - nrm[1] * d[0]) > 0 else -1.0
+        fan = []
+        for m in range(1, int(ang * W / pitch_mm) + 1):
+            th = sgn * ang * m / max(1, int(ang * W / pitch_mm) + 1)
+            dd = (nrm[0] * math.cos(th) - nrm[1] * math.sin(th), nrm[0] * math.sin(th) + nrm[1] * math.cos(th))
+            x = cross(e, dd)
+            if x is not None:
+                fan.append(x)
+        return fan if not last else fan[::-1]
+    if len(arc) >= 2 and prev_n is not None:
+        n0 = normal(arc[0], arc[1])
+        out = end_fan(arc[0], n0, True) + out + end_fan(arc[-1], prev_n, False)
+    if len(out) < 6:
+        return None
+    from shapely.ops import unary_union
+    reach = unary_union([LineString([a, b]).buffer(0.25 * pitch_mm + 0.2) for a, b in out])
+    if piece.difference(reach).area > 0.10 * piece.area:
+        return None
+    return Column(stations=out, piece=piece, kind="curved", axis=None, width_mm=W,
+                  rail_a=[a for a, _ in out], rail_b=[b for _, b in out])
+
+
+# ONE FAMILY WITH `top_slab` / `e_top_arm` (director, 2026-11-19): either every letter wears the pro's top band or none does. At the whole word `e_top_arm` gives the E alone a banded top
+# with a seam under it while M, A, R, I, N have none, and `top_slab` gives all six a seam (the #1659 look). BOTH STAY OFF; neither is a flip question until
+# a sew-out (`docs/sew-out-list-2026-11-18.md` row 17) shows whether the seam is a preview matter or a real one.
+# `e_top_arm` (`cfg.extra["lettering_columns_e_top_arm"]`, 2026-11-19, built OFF): the pro's E sews its top
+# arm as ONE column across the whole width of the letter, over the stem's top, with near-vertical crosses
+# (12.2 mm at 101.9, crosses -79 deg 5.3 mm long; the stem below it starts where the arm ends,
+# `docs/marine-pro-construction-2026-11-18.md`). block_butt's E butts the top arm to a full-height stem.
+# ON, the first slot cut (the stem line up through the top arm) is replaced by a level cut from the
+# stem's left edge to the slot's back corner: stem top and top arm are one piece whose crosses are upright.
+_E_TOP: contextvars.ContextVar[bool] = contextvars.ContextVar("e_top", default=False)
+
+
+@contextlib.contextmanager
+def e_top_scope(on: bool):
+    """`cfg.extra["lettering_columns_e_top_arm"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _E_TOP.set(True)
+    try:
+        yield
+    finally:
+        _E_TOP.reset(token)
+
+
+def _e_top_cuts(poly: Polygon, W: float, cuts: list):
+    """`e_top_arm`: -> (cuts, point inside the top band) or (cuts, None) when the letter has no
+    slot cut running down from its top edge to the top slot's back corner with open outline to
+    the left of that corner."""
+    ymin = poly.bounds[1]
+    tops = [c for c in cuts if c[2] == "slot" and min(c[0][1], c[1][1]) <= ymin + 0.05]
+    if len(tops) != 1:
+        return cuts, None
+    top = tops[0]
+    v = top[0] if top[0][1] > top[1][1] else top[1]
+    far = 3.0 * W + poly.bounds[2] - poly.bounds[0]
+    hit = _ray_hit(poly, v, (-1.0, 0.0), far)
+    if hit is None or not (0.8 * W <= math.dist(hit, v) <= 2.6 * W) or not _inside(poly, hit, v):
+        return cuts, None
+    out = [c for c in cuts if c is not top] + [(hit, v, "through", math.dist(hit, v))]
+    return out, ((hit[0] + v[0]) / 2, (hit[1] + v[1]) / 2 - 0.35 * W)
+
+
+# ONE FAMILY WITH `top_slab` / `e_top_arm` (director, 2026-11-19): either every letter wears the pro's top band or none does. At the whole word `e_top_arm` gives the E alone a banded top
+# with a seam under it while M, A, R, I, N have none, and `top_slab` gives all six a seam (the #1659 look). BOTH STAY OFF; neither is a flip question until
+# a sew-out (`docs/sew-out-list-2026-11-18.md` row 17) shows whether the seam is a preview matter or a real one.
+# `top_slab` (`cfg.extra["lettering_columns_top_slab"]`, 2026-11-19, built OFF): the pro's sheared slab across the top
+# of every MARINE letter (`docs/marine-pro-construction-2026-11-18.md`, rule 2): one column across the whole
+# letter's top, `SLAB_DEPTH_W` stroke widths deep (his spine at y 16.1 from a cap top of 13.5, cross 4.5-5.4 mm),
+# crosses near upright and parallel to the art's own sheared left edge (-77 deg, `SLAB_CROSS_DEG`), ending
+# on the outline (inside it, no overhang). Everything under it keeps its own cuts. Kent turned the apex family's
+# caps off on 2026-11-17 (#1659) because they overhung the A and the R and showed a seam: the band here is a piece of
+# the letter's own polygon, so it cannot overhang; the seam is the question the whole-word pictures answer.
+_TOP_SLAB: contextvars.ContextVar[bool] = contextvars.ContextVar("top_slab", default=False)
+SLAB_DEPTH_W = 1.0
+SLAB_CROSS_DEG = -77.0         # off level, y down (his: -74 to -90; the art's flag edge runs at -77)
+
+
+@contextlib.contextmanager
+def top_slab_scope(on: bool):
+    """`cfg.extra["lettering_columns_top_slab"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _TOP_SLAB.set(True)
+    try:
+        yield
+    finally:
+        _TOP_SLAB.reset(token)
+
+
+def _slab_cuts(poly: Polygon, W: float, cuts: list):
+    """`top_slab`: -> (cuts, y of the band's lower edge). Cuts wholly inside the band go; a cut that
+    crosses its lower edge is clipped to the part below it; the edge itself is cut across the letter."""
+    x0, y0, x1, y1 = poly.bounds
+    yc = y0 + min(SLAB_DEPTH_W * W, 0.36 * (y1 - y0))
+    # an E's top arm is thicker than the stroke (6.5 mm against 5.3): the band ends at the top slot's back
+    # corner, not 1.2 mm above it, or the arm's last millimetre is a sliver column of its own
+    tops = [c for c in cuts if c[2] == "slot" and min(c[0][1], c[1][1]) <= y0 + 0.05]
+    if len(tops) == 1:
+        yv = max(tops[0][0][1], tops[0][1][1])
+        if y0 + 0.8 * W <= yv <= y0 + 1.4 * W:
+            yc = yv
+    out = []
+    for c in cuts:
+        a, b = c[0], c[1]
+        ya, yb = a[1], b[1]
+        if max(ya, yb) <= yc + 0.05:
+            continue
+        if min(ya, yb) < yc - 0.05:
+            lo, hi = (a, b) if ya > yb else (b, a)            # lo = the end below the edge
+            t = (yc - hi[1]) / (lo[1] - hi[1])
+            q = (hi[0] + (lo[0] - hi[0]) * t, yc)
+            c = (q, lo, c[2], math.dist(q, lo))
+        out.append(c)
+    row = LineString([(x0 - 1.0, yc), (x1 + 1.0, yc)]).intersection(poly)
+    for g in getattr(row, "geoms", [row]):
+        if g.geom_type == "LineString" and g.length > 0.3 * W:
+            out.append((g.coords[0], g.coords[-1], "through", g.length))
+    return out, yc
+
+
+def _slab_merge(pieces: list, yc: float):
+    """`top_slab`: the pieces above the edge as one polygon each (connected bands), -> (pieces, slab wkbs)."""
+    from shapely.ops import unary_union
+    above = [g for g in pieces if g.representative_point().y < yc]
+    below = [g for g in pieces if g.representative_point().y >= yc]
+    if not above:
+        return pieces, []
+    band = unary_union([g.buffer(0.001) for g in above]).buffer(-0.001)
+    bands = [g for g in getattr(band, "geoms", [band]) if g.geom_type == "Polygon" and g.area > 0.4]
+    return below + bands, [g.wkb for g in bands]
+
+
+def _bowl_band(poly: Polygon, pieces: list):
+    """`r_bowl`: the piece that runs the longest along the counter's edge (the bowl's band), as WKB."""
+    ring = LineString(list(poly.interiors[0].coords))
+    best = max(pieces, key=lambda g: g.buffer(0.03).intersection(ring).length)
+    return best.wkb
+
+
 def find_cuts(poly: Polygon, W: float):
     """-> (cuts, reflex, convex). A cut is (p, q, rule, length) with rule in
     "through" (two concave corners joined along an edge at both ends: a
@@ -2985,7 +3398,7 @@ def _fold_corners(columns: list, cuts: list, poly: Polygon, W: float, pitch_mm: 
             continue
         if any(t.distance(Point(p)) < 0.25 * W for t in through):
             continue
-        if slot and _BLOCK_BUTT.get() and W >= BUTT_MIN_W_MM:
+        if slot and _BLOCK_BUTT.get() and W >= _butt_min_w():
             continue    # `block_butt` (built OFF): a pointed slot's tip stays cut, the arm butts the stem
         if any(k[2] == "corner_cap" and math.dist(k[0], p) < 1e-6 for k in cuts):
             continue    # `fold_cap_flared` (built OFF): this corner is capped, not folded
@@ -3133,7 +3546,8 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
         return _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     key = ("build_column", piece.wkb, _lines_key(cut_lines), float(W), float(pitch_mm),
            bool(mitre_ends), bool(rail_axis), _SMALL_BOLD.get(), _SMALL_BOLD_SIMPLIFY.get(),
-           _APEX_CUT.get(), _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get(), _BLOCK_BUTT.get())
+           _APEX_CUT.get(), _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get(), _BLOCK_BUTT.get(),
+           _BLOCK_SMALL.get(), _R_BOWL.get(), _A_BAR.get(), _E_TOP.get(), _TOP_SLAB.get())
     if key not in memo:
         memo[key] = _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     return _fresh(memo[key])
@@ -3151,6 +3565,30 @@ def _bare_area(piece: Polygon, st) -> float:
     reach = unary_union([LineString([a, b]).buffer(0.2) for a, b in st])
     return piece.difference(reach).area
 
+
+
+BUTT_MIN_W_SMALL_MM = 3.0      # `block_butt_small` (built OFF): Becker MARINE at 76.5-79.8 mm measures 3.46 (E), under 3.5; no other committed job has a letter over 1.7
+
+
+_BLOCK_SMALL: contextvars.ContextVar[bool] = contextvars.ContextVar("block_small", default=False)
+
+
+@contextlib.contextmanager
+def block_small_scope(on: bool):
+    """`cfg.extra["lettering_columns_block_butt_small"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _BLOCK_SMALL.set(True)
+    try:
+        yield
+    finally:
+        _BLOCK_SMALL.reset(token)
+
+
+def _butt_min_w() -> float:
+    """`block_butt`'s heavy-stroke gate: 3.5 mm, or 3.0 under `block_butt_small`."""
+    return BUTT_MIN_W_SMALL_MM if _BLOCK_SMALL.get() else BUTT_MIN_W_MM
 
 
 BUTT_MIN_W_MM = 3.5            # heavy block strokes only: a fan's radius is the stroke, and a thin one is small and covers its tip
@@ -3182,7 +3620,16 @@ def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                   mitre_ends: bool, rail_axis: bool) -> Column | None:
     """`build_column`'s construction, `rail_axis` already read."""
     deadline.check("column build")
-    if not piece.interiors:
+    bowl = _MEMO.get() is not None and _MEMO.get().get("bowl_piece") == piece.wkb     # `r_bowl`: sewn along its rails
+    bu = (_MEMO.get() or {}).get("bowl_axes", {}).get(piece.wkb)
+    if bu is not None and not piece.interiors:     # `r_bowl`: the slab's crosses upright, the leg's level (the pro's)
+        sc = scan_stations(piece, bu, pitch_mm)
+        if sc:
+            st, dropped = sc
+            rr = _straight_rails(piece, bu)
+            return Column(stations=st, piece=piece, kind="straight", axis=bu, width_mm=W,
+                          rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [], dropped_mm=dropped)
+    if not piece.interiors and not bowl:
         u = (straight_axis(piece, W, cut_lines, rail_axis=True) if rail_axis
              else straight_axis(piece, W, cut_lines))
         if u is not None:
@@ -3194,7 +3641,7 @@ def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                 if not _SMALL_BOLD.get():       # small bold: a straight end, never a fan
                     plain = st
                     st = _fan_ends(st, piece, u, pitch_mm, W)
-                    if _BLOCK_BUTT.get() and W >= BUTT_MIN_W_MM and st is not plain and pivot_sweep(st) > SMALL_BOLD_FAN_DEG \
+                    if _BLOCK_BUTT.get() and W >= _butt_min_w() and st is not plain and pivot_sweep(st) > SMALL_BOLD_FAN_DEG \
                             and _bare_area(piece, plain) <= BUTT_BARE_MM2:
                         st = plain      # `block_butt`: the slanted end sews square, not fanned from a point
                 if mitre_ends:
@@ -3202,13 +3649,18 @@ def _build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                 return Column(stations=st, piece=piece, kind="straight", axis=u,
                               width_mm=W, rail_a=rr[0] if rr else [], rail_b=rr[1] if rr else [],
                               dropped_mm=dropped)
+    if bowl:
+        col = (_bowl_column(piece, _MEMO.get()["bowl_hole"], W, pitch_mm)
+               or _bowl_column_normal(piece, _MEMO.get()["bowl_hole"], W, pitch_mm))
+        if col is not None:
+            return col
     r = rails(piece, cut_lines, W)
     if r is None:
         return None
     st = pair_rails(r[0], r[1], pitch_mm)
     if len(st) < 3:
         return None
-    if (_SMALL_BOLD.get() or _butt_piece(piece)) and not piece.interiors and pivot_sweep(st) > SMALL_BOLD_FAN_DEG:
+    if (_SMALL_BOLD.get() or _butt_piece(piece)) and not piece.interiors and not bowl and pivot_sweep(st) > SMALL_BOLD_FAN_DEG:
         # one rail collapsed to a point (a serif block's inner corner): the
         # piece stationed straight along its own length instead
         alt = _straight_rescan(piece, cut_lines, W, pitch_mm, mitre_ends)
@@ -3851,9 +4303,15 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         return LetterCut(poly, W, [], [], [])
     W = stroke_width(poly)
     cuts, _reflex, _convex = find_cuts(poly, W)
-    block = _BLOCK_BUTT.get() and W >= BUTT_MIN_W_MM       # `block_butt` (built OFF): heavy strokes only
+    block = _BLOCK_BUTT.get() and W >= _butt_min_w()       # `block_butt` (built OFF): heavy strokes only
+    bowl, bar_pt, e_pt = False, None, None
+    if block and _A_BAR.get():        # `a_bar` (built OFF): the pro's A, legs uncut and an upright bar between
+        cuts, bar_pt = _a_bar_cuts(poly, W, cuts, _reflex)
     if block:
         cuts = _butt_mitres(poly, W, cuts)
+        if _R_BOWL.get():       # `r_bowl` (built OFF): the pro's R, slab + stem + bowl band + leg
+            nb = _bowl_cuts(poly, W, cuts, _reflex)
+            bowl, cuts = nb is not cuts, nb
     if _NECK_APPLY.get():       # `neck_cuts` (built OFF): the lane's second sew only
         cuts = cuts + _neck_cuts(poly, W, cuts, _reflex)
     # An E or an F: the stem line through its slot backs replaces every
@@ -3864,7 +4322,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     if block and memo is not None:
         # a letter with a stem-head butt or an E's slot cuts is a block letter:
         # its fanned pieces sew straight (`_butt_piece`)
-        memo["block"] = bool(scuts) or any(c[2] == "butt" for c in cuts)
+        memo["block"] = bool(scuts) or bowl or bar_pt is not None or any(c[2] == "butt" for c in cuts)
     if scuts and ((_APEX_CUT.get() and any(c[2] == "apex" for c in cuts))
                   or any(c[2] == "apex_pro" for c in cuts)):      # `apex_pro`: the same reading
         # `apex_cut`: a letter with an acute tip is no E or F. MARINE's M at
@@ -3886,7 +4344,39 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
             return any(ln.crosses(sl) for sl in slines)
 
         cuts = [c for c in cuts if c[2] == "corner_cap" or not clashes(c)] + _trim_under_caps(scuts, cuts, W)
+        if block and _E_TOP.get():        # `e_top_arm` (built OFF): the top arm one column over the stem's top
+            cuts, e_pt = _e_top_cuts(poly, W, cuts)
+            if e_pt is not None and memo is not None:
+                memo["block"] = True
+    slab_y = None
+    if block and _TOP_SLAB.get():       # `top_slab` (built OFF): one column across the letter's top
+        cuts, slab_y = _slab_cuts(poly, W, cuts)
+        if memo is not None:
+            memo["block"] = True
+        e_pt = None
     pieces = split(poly, cuts)
+    slab_wkbs = []
+    if slab_y is not None:
+        pieces, slab_wkbs = _slab_merge(pieces, slab_y)
+        if memo is not None and slab_wkbs:
+            sa = math.radians(SLAB_CROSS_DEG + 90.0)             # the along-stroke direction: square to the cross
+            memo["bowl_axes"] = {**memo.get("bowl_axes", {}), **{w: (math.cos(sa), math.sin(sa)) for w in slab_wkbs}}
+    if e_pt is not None and memo is not None:
+        band = [g for g in pieces if g.buffer(0.02).contains(Point(e_pt))]
+        if len(band) == 1:
+            # the top band and every arm cross upright (his: -79, -88, -88 deg); the stem below the band stays level
+            tall = max(pieces, key=lambda g: g.bounds[3] - g.bounds[1])
+            memo["bowl_axes"] = {**memo.get("bowl_axes", {}),
+                                 **{g.wkb: (1.0, 0.0) for g in pieces if g.wkb != tall.wkb}}
+    if bar_pt is not None and memo is not None:
+        bar = [g for g in pieces if g.buffer(0.02).contains(Point(bar_pt))]
+        memo["bowl_axes"] = {**memo.get("bowl_axes", {}), **({bar[0].wkb: (1.0, 0.0)} if len(bar) == 1 else {})}
+    if bowl and memo is not None:
+        memo["bowl_piece"] = _bowl_band(poly, pieces)      # `r_bowl`: the band round the counter sews as a curve
+        memo["bowl_hole"] = Polygon(poly.interiors[0])
+        rest = [g for g in pieces if g.wkb != memo["bowl_piece"]]
+        if (len(pieces) == 3 and len(rest) == 2) or (slab_wkbs and len(rest) >= 2):    # the leg's crosses level, the pro's
+            memo["bowl_axes"] = {**memo.get("bowl_axes", {}), max(rest, key=lambda g: g.centroid.y).wkb: (0.0, 1.0)}
     # a cut that only shaves off a scrap is not a junction: take it back out
     apex = _APEX_CUT.get()
     while cuts:

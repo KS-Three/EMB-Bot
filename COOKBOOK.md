@@ -2165,8 +2165,8 @@ Studio failures** — the specs' `preloadAllFontsSync` beforeAll decodes the
 whole 85-font library under vitest's 10s hook timeout, and on 2026-08-22 that
 failed 5 spec files under pip/pytest contention, 3 on a second loaded run,
 0 solo; re-run solo before calling a Studio red a regression. The
-digitizer's three expected failure/skip classes are documented below the
-command block.
+digitizer's expected failure/skip classes (1 to 4 in the numbered list) are
+documented below the command block.
 
 **CI now exists.** `.github/workflows/python-package-conda.yml` (PR #37
 rewrote Kent's initial stock conda template to run the three commands
@@ -2398,9 +2398,11 @@ failures are EXPECTED:
 Anything red outside classes 1 and 4 is unexplained and yours to chase, and
 any skip outside classes 2-3 is a new one — chase that too.
 Runtime moves with the suite, so this file carries no figure: CLAUDE.md
-does (about 45 minutes for a full run on a four-core cloud container with
-`-n auto`, measured 2026-09-14, and 1.8× that when a second suite overlaps
-it — the "~7 min" that stood here was the 2026-08-22 suite). `-n auto` is
+does (about 80 minutes for a full run on a four-core cloud container with
+`-n auto`: 79.0 measured 2026-11-17, one solo run, up from 44.5 on
+2026-09-14. A second suite overlapping it cost 1.8× on 2026-09-14, a ratio
+not re-measured on today's suite — the "~7 min" that stood here was the
+2026-08-22 suite). `-n auto` is
 in the command because pytest-xdist is pinned in `requirements.txt` and
 parallel runs are verified to produce the identical pass/fail set (the
 workflow comment says how). A worker session does not run the full suite
@@ -2447,7 +2449,9 @@ Every fact here was read off this session's own container; CLAUDE.md owns
 the venv trap in full.
 
 - **Four cores.** `nproc` 4, so `-n auto` is `-n 4` and a full digitizer run
-  is about 45 minutes (CLAUDE.md), 1.8× that if a second suite overlaps it.
+  is about 80 minutes (79.0 measured 2026-11-17, one solo run — CLAUDE.md;
+  it was about 45 when this section was written), and a second suite
+  overlapping it cost 1.8× on 2026-09-14 (not re-measured since).
   The foreman's standing rule is not to run it: run the files a change can
   reach and let CI's six shards be the full run.
 - **`python3` is NOT 3.12** — 3.11 on 2026-08-22, 3.13 here — and
@@ -2674,8 +2678,11 @@ correction). Two rules stop a repeat:
    rule 1's diff, `-f mode=capture` for the baseline; download
    `scorecard-<mode>-<run id>` and commit the JSON with the attribution. The
    job stays green on a `diff` exit 1 (a fallen band is the report, not a
-   gate) — read `EXIT=` at the end of the log. Budget 45 minutes. A cloud
-   session running the tool by hand is no longer the recipe.
+   gate) — read `EXIT=` at the end of the log. Budget 45 minutes for this
+   workflow job, which is not the local test suite (serial capture 40.2 min
+   on 2026-10-04, diff 38.7 to 39.6 — the `timeout-minutes` comment in the
+   workflow file). A cloud session running the tool by hand is no longer the
+   recipe.
 
 ### The WSL scorecard box on Kent's laptop (2026-10-02)
 
@@ -2917,10 +2924,11 @@ From `digitizer/`:
 
     python -m tools.prime_grader capture   --out eye_pairs_out/prime-<date>/run
     python -m tools.prime_grader kit       --run eye_pairs_out/prime-<date>/run --out eye_pairs_out/prime-<date>/kit
-    # a session reads tools/prime_grader_rubric.md, then per design: look, write a verdict json, and
-    python -m tools.prime_grader record    --kit eye_pairs_out/prime-<date>/kit --verdict FILE.json
-    python -m tools.prime_grader scorecard --kit eye_pairs_out/prime-<date>/kit --out ../docs/prime-grader --prev ../docs/prime-grader/latest.json
+    # two rounds of fresh readers (verdicts-r1, verdicts-r2; RUNBOOK A), each checking its verdict with
+    python -m tools.prime_grader record    --kit eye_pairs_out/prime-<date>/kit --verdict FILE.json --check
+    python -m tools.prime_grader scorecard --kit eye_pairs_out/prime-<date>/kit --verdicts V1 V2 --out ../docs/prime-grader --prev ../docs/prime-grader/latest.json
     python -m tools.prime_grader kent      --kit eye_pairs_out/prime-<date>/kit --marks ../docs/defect-marks-2026-11-1*/marks.json
+    python -m tools.prime_grader repeat    --kit eye_pairs_out/prime-repeat-<date>/kit --verdicts V1 V2 V3   # the grader vs itself (RUNBOOK C)
 
 - **Population:** one job per pro-paired artwork whose art and pro file are
   both committed (9 today; Bridge and ProSeal are not in the repo). MFab and
@@ -2949,6 +2957,17 @@ From `digitizer/`:
   paragraph of the rubric, a new dated version, so **the next card is the first
   under it and is not comparable with earlier ones**. Synthetic demo:
   `python -m tools.satin_caps_demo --out docs/renders/satin-caps-2026-11-18`.
+- **Two readers, Monday and Thursday (Kent 2026-11-19).** The repeat test
+  (`docs/prime-grader/repeat-2026-11-19.md`, `repeat`) found 62% of one
+  reader's fault places marked by no second reader and about one design in
+  seven moving a grade step on an unchanged render. Kent: "Two readers, twice
+  a week". `scorecard --verdicts V1 V2` builds one card: the faults both
+  readers place (same `CLASS_OF` class within 3 mm, at the midpoint, the lower
+  severity unless both say the higher), each design's grade only where both
+  agree ("readers disagree" designs leave the grade row and `movement()`), and
+  a separate "One reader only (not acted on)" list. About 1.9M tokens a run.
+  The first two-reader card is not comparable with a one-reader one. Without
+  `--verdicts`, `scorecard` reads `readings.json` as before.
 - **What it is not:** a quality claim, a gate, or a judge of close A/B picks.
   The kit folder holds client artwork; only the text scorecard is committed
   (`docs/prime-grader/`).
