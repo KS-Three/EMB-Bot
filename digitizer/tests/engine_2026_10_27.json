@@ -391,6 +391,7 @@
  "color_cap_least_loss": false,
  "color_cap_fuse_split_tones": false,
  "merge_chroma_guard": false,
+ "dark_neutral_split": false,
  "light_thin_stroke_keep": false,
  "keyline_fragment_drop": false,
  "lettering_columns_apex_pro": false,
