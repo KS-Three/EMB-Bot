@@ -1554,6 +1554,39 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
   A guard on the length of a tip's stitches comes first, then the table is
   re-run. *(measured 2026-11-14 — PR #1489,
   `docs/apex-cut-corpus-2026-11-14.md`)*
+- **The pro's border and bean choice does not change with the garment, so a
+  knit border rule has no pro support. Do not build "lighter borders on
+  knits" from a web guide.** Kent asked (2026-11-19) whether a fabric rule
+  should pick satin vs bean borders, from a guide saying thin knits want
+  lighter borders and pile wants no bean. His 19 files of the same art on
+  different garments say no, on every pair that has one:
+  - **Becker** hat / polo / beanie: 6 / 6 / 6 border columns at 2.06 / 2.06 /
+    2.08 mm (small set, 76.5-79.8 mm). The large hat / polo read 6 / 6 at
+    2.55 / 2.42, which tracks the design size. The small hat and chest files
+    are one stitch file (8,694 stitches each), so that pair is n = 1.
+  - **MFab** hat / polo: 20 / 20 at 1.51 / 1.44. **Fremont** hat / canvas
+    patch: 8 / 8 at 1.60 / 1.55. **Toat Machine** hat / beanie: 3 / 4 at
+    0.96 / 0.93. **ProSeal** and **Gaulke** ring nothing on any garment.
+  - **Bean:** 0-54 mm visible per file, about two passes, on every garment.
+    He barely beans at all, on any fabric.
+  - **Gaulke beanie's 2 "border" columns are not a garment choice.** They are
+    the polo's same satin columns, counted only because the beanie file has
+    a fill beneath them and the polo file has none.
+
+  **What DOES change on a beanie is already built.** All 5 beanie files
+  (Becker, Gaulke, ProSeal, Toat Machine, To a T) open with their own colour
+  block holding a sparse fill under the whole design, 2,300-3,600 mm2 at
+  0.62-0.85 stitches per mm2. No hat or polo file of the same art has one
+  (theirs read 1.9-2.9). That is the knockdown, `knockdown.py`,
+  `beanie_knockdown` ON. Beanie satin spacing reads 0.36 mm against 0.40 on
+  the hat, which is `PRO_SATIN_SPACING_MM` under `pro_measured_values`,
+  still OFF (gate 1).
+
+  **What this cannot answer:** towel, fleece and thin tees. There is no pro
+  file on those fabrics, so "no bean on pile" stays a gate-1 question for a
+  sew-out or new pro files, not for geometry. Pro-only reading: no digitize,
+  and no registration to our segmentation. *(measured 2026-11-19 —
+  `python -m tools.garment_border_census --fills` on `0476df7c`)*
 
 ---
 
