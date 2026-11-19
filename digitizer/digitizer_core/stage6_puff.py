@@ -1,5 +1,6 @@
 """Stage 6 3D puff: config gate, per-shape eligibility, and the construction
-of one puffed shape (end-capped puff satin, tied) and its foam tack-down.
+of one puffed shape (inset walk, end-capped puff satin, tied) and the
+pre-stop foam grip (`puff_tackdown`).
 
 Spec: docs/superpowers/specs/2026-11-19-3d-puff-design.md. Satin only; tatami
 never puffs. Eligibility is against the puff width band (machine.PUFF_*),
@@ -9,7 +10,7 @@ from __future__ import annotations
 
 import math
 
-from shapely.geometry import LineString, Point
+from shapely.geometry import LinearRing, LineString, Point
 
 from . import machine
 from .stitches import RUN, SATIN, TRAVEL, StitchRun, tie_run
@@ -215,8 +216,9 @@ def _join(runs: list[StitchRun], nxt: StitchRun, poly, shape_id: str) -> None:
 
 
 def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
-    """One puffed shape -> runs in sew order: the end-caps, then the top
-    satin, tied at PUFF_TIE_STITCHES (§3.9).
+    """One puffed shape -> runs in sew order: §3.7's inset walk (every ring,
+    two passes, `_inset_walk`), the end-caps, then the top satin, tied at
+    PUFF_TIE_STITCHES (§3.9) at the walk's start and the satin's end.
 
     The top satin is `satin_shape` at PUFF_SATIN_SPACING_MM with no underlay
     (§3.7: underlay crushes the foam) and puff's own width ceiling.
@@ -273,6 +275,10 @@ def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
         order.insert(0, nxt)
         cursor = nxt[0]
     runs: list[StitchRun] = []
+    # §3.7's inset walk first, in place of underlay: every ring, two passes,
+    # started nearest where the caps (or the top satin) begin.
+    for walk in _inset_walk(poly, shape_id, order[0][0] if order else satin[0].points[0]):
+        _join(runs, walk, poly, shape_id)
     for pts in order:
         _join(runs, StitchRun(points=pts, kind=SATIN, shape_id=shape_id), poly, shape_id)
     if runs:
@@ -280,17 +286,37 @@ def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
         runs += satin[1:]
     else:
         runs = satin
+    # One tie rule over the whole shape: in at its first run (the walk) and
+    # after every cut, off before every cut and at its last run.
     _apply_puff_ties(runs)
     return runs
 
 
 # --- Foam tack-down ----------------------------------------------------------
 
-def _walk_ring(coords, cursor) -> list[tuple[float, float]]:
-    """A closed ring as stitches no longer than PUFF_TACKDOWN_STITCH_MM, from
-    the vertex nearest `cursor` round and back to it; every point is on it."""
+# How far a thinned walk/grip ring may stray from the traced one: a
+# geometry tolerance (well under a stitch width), not a physical constant.
+_WALK_TOLERANCE_MM = 0.1
+
+
+def _walk_ring(coords, cursor, stitch_mm: float = None,
+               passes: int = 2) -> list[tuple[float, float]]:
+    """A closed ring as stitches no longer than `stitch_mm` (default
+    PUFF_TACKDOWN_STITCH_MM), from the vertex nearest `cursor` round and back
+    to it; every point is on it. `passes=2` is §3.7's "twice around": the
+    second pass comes back over the same path."""
+    if stitch_mm is None:
+        stitch_mm = machine.PUFF_TACKDOWN_STITCH_MM
     if len(coords) < 3:
         return []
+    # A traced contour carries a vertex every pixel step, far closer than a
+    # stitch; subdividing per segment would put a penetration on every one
+    # (TIRES at 114 mm: a 597-stitch "4 mm" grip on one shape). Thin the
+    # ring first (Douglas-Peucker keeps a subset of its vertices, every
+    # dropped one within _WALK_TOLERANCE_MM of the result), then subdivide.
+    thin = LinearRing(coords).simplify(_WALK_TOLERANCE_MM, preserve_topology=False)
+    if not thin.is_empty and len(thin.coords) >= 4:
+        coords = list(thin.coords)[:-1]
     coords = [(float(x), float(y)) for x, y in coords]
     if cursor is not None:
         k = min(range(len(coords)), key=lambda i: math.dist(cursor, coords[i]))
@@ -298,37 +324,61 @@ def _walk_ring(coords, cursor) -> list[tuple[float, float]]:
     coords.append(coords[0])
     out = [coords[0]]
     for a, b in zip(coords, coords[1:]):
-        steps = max(1, math.ceil(math.dist(a, b) / machine.PUFF_TACKDOWN_STITCH_MM))
+        steps = max(1, math.ceil(math.dist(a, b) / stitch_mm))
         out += [(a[0] + (b[0] - a[0]) * s / steps, a[1] + (b[1] - a[1]) * s / steps)
                 for s in range(1, steps + 1)]
     out[-1] = out[0]
-    # §3.7 "twice around": the second pass comes back over the same path.
-    return out + out[-2::-1]
+    return out + out[-2::-1] if passes == 2 else out
+
+
+def _inset_rings(poly, outer_only: bool):
+    """The rings of `poly` inset PUFF_INSET_MM: every ring, or only each
+    part's outer ring (no counters)."""
+    inset = poly.buffer(-machine.PUFF_INSET_MM, join_style=2)
+    for part in getattr(inset, "geoms", [inset]):
+        if part.is_empty or part.geom_type != "Polygon":
+            continue
+        yield part.exterior
+        if not outer_only:
+            yield from part.interiors
+
+
+def _inset_walk(poly, shape_id: str, cursor) -> list[StitchRun]:
+    """§3.7's inset walk, the puff satin's replacement for underlay: every
+    ring of the shape, counters included, inset PUFF_INSET_MM, at
+    PUFF_TACKDOWN_STITCH_MM, two passes, each ring started nearest the
+    needle. Joined and tied by `puff_shape`, never here."""
+    runs: list[StitchRun] = []
+    for ring in _inset_rings(poly, outer_only=False):
+        pts = _walk_ring(list(ring.coords)[:-1], cursor)
+        if len(pts) < 4:
+            continue
+        runs.append(StitchRun(points=pts, kind=RUN, shape_id=shape_id))
+        cursor = pts[-1]
+    return runs
 
 
 def puff_tackdown(polys: list, shape_ids: list[str], cfg) -> list[StitchRun]:
-    """The foam tack-down (spec "Tack-down", §3.7's walk): one run round every
-    ring of every puffed shape, inset PUFF_INSET_MM, at
-    PUFF_TACKDOWN_STITCH_MM, two passes (round and back over the same path,
-    §3.7 "twice around"), each ring started nearest the needle. Untied:
+    """The pre-stop "puff grip" (spec "Tack-down"; the pro's 279-stitch
+    "Puff Grip"): ONE pass round each puffed shape's OUTER ring only (no
+    counters), inset PUFF_INSET_MM, at PUFF_GRIP_STITCH_MM, each ring started
+    nearest the needle. It holds the foam's position; §3.7's two-pass walk of
+    every ring is not this, it sews after the stop (`puff_shape`). Untied:
     it sews as ordinary flat stitching before the foam stop."""
     runs: list[StitchRun] = []
     cursor = None
     for poly, sid in zip(polys, shape_ids):
-        inset = poly.buffer(-machine.PUFF_INSET_MM, join_style=2)
-        for part in getattr(inset, "geoms", [inset]):
-            if part.is_empty or part.geom_type != "Polygon":
+        for ring in _inset_rings(poly, outer_only=True):
+            pts = _walk_ring(list(ring.coords)[:-1], cursor,
+                             stitch_mm=machine.PUFF_GRIP_STITCH_MM, passes=1)
+            if len(pts) < 4:
                 continue
-            for ring in [part.exterior, *part.interiors]:
-                pts = _walk_ring(list(ring.coords)[:-1], cursor)
-                if len(pts) < 4:
-                    continue
-                run = StitchRun(points=pts, kind=RUN, shape_id=sid)
-                if cursor is not None:
-                    run.jump = True
-                    run.trim = math.dist(cursor, pts[0]) >= machine.TRIM_AT_MM
-                runs.append(run)
-                cursor = pts[-1]
+            run = StitchRun(points=pts, kind=RUN, shape_id=sid)
+            if cursor is not None:
+                run.jump = True
+                run.trim = math.dist(cursor, pts[0]) >= machine.TRIM_AT_MM
+            runs.append(run)
+            cursor = pts[-1]
     return runs
 
 

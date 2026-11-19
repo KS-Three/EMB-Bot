@@ -446,8 +446,14 @@ PUFF_FOAM_MM = 3.0  # unmeasured — §3; replace from TIRES HAT 3D
 # edge; the outboard row lands ON the edge, never past it.
 PUFF_CAP_SPACING_MM = 0.30  # unmeasured — §3; replace from TIRES HAT 3D
 PUFF_CAP_DEPTH_MM = 0.7  # unmeasured — §3; replace from TIRES HAT 3D
-# §3.7 tack-down walk stitch length ("20 point walk").
+# §3.7 inset walk stitch length ("20 point walk"): the two-pass walk of
+# every ring that opens each shape's puff satin, after the foam stop.
 PUFF_TACKDOWN_STITCH_MM = 2.0  # unmeasured — §3; replace from TIRES HAT 3D
+# The pre-stop "puff grip" (spec "Tack-down"; the pro's 279-stitch "Puff
+# Grip" in TIRES HAT 3D): ONE pass round each puffed shape's outer ring,
+# holding the foam's position. The §3.7 walk above sews after the stop, as
+# the start of each shape's puff satin.
+PUFF_GRIP_STITCH_MM = 4.0  # unmeasured — §3; replace from TIRES HAT 3D
 # The wide-column ceiling (quality review 2026-09-08 item 4; plan
 # 2026-09-09-wide-column-policy.md), live only under `cfg.wide_columns`,
 # DEFAULT OFF. Read off five commissioned Becker files sewn on garments —

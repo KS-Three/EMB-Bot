@@ -134,14 +134,20 @@ def test_puff_counter_closed():
     inner = LineString(RING.interiors[0].coords)
     assert _covered(inner, pts) >= 0.8
 
-    tack = puff_tackdown([RING], ["p"], PipelineConfig(puff=True))
-    for ring in (RING.exterior, RING.interiors[0]):
+    def round_ring(runs, ring):
         line = LineString(ring.coords)
-        assert any(
-            len(r.points) > 3
-            and max(line.distance(Point(p)) for p in r.points) <= 0.3
-            for r in tack
-        ), "no tack-down run round this ring"
+        return any(len(r.points) > 3
+                   and max(line.distance(Point(p)) for p in r.points) <= 0.3
+                   for r in runs)
+
+    # The §3.7 walk (after the stop, in the puff satin) closes the counter...
+    walk = [r for r in _puff(RING) if r.kind == stitches.RUN]
+    for ring in (RING.exterior, RING.interiors[0]):
+        assert round_ring(walk, ring), "no inset walk round this ring"
+    # ...and the pre-stop grip goes round the outer ring only.
+    tack = puff_tackdown([RING], ["p"], PipelineConfig(puff=True))
+    assert round_ring(tack, RING.exterior)
+    assert not round_ring(tack, RING.interiors[0]), "the grip walked a counter"
 
 
 def test_puff_no_short_stitches():
@@ -167,11 +173,41 @@ def test_puff_tackdown_is_inset():
     pts = tack[0].points
     for p in pts:
         assert abs(inset.exterior.distance(Point(p))) < 1e-6
-    # §3.7: two passes -- round the ring and back over the same path.
-    n = len(pts) // 2
-    assert len(pts) == 2 * n + 1
-    assert pts[0] == pts[n] == pts[-1]
-    assert pts[n:] == pts[:n + 1][::-1]
+    # The grip is ONE pass round, at its own stitch length.
+    assert pts[0] == pts[-1]
+    assert len(set(pts)) == len(pts) - 1, "the grip came back over itself"
+    assert max(math.dist(a, b) for a, b in zip(pts, pts[1:])) <= machine.PUFF_GRIP_STITCH_MM + 1e-9
+    assert len(pts) - 1 <= math.ceil(inset.exterior.length / machine.PUFF_GRIP_STITCH_MM) + 4
+
+
+@pytest.mark.parametrize("poly", [BAR, RING], ids=["bar", "ring"])
+def test_puff_shape_starts_with_inset_walk(poly):
+    # §3.7: after the stop, each shape's puff runs open with the inset walk:
+    # two passes round every ring, counters included, before caps and satin.
+    runs = _puff(poly)
+    inset = poly.buffer(-machine.PUFF_INSET_MM, join_style=2)
+    rings = [inset.exterior, *inset.interiors]
+    walks = []
+    for r in runs:
+        if r.kind == stitches.TRAVEL:
+            continue
+        if r.kind != stitches.RUN:
+            break
+        walks.append(r)
+    assert len(walks) == len(rings)
+    assert all(r.kind != stitches.RUN for r in runs[runs.index(walks[-1]) + 1:])
+    for r, ring in zip(walks, rings):
+        pts = r.points[r.tie_in_pts:]
+        # On the inset ring, or on its thinned copy (_WALK_TOLERANCE_MM).
+        assert all(ring.distance(Point(p)) <= 0.1 + 1e-6 for p in pts)
+        n = len(pts) // 2
+        assert len(pts) == 2 * n + 1
+        assert pts[0] == pts[n] == pts[-1]
+        assert pts[n:] == pts[:n + 1][::-1]
+        assert max(math.dist(a, b) for a, b in zip(pts, pts[1:])) <= machine.PUFF_TACKDOWN_STITCH_MM + 1e-9
+    # Tied once in, at the walk; no second tie-in at the satin.
+    assert runs[0] is walks[0] and runs[0].tie_in_pts == machine.PUFF_TIE_STITCHES
+    assert all(r.tie_in_pts == 0 for r in runs[1:] if not r.trim)
 
 
 def _bounce(seq) -> bool:
@@ -595,3 +631,16 @@ def test_design_steps_only_when_stepped(tires_puff):
     assert steps[-1]["code"] == "PUFF"
     assert steps[-1]["function"] == "end"
     assert steps[-1]["action"] == "Tear away the excess foam. Design complete."
+
+
+def test_puff_grip_is_a_grip_not_a_walk_tires_114():
+    """R14: the pre-stop tack-down is a single-pass grip, not §3.7's two-pass
+    walk of every ring. The pro's own "Puff Grip" on TIRES HAT 3D at
+    114.3 mm is 279 stitches; the walk-as-tack-down sewed well past that."""
+    _result, plan = digitize(TESTDATA / "logo_script_tires.png",
+                             cfg(garment_id="hat_front", puff=True, puff_mode="all",
+                                 target_width_mm=114.0))
+    tack = [b for b in plan.blocks if b.step and b.step["code"] == "PUFF_TACKDOWN"]
+    assert tack
+    n = sum(len(r.points) for b in tack for r in b.runs)
+    assert n < 600, f"PUFF_TACKDOWN sews {n} stitches (the pro's grip is 279)"
