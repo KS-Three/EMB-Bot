@@ -1,5 +1,13 @@
 # The professional digitizing playbook — measured, not guessed
 
+> **Superseded in part (checked 2026-11-19).** This is the first-round (2026-07/08)
+> playbook. The laws that still bind, and the ones later rounds amended or
+> refuted, are in [`docs/scope-digest/craft-laws.md`](../../docs/scope-digest/craft-laws.md);
+> the live constants are in `digitizer_core/machine.py`, not in the numbers
+> below. Marked inline: law 2 (zigzag gate, later law 22), law 7 (fill stitch
+> length and row spacing; `FILL_ROW_MM` is 0.15, later law 20), law 11 (border
+> width) and law 12 (border density, refuted).
+
 Every law below is a measurement over real production stitch files, not an
 opinion. Corpus: 39 DSTs, 410,163 stitches — Kent's three commissioned designs
 (PRECISION DRON HAT, HOTEL FREMONT, beckers logo hat) plus 36 free designs
@@ -20,6 +28,9 @@ components. Median 0.8 trims per 1,000 stitches (range 0.1–4.1).
 zigzag phase under them: median width 2.71 mm (p10 1.13, p90 5.15). WITHOUT:
 median 1.33 (p90 2.51). The crossover sits between 2.0 and 2.5 mm.
 (`SATIN_ZIGZAG_ABOVE_MM = 2.5` — empirically confirmed.)
+*[Superseded by round-3 law 22: the crossover is 2.0 mm AND a column length of
+about 6 mm; `SATIN_ZIGZAG_ABOVE_MM` is still 2.5 in `machine.py`, with no
+length gate.]*
 
 **3. Corners are sewn through, not split: 1,436 in-run corner events vs 18
 splits.** The turn spreads across roughly one column width — gradual spokes,
@@ -41,6 +52,10 @@ in dense branded fills, 0.32–0.65 in lighter work, stagger irregular —
 never a rigid cycle.** Whether 0.20 is one dense pass or two interleaved
 0.40 passes is undecided; it halves or keeps our stitch counts, so it is a
 sew-out decision.
+*[Superseded: round-3 law 20 makes stitch length a 4.0 mm ceiling with even
+division per row, and the row-spacing question was settled by Kent's ruling:
+`FILL_ROW_MM` is 0.15 in `machine.py` (it was 0.40 until 2026-09-03). The
+"undecided" above is no longer open.]*
 
 **8. Running/travel stitches: median 2.02 mm** across 218k measured stitches.
 Ours emit at 2.5 (`TRAVEL_STITCH_MM`, `UNDERLAY_STITCH_MM`) — slightly long
@@ -63,10 +78,16 @@ found: width median **1.40 mm** (p10 0.78, p90 2.98) against 2.21 mm median
 for satin generally. An outline is a line, not a stroke of letterform weight —
 sewing a border at lettering width is a large part of why our outlines read
 heavy.
+*[Amended: 1.40 mm was measured on closed loops and round letters; real
+edge-covering borders measure 1.66 mm. `BORDER_WIDTH_MM` is 1.70 in
+`machine.py`.]*
 
 **12. Border density is slightly looser: median 0.45 mm** (p90 0.64) against
 0.40–0.42 for lettering columns. A border rides over an edge that already has
 coverage under it, so it does not need lettering density.
+*[Refuted by round-3 law 41: measured on real covering borders the density is
+0.40 mm (p10 0.36, p90 0.42), identical to lettering. `BORDER_DENSITY_MM` is
+0.40 in `machine.py`; there is no relaxation.]*
 
 **13. Every border found is a CLOSED LOOP** (18/18). A border is generated
 from a perimeter path, sewn as one continuous circuit — not assembled from

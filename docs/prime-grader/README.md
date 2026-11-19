@@ -19,16 +19,17 @@ only when both readers give it; where they differ it is marked "readers
 disagree" and is left out of the grade row and of the moves against the last
 card. The first two-reader card is not comparable with any one-reader card.
 
-## Rubric 2026-11-18: the next card is a new baseline
+## Rubric 2026-11-18: the 2026-11-19 card is the new baseline
 
 The rubric changed on 2026-11-18 (`RUBRIC_VERSION` 2026-11-18, sha `9a169b106243`),
 together with how the kit draws stitches: flat-ended strips, so a satin
 column's edge is the envelope it sews instead of a row of round-cap bumps
 (blind readers had called clean columns "scalloped, saw-toothed on every edge",
-#1648; `docs/renders/satin-caps-2026-11-18/`). **The next card is the first
-under this rubric and is not comparable with any earlier card**: the scorecard
-says so in place of a movement list, and a move between the two is neither the
-engine's nor the rubric's alone. The 2026-11-17 and 2026-11-18 cards were read
+#1648; `docs/renders/satin-caps-2026-11-18/`). **The first card under this rubric
+is `scorecard-2026-11-19.md` (tree `f8373d58`, two readers per design), and it is
+not comparable with any earlier card**: the scorecard says so in place of a
+movement list, and a move between the two is neither the engine's nor the
+rubric's alone. Compare later cards against that one. The 2026-11-17 and 2026-11-18 cards were read
 under rubric 2026-11-17 with round-capped renders.
 
 ## First run, 2026-11-17, against Kent's marks

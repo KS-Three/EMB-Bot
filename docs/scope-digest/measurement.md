@@ -1,4 +1,4 @@
-# Scope digest — measurement: can EMB-Bot tell if a change helped?
+# Scope digest — measurement: can EMB-Bot tell if a change helped? (frozen digest as of 2026-08-17/18; current status is MASTER_SCOPE.md, decisions are DOCTRINE.md)
 
 Doc names are shortened to their prefix: `pro-parity-real-art` = `docs/pro-parity-real-art-2026-08-15.md`, `hardening-closeout` = `docs/hardening-closeout-2026-08-02.md`, and so on. Nothing re-measured here.
 

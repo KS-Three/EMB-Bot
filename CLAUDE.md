@@ -26,14 +26,14 @@ Each doc gates a different kind of decision. Read the one matching what you're a
   how much to trust each capability area. A live dashboard kept current after
   PR-sized work, not a one-time requirements doc. **Current state ONLY, under a
   27,000-word budget, with 400 words per numbered defect.** Its own rules 4
-  and 4b set those numbers, and `tests/test_scope_budget.py` enforces them;
+  and 4b set those numbers, and `digitizer/tests/test_scope_budget.py` enforces them;
   Kent replaced the old 800-line budget. Every claim carries a `(verb date —
   source)` pointer; one without a pointer is unverified.
   - Dated snapshots: `docs/scope-history.md` — append-only. Never quote a number
     from it as live status.
   - Per-area detail: `docs/scope/`.
 - **`.claude/memory/MEMORY.md` — for narrative history and decisions.** Indexes
-  every entry, the pre-2026-09-15 ones in `.claude/memory/MEMORY-archive.md`
+  every entry, the older ones in `.claude/memory/MEMORY-archive.md`
   (not auto-loaded: `emb-bot-digitizer`, `dst-codec-axis-discrepancy`, the Ember
   teardowns). Moved into the repo 2026-08-14 so a cloud session gets the same
   context as a local one; on Kent's machine
@@ -160,8 +160,9 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 
 - **`.venv/Scripts/` is Kent's Windows box. On Linux — every cloud session —
   the same venv is `.venv/bin/python`.** Nothing else changes. This is not
-  written down anywhere else a session reads first, so each one rediscovers it;
-  `.claude/skills/run-emb-bot/SKILL.md` already handles both layouts.
+  repeated in `README.md` (platform table) and
+  `.claude/skills/run-emb-bot/SKILL.md`, which handles both layouts, but it is
+  easy to miss, so each session used to rediscover it.
 
 - **Build the digitizer venv with `python3.12` explicitly, NOT the bare `python3`**
   (cloud containers default to 3.11). On 3.11 the `requirements.txt` path leaves a
@@ -181,8 +182,9 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
   nearly shipped two self-inflicted failures. Redirect to a log and append the
   code yourself: `pytest -q > log 2>&1; echo "EXIT=$?" >> log`.
 - **A cloud container here is FOUR cores, so `-n auto` IS `-n 4`** (`nproc` 4,
-  `sched_getaffinity` 4 — measured 2026-09-14). Do not expect the ~9 min Kent's
-  Windows box does; **budget ~80 minutes for a full local digitizer run**, and
+  `sched_getaffinity` 4 — measured 2026-09-14). Do not expect the ~9 minutes
+  quoted for a fast desktop before the suite grew (not re-measured since);
+  **budget ~80 minutes for a full local digitizer run**, and
   read that as healthy rather than hung. **79.0 minutes solo on 2026-11-17**
   (4738 s, 9,368 tests collected, one run), up from 44.5 on 2026-09-14 as the
   suite grew; like the CI budgets in footgun 7, this number only goes up.
@@ -230,7 +232,7 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    same command and names the target (footgun 2). Detail: memory
    `wrong-root-sessions-and-global-guards-2026-10-04`, `memory-outside-the-repo`.
 
-5. **`scratch_*` directories are gitignored but NOT disposable.** `scratch_corpus/` (37-file third-party DST corpus), `scratch_ink/` (Ink/Stitch font clone — `build-embf.mjs` needs it), `scratch_kent/` (Kent's commissioned files), `scratch_packs/`. "Gitignored" here means "kept out of the public repo on purpose", not "safe to delete" — only `scratch_ink/` has a Drive backup (`BACKUPS.md`). Details: `COOKBOOK.md` "Gitignored reference material that is NOT disposable".
+5. **`scratch_*` directories are gitignored but NOT disposable.** `scratch_corpus/` (37-file third-party DST corpus), `scratch_ink/` (Ink/Stitch font clone — `build-embf.mjs` needs it), `scratch_kent/` (Kent's commissioned files), `scratch_packs/`. "Gitignored" here means "kept out of the public repo on purpose", not "safe to delete" — none of them has a Drive backup (checked 2026-11-19; only `scratch_ink/`'s font source, `Ink-Stitch Fonts/`, is on Drive; `BACKUPS.md`). Details: `COOKBOOK.md` "Gitignored reference material that is NOT disposable".
 
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
 
@@ -245,38 +247,36 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    true negative.
 
 7. **Three green checks is NOT a green PR — the fourth is the slow one.** CI runs
-   four jobs on a PR. `engine` and `studio` finish in well under a minute
-   (p50 0.5 and 0.8). **`studio-e2e` takes about twenty-two minutes now, not
-   fifteen: p50 22.1 min, range 17m41s to 28m50s, max 28.8** — measured
-   2026-11-06 over the last 12 green runs on `main` (job `startedAt` to
-   `completedAt` from `gh run view <id> --json jobs`; every one in the table in
-   [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md)).
-   The old "p50 15.2" sat here from 10-28 until then; budget thirty, read
-   twenty-two as normal. **Its job `timeout-minutes` is 60 since 2026-11-06**
-   (was 40): run 42166746724 hit 40 with all 82 finished specs green, 13 of its
-   minutes spent in apt on a slow runner, so a cancelled `studio-e2e` is a
-   budget question before it is a test question.
-   **SHARDED since PR #669 (2026-10-08): `digitizer` is now an aggregator over
-   six `digitizer shard k/6` jobs**, still `-n auto` each, and it goes green or
-   red seconds after the slowest shard. The first sharded run (split by file
-   COUNT, before `tests/.shard_durations.json` existed) took **24.1 minutes**
-   wall, first shard start to aggregator end, against 72–78 for the single
-   job on main the same day. Its shards ran 6.9–23.9 minutes, and the 23.9 was
-   the imbalance the durations file fixes: 235 test-minutes over 6 × 4 workers
-   is about 10 minutes of tests per shard, plus a minute of setup. **Budget
-   twenty-five, read fifteen as normal**, and if one shard keeps running
-   far longer than the others, refresh the durations
-   (`digitizer/tools/ci_shard_durations.py` over a run's `digitizer-shard-*`
-   JUnit artifacts) rather than adding shards. Its PR body has the balanced
-   run's measured time. (A fifth job, `art-fidelity-baseline`, is
-   push-to-`main`-only and `continue-on-error` — it never appears on a PR and
-   gates nothing.)
+   four required checks on a PR: `engine`, `studio`, `digitizer` and
+   `studio-e2e`. **`digitizer` and `studio-e2e` are both aggregators now.**
+   `digitizer` fans out to six `digitizer shard k/6` jobs (PR #669, 2026-10-08;
+   `timeout-minutes` 45 each) and `studio-e2e` to two `studio-e2e shard k/2` jobs
+   (6ab26ad6, PR #1303, 2026-11-07; 45 each), each aggregator going green or red
+   seconds after its slowest shard (its own timeout is 10). `engine` and
+   `studio` take about two minutes each.
+   **Measured 2026-11-19 on two green pushes to `main`** (job `startedAt` to
+   `completedAt` from `gh run view <id> --json jobs`; runs 44574985229 and
+   44572463192): the `studio-e2e` shards ran 11.5–16.6 minutes and the
+   `digitizer` shards 11.6–22.6, with whole-run wall time (created to updated)
+   of 22.9 and 26.6 minutes. **Budget thirty-five, read twenty-five as normal.**
+   A shard much slower than its siblings means `tests/.shard_durations.json`
+   (digitizer) or `SPEC_SECONDS` in `app/playwright.config.js` (e2e) has gone
+   stale: refresh it (`digitizer/tools/ci_shard_durations.py` over a run's
+   `digitizer-shard-*` JUnit artifacts; `node tools/e2e-spec-times.mjs <run-id>`)
+   rather than adding shards. A PR that touches neither `digitizer/` nor
+   `.github/` runs only the wire tests, on shard 1 alone (07e7fd5f, #791), so on
+   such a PR the e2e shards are the slow check. Two more jobs, `art-fidelity-baseline`
+   and `bench-digitize`, are push-to-`main`-only and `continue-on-error`; they
+   never appear on a PR and gate nothing.
 
    **Every written budget for these jobs has gone stale in ONE direction** —
    the single pre-sharding `digitizer` job drifted from 15 to 76 minutes between
-   2026-08-27 and 10-04, `studio-e2e` from 2.7 to 15.2 by 2026-10-28 and 22.1 by 11-06, and each
-   revision of this line was true when written
-   (history: [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md)).
+   2026-08-27 and 10-04, the unsharded `studio-e2e` from 2.7 to 15.2 by 2026-10-28
+   and 31 by 11-07 before it was split, and each
+   revision of this line was true when written. (A `studio-e2e` job that hit its
+   old 40-minute timeout on a green run is a budget question before a test
+   question.) History and every measured row:
+   [`docs/digitizer-ci-timing-history.md`](docs/digitizer-ci-timing-history.md).
    So spend one `curl` on `/actions/runs/<id>/jobs` before calling a long job
    stuck.
 
@@ -298,7 +298,8 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    genuinely restricted one.
 
    **Auto-merge WORKS now — arm it instead of waiting or watching.** Measured on
-   PR #275, 2026-08-27: `mcp__github__enable_pr_auto_merge` returned *"Auto-merge
+   PR #275, 2026-08-27: `mcp__github__enable_pr_auto_merge` (the tool a cloud
+   session has; a Desktop session uses `mcp__ccd_pr__set_auto_merge`) returned *"Auto-merge
    enabled … will merge automatically once all required checks pass"* instead of
    refusing. That is the arming step, which is the part that was impossible
    before; do not sit on a PR watching `digitizer` for an hour. Two

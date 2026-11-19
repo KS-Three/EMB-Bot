@@ -1,8 +1,13 @@
-# `digitizer` CI job timing — pre-sharding history
+# CI job timing history
 
-Moved from the root `CLAUDE.md` footgun 7 (2026-10-26). Historical only: the job
-has been sharded since PR #669 (2026-10-08) and these budgets no longer apply.
-Kept for the lesson — every budget went stale in one direction.
+Moved from the root `CLAUDE.md` footgun 7 (2026-10-26). **Append-only:** add a
+dated section for each re-measurement and do not rewrite earlier ones. The
+sections run from the single pre-sharding `digitizer` job (the budgets at the
+top no longer apply: it has been sharded since PR #669, 2026-10-08), through
+the sharded `digitizer` rows and the `studio-e2e` rows, to `studio-e2e` sharding
+(2026-11-07) and the latest measurement at the end. The live budget is in
+`CLAUDE.md` footgun 7. Kept for the lesson — every budget went stale in one
+direction.
 
 **`digitizer` runs 33 to 55 minutes** — re-measured 2026-09-12 over the
 last 36 successful jobs: min **32.7**, p50 **49.7**, p90 54.6, max 55.4,
@@ -213,3 +218,32 @@ Run 42399967770 (the second run): the four test steps summed to 25.1 minutes, so
 
 
 Run 42409970223 (PR #1323, `SPEC_SECONDS` re-derived by `tools/e2e-spec-times.mjs` over main runs 42406340687, 42407202584, 42407932826, 42408103660, all after the #1318 split): shard 1 ran 15.6 minutes (20:13:01 to 20:28:35), shard 2 ran 15.9 (to 20:28:54), a gap of 0.3 minutes against 3.3 on the second run before the split and 0.5 to 3.3 across the earlier runs. The table moved most on `field-reshape-mode` 159 to 201, `field-reshape-move` 262 to 218, `quality-report` 73 to 92; the predicted split is 12.28 / 12.29 minutes of test time (old table on the same listing: 11.80 / 11.80).
+
+## Both aggregators sharded: measured rows (appended 2026-11-19)
+
+Since 2026-11-07 both required long checks are aggregators: `digitizer` over six
+`digitizer shard k/6` jobs and `studio-e2e` over two `studio-e2e shard k/2` jobs
+(timeout 45 minutes each; the aggregators' own timeout is 10). Measured from
+`gh run view <id> --json jobs`, each job's `completedAt` minus `startedAt`,
+minutes to one decimal, on two green pushes to `main` the same afternoon. "Run
+wall" is the run's `createdAt` to `updatedAt`, so it includes queueing.
+
+| Run id | Push (UTC start) | PR | SHA | Run wall | digitizer shards 1-6 | studio-e2e shards 1, 2 | studio-e2e aggregator | engine | studio | bench-digitize | art-fidelity-baseline |
+|---|---|---|---|---|---|---|---|---|---|---|---|
+| 44572463192 | 2026-11-19 17:00 | #1703 | `13c22397` | **26.6** | 21.3 / 15.1 / 13.1 / 18.3 / 15.2 / 17.8 | 12.3, 14.5 | 0.1 | 2.4 | 2.0 | 4.1 | 8.9 |
+| 44574985229 | 2026-11-19 17:14 | #1694 | `0476df7c` | **22.9** | 13.9 / 11.6 / 15.9 / 13.4 / 22.6 / 19.8 | 11.5, 16.6 | 3.1 | 2.0 | 2.2 | 7.5 | 6.6 |
+
+Across the two runs the `studio-e2e` shards took 11.5 to 16.6 minutes and the
+`digitizer` shards 11.6 to 22.6, with a spread between the fastest and slowest
+`digitizer` shard of 8.2 and 11.0 minutes (the stale-durations signal named in
+the 2026-10-28 section: `tests/.shard_durations.json` is due a refresh).
+`engine` and `studio` are about two minutes each now (they read about one minute
+in the 10-28 table). The run wall of 26.6 is over footgun 7's old "budget
+twenty-five" for `digitizer`, so that line now reads **budget thirty-five, read
+about twenty-five as normal** for the slower of the two sharded checks. Two
+runs are a thin sample; re-measure over a dozen before tightening it.
+
+`bench-digitize` and `art-fidelity-baseline` are push-to-`main`-only,
+`continue-on-error`, and gate nothing. A PR that touches neither `digitizer/`
+nor `.github/` runs only the wire tests on `digitizer` shard 1 (07e7fd5f, #791),
+so on such a PR the `studio-e2e` shards are the slow check.

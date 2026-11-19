@@ -1,5 +1,16 @@
 # Scope digest — stage 0 classifier / photo & gradient lanes
 
+> Frozen digest as of 2026-08-17; current status is `MASTER_SCOPE.md`, decisions are `DOCTRINE.md`.
+
+> **Superseded in part (checked 2026-11-19).** The headline claims below ("10 of
+> 15 real customer logos classify `gradient` at confidence 1.00", "resolution-broken")
+> describe stage 0 as of 2026-08-15. `cfg.stage0_scale_relative_grad` has been ON
+> since 2026-11-06 (Kent, PR #1301): flat versus gradient is split on `tonal_frac`
+> (the tonal share of the foreground on a fixed 512-px raster) instead of an
+> absolute smoothness threshold, and flat-lane soft-edge cures shipped with it.
+> See `MASTER_SCOPE.md` ("Waiting on Kent" 69 and the Phase 2 note) before
+> quoting any number from this page.
+
 ## What the classifier gets wrong
 
 - **10 of 15 real customer logos classify `gradient` at confidence 1.00 and go down the photo lane.** `gradient_smoothness` reads 0.205–6.135 on real art against `GRAD_VAR_GRADIENT_MIN = 0.0015`, whose own calibration comment records the fixture band it was set on ("every flat fixture <0.0006; every gradient ramp and the real drone_render >=0.005") — 137x–4090x over threshold. `tires_hat_3d` is a solid black script wordmark. `classifier-misroutes-real-logos-2026-08-15.md` §2.
