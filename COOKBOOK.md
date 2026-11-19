@@ -2,10 +2,16 @@
 
 Handoff doc. Read this before touching code. Full blow-by-blow history lives in
 `.claude/memory/emb-bot-digitizer.md` (moved into the repo 2026-08-14, indexed
-by `.claude/memory/MEMORY.md`) — this file is the self-contained handoff.
+in `.claude/memory/MEMORY-archive.md`, which is not auto-loaded) and, for
+sections retired from this file, in
+[`docs/cookbook-history.md`](docs/cookbook-history.md) — this file is the
+self-contained handoff.
 
-**Last refreshed 2026-10-20** over `5a4c019..0eb5e02` on `main` (2026-10-11 →
-10-19, 172 PRs merged; PR #990, merged during the refresh, is folded in). `.claude/hooks/nudge-cookbook-stale.js` nags once 20
+**Last refreshed 2026-11-19** over `0eb5e02..df50b217` on `main` (2026-10-19 →
+11-19, 837 commits). That pass corrected claims the code had overtaken (flag
+defaults, CI shape) and moved dated history to `docs/cookbook-history.md`; it
+did not re-read every section against the code, so a claim here without a
+date or a pointer is still worth checking. `.claude/hooks/nudge-cookbook-stale.js` nags once 20
 source commits have piled up past the last touch; the foreman then assigns
 ONE named session per refresh (the K3 standing rule under "Branches &
 worktrees"), and every other session puts status in its PR body, not here.
@@ -41,25 +47,17 @@ where the bodies are buried.
 ## Binary font library (Slice 10 Stage A, 2026-07-27)
 
 The Studio's fonts live in `src/fonts/manifest.json` + `src/fonts/bin/*.embf`
-(**85 fonts** as of 2026-08-22; was 55 after the 2026-08-04 licence-audit pulls
-and the same-day removal of all 13 ShareAlike fonts (Kent's call — audit §9;
-removal made the paid launch independent of the CC-BY-SA question, and the
-lawyer brief is the optional restore path), then grew through the 2026-08-21/22
-upstream sweeps — this number has drifted twice without the doc being updated,
-so don't trust it without recounting `manifest.json`), lazily fetched per font by
-`app/src/lib/fontLoader.js`. The
-old eager `src/fonts/satin-fonts.js` is OUT of the Studio pipeline and — since
-`EMB-Bot.html`'s deletion (2026-08-08) — has no consumer left at all (this line
-said "still used by legacy `EMB-Bot.html`, do not delete it" long after that
-page was gone); it survives as the audited legacy registry of record, and
+(85 fonts as of 2026-08-22 — recount `manifest.json` before quoting a number),
+lazily fetched per font by `app/src/lib/fontLoader.js`. The old eager
+`src/fonts/satin-fonts.js` is OUT of the Studio pipeline and has no consumer
+left at all; it survives as the audited legacy registry of record, and
 removing it is Kent's call, not cleanup. **Its audit ran 2026-08-04**
 (`docs/font-license-audit-2026-07-31.md` §10): the 7 license-pulled fonts
 (milli_marif_bold, tt_masters + the 5 ShareAlike: aventurina, emilio_20,
 emilio_20_bold, geneva_simple, monicha) were removed, 21 → 14 entries, all
 remaining OFL-1.1/CC0 and present in the shipping manifest. Do not re-add a
-font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
-(the frozen artifact that inlined the pre-audit 21 fonts) was **deleted
-2026-08-04, Kent's call** — no pre-audit font list ships anywhere anymore.
+font there unless it is also in the shipping manifest. No pre-audit font list
+ships anywhere.
 
 - **EMBF format** (`src/fontbin.js`): quantize coords ×4 → per-ring delta →
   Int16 stream; skeleton JSON carries everything else. Guard test
@@ -92,28 +90,21 @@ font there unless it is also in the shipping manifest. `EMB-Bot-standalone.html`
   committed `.embf` files are the artifacts of record either way.
 - **Tier rule (Kent's decision): only `tier:"verified"` ships.** Unverified =
   internal work queue with a concrete reason per font in `_tiers.json`.
-  License policy for NEW fonts: **OFL-1.1 / CC-BY-4.0 / CC0 only** — this line
-  read "OFL-1.1 / CC-BY-4.0 / CC-BY-SA-4.0 / CC0" until 2026-08-21 and was
-  wrong from 2026-08-04 onward; `ALLOWED_LICENSES` in `build-embf.mjs` is the
-  authority, not this doc. **ShareAlike is permanently closed** (Kent,
-  2026-08-21: SA may propagate through the compiled `.embf` onto customer
-  stitch files — an unbounded liability on the product's core output). Do not
-  re-propose it; the `docs/lawyer-brief-cc-by-sa-2026-08-04.md` restore path is
-  retired. **NonCommercial and NoDerivatives can never ship** in a paid product
-  — `licenseId()` labelled both as plain `CC-BY-4.0` until 2026-08-21
+  License policy for NEW fonts: **OFL-1.1 / CC-BY-4.0 / CC0 only**;
+  `ALLOWED_LICENSES` in `build-embf.mjs` is the authority, not this doc.
+  **ShareAlike is permanently closed** (Kent, 2026-08-21: SA may propagate
+  through the compiled `.embf` onto customer stitch files — an unbounded
+  liability on the product's core output). Do not re-propose it; the
+  `docs/lawyer-brief-cc-by-sa-2026-08-04.md` restore path is retired.
+  **NonCommercial and NoDerivatives can never ship** in a paid product
   (`docs/font-expansion-research-2026-08-21.md` §5). `precious` is excluded
-  (GPL-3.0). `ondulamarif_XL`
-  was demoted by QC (letter glyphs runs-only → 0 stitches). `milli_marif_bold`,
-  `tt_directors`, `tt_masters`, and `dejavufont` were PULLED from the build
-  2026-08-04 per `docs/font-license-audit-2026-07-31.md` action items 1-3
+  (GPL-3.0). `ondulamarif_XL` was demoted by QC (letter glyphs runs-only → 0
+  stitches). `milli_marif_bold`, `tt_directors`, `tt_masters`, and
+  `dejavufont` were PULLED from the build 2026-08-04 per
+  `docs/font-license-audit-2026-07-31.md` action items 1-3
   (ad-hoc/aggregator-only/mislabeled licenses — see `PULLED` in
-  `tools/build-embf.mjs` for the per-font reasoning). ~~They still linger in
-  the legacy `src/fonts/satin-fonts.js` / `EMB-Bot.html` pipeline~~ —
-  resolved 2026-08-04 by the legacy-registry audit (audit doc §10):
-  milli_marif_bold and tt_masters are removed from `satin-fonts.js` along
-  with the 5 ShareAlike pulls, so `EMB-Bot.html` no longer ships any pulled
-  font — and `EMB-Bot-standalone.html`, the only place that still embedded
-  them, is deleted (see the paragraph above).
+  `tools/build-embf.mjs` for the per-font reasoning); none of them remains in
+  the legacy `src/fonts/satin-fonts.js` either (audit doc §10).
 - **Engine-file lists live in THREE places** for the Studio: `app/scripts/
   copy-engine.mjs` (ENGINE_FILES), `app/src/lib/emb.js` (ENGINE_KEYS), and
   the `<script>` tags in **`app/index.html`** — the third one was missed once
@@ -255,24 +246,11 @@ the PNG route tagged 0 of Lobster's 5 shapes as letters, the outline route
 
 ## Font editing abilities Round 1 — merged 2026-07-27
 
-Rotation, per-letter color, bold/thin weight, slant/italic for text elements.
-Was previously sitting unmerged in a worktree (a memory note wrongly called
-it "merged" — always verify with `git log`, don't trust prior claims at face
-value). Fast-forward merged into `main`, worktree removed, branch deleted.
-169/169 engine + 182/182 app tests green on `main` **at that merge
-(2026-07-27)** — a historical record of that slice, not current counts; see
-"Running things" for those.
-Spec/plan: `docs/superpowers/specs/2026-07-27-font-editing-abilities-design.md`
-and `docs/superpowers/plans/2026-07-27-font-editing-abilities.md`. Two
-abilities were explicitly deferred (condensed/expanded width, mixed
-per-letter size) — both risk distorting satin column width unevenly along
-curves; prototype before committing.
-
-**As of 2026-08-02, `feat/satin-rails` (56 commits: satin rewrite, chaining,
-contour fill, push-comp, appliqué, the fill-axis geometry fix) is
-fast-forward merged into `main`.** `feat/stitch-quality` no longer exists as
-a branch — folded in along the way. `main` is still ahead of `origin/main`
-locally; push is a user-confirm action, not automatic.
+Rotation, per-letter color, bold/thin weight, slant/italic for text elements;
+spec and plan in `docs/superpowers/specs/2026-07-27-font-editing-abilities-design.md`
+and `docs/superpowers/plans/2026-07-27-font-editing-abilities.md`. The merge
+notes (and the 2026-08-02 `feat/satin-rails` merge) are in
+`docs/cookbook-history.md`.
 
 ## The Python digitizer (`digitizer/`, added 2026-07-29, grown continuously since)
 
@@ -347,17 +325,20 @@ hand-rolling it in JS.
   loses the machinery there. Nothing
   committed here trips either signal, so the corpus cannot show you it works —
   see DOCTRINE before concluding it is broken.
-- **The design-silhouette cap (`cfg.edge_cap`, DEFAULT `"bean"` since
-  2026-09-11)** closes the design/fabric boundary where every tatami row ends
+- **The design-silhouette cap (`cfg.edge_cap`, DEFAULT `"none"` since
+  2026-10-29)** closes the design/fabric boundary where every tatami row ends
   in open air — the union of several shapes' edges, which no per-shape border
-  can reach. Two consequences to know before reading a plan: **every design now
-  ends with one extra BLOCK**, and that block sews in a cone the job already
-  ran, so the operator re-loads it (Kent ruled that stop acceptable rather than
-  cap the edge in a badly matched colour — DOCTRINE carries the numbers). It is
-  gated: `silhouette_cap(omit=…)` skips whatever linear stitching already
-  covers the outline, which is what took the bill from +8.6-100.4% down to
-  +5.9-26.3%. Turning it off is `edge_cap="none"`, and most tests whose subject
-  is artwork sequencing say exactly that.
+  can reach. It was DEFAULT `"bean"` from 2026-09-11 (every design then ended
+  with one extra cap block in a cone the job already ran). Kent's ruling on
+  [`docs/edge-cap-remeasure-2026-10-29.md`](docs/edge-cap-remeasure-2026-10-29.md)
+  set it to `"none"`: from 2026-10-27 `bean_only_lines` (ON) had already turned
+  `"bean"` into no cap in `stage7_sequence`, and with the cap off only 0.0-4.0%
+  of the sewn silhouette carries no linear stitch on the six fixtures that read
+  5.9-100% on 09-11 (`silhouette_underfill_rim` and `border_by_size` close it).
+  `"bean"` and `"satin"` are still there to pass explicitly; the cap stays
+  gated (`silhouette_cap(omit=…)` skips whatever linear stitching already
+  covers the outline). The comment above `edge_cap` in `config.py` carries the
+  full history.
 - **`stage2_photo_segment.py`** is a drop-in alternative to
   `stage2_quantize.quantize()` with the same `Quant` output contract, so
   stages 3–4 run unchanged. It exists because global k-means clusters color
@@ -385,9 +366,8 @@ hand-rolling it in JS.
   can't help when "success" is the lie. The whole lane is proven buildable
   and runnable in a cloud container, not just on Kent's box; build steps and
   disk budget in `sam2_isolated/README.md`.
-- **`stage6_blend.py`** is the gradient blend fill tier; its `detect_ramp`
-  fitting logic is what the queued gradient-fragmentation fix wants to reuse
-  one stage earlier (see Known bugs).
+- **`stage6_blend.py`** is the gradient blend fill tier, built around its
+  `detect_ramp` fitting logic.
 - **The photo-lane satin width floor** (`stage6_satin`, 2026-08-22): a shape
   that EARNED satin but whose doubled p90 medial width sits under
   `PHOTO_MIN_SATIN_WIDTH_MM` (Law 31's 1.0 mm, adopted verbatim — gate 1
@@ -408,7 +388,8 @@ hand-rolling it in JS.
   optional extra in `pyproject.toml`, so that command alone gives you a venv
   that imports `digitizer_core` fine and dies on `ModuleNotFoundError: No
   module named 'fastapi'` the moment you start the service. Use
-  `pip install -e ".[service]"`. Cost a cycle on 2026-08-25.
+  `pip install -e ".[service,dev]"` (`[service]` alone leaves the `httpx2`
+  hole in `digitizer/CLAUDE.md`). Cost a cycle on 2026-08-25.
   *(confirmed — `digitizer/pyproject.toml` `[project.optional-dependencies]`)* `GET /health`, `POST /digitize` (image+config → job),
   `POST /digitize-manual` (hand-authored shapes, no image — stages 1-4
   skipped; same job/response contract), `GET /jobs/{id}`, `POST /export`,
@@ -542,7 +523,8 @@ hand-rolling it in JS.
   `cfg.bind_resnap_all_classes`), `digitizer/tools/tonal_split_ab.py` (what
   photo tonal splitting BUYS, run against its own absence via an explicit
   `split_tonal_regions=False` — cost and quality printed together, because the
-  question is the trade). Run each from `digitizer/` with `.venv/bin/python`.
+  question is the trade). Run each from `digitizer/` with the venv's python
+  (`.venv/Scripts/python` on Windows, `.venv/bin/python` on Linux).
 
   Two more added 2026-09-06, both born of a finding that would not say what
   it knew: `digitizer/tools/spool_remedy.py` (per blocking
@@ -674,10 +656,12 @@ hand-rolling it in JS.
   consult it), and SAM2 when its venv is runnable. Output is a side-by-side
   contact sheet Kent judges by eye; deliberately NO score number on it.
 - **The load-bearing boundary decision**: `/digitize` returns an EMB-Bot
-  `Design` object, never a DST — see [[dst-codec-axis-discrepancy]] / the
-  "Known bugs" section below. Routing the disputed DST format off this
-  boundary means a digitized design can't arrive pre-rotated while the axis
-  bug is unresolved. `digitizer_core/adapter.py` owns the one y-flip.
+  `Design` object, never a DST. Machine files are written at the edges — the
+  Studio's own codecs or the service's `/export` — so the wire between the
+  service and the Studio carries no format quirk. The decision was taken while
+  the browser DST codec had its axis bug (fixed 2026-09-08, CLAUDE.md
+  footgun 1; history in [[dst-codec-axis-discrepancy]]), and it is still the
+  contract. `digitizer_core/adapter.py` owns the one y-flip.
 - **Gitignored reference material that is NOT disposable**: `scratch_corpus/`
   (pro-digitized DST corpus the stitch-physics constants were derived from),
   `scratch_ink/` (Ink/Stitch font clone), `scratch_kent/` (Kent's
@@ -759,9 +743,10 @@ hand-rolling it in JS.
 
 - **The Playwright e2e suite goes dark silently when nothing runs it — run it
   yourself after touching `ContentStep`/`ManualPanel` markup.** Since
-  2026-08-17 the `studio-e2e` CI job runs it (single worker, and a guard step
-  fails the job if any spec skips — the digitize specs skip, not fail, when
-  the service venv is missing); the lesson below is from the era when nothing
+  2026-08-17 CI runs it — since 2026-11-07 as two `studio-e2e shard k/2` jobs
+  plus the `studio-e2e` aggregator ("Sharded digitizer CI" under the how-to
+  section below covers both), and a guard step fails a shard if any spec skips (the digitize specs
+  skip, not fail, when the service venv is missing); the lesson below is from the era when nothing
   on GitHub executed them, and it still applies locally. On
   2026-08-13 all 9 service-backed specs turned out to be failing, and had
   been since **2026-08-10** — commit `301393e` replaced the literal `+` in
@@ -789,14 +774,15 @@ hand-rolling it in JS.
     `enthusiast_logo`) — see the spec's own FIXTURE CHANGE banner. Passes
     2/2, driving the banner + "Sew all N" bulk restore end to end.
   - `digitize-boundary-edit`: the old panel vertex drag genuinely changed
-    nothing; the spec was rebuilt around the real boundary editor
-    (shape-layers contract v1.4 — drag a vertex, Save boundary, Apply, the
-    design measurably reshapes and resews).
+    nothing; the spec was rebuilt around the real boundary editor. That
+    editor has since moved too (retired 2026-11-03): the hoop canvas is the
+    one boundary editor, entered from the shape popover's "Edit points"
+    (`ShapePopover.svelte` / `EmbroideryField.svelte`) — the spec's header
+    has the current flow.
   - `manual-trace-import`: rewritten around the trace-import flow (real file
     upload through a real `createImageBitmap` decode, traced shapes landing
-    on ManualPanel's canvas, `Edit points` vertex drag included —
-    `ManualPanel.svelte:846` still renders that button).
-  All seven specs now run green in the `studio-e2e` job, whose no-skip guard
+    on the canvas).
+  These specs run green in the `studio-e2e` shards, whose no-skip guard
   means a merge-able PR proves them, not just runs them.
 
 - **An auto-traced outline has ~1 node per 1.3 mm, so "move one node" is not
@@ -1258,13 +1244,13 @@ sews nothing and cuts the smallest shape that contains it.
   `node tools/fill-columns-sheet.mjs`: it draws four manual-lane shapes off
   beside on, floats in red, and prints the cost table. In the Studio, the
   field's Jumps toggle draws every needle-up move as a dashed line.
-- **Lock stitches are built OFF in both JS builders (2026-10-03).**
-  `ties: true` on `buildQualityDesign` or `buildLetteringDesign` locks every
-  thread where it starts and where it is cut. It is ONE function,
-  `applyTies` in `src/digitize.js`, run on the finished record stream, which
-  is in DST units. Do not compute a lock in px: the lettering port of 09-14
-  did, and its 0.8 mm leg came out 0.1 to 0.5 mm. No Studio caller passes
-  the flag; the flip is Kent's ("Waiting on Kent" 23).
+- **Lock stitches are ON by default in both JS builders (built 2026-10-03,
+  ON since 2026-10-20, Kent's ruling, PR #1000; MASTER_SCOPE 23).**
+  `buildQualityDesign` and `buildLetteringDesign` lock every thread where it
+  starts and where it is cut; `ties: false` is the off arm, byte for byte. It
+  is ONE function, `applyTies` in `src/digitize.js`, run on the finished
+  record stream, which is in DST units. Do not compute a lock in px: the
+  lettering port of 09-14 did, and its 0.8 mm leg came out 0.1 to 0.5 mm.
   `node tools/lock-stitch-census.mjs` prints what a lock costs and how long
   its legs really are, on every shipped font and eleven shapes.
 - **Cutting long floats is built OFF by default for the shape builder (2026-10-04).**
@@ -1287,8 +1273,10 @@ sews nothing and cuts the smallest shape that contains it.
   `node tools/cut-floats-shapes-sheet.mjs` prints the per-family preset
   table); the image lane does not ("Waiting on Kent" 28,
   `docs/cut-floats-manual-2026-10-08.md`, `docs/cut-floats-shapes-2026-10-08.md`).
-- **Row stagger is built OFF for the shape builder (2026-10-03).**
-  `fillStagger: true` on `buildQualityDesign` puts the cover fill's needle
+- **Row stagger is ON by default for the shape builder (built 2026-10-03,
+  ON since 2026-10-20, Kent's ruling, PR #1000; MASTER_SCOPE 24;
+  `fillStagger: false` is the off arm).**
+  `buildQualityDesign` puts the cover fill's needle
   holes on one grid shifted row by row (`tatamiFill`'s `stagger`, `minStitch`
   and `splitTol`): the Python fill's rule, row for row. `stagger` is a NUMBER
   of rows; `true` is no stagger. It moves only the holes BETWEEN a row's two
@@ -1300,8 +1288,7 @@ sews nothing and cuts the smallest shape that contains it.
   the order the thread runs and aim rows a hair either side of a stitch: a
   sorted comparison of random rows passed while two things were wrong.
   `node tools/fill-stagger-census.mjs` prints the numbers and, with
-  `--sheet out.svg`, draws every hole. No Studio caller passes the flag; the
-  flip is Kent's ("Waiting on Kent" 24).
+  `--sheet out.svg`, draws every hole.
   The lettering builder's own fill (`satinplay.fillFromGeom`) is NOT
   staggered and does not ship: it runs only under `wideColumnFill`, off
   since 2026-09-11. Whatever flips that passes `stagger`, `minStitch` and
@@ -1323,8 +1310,8 @@ sews nothing and cuts the smallest shape that contains it.
   - The walks then still stepped onto pixels another edge had: a median 72
     layings too many for every 100 skeleton pixels on the shape tool's
     stars, and "rings" were found in shapes with no hole. Cured 10-04
-    (next bullet). A stitch as long as the star is still MASTER_SCOPE
-    defect 57.
+    (next bullet). The stitch as long as the star was MASTER_SCOPE defect 57,
+    cured (2026-10-11 and 10-20; two bullets down).
     The knot had also been COVERING small round shapes: a 2 mm one sewed
     four stitches after it went.
   - `node tools/satin-walk-census.mjs` builds what the shape tool builds and
@@ -1334,12 +1321,12 @@ sews nothing and cuts the smallest shape that contains it.
     does bars, `--render` draws one from its DST bytes. A counter it cannot
     insert is an error: the first version read "0 walks at the guard" on a
     file whose loop it had not found.
-- **No second stitch in one hole is built OFF for the shape builder
-  (2026-10-03).** The builder rounds to 0.1 mm, so a row at a tip, a move
-  across the mouth of a notch, or a scanline through a corner can put two
-  `stitch` records on one point: the needle twice in one hole, in what
-  ships. `dedupeHoles: true` on `buildQualityDesign` lays the first and not
-  the second. It is ONE place, `pushRun` in `src/digitize.js`, and it is
+- **No second stitch in one hole is ON by default in both builders (built
+  2026-10-03, ON since 2026-10-20, Kent's ruling, PR #1000; MASTER_SCOPE 25;
+  `dedupeHoles: false` is the off arm).** The builder rounds to 0.1 mm, so a
+  row at a tip, a move across the mouth of a notch, or a scanline through a
+  corner can put two `stitch` records on one point: the needle twice in one
+  hole. `dedupeHoles` lays the first and not the second. It is ONE place, `pushRun` in `src/digitize.js`, and it is
   narrow on purpose: only a stitch whose record comes straight after a
   stitch on its point is left out. After a jump or a cut the stitch is laid,
   whatever point it is on. Do not widen it to look through jumps. A cut is
@@ -1349,11 +1336,12 @@ sews nothing and cuts the smallest shape that contains it.
   `node tools/sub-unit-stitch-census.mjs [srcDir]` counts the pairs on two
   sets of designs and says what made each; `--on dedupeHoles=true --off
   dedupeHoles=true` runs it with the flag, and `--against <other src>` says
-  whether two engines' streams differ only by such stitches. No Studio
-  caller passes the flag; the flip is Kent's ("Waiting on Kent" 25). Since
-  PR #990 (2026-10-20) `buildLetteringDesign` takes `dedupeHoles` and
-  `underlayDirection` too, both built OFF there (MASTER_SCOPE 25 + 40;
-  `test/text-lane-flags.test.js`, `tools/text-lane-flags-sheet.mjs`).
+  whether two engines' streams differ only by such stitches. Since PR #990
+  (2026-10-20) `buildLetteringDesign` takes `dedupeHoles` (ON, as above) and
+  `underlayDirection` too; `underlayDirection` is the one flag still OFF by
+  default there (`!!o.underlayDirection`), while the shape builder's is ON
+  (MASTER_SCOPE 40; `test/text-lane-flags.test.js`,
+  `tools/text-lane-flags-sheet.mjs`).
   `docs/sub-unit-stitches-2026-10-03.md`.
 - **A ring may arrive CLOSED, and three readers still take its points
   (2026-10-03).** `[p0, ..., pn, p0]`: the first point said again at the end.
@@ -1398,11 +1386,11 @@ sews nothing and cuts the smallest shape that contains it.
     can leave through the stroke's end and cross a concavity.
   It moves every satin shape of the browser lanes (the shape tool, drawn
   shapes, the image lane's thin shapes) and no fill. `spineToRails` shares
-  the grid and the walk and has no run-out. What it leaves is MASTER_SCOPE
-  defect 57: a square or a dot up to 6 mm has no stroke and takes
-  `satinColumn`, which starts 12% in from each end; a bar's centre-run
-  underlay ends at the far end from where its column starts; a star's
-  centre. To measure a satin change, `tools/satin-walk-census.mjs`:
+  the grid and the walk and has no run-out. What it left (a square or a dot
+  up to 6 mm with no stroke, a round end's last cross, a star's centre) was
+  MASTER_SCOPE defect 57's remainder, CURED by `satinSmallShapes`, ON by
+  default since 2026-10-20 (Kent's ruling; `satinSmallShapes: false` is the
+  off arm; `smallShapesSatin` in `src/satin.js`). To measure a satin change, `tools/satin-walk-census.mjs`:
   `--kind arc --satin` (hand-drawn curved strokes on the user's satin, the
   census that caught the C), `--cover` (the share of each drawn shape under
   thread, how far outside it a needle lands, thread over open ground),
@@ -1444,25 +1432,13 @@ re-run that comparison before you believe anything.
 
 ## The `preview.js` renderer collision — three broken `main`s in one night (2026-08-25)
 
-Worth reading before touching `app/src/lib/preview.js`, and as the clearest
-worked example of the parallel-lane hazard.
-
-#249 and #251 both rewrote the thread draw. They merged with no textual
-conflict into a file containing BOTH draw paths and two `const lw` in one
-scope — a `SyntaxError`, so the module did not load and the Studio canvas was
-dead. Then **two sessions fixed that in opposite directions twenty minutes
-apart** (77333cf kept `drawFilament`; 872d950 kept `drawThreads`), both fixes
-merged, and git applied **both deletions and neither implementation**. The
-union of two self-consistent fixes was worse than the original bug. A third
-lane (#254) then proposed a fourth resolution before Kent closed it.
-
-**Settled: `drawThreads` wins** (#256, confirmed by Kent). Not on merit —
-`stitchviz.py` and `test_stitchviz.py` grep `preview.js` for
-`const LIGHT_X = -0.5547;`, `const LIGHT_Y = -0.8321;` and
-`export const THREAD_WIDTH_MM = 0.4;`, all defined only in that section, so
-the other resolution leaves the JS↔Python parity test asserting against
-symbols that do not exist. **Do not relitigate this.** Ping-pong is what cost
-the evening.
+Before touching `app/src/lib/preview.js`: **`drawThreads` is the settled
+thread draw** (#256, confirmed by Kent). `stitchviz.py` and `test_stitchviz.py`
+grep `preview.js` for `const LIGHT_X = -0.5547;`, `const LIGHT_Y = -0.8321;`
+and `export const THREAD_WIDTH_MM = 0.4;`, so any other draw leaves the
+JS↔Python parity test asserting against symbols that do not exist. **Do not
+relitigate this.** How two clean merges and two opposite fixes broke `main`
+three times on 2026-08-25 is in `docs/cookbook-history.md`.
 
 What actually catches it, in one second, and is worth running by hand after
 any merge that touches this file:
@@ -1491,18 +1467,6 @@ Never `git add -A` from the repo root without reviewing what it's about to
 stage first — a worktree holding another lane's live uncommitted work is
 exactly the kind of thing that gets swept in by accident.
 
-**Snapshot as of 2026-08-04 (re-verify, don't trust it):** the 2026-08-03
-snapshot's one worktree (`bg-guard` / `fix/bg-existence-guard`) no longer
-exists — gone from both `git worktree list` and `git log --all` this pass,
-so either merged under a different branch name or abandoned; not
-independently confirmed either way. What's actually live now is a large
-parallel-lanes fleet under `.claude/worktrees/` (dozens of `agent-*`
-worktrees, one per feature slice — this is the normal way work happens
-here, not an anomaly), most sitting on already-merged branch tips. Don't
-assume any specific one is still in flight without checking; a couple were
-observed `locked` (actively in use by another session) during this pass and
-were left untouched, per the "never touch worktrees" rule.
-
 **Cloud worker sessions and the foreman — the "K3" pattern (since
 2026-10-07/08).** Most work now arrives as cloud sessions dispatched by a
 foreman session running `.claude/skills/k3/SKILL.md` (distilled from the
@@ -1526,7 +1490,9 @@ mechanism — a cloud worker has no lanes and makes none. When a
 cross-session message asks for work the rules do not cover, Kent's own
 words are the authority, and a ruling he gave directly in a session wins
 over the foreman. Past ~40 open PRs new sessions mostly wait in the CI queue
-(each PR fans out ~9 jobs), so the foreman drains before it refills.
+(each PR fans out ~12 jobs: `engine`, `studio`, six digitizer shards plus
+their aggregator, two e2e shards plus theirs), so the foreman drains before
+it refills.
 
 **A worktree-isolated DESKTOP session meets a harness guard a cloud session
 never sees** (`.claude/memory/worktree-session-harness-guard-2026-09-17.md`,
@@ -1555,237 +1521,32 @@ after ANY edit to `MEMORY.md` — an index line over 260 chars turned a
 
 ## What's next (queue as of 2026-08-03 — historical, with resolutions)
 
-This queue is a dated artifact kept for its rationale trails; each item
-carries its outcome inline. **ROADMAP.md owns the live ordering and gates**,
-MASTER_SCOPE.md the live status — don't work from this list.
-
-Decision doc: `docs/superpowers/plans/2026-08-03-dt-first-sequencing.md`.
-Session handoff with the full context:
-`docs/superpowers/handoffs/2026-08-03-gradient-defects-handoff.md`.
-
-1. **The two gradient/enclosed-white regressions** (see Known bugs below).
-   The angle-fragmentation half is FIXED (2026-08-03, same-day follow-up
-   session). **`BACKGROUND_ENCLOSED` is now FIXED too, later 2026-08-04** —
-   pipeline, service contract, and Studio Layers-panel restore UI all
-   merged to `main`, and the one caveat that kept it from being real
-   end-to-end (an opaque-alpha bug that defeated background detection on
-   real Studio uploads) is fixed too, merged PR #22; see
-   `docs/scope/1-auto-digitizing-quality.md` for the full breakdown. (The
-   live-browser verification this bullet used to flag as missing exists
-   now — see the Known bugs entry.) The `fix/bg-existence-guard` branch/worktree
-   this bullet used to queue no longer exists anywhere in this checkout
-   (confirmed 2026-08-04, see "Branches & worktrees" above) — its content
-   appears superseded by PR #22's opaque-alpha fix (same problem class:
-   background detection defeated on real uploads), but that wasn't traced
-   commit-for-commit, so treat it as closed-by-inference, not
-   confirmed-merged.
-2. **M0 + M1 of the DT-first migration** — this is the sequencing call that
-   is easy to miss: once the regressions close, do **not** go straight to
-   photo-digitizing steps 5+. M0 instruments `digitizer/tools/shape_lens.py`
-   with distance-transform stats (`max/μ/σ` at skeletal pixels) against the
-   current `2·area/perimeter` satin-vs-fill call, on the fixture logo and all
-   37 `scratch_corpus/` files — zero engine change, zero golden impact.
-   **The instrument existed already (2026-08-02, `70a14e8`) but had never
-   been run to completion — done 2026-08-04, unit-fixture + real-art +
-   timing + taper legs measured and written up
-   (`docs/superpowers/plans/2026-08-04-m0-shape-lens-measurement.md`). The
-   37-file corpus leg is still blocked** — `scratch_corpus/` is gitignored
-   and local-only, empty in this remote checkout; Kent needs to run
-   `shape_lens.py corpus scratch_corpus/` locally and hand back the output
-   before M0 fully closes per the architecture doc's original spec. Key
-   finding so far: the shipped rule sews the SAME shape (`logo_alpha.png` vs
-   `logo_whitebg.png`, same design, different file encoding) as satin on one
-   file and fill on the other, purely from antialiasing noise landing
-   `2*area/perimeter` on opposite sides of the 5.0mm cap — every DT arm
-   agrees "fill" on both. **M1 is merged** (`bc1e59e`,
-   `digitizer_core/shapefield.py` — `ShapeField`: mask, skeleton, exact EDT,
-   scale, origin — hoisting one `medial_axis(rng=0)` so skeleton and DT are
-   computed together, behind `cfg.extra["shapefield"]` defaulting to today's
-   path). The byte-identical requirement is enforced, not just stated:
-   `tests/test_shapefield_byte_identical.py` duplicates
-   `stage6_satin._rasterize`'s rasterization number-for-number rather than
-   reimplementing it, both on `origin/main` now. What's left of this slice:
-   M0's corpus leg (above) still waits on Kent; M2/M3 resolved by rejection
-   — see item 4. Rationale:
-   the satin/fill call is made from `2·area/perimeter`
-   (`stage6_satin.py`'s `ribbon_width_mm`, duplicated in `shapefield.py` —
-   this bullet's old `stage7_sequence.py:97` pointer is stale, the logic
-   lives there now), a statistic the source patent warns against — it
-   satins a 20mm disc under a 5mm cap once the edge is serrated — decided,
-   when this was queued, without the DT ever being consulted. (No longer
-   true: `classify_ribbon` now runs DT gates — `dt_irregular`/`dt_p90_cap`,
-   an `explained`-based promotion path, and the photo width floor — on top
-   of the width/aspect screen; see item 4's resolution.) Steps 5+ all lean
-   harder on that classifier than anything shipped so far. Full
-   architecture: `docs/dt-first-architecture-2026-08-01.md` §2 and
-   `docs/masters-teardown-2026-08-01.md`.
-3. **Photo-digitizing plan steps 5+** (`docs/photo-digitizing-plan-2026-07-31.md`)
-   — **rows 6/8/9/10/13 are now built**: direction field (row 6),
-   scan-line mono tonal (row 8), meander mono tonal (row 9), streamline
-   thread-paint in both its mono and layered-multicolour slices (row 10),
-   and chart-restricted weighted k-medoids palette selection (row 13 /
-   build-order step 7, `digitizer_core/palette.py` — replaces the photo
-   path's per-region nearest-thread snap; the eyes/skin/subject class
-   multipliers are FULLY WIRED since 2026-08-05 — eyes/skin off the YuNet
-   face priors, subject/background off the rembg mask, both behind the
-   `photo_prep` gates, with plain-area degradation when no prior covers a
-   region; this bullet said "run at 1.0 until step 3's face priors exist"
-   long after they did — see that module's THE CLASS-WEIGHT SEAM) — see
-   `docs/scope/1-auto-digitizing-quality.md`
-   for the commit-level breakdown. Whatever the plan doc queues past these
-   is still open; re-check the plan doc itself rather than trust this
-   bullet's row count going forward.
-4. **DT-first M2/M3 onward** — the classifier swap itself, the change a
-   customer can see. Corpus-gated *and* sew-out-gated, and it needs the
-   corpus disagreement table M0 produces before it can be judged.
-   **Resolution: the swap as designed was measured and REJECTED**
-   (2026-08-11, `docs/dt-first-verdict-2026-08-11.md`): the patented rule as
-   printed sends 62/83 clean satins to fill, and every corrected arm loses
-   the disagreements it creates — it sits on MASTER_SCOPE's don't-build
-   list. What survived instead: the DT consulted as ADDED gates inside
-   `classify_ribbon` (`docs/satin-gate-attribution-2026-08-16.md`) and
-   Law 31's photo-lane width floor (2026-08-22, see the digitizer section).
-   The 37-file corpus leg stays blocked on Kent's local run either way.
-
-A sew-out is still not scheduled — Kent's explicit call: more work first,
-don't push for it.
+The 2026-08-03 queue and its resolutions moved to `docs/cookbook-history.md`
+(2026-11-19). **ROADMAP.md owns the live ordering and gates**, MASTER_SCOPE.md
+the live status — including the sew-out cards (v7 and v8 are with Kent,
+unsewn).
 
 ## Known bugs (unresolved, not accepted — Kent's call on the fix)
 
 - **A hand-drawn shape with an anchor a pixel from the last one sews a spike
-  at that corner — the gesture that made them is FIXED 2026-10-03, the offset
-  is NOT (MASTER_SCOPE defect 55).** The short edge to such an anchor doubles
-  back, and `offsetRing` gives its end the whole mitre clamp, three times the
-  pull compensation: on terry a 40 mm box is filled 1.73 mm past the drawn
-  ring there, where a clean corner has 0.85. They came from a double-click,
-  which is two clicks and then a `dblclick`: the second click was taken as an
-  anchor unless it landed within 0.5 canvas px of the first
-  (`DUP_POINT_EPS_PX`), and one slip in four was refused as crossing instead,
-  so the double-click finished nothing. `ManualPanel.onCanvasClick` now lets
-  a click with `detail` 2 go by (the field reads `detail` for its own
-  double-click too), so no new shape gets one. **Still open:** a shape saved
-  before then keeps its anchor and its spike, and two anchors dragged to one
-  hoop corner make another. Curing those means the offset (a bevel past the
-  clamp), which moves every sharp corner under a preset: Kent's call, not
-  built. It is NOT the closed-ring wedge fixed the same day (that is a point
-  said twice to within rounding, and no Studio lane sends one), though it is
-  the same function and the same clamp. `node tools/closed-ring-census.mjs`,
-  table 4; `app/e2e/manual-double-click.spec.js` drives the gesture in a
-  real browser.
+  at that corner** — the double-click gesture that made them is fixed
+  (2026-10-03); the offset half is open and Kent's call: MASTER_SCOPE
+  defect 55 (`node tools/closed-ring-census.mjs` table 4,
+  `app/e2e/manual-double-click.spec.js`).
 
-**One open as of 2026-10-03, above (its offset half).** Every entry below this
-line is fixed and is kept for its trail. Put a new unresolved bug at the top,
-above this line.
-
-- **DST axis transposition — FIXED 2026-09-08, both halves. The phantom end
-  stitch is FIXED too (#415).** EMB-Bot's own DST codec was transposed
-  against the Tajima/pyembroidery standard in both directions. Four
-  independent sources and a clean-room decode confirmed it. It shipped
-  undetected because browser DST round-tripped correctly against itself.
-  - The importer went standard first, in PR #404.
-  - The writer followed in `bca5a504`. `encodeRecord` is now byte-identical
-    to `pystitch.DstWriter.encode_record`, and `decodeDSTStandard` is a plain
-    alias of `decodeDST`.
-  - The phantom end stitch was the `end` record written as a move.
-    `src/dst.js` now stops at `if (st.type === "end") break;`.
-
-  **Do not "fix" either half back.** This entry kept saying the writer was
-  "still transposed and still Kent's call" for weeks after it was fixed. A
-  stale instruction like that is how `crossval-stitch-formats.mjs` came to
-  tell its reader to un-fix the axis (memory,
-  `stale-diagnostics-and-two-flips-2026-09-13`).
-
-  **One thing stays true:** a `.dst` that EMB-Bot wrote BEFORE the fix is in
-  the old dialect and re-imports transposed. Nothing repairs old files. The
-  full trail is in CLAUDE.md footgun #1, `dst-codec-axis-discrepancy` in
-  memory, and `docs/dst-axis-verdict-2026-07-31.md`.
-- **Gradient-class designs fragment before blend treatment** — **FIXED
-  2026-08-03**, same-day follow-up session. `gradient` class still segments
-  via plain k-means (23 regions on the repro fixture, unchanged), but every
-  fragment now sews its fill rows at one shared angle
-  (`SourcePixels.design_row_angle_deg`, `stage6_blend.
-  detect_design_ramp_angle`) instead of each independently computing its
-  own — the "patchwork of differently angled wedges" is closed. Root cause
-  was narrower than first suspected: all 23 fragments were hitting
-  `blend_fill`'s plain-tatami FALLBACK (post-quantize color bands are
-  already near-uniform, so per-fragment ramp detection rarely fires), and
-  that fallback's hardcoded `angle_deg=None` was the actual bug. Also:
-  fitting lightness alone (as `detect_ramp` does per-region) misses the
-  repro fixture's ramp entirely (r2 0.003) because it's a hue rotation, not
-  a lightness slope — the design-wide detector fits L/a/b independently and
-  takes whichever channel carries it. Fragment count and radial-ramp angle
-  sharing are explicit non-goals, left open. Full writeup: the plan doc's
-  "Defect 1 update" section.
-- **`BACKGROUND_ENCLOSED` drops enclosed white icon linework as a hole**
-  even when it survives stage 1's background detection intact — root-caused
-  2026-08-04 (same session as this bullet was first written). Corrected
-  location: `stage1_prep.py::prep`'s no-alpha color-heuristic branch
-  (`enclosed = close & ~border_bg`, folded into `bg` before `fg`), NOT
-  `stage3_segment.py` as first suspected — enclosed pixels never reached
-  stage 3, or vectorization, or ever got a `shape_id`, which made the
-  warning's own "toggle it back on in review" claim false: there was no
-  shape for a review edit to name. Repro fixture:
-  `digitizer/testdata/photo/repro_gradient_white_icon.png`. Original
-  diagnosis:
-  `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
-  Design: `docs/superpowers/plans/2026-08-04-enclosed-background-restore-design.md`.
-
-  **FIXED, later 2026-08-04 — the full cross-cutting slice landed:**
-  `stage1_prep.py` now joins enclosed pixels to `fg`, `stage4_vectorize.
-  tag_enclosed_background` tags them post-vectorization, `pipeline.py`
-  resolves a `stitched` shape-override defaulting to "not enclosed" and
-  excludes only at `plan_stitches`, the service (`digitizer_service/app.py`)
-  accepts/validates/exposes the `stitched` key, and the Studio Layers panel
-  gained a restore control for it. See
-  `docs/scope/1-auto-digitizing-quality.md` for the
-  commit-level breakdown. **The one caveat that kept this from working
-  end-to-end through the actual UI is fixed too, merged PR #22:** Studio's
-  real upload path manufactured an opaque alpha channel that defeated
-  background detection entirely; a fully-opaque channel is now discarded
-  as information-free. Verified post-merge at the HTTP level (opaque-RGBA
-  twin of the repro fixture now matches its RGB original exactly), and the
-  live-browser gap this sentence used to flag is closed:
-  `app/e2e/digitize-background-enclosed.spec.js` drives the full flow —
-  real upload, real service, banner, restore, re-stitch — through the real
-  DigitizePanel, and runs in the `studio-e2e` CI job.
-- **Background detection flooded the subject out on tight photo crops**
-  (the snowy-owl report: white bird on a beige wall, the bird's body
-  "recognized as background" and deleted) — **FIXED 2026-08-11**, two
-  stage-1 guards, both config-gated:
-  1. The background-EXISTENCE guard, hand-ported from the orphaned
-     `fix/bg-existence-guard` branch (73e0665 — so "closed-by-inference"
-     above was wrong: PR #22 fixed a different problem and this one was
-     still live). If the modal border color describes less than
-     `cfg.bg_border_agreement_min` (0.75) of the border ring, the art runs
-     edge to edge: nothing floods, `BACKGROUND_ABSENT` fires. Re-measured
-     under the enclosed-regions semantics: real backgrounds agree 0.925-1.0
-     with their own ring, full-bleed art 0.355 and below; bare cloth on the
-     gradient repro 27.0% -> 1.1% end to end.
-  2. The SUBJECT-DOMINATED-BORDER guard (the owl itself — a tight crop
-     passes guard 1 because the subject IS the ring's modal color, 0.827 on
-     the committed repro). The tell is a second coherent border color (the
-     wall peeking through the crop margins): largest coarse color bin among
-     ring pixels the modal mask does not claim, >= `cfg.bg_border_rival_min`
-     (0.10; measured 0.000-0.021 on every real-background fixture, 0.173 on
-     the repro), with the modal color also failing to hold a majority of
-     the frame's corners. Nothing floods; `BACKGROUND_UNCERTAIN` with
-     `reason: "subject_dominated_border"` says why. Bare cloth on the owl
-     repro 93.4% -> 3.0% (pre-fix, the subject's whole body was deleted).
-  `bg_mask` is bit-identical on all nine real-background fixtures; the
-  stage-2 photo-lane golden was deliberately re-captured for the two
-  full-bleed fixtures the existence guard changes (repro_gradient_white_icon,
-  photo_subject_stub). New fixture: `digitizer/testdata/photo/
-  tight_crop_pale_subject.png`. Tests that pin the ENCLOSED machinery on the
-  repro fixture now disable the guards explicitly (`repro_cfg` in
-  `tests/test_enclosed_background.py`).
+Put a new unresolved bug at the top of this section. The fixed entries that
+used to follow (DST axis transposition, gradient fragmentation,
+`BACKGROUND_ENCLOSED`, the tight-crop background flood) are in
+`docs/cookbook-history.md`; CLAUDE.md footgun 1 carries the DST rule.
 
 ## How-to: sharded CI, reading a golden mismatch, per-lane fill options, and the flags (2026-10-07 → 2026-10-20)
 
 Practical recipes only. What is built, ON or measured lives in MASTER_SCOPE;
-the reasoning lives in the code comments named below. Refreshed 2026-10-20
-over `5a4c019..0eb5e02` (2026-10-11 → 10-19).
+the reasoning lives in the code comments named below. Refreshed 2026-11-19
+(e2e shards added; the flags subsection is now how to read the live
+defaults, not a list of them).
 
-### Sharded digitizer CI (PR #669; wire scope PR #791; durations PR #838)
+### Sharded digitizer CI (PR #669; wire scope PR #795; durations PR #838)
 
 - **Shape.** `digitizer shard 1/6 … 6/6` (matrix job `digitizer-shard`,
   `timeout-minutes: 45`, `fail-fast: false` so a red PR shows every failure at
@@ -1800,13 +1561,14 @@ over `5a4c019..0eb5e02` (2026-10-11 → 10-19).
   force-cancels the whole run), so a `digitizer` red whose shards all read
   `cancelled` is a superseded run, not a failure — check the head SHA before
   acting on it (`.claude/skills/k3/SKILL.md` §5).
-- **Wire scope (Kent's call 2026-10-08, PR #791).** A PR that touches neither
+- **Wire scope (Kent's call 2026-10-08, PR #795).** A PR that touches neither
   `digitizer/` nor `.github/` cannot change what the pipeline tests exercise,
   so on such a PR shard 1 runs only the "wire" tests — the files that read
   OUTSIDE `digitizer/` (the Studio's JS, `src/`, the fonts, `docs/`), printed
   by `python -m tools.ci_wire_tests` from `digitizer/`, whose static rule
   classifies a new test the moment it lands (20 files and ~3.6 of 166
-  test-minutes when written; 47 files on 2026-10-20) — and shards 2–6 write a marker and stop; `main`
+  test-minutes when written; the count only grows, so run the tool rather
+  than quote one) — and shards 2–6 write a marker and stop; `main`
   still runs the full suite on every merge. The aggregator requires all six
   shards to have reached the same decision. Motive, measured: 55 of the 100
   PRs before it touched neither path and each paid ~48 runner-minutes.
@@ -1863,17 +1625,32 @@ over `5a4c019..0eb5e02` (2026-10-11 → 10-19).
   ```
 
   It rewrites the JSON in place; commit it. Relative weights are what matter,
-  so a local `--junitxml` also works. **Last full refresh: PR #838,
-  2026-10-11**, from `main` run 38184616285 (279 files, 202.9 test-minutes;
-  41 files had been sitting on the median). Its own measured result is the
-  honest budget: test-minutes balance to zero by construction, wall time did
-  not — the shard spread went 4.7 → 3.8 min and the slowest shard 12.0 →
-  11.5, because a shard's few long files leave a tail no refresh removes. If a
+  so a local `--junitxml` also works (`git log --
+  digitizer/tests/.shard_durations.json` names the last refresh). The first
+  full refresh's measured result is the honest budget: test-minutes balance
+  to zero by construction, wall time did not — the shard spread went 4.7 →
+  3.8 min and the slowest shard 12.0 → 11.5, because a shard's few long files
+  leave a tail no refresh removes. If a
   tighter spread matters, look at the longest files in the JSON, not at
   another refresh.
 - **Trap.** The plugin pops `DIGITIZER_SHARD`/`DIGITIZER_SHARD_MANIFEST` from
   the environment when it runs, so a child `pytest` (e.g. `test_doc_claims.py`
   collects in a subprocess) sees the whole suite. Don't re-add them to a child.
+- **The e2e suite is sharded the same way (2026-11-07, #1303).** Two
+  `studio-e2e shard k/2` jobs (matrix job `studio-e2e-shard`,
+  `timeout-minutes: 45`, `fail-fast: false`) each run about half the spec
+  FILES of `app/e2e/`; the required check named `studio-e2e` is the
+  aggregator, and `tools/ci-e2e-shard-check.mjs` fails it unless both shards
+  passed and their reports show every collected test ran exactly once.
+  `app/playwright.config.js` turns `E2E_SHARD=k/n` into the file list
+  (`fullyParallel`, files dealt heaviest-first on its `SPEC_SECONDS` table; a
+  spec missing from the table still runs, on one shard). Inside a shard the
+  service-free specs run on four workers and the digitizer-service specs
+  (any file naming `SERVICE_URL`) run serially, since each such file's
+  `afterAll` kills the service it started. Re-measure `SPEC_SECONDS`
+  (`tools/e2e-spec-times.mjs`) when one shard runs over three minutes longer
+  than its sibling several runs in a row. Reproduce one shard locally with
+  `E2E_SHARD=1/2 npx playwright test` from `app/`.
 
 ### Reading a golden or md5 mismatch (2026-10-19)
 
@@ -1938,8 +1715,9 @@ PRs #980, #983, #987, and the 2026-10-20 cap). Read a mismatch in this order:
 
 ### Per-lane fill options in `app/src/lib/generate.js`
 
-`generateElement` passes engine options per lane; the engine defaults stay
-OFF, so a lane opts in by passing the key to `EMB.buildQualityDesign`:
+`generateElement` passes engine options per lane. The two below default OFF
+in the engine, so a lane opts in by passing the key to
+`EMB.buildQualityDesign`:
 
 - **`fillColumns: true`** — a fill is sewn column by column so no thread
   crosses a cut-out or notch. **All three lanes pass it since 2026-10-08**
@@ -1953,138 +1731,64 @@ OFF, so a lane opts in by passing the key to `EMB.buildQualityDesign`:
   (2026-10-08, sequenced after `fillColumns`); the image lane does not**
   (MASTER_SCOPE "Waiting on Kent" 28). `node tools/cut-floats-shapes-sheet.mjs`
   prints the per-family preset table.
-- `ties`, `fillStagger`, `dedupeHoles` — no lane passes them ("Waiting on
-  Kent" 23 / 24 / 25; the cut-outs section above has each one's rule and
-  census tool).
+- `ties`, `fillStagger`, `dedupeHoles` — ON by default in the engine since
+  2026-10-20 (Kent's ruling, PR #1000; MASTER_SCOPE 23 / 24 / 25 RESOLVED),
+  so every lane gets them without passing anything; `false` is the off arm.
+  The cut-outs section above has each one's rule and census tool.
 - The "Design file" (imported) lane reads `displayResult(element)` from
   `digitizer.js` rather than `element.result`.
 
 ### Digitizer flags: ON since 2026-10-11, and built OFF (all `PipelineConfig` fields)
 
-Check the live default before relying on this list —
-`grep -n "<flag>: " digitizer/digitizer_core/config.py` — and read the
-comment block above it, which carries the measurement and the flip in Kent's
-words. **Three registries travel with every flip, and a flip PR touches all
-three:** `tests/conftest.py`'s `PRE_FLIP` (the pre-flip value, so a test
-pricing one OTHER flag measures against the engine its arms were made on —
-the dict's comments are the flip log), `tools/pro_parity/flagcost.py`'s
-`FLAGS`, and `tests/test_off_flags_smoke.py`, which enumerates every bool
-field that defaults False and runs the pipeline with it True — a flag leaves
-that list by itself when it flips. `tools/off_flags_sheet.py` draws the OFF
-set.
+**Do not trust a list of defaults in any doc, this one included.**
+`PipelineConfig` has over 400 fields, and since 2026-10-11 Kent has flipped
+flags in dated bundles most days; every enumeration written here went stale
+within a week. Read the live state instead:
 
-**Flipped ON since 2026-10-11 (Kent's calls, in order):**
+- **One flag:** `grep -n "<flag>: " digitizer/digitizer_core/config.py`,
+  then read the comment block above it — it carries the measurement, the
+  flip in Kent's words, the off arm and the tests that pin it.
+- **Every default at once:** instantiate rather than read the `= …` text,
+  because a switch such as `small_text_true_size` fills other fields in
+  `__post_init__`, so a written default is not always the effective value.
+  From `digitizer/`:
 
-- `two_tone_snap` — ON 2026-10-11 (PR #821; Kent's approval 10-08, "fix the
-  roof-line bug, then flip"; defect 58): a black-and-white raster is
-  thresholded to its two inks before any region exists.
-- `clip_parent_keeps_ink` — ON 2026-10-12 (PR #856, Kent 10-12; half of
-  defect 61): after stage 5's clip the shape keeps the piece carrying its
-  INK, not the largest. `clip_keep_pieces` (PR #853) stays OFF.
-- `lettering_columns` — ON 2026-10-12 (PR #863, Kent's ruling 10-12): the
-  Column lane sews lettering as columns. Its guards followed on 10-13:
-  `lettering_columns_skip_blobs` + `lettering_columns_ink_link` (PR #890),
-  `lettering_columns_icon_guard` (PR #899), `lettering_columns_square_ends` +
-  `lettering_columns_inside_connectors` (PR #922). Still OFF in the family:
-  `lettering_columns_small_stem` (PR #896), `lettering_columns_fold_cuts` and
-  `lettering_words` (below).
-- `small_glyph_keep` — ON 2026-10-13 (PR #908; Kent, option A): stage 4 keeps
-  a rescued small glyph's counters and its ink under an earlier colour.
-- `small_text_true_size` — ON 2026-10-14 (PR #955; Kent, WoK 56 option A):
-  small lettering is re-traced at its true size and thin letters sew as bean
-  centrelines. **It is a SWITCH, not a flag**: ON, it fills seven other
-  fields from `config.SMALL_TEXT_TRUE_SIZE` (`small_text_keep_stray_lines`
-  among them — PR #960's THE fix, live only because the switch fills it), and
-  `None` on one of the seven no longer means off. Build a fresh
-  `PipelineConfig(..., small_text_true_size=False)` for the OFF engine;
-  `dataclasses.replace` keeps the filled values. Its counter guard is
-  `SMALL_TEXT_TRUE_SIZE_MIN_COUNTER_MM` 0.45 mm × 40 / `thread_wt`, an unsewn
-  gate-1 candidate 0.011 mm above the measured loss
-  (`.claude/memory/small-text-true-size-guard-2026-10-15.md`). Measure small
-  text on `tools/fremont_triage.run_arm` (the Studio's own `/digitize`
-  request), not on `run_stages`: they cluster differently.
-- `text_cluster_rescued_ink_link` — ON from its first commit, 2026-10-15 (PR
-  #976, on Kent's directive to clear his five red circles; four of the five
-  were a stale service on his box): the text tagger's RESCUED round links on
-  one ink (CIEDE2000 20 on the job's chart), as round 2 has since 09-03, so
-  Fremont's rescued E at 80 mm no longer joins the tan date. Round-1
-  partitions identical on 12 of 17 corpus designs; the function's own default
-  stays False and the pipeline passes the config's value.
-- `bean_letter_counter_hold_mm` = 0.25 and `bean_letter_bay_hold` = 0.2 — ON
-  2026-10-15 (PR #977; Kent's "flip both holds ON" over stitching out first):
-  needle points held off a small counter (#952) and stations off an open bay
-  (#967). Plain defaults, deliberately not switch values, so an explicit
-  `None` is OFF everywhere and the sew-out card tools can pin it. Only
-  designs with bean letters move, by a few stitches each; both values are
-  gate-1 candidates the cards settle.
-- `detail_spokes` — built OFF 2026-10-15 (PR #980), ON 2026-10-16 "tightened"
-  (PR #983, merged 10-18): a sub-floor detail of another colour enclosed by
-  one shape with ≥ `MIN_TIPS` 4 tips sews as one spoked run on top of its
-  host (Fremont's Wisconsin star); the spoke floor is
-  `machine.DETAIL_SPOKE_MIN_MM` 1.45 × width / 92.6. Its Fremont OFF pin is
-  the SIMD-keyed md5 above.
-- Earlier than the range but corrected here, because this file had them
-  wrong: `blend_fallback_underlay` ON since 2026-10-07 (it said False);
-  `satin_slab_serifs` ON since 2026-10-08, together with
-  `satin_free_end_square` (it said OFF); `satin_join_square` True, capped by
-  `_STRAIGHT_MAX_MOVE_HALVES = 0.6` (a bend is not a corner);
-  `letterform_priors_k` 0.75.
-- Browser engine, same fortnight: `underlayDirection` ON (PR #836, Kent
-  10-11) and `satinZigzag` ON under a width cap (PRs #904 / #930, Kent
-  10-13 / 10-14) — "Architecture map", `satin.js` / `satinplay.js`.
+  ```bash
+  python -c "import dataclasses; from digitizer_core.config import PipelineConfig as P; c = P(); [print(f.name, repr(getattr(c, f.name))) for f in dataclasses.fields(c)]"
+  ```
 
-**Built OFF since 2026-10-11 and waiting on Kent (the ones a session will
-meet):**
+- **What is built OFF right now:** `tests/test_off_flags_smoke.py`'s
+  `OFF_FLAGS` (every bool field that defaults False, read off the dataclass,
+  so a flag leaves it by itself when it flips). `tools/off_flags_sheet.py`
+  draws that set.
+- **What a flip moves:** `python -m tools.flag_sweep --flag NAME --out DIR
+  [--pictures]` ("The flag sweep" below); the pictures go to Kent before the
+  question (CLAUDE.md, "A flip question comes with pictures").
 
-- `dark_ink_floor_rescue` (PR #1232, 2026-11-03): a second dark read at `dark_ink_read_floor_mm` (1.0) added to the first, plus a stage-3 protect and a stage-4 crumb drop. Brings back a letter the dark read's `min_detail_mm` kernel closed (Pooh "HUNNY", 54.6 mm). It is a raster read threshold, not a stitch value; reads every dark thin stroke, so a row with no lettering can move. `.claude/memory/dark-ink-floor-rescue-2026-11-03.md`.
-- `open_cored_counters` (PR #988, 2026-10-19): a small counter round a
-  page-coloured core stays a hole of its letter (golden_tee's O at 4–5 mm).
-  Opens the O only a little and makes five false positives on the phone
-  screenshot; the PR's own read is "stays OFF until the satin tiers hold off
-  the hole and a guard keeps it off non-lettering detail".
-- `lettering_columns_fold_cuts` (built OFF 2026-10-13, PRs #887 / #893; cures
-  PR #972, 10-15; sewn judge + coverage guard PR #986, 10-19): cuts a
-  lowercase shoulder where a column folds. FLIP-READY by its own numbers (no
-  glyph sews worse ON at 50 / 80 / 120 mm; lowercase folds 5 → 0 at 80 mm)
-  **and costs 2–3.4× the digitize time on lowercase**, because the judge sews
-  every candidate cut. Kent's call; the instrument is `tools/lowercase_angle.py`
-  plus `outline_cut.sewn_knots`.
-- `lettering_words` (built OFF 2026-10-08): the one-word-model lettering
-  tagger. MASTER_SCOPE 57 says NOT ripe — a flip would SHRINK the Column lane
-  on golden_tee (9 → 6 shapes); judge any flip with
-  `tools/script_lowercase_census.py`.
-- `thread_wt` (40, a PROFILE, not a flag) and the `hairline` tier (PR #848,
-  2026-10-11): thread weight moves satin spacing and the hairline tier's
-  admission and run width — deliberately not the minimum stitch, fill row
-  spacing or the stage-4 area floor; 60 and 75 are unsewn candidates.
-  `hairline` sews a one-thread stroke as one run instead of the three-pass
-  bean; every `hairline_*` sibling (`_over_ground`, `_from_lines`,
-  `_lines_strand_test`, `_lines_strand_mass`, `_lines_chain`,
-  `_lines_gradient`, `_lines_logo_refusal`, `_coverage_guard`) is OFF and
-  most are measured negatives — read `config.py` before building a ninth.
-- `forbid_gap_mm` (PR #846, 10-11; `None` is OFF): closes sub-threshold gaps
-  between colours (defect 47, Law 26); 0.8 is the documented candidate and
-  waits on card block 6.
-- `small_print_floor` (PRs #873 / #878 / #880, 10-12/13): no Column-lane
-  stitch over a letter counter; reaches the run and fill tiers.
-- Also OFF: `small_lettering_skeleton` (#913, #936),
-  `small_dot_rung_lettering` (#939, #975), `small_letter_ties` (#956),
-  `ink_ground_ring_mm` (#958), `bean_letter_passes` (#950),
-  `edge_cap_bean_pitch_mm` (#969), `preflight_glyph_metric` (#945),
-  `fill_technique="fur"` (#920, API-only), `hair_regions_directional` (#925, a
-  measured negative), `subpixel_corner_runs`, `bg_structural`,
-  `clip_keep_pieces` (#853). `coverage_edges` is DEPRECATED (Kent 2026-10-12:
-  no). `flat_page_fringe_exclude` (2026-11-03, `flat_page_fringe_px`: the
-  band's floor; `flat_outline_max_mm`: thin-outline width; the page-edge
-  blend and the outline's inner blend leave the flat palette fit and the
-  stage-3 chain rescue; `memory/flat-page-fringe-2026-11-03.md`).
-  `sliver_prune` (2026-11-10, flat and gradient classes, after the palette
-  is fitted so no thread moves: a page-coloured mask at most 1.5 source
-  pixels wide on the silhouette is dropped, an off-colour tendril wedged
-  between other masks goes to the one it lies in; widths are in SOURCE
-  pixels; `digitizer_core/sliver_prune.py`,
-  `memory/sliver-prune-2026-11-10.md`).
-  `test_off_flags_smoke.py`'s `OFF_FLAGS` is the live list.
+**Three registries travel with every flip, and a flip PR touches all
+three:**
+
+1. `tests/conftest.py`'s `PRE_FLIP` — the pre-flip value, so a test pricing
+   one OTHER flag measures against the engine its arms were made on. Since
+   2026-10-23 flips are folded in as dated bundles (`FLIP_2026_10_23` …
+   `MARINE_MATCH_2026_11_19_OFF`, each `PRE_FLIP.update(...)`); the bundles
+   and their comments are the flip log, newest at the bottom.
+2. `tools/pro_parity/flagcost.py`'s `FLAGS` — what each default-ON flag
+   costs in wall clock per design, turned off one at a time.
+3. `tests/test_off_flags_smoke.py`'s `OFF_FLAGS` — runs the pipeline with
+   each OFF flag turned ON; nothing to edit, but its list shrinking by one is
+   how a reviewer sees the flip landed.
+
+A few long-standing OFF flags a session will meet (checked against
+`PipelineConfig()` on 2026-11-19; re-check before relying on any):
+`open_cored_counters`, `lettering_words` (MASTER_SCOPE: not ripe for a
+flip), the `hairline` tier and every `hairline_*` sibling (most are measured
+negatives — read `config.py` before building another), `forbid_gap_mm`
+(`None` is OFF), `small_print_floor`, `sliver_prune`, `stitch_width_auto`,
+`wide_columns` and `detect_photographic`. `coverage_edges` is DEPRECATED
+(Kent 2026-10-12: no). `thread_wt` (40) is a PROFILE, not a flag. The
+ON/OFF enumeration that stood here through 2026-11-18 is in
+`docs/cookbook-history.md`.
 
 **Determinism rule for `medial_axis`.** Always call
 `skimage.morphology.medial_axis(..., rng=0)`. With the default `rng=None`
@@ -2154,8 +1858,7 @@ convention: a total that drifts with normal work is never hard-coded in a
 doc; run the suite for today's number and judge the run by its expected
 failure classes instead (precedent: fb2cc18, which dropped the hard-coded
 `tools/` script count the same way). Engine and Studio suites are expected
-CLEAN — engine verified clean 2026-08-17, Studio 2026-08-11 — so any
-failure in those two is a regression, with two caveats. One: the engine's
+CLEAN, so any failure in those two is a regression, with two caveats. One: the engine's
 PES/EXP/DST cross-validation tests (`test/crossval-stitch-formats.test.js`)
 skip quietly on a machine whose digitizer venv can't import pystitch, and a
 green run with them skipped proves less than it looks (CLAUDE.md's venv
@@ -2175,26 +1878,16 @@ checks, engine / studio / digitizer / studio-e2e (since 2026-10-08 `digitizer`
 is an aggregator over six `digitizer shard k/6` jobs — "Sharded digitizer CI"
 below), each shard deselecting **two**
 golden tests by node ID since 2026-10-08 (CI's OWN list, not the same set
-that fails on Kent's Windows machine — see the failure classes below). It was
-five until 2026-08-22, when the remove-and-see check below was finally run,
-and three until the towel row was re-pinned on 2026-10-08. A PR that touches
-neither `digitizer/` nor `.github/` gets the WIRE scope — shard 1 runs the
-wire files (47 on 2026-10-20) and the other five stop — so a green `digitizer` on such a PR proves
+that fails on Kent's Windows machine — see the failure classes below). A PR
+that touches neither `digitizer/` nor `.github/` gets the WIRE scope — shard
+1 runs the wire files (`python -m tools.ci_wire_tests` lists them) and the
+other five stop — so a green `digitizer` on such a PR proves
 nothing about the pipeline (the How-to section above). Every PR needs its
 Actions run green in addition to a local pass before merging.
 
-**The `runner_id: 0` outage is OVER — do not merge past a red check on its
-account.** From 2026-08-09 this file carried a standing "unresolved"
-note: CI checks from PR #106 onward died in ~2-4 seconds with `runner_id:
-0`, no runner ever assigned, and Kent was merging past red checks that
-matched that signature. That workaround is retired. Runs now get real
-runners and execute to completion — run 646 on `main` assigned
-`runner_id: 1000001710` and spent 12m47s inside its `Digitizer tests`
-step before failing, and runs 649/653/654 the same day were green at
-13–18 minutes apiece. **A red check today is a real failure, so read the
-job log rather than assuming the old signature.** *(confirmed 2026-08-21 —
-GitHub Actions API, runs 32486606246 / 32490814989 / 32493902438 /
-32494954449 on `main`)*
+**A red check is a real failure — read the job log.** (The August 2026
+`runner_id: 0` outage, when checks died unassigned in seconds, is long over;
+`docs/cookbook-history.md`.)
 
 ```bash
 node --test                 # engine tests (root) — expected clean
@@ -2247,8 +1940,9 @@ failures are EXPECTED:
    down.** `npx playwright test` fails 2-3 of the `digitize-*` specs, each
    taking ~5 minutes, while every one of them PASSES run alone in ~5 seconds.
    Not a flake and not a regression: those specs each bootstrap the service
-   themselves, which under Playwright's two parallel workers is slow and racy.
-   With the service already up the same suite is 15/15 in ~35s. `npm run dev`'s
+   themselves, which under Playwright's parallel workers (`fullyParallel` in
+   `app/playwright.config.js`) is slow and racy; CI runs those specs with
+   `--workers=1` for that reason. With the service already up they pass. `npm run dev`'s
    `predev` starts it via `app/scripts/ensure-digitizer.mjs` -- which until
    2026-08-26 only looked for the WINDOWS venv (`.venv/Scripts/python.exe`) and
    so silently declined to start anything on Linux. If you see this pattern,
@@ -2269,23 +1963,12 @@ failures are EXPECTED:
    not per-platform") — with cause detail in
    `docs/pro-parity-real-art-2026-08-15.md` §0b. CI deselects TWO node
    IDs since 2026-10-08 (list + rationale in the shard job's header comment
-   in `.github/workflows/python-package-conda.yml`); it was five until
-   2026-08-22 and three until the towel `test_pushcomp` row was re-pinned —
-   this sentence said "five" for hours after the workflow said three, and
-   "three" for twelve days after it said two. **A stream md5 also differs
+   in `.github/workflows/python-package-conda.yml`; the workflow is the
+   authority for the count, not this doc). **A stream md5 also differs
    by the host's SIMD class** (AVX-512 runners against AVX2 machines, found
    2026-10-19), which no platform matrix predicts: read "Reading a golden or
    md5 mismatch" in the How-to section before calling any of this a
    regression.
-   **The remove-and-see check is no longer unowned — it was run 2026-08-22.**
-   On Linux with the digitizer job's exact Python (3.12) and requirements.txt
-   pinned exactly, two of the five deselects (`logo_alpha.png` on the flat-lane
-   and photo-dispatch goldens) PASS and three FAIL; the same split holds on
-   3.13, so it is not version skew. Those two are now removed from the
-   workflow, restoring the coverage they were costing, and the list was
-   three — two since 2026-10-08, when the towel tuple proved identical on
-   three machines, AVX-512 and forced-AVX2 alike, and went back into
-   `tests/test_pushcomp.py`'s `GOLDEN_FLAG_OFF`.
    A golden failure outside the matrix's expected cell is a REAL regression,
    not this note being stale.
    **Re-capturing on the judging machine takes a minute, not a session
@@ -2327,35 +2010,30 @@ failures are EXPECTED:
    board's meta (`tesseract_version()` -> `ocr.version()`).
 
    **But do not read a local skip as "nothing to see here" before you
-   push — a green local suite with these five skipped is NOT the same run
-   CI makes.** Corrected 2026-08-21, the hard way: a `stage6_satin` change
-   passed the full local suite (same failure set as baseline, canary clean)
-   and CI still went red, because the only test that could see half of what
-   the change did was one of the five. `_prune_spurs` is shared with
+   push — a green local suite with these skipped is NOT the same run CI
+   makes** (the marker sits in nine test files today; grep
+   `requires_tesseract` for the set). Corrected 2026-08-21, the hard way: a
+   `stage6_satin` change passed the full local suite (same failure set as
+   baseline, canary clean) and CI still went red, because the only test that
+   could see half of what the change did was one of the skipped ones. `_prune_spurs` is shared with
    `textcluster.py`, and `test_ocr_gate.py` was the sole coverage of that
    path. **On Linux `sudo apt-get install -y tesseract-ocr` takes about a
    minute** — do it before trusting a local run on anything touching
    `textcluster.py`, `stage6_satin.py`'s skeleton helpers, or
    `shapefield.py`. Cheaper than a CI round trip.
 
-3. **Three MORE tests skip for reasons that are NOT tesseract, so a local
-   run shows 8 skips and not 5** — on a box with neither tesseract nor the
-   rembg venv. **The TOTAL is environment-dependent and the per-class rows
-   below are the real content**; two levers move it, and both are things a
-   session may well have just changed. Installing tesseract removes 5;
-   building `rembg_isolated/venv` removes 2. A cloud container with
-   tesseract preinstalled and the rembg venv built shows **1** — measured
-   2026-08-24, and that lone skip is the opencv-contrib inversion, which
-   never goes away.** Measured 2026-08-22 by grouping every
-   skip reason in a full `-rs` run, because the count not matching this
-   section's only documented skip class is the kind of small discrepancy a
-   session burns twenty minutes on:
-
-   | count | file | reason |
-   |---|---|---|
-   | 5 | `test_ocr_gate` / `test_ocr_suggest` / `test_pipeline` / `test_service` | tesseract binary off PATH (class 2 above) |
-   | 2 | `test_background_removal.py` | the isolated rembg venv is not built — `digitizer/rembg_isolated/README.md` |
-   | 1 | `test_photo_prep.py` | opencv-**contrib** IS installed, so the no-contrib fallback branch cannot fire |
+3. **Other tests skip for reasons that are NOT tesseract.** The skip TOTAL
+   is environment-dependent; the classes are the real content, and two
+   levers move the count, both things a session may well have just changed:
+   installing tesseract (class 2) and building `rembg_isolated/venv`. The
+   classes:
+   - **OCR engine absent** — class 2 above (`requires_tesseract`).
+   - **The isolated rembg venv is not built** —
+     `test_background_removal.py`'s `REMBG_AVAILABLE` skips;
+     `digitizer/rembg_isolated/README.md`.
+   - **opencv-contrib IS installed**, so `test_photo_prep.py`'s no-contrib
+     fallback branch cannot fire. This one never goes away on a box pinned
+     to `requirements.txt`.
 
    The last one inverts the usual reading: it skips because the environment
    is MORE complete, not less. It is half of a deliberate either/or pair in
@@ -2367,7 +2045,8 @@ failures are EXPECTED:
    and the bilateral fallback is untested by construction — verified at
    source 2026-08-22, not inferred from the skip string.
 
-   To re-derive this list rather than trusting it:
+   To see today's skips and their counts, group every reason in a full
+   `-rs` run rather than trusting any list:
    `python -m pytest tests/ -q -n auto -rs 2>&1 | grep '^SKIPPED' | sed 's/:[0-9]*:/: /' | sort | uniq -c`
 
 4. **`rembg_isolated/venv` changes what a photo-lane test sees.** Where
@@ -2516,8 +2195,8 @@ green.
 at a scratch dir OUTSIDE the tree (the loose files are customer work and this
 repo is public). Most designs take 2–20 minutes each.
 
-**`hotel_fremont_hat` takes ~87 minutes on its own** — 5203.9 s measured
-2026-09-12, all of it inside `run_ours`, and it completes successfully. It is
+**`hotel_fremont_hat` takes ~87 minutes on its own** (measured 2026-09-12;
+not re-measured since) — 5203.9 s, all of it inside `run_ours`, and it completes successfully. It is
 NOT hung, and a session that kills it will simply pay the cost again: this
 happened twice before the run was left alone long enough to finish. Size does
 not explain it — `gaulke_jb` is 32,665 pro / 43,780 ours stitches against
@@ -2706,11 +2385,12 @@ Captures stay on cloud Linux or CI.
 - `/root/EMB-Bot` is a plain clone of `origin`. Use it to fetch and to cut
   worktrees. Do not develop in it: nothing under `/root` is backed up and
   no Windows checkout can see its branches.
-- `/root/emb-control` is a detached worktree at `2c60cd87`, the commit the
-  baseline was captured at when the box was built. **The baseline moved to
-  `6e0cb943` on 2026-10-04 and to `d000e370` on 2026-10-05** — re-cut the
-  control at the file's own `captured_at_commit` before the next `diff`, or
-  its rows compare the wrong commit to the file. Its `digitizer/.venv` is the box's one
+- `/root/emb-control` is a detached worktree at the commit the baseline was
+  captured at. **The baseline moves with every recapture** — before each
+  `diff`, read `captured_at_commit` in
+  `digitizer/testdata/corpus_scorecard_baseline.json` on `origin/main` and
+  re-cut the control there if it differs, or its rows compare the wrong
+  commit to the file. Its `digitizer/.venv` is the box's one
   venv. Its `corpus_scorecard_baseline.json` is overwritten with
   `origin/main`'s copy on purpose (the control compares that commit to
   that file), so the tree reads dirty.
@@ -2971,9 +2651,10 @@ From `digitizer/`:
 - **What it is not:** a quality claim, a gate, or a judge of close A/B picks.
   The kit folder holds client artwork; only the text scorecard is committed
   (`docs/prime-grader/`).
-- **Python:** the container's `/usr/bin/python3.12` is 3.12.3, which cannot
-  compile `digitizer_core/pipeline.py` (`digitizer/CLAUDE.md`). Use
-  `uv python install 3.12` first.
+- **Python:** only on a checkout older than PR #1615 (2026-11-17), the
+  container's `/usr/bin/python3.12` (3.12.3) cannot compile
+  `digitizer_core/pipeline.py`; there, `uv python install 3.12` first. Since
+  #1615 the plain 3.12.3 venv works (`digitizer/CLAUDE.md`).
 
 ### Eye pairs — the blind A/B picker (2026-09-17)
 
@@ -3070,7 +2751,8 @@ and controllable to the user.
     `underlayDirection: false` restores the old order, and
     `tools/underlay-direction-measure.mjs` plus the two `-sheet` scripts are
     its instrument and renders. `buildLetteringDesign` takes the same flag
-    since PR #990 (2026-10-20), built OFF there beside `dedupeHoles`.
+    since PR #990 (2026-10-20), still OFF by default there (`dedupeHoles`,
+    which came in beside it, is ON in both builders since PR #1000).
   - `crossfill.js` — cross-stitch fill for pixel-art lettering fonts. Written
     from first principles, NOT ported: Ink/Stitch's is GPL-3.0 and this product
     is sold. The grid is MEASURED from the glyph outlines, in glyph units, so
@@ -3220,15 +2902,15 @@ here since it explains *why*, not *what's currently true*.
 
 ## Working conventions this project has settled on (don't relitigate)
 
-- **Process:** brainstorm → write spec → write plan → build (via
-  `subagent-driven-development` in a git worktree, or ULTRACODE workflows for
-  bigger slices) → review (multi-lens/adversarial before merge). This repo
-  has done this ~10 times; deviating without reason will surprise Kent.
-  Since 2026-10-07 the build step mostly runs as cloud worker sessions
-  dispatched by a foreman (the K3 pattern under "Branches & worktrees");
-  the spec-then-plan habit and the adversarial review before merge are
-  unchanged, and the PR body is where a worker's measurements and its asks
-  to Kent go.
+- **Process:** brainstorm → write spec → write plan → build → review
+  (multi-lens/adversarial before merge); deviating without reason
+  will surprise Kent. Since 2026-10-07 the build step runs as worker sessions
+  dispatched by a foreman under the `k3` skill
+  (`.claude/skills/k3/SKILL.md`; the K3 pattern under "Branches &
+  worktrees"), which replaced the earlier `subagent-driven-development` /
+  ULTRACODE builds. The spec-then-plan habit and the adversarial review
+  before merge are unchanged, and the PR body is where a worker's
+  measurements and its asks to Kent go.
 - **Additive, back-compat engine changes.** New `opts.*` fields default to
   exactly today's output when absent — no migration step, no behavior change
   for existing callers. Keep doing this.
@@ -3312,7 +2994,7 @@ here since it explains *why*, not *what's currently true*.
 
 ## Who's asking for what
 
-Kent (`kent@sdwheel.com`) drives every product decision here via
+Kent drives every product decision here via
 AskUserQuestion-style brainstorming — he's picked the MVP scope, the font
 list, the rejected fonts (too ornate / broken metrics / license-restricted),
 and every "build vs. defer" call listed above. Don't assume a feature is
