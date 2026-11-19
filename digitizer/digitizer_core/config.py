@@ -1227,8 +1227,10 @@ class PipelineConfig:
     # and the disc sewed as a starburst ring round it. ON, a region is kept
     # for contrast only when the source pixels also step across its boundary
     # by more than `merge_delta_e` (`stage3_segment.drawn_edge`); otherwise
-    # it goes to its host as a sliver does. No new number. Flat lane only
-    # (the photo segmenters pass no layer colours).
+    # it goes to its host as a sliver does. No new number. Reaches every
+    # class that runs `pipeline`'s own `resolve_small_regions` call (the flag
+    # sweep moved photo fixtures too: 11 of 44, `docs/stage0-grain-needs-
+    # texture-2026-11-19.md` §7).
     rescue_needs_drawn_edge: bool = False
     # Dark thin strokes on a SHADED ground, read by lightness
     # (`thin_ink.find_dark_thin_ink`; gradient class only, the gate

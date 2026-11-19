@@ -100,3 +100,30 @@ reads flat (its misroute is a downscale). Trims unchanged on both. The
 renders (ORIGINAL | BEFORE | AFTER) were shown to Kent with the flip
 question; on `mfab_hat` the visible change is small — the M's inner notch
 and the dash read cleaner ON — and the needle-up saving is the larger effect.
+
+## 7. `cfg.rescue_needs_drawn_edge` — built OFF, HELD OFF by Kent 2026-11-19
+
+Found on the flip's pictures: with the flag ON, `fur_ramp`'s top-right disc
+sewed as a starburst ring. Its darkest centre (1.3 mm², a smooth shade the
+quantiser cut into a different thread) was kept by the `keep_thin_strokes`
+contrast rescue, which punched a hole in the disc. The new flag also asks
+that the artwork step across the region's boundary by more than
+`merge_delta_e` (`stage3_segment.drawn_edge`). With it ON, the speck goes to
+its disc.
+
+Flag sweep, OFF -> ON: **11 of 44 designs move.** The fix is visible only on
+`fur_ramp`. Elsewhere:
+
+- **Trims:** +1 on `precision_drone`, `goldentee_hat`, `drone_render`,
+  `region_blobs`, `photo_chrome_specular` and `photo_sunset_backlit`; +2 on
+  `photo_dof_meadow`; +5 on `screenshot_phone_ui_golke`; −2 on
+  `logo_golden_tee`, −21 on `photo_scene_stub`, −1 on `fur_ramp`.
+- **Golden Tee's "GOLF" O** loses some of its white highlight.
+- **Synthetic photos:** `photo_dof_meadow` sews 940 fewer stitches and
+  `photo_sunset_backlit` 770 fewer.
+
+It reaches every class that runs `pipeline`'s own `resolve_small_regions`
+call, not the flat lane alone. **Kent: "Keep OFF (Recommended)"**. The
+starburst was seen only on a synthetic fixture, and on real art the flag costs
+trims for no visible gain. The narrower form (a speck one shape fully
+encloses) is unbuilt.
