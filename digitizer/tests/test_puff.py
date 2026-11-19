@@ -208,3 +208,213 @@ def test_puff_tee_caps_only_free_ends():
     assert _covered(LineString([(0, 0), (0, 4)]), pts) >= 0.8
     assert _covered(LineString([(30, 0), (30, 4)]), pts) >= 0.8
     assert _covered(LineString([(13, 24), (17, 24)]), pts) >= 0.8
+
+
+# --- The puff pass and sequencing (Task 4) ------------------------------------
+
+from digitizer_core import digitize, export  # noqa: E402
+from digitizer_core.stage6_applique import COLOR_CHANGE, Step, assert_steps_valid  # noqa: E402
+from digitizer_core.warnings_codes import PUFF_NONE_ELIGIBLE, PUFF_SHAPE_INELIGIBLE  # noqa: E402
+from tests.conftest import TESTDATA, cfg  # noqa: E402
+
+
+def _is_puff(block) -> bool:
+    return block.step is not None and block.step["code"].startswith("PUFF")
+
+
+@pytest.fixture(scope="module")
+def logo_puff():
+    return digitize(TESTDATA / "logo_whitebg.png", cfg(garment_id="hat_front", puff=True))
+
+
+class _PRegion:
+    def __init__(self, poly, thread_index, meta):
+        self.polygon = poly
+        self.thread_index = thread_index
+        self.meta = meta
+
+
+class _PPlanned:
+    """The minimal `PlannedRegion` surface `puff_pass` reads."""
+
+    def __init__(self, poly, thread_index, sew_index, shape_id, layer=0, **meta):
+        self.region = _PRegion(poly, thread_index, {"layer": layer, **meta})
+        self.polygon = poly
+        self.layer = layer
+        self.sew_index = sew_index
+        self.shape_id = shape_id
+
+
+def _run_puff_pass(planned, **cfg_kw):
+    from digitizer_core.stage6_puff import puff_pass
+    from digitizer_core.threads import chart_for
+    c = cfg(puff=True, **cfg_kw)
+    return puff_pass(planned, c, chart_for(c))
+
+
+BAR_A = box(0, 0, 30, 5)          # 5 mm wide: inside the puff band
+BAR_B = box(0, 20, 30, 25)
+THIN_A = box(0, 40, 30, 41)       # 1 mm: too thin for foam
+THIN_B = box(0, 50, 30, 51)
+
+
+def test_puff_off_is_byte_identical():
+    a = digitize(TESTDATA / "logo_whitebg.png", cfg(garment_id="hat_front"))[1]
+    b = digitize(TESTDATA / "logo_whitebg.png", cfg(garment_id="hat_front", puff=False))[1]
+    assert export.export_dst(a) == export.export_dst(b)
+    assert all(blk.step is None for blk in a.blocks)
+
+
+def test_puff_pass_off_returns_planned_untouched():
+    from digitizer_core.stage6_puff import puff_pass
+    from digitizer_core.threads import chart_for
+    planned = [_PPlanned(BAR_A, 20, 0, "A", puff=True)]
+    c = cfg()
+    assert puff_pass(planned, c, chart_for(c)) == ([], [], planned)
+
+
+def test_puff_blocks_last(logo_puff):
+    _result, plan = logo_puff
+    flags = [_is_puff(b) for b in plan.blocks]
+    assert any(flags), "logo_whitebg has eligible shapes; puff on must puff them"
+    first = flags.index(True)
+    assert all(flags[first:]), "every puff block comes after every flat block"
+    puff = plan.blocks[first:]
+    assert len(puff) % 2 == 0
+    codes = [b.step["code"] for b in puff]
+    assert codes == ["PUFF_TACKDOWN", "PUFF"] * (len(puff) // 2)
+    threads = [b.thread_index for b in puff]
+    assert all(threads[i] == threads[i + 1] for i in range(0, len(threads), 2))
+    assert len(set(threads[::2])) == len(threads) // 2, "one tack-down per puff thread"
+    # Index is the block's 1-based position in the plan.
+    assert [b.step["index"] for b in puff] == list(range(first + 1, len(plan.blocks) + 1))
+    # Puffed shapes sew only in puff blocks, and never as tatami.
+    puff_ids = {r.shape_id for b in puff for r in b.runs}
+    flat_ids = {r.shape_id for b in plan.blocks[:first] for r in b.runs}
+    assert not puff_ids & flat_ids
+    assert not any(r.kind == stitches.FILL for b in puff for r in b.runs)
+
+
+def test_puff_steps_valid(logo_puff):
+    _result, plan = logo_puff
+    puff = [b for b in plan.blocks if _is_puff(b)]
+    steps = [Step(code=b.step["code"], label=b.step["label"], runs=b.runs,
+                  action=b.step["action"], function=b.step["function"]) for b in puff]
+    assert_steps_valid(steps)
+    td = [b.step for b in puff if b.step["code"] == "PUFF_TACKDOWN"]
+    ps = [b.step for b in puff if b.step["code"] == "PUFF"]
+    assert td and ps
+    assert {(s["label"], s["action"], s["function"]) for s in td} == {
+        ("Puff outline", "Stop: lay 3 mm puff foam over the outline, then continue",
+         COLOR_CHANGE)}
+    assert {(s["label"], s["action"], s["function"]) for s in ps} == {
+        ("3D puff", "Tear away the excess foam, then continue", COLOR_CHANGE)}
+
+
+def test_puff_on_nothing_eligible_is_off():
+    planned = [_PPlanned(THIN_A, 20, 0, "T1"), _PPlanned(THIN_B, 21, 1, "T2")]
+    blocks, warnings, remaining = _run_puff_pass(planned)
+    assert blocks == []
+    assert remaining == planned
+    assert [w["code"] for w in warnings].count(PUFF_NONE_ELIGIBLE) == 1
+
+
+def test_puff_on_nothing_eligible_is_off_end_to_end(tmp_path):
+    """A design of only thin strokes sews exactly what it sews with puff off."""
+    import cv2
+    import numpy as np
+    # Transparent ground: a white one is itself a sewn (and puffable) shape.
+    img = np.zeros((400, 800, 4), np.uint8)
+    for y in (100, 200, 300):
+        cv2.line(img, (60, y), (740, y), (0, 0, 0, 255), 8)  # ~1.1 mm strokes
+    path = tmp_path / "thin.png"
+    cv2.imwrite(str(path), img)
+    a = digitize(path, cfg(garment_id="hat_front"))[1]
+    b = digitize(path, cfg(garment_id="hat_front", puff=True))[1]
+    assert export.export_dst(a) == export.export_dst(b)
+    assert [w["code"] for w in b.warnings].count(PUFF_NONE_ELIGIBLE) == 1
+    assert PUFF_NONE_ELIGIBLE not in [w["code"] for w in a.warnings]
+
+
+def test_puff_none_wanted_is_silent():
+    # Select mode with nothing ticked: nothing was wanted, so nothing to say.
+    planned = [_PPlanned(THIN_A, 20, 0, "T1")]
+    blocks, warnings, remaining = _run_puff_pass(planned, puff_mode="select")
+    assert (blocks, warnings, remaining) == ([], [], planned)
+
+
+def test_puff_two_threads_two_stops():
+    planned = [_PPlanned(BAR_A, 20, 0, "A"), _PPlanned(BAR_B, 21, 1, "B")]
+    blocks, warnings, remaining = _run_puff_pass(planned)
+    assert remaining == []
+    assert warnings == []
+    assert [b.step["code"] for b in blocks] == ["PUFF_TACKDOWN", "PUFF"] * 2
+    assert [b.thread_index for b in blocks] == [20, 20, 21, 21]
+    assert [b.step["index"] for b in blocks] == [1, 2, 3, 4]
+    for b in blocks:
+        assert b.runs[0].jump and b.runs[0].trim
+        assert b.step["thread"] == b.thread_number
+
+
+def test_puff_same_thread_shapes_share_one_stop():
+    planned = [_PPlanned(BAR_A, 20, 0, "A"), _PPlanned(BAR_B, 20, 1, "B")]
+    blocks, _w, _rem = _run_puff_pass(planned)
+    assert [b.step["code"] for b in blocks] == ["PUFF_TACKDOWN", "PUFF"]
+    assert {r.shape_id for r in blocks[0].runs} == {"A", "B"}
+    assert {r.shape_id for r in blocks[1].runs} == {"A", "B"}
+
+
+def test_puff_not_merged_with_flat(logo_puff):
+    """logo_whitebg's thread 119 carries a puffed shape AND a thin flat one;
+    with `merge_adjacent_same_thread` (default True) the puff blocks stay
+    blocks of their own, holding only puffed shapes."""
+    _result, plan = logo_puff
+    assert cfg().merge_adjacent_same_thread is True
+    puff = [b for b in plan.blocks if _is_puff(b)]
+    puff_ids = {r.shape_id for b in puff for r in b.runs}
+    for b in plan.blocks:
+        ids = {r.shape_id for r in b.runs}
+        if _is_puff(b):
+            assert ids <= puff_ids
+        else:
+            assert not ids & puff_ids
+    shared = {b.thread_index for b in puff} & {b.thread_index for b in plan.blocks
+                                               if not _is_puff(b)}
+    assert shared, "the fixture must put a flat shape on a puff thread"
+
+
+def test_puff_not_merged_stub():
+    """Unit level: the flat shape on the puff thread goes back to the loop."""
+    planned = [_PPlanned(BAR_A, 20, 0, "A"), _PPlanned(THIN_A, 20, 1, "F", puff=False)]
+    blocks, _w, remaining = _run_puff_pass(planned)
+    assert [p.shape_id for p in remaining] == ["F"]
+    assert all({r.shape_id for r in b.runs} == {"A"} for b in blocks)
+
+
+def test_puff_ineligible_warned():
+    planned = [_PPlanned(BAR_A, 20, 0, "A"), _PPlanned(THIN_A, 21, 1, "T1")]
+    blocks, warnings, remaining = _run_puff_pass(planned, puff_mode="all")
+    assert [p.shape_id for p in remaining] == ["T1"]
+    hits = [w for w in warnings if w["code"] == PUFF_SHAPE_INELIGIBLE]
+    assert len(hits) == 1
+    assert hits[0]["shape_id"] == "T1"
+    assert hits[0]["reason"].startswith("too thin for foam")
+    assert PUFF_NONE_ELIGIBLE not in [w["code"] for w in warnings]
+    assert {r.shape_id for b in blocks for r in b.runs} == {"A"}
+
+
+def test_puff_ineligible_warned_end_to_end(logo_puff):
+    _result, plan = logo_puff
+    hits = {w["shape_id"] for w in plan.warnings if w["code"] == PUFF_SHAPE_INELIGIBLE}
+    # Sdf9f8b3c is logo_whitebg's 0.7 mm sliver on puff thread 119.
+    assert "Sdf9f8b3c" in hits
+    puff_ids = {r.shape_id for b in plan.blocks if _is_puff(b) for r in b.runs}
+    assert not hits & puff_ids
+
+
+def test_puff_satin_never_tatami_even_past_flat_ceiling():
+    # 8 mm: the flat pipeline would send it to tatami (> SATIN_MAX_WIDTH_MM).
+    blocks, _w, _rem = _run_puff_pass([_PPlanned(box(0, 0, 30, 8), 20, 0, "W")])
+    assert blocks[1].step["code"] == "PUFF"
+    assert stitches.SATIN in {r.kind for r in blocks[1].runs}
+    assert stitches.FILL not in {r.kind for r in blocks[1].runs}

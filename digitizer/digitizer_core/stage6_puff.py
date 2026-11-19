@@ -330,3 +330,110 @@ def puff_tackdown(polys: list, shape_ids: list[str], cfg) -> list[StitchRun]:
                 runs.append(run)
                 cursor = pts[-1]
     return runs
+
+
+# --- The pass (stage 7's puff tier) ------------------------------------------
+
+PUFF_TACKDOWN_CODE = "PUFF_TACKDOWN"
+PUFF_CODE = "PUFF"
+
+
+def puff_pass(planned, cfg, chart) -> tuple[list, list[dict], list]:
+    """The stage-7 puff branch. -> (blocks, warnings, remaining).
+
+    Off (`cfg.puff` False) this is `([], [], list(planned))` and touches
+    nothing. On, every shape `wants_puff` and `puff_eligible` passes leaves
+    the flat sequence; the rest go back to the colour loop in their order.
+    Puffed shapes are grouped by thread in sew order, and each puff thread
+    becomes two operator-step blocks: the tack-down round all of that
+    thread's shapes, stopping for the foam, then the puff satin of each
+    shape (`puff_shape`, already tied at PUFF_TIE_STITCHES -- never run
+    through `stitches.apply_ties`, which would lock it twice), stopping to
+    tear the foam away. Satin only: a puffed shape is never tatami, even
+    past the flat satin ceiling (eligibility caps the width).
+
+    Stage 7 appends these blocks LAST, after every other block: foam goes
+    on top of finished flat work. Each step's `index` here counts from this
+    list's first block; stage 7 renumbers it to the block's place in the plan.
+    """
+    from .stage6_applique import COLOR_CHANGE, Step, assert_steps_valid
+    from .stitches import StitchBlock, apply_ties, drop_tie_ins
+    from .warnings_codes import PUFF_NONE_ELIGIBLE, PUFF_SHAPE_INELIGIBLE, warn
+
+    if not cfg.puff:
+        return [], [], list(planned)
+
+    wanted = [p for p in planned if wants_puff(p.region, cfg)]
+    warnings: list[dict] = []
+    satins: dict[int, list] = {}  # id(planned region) -> its tied puff satin
+
+    def ineligible(p, reason):
+        warnings.append(warn(
+            PUFF_SHAPE_INELIGIBLE,
+            f"Shape {p.shape_id} can't be puffed ({reason}), so it sews flat.",
+            shape_id=p.shape_id, reason=reason))
+
+    for p in wanted:
+        ok, reason = puff_eligible(p.region, cfg)
+        if not ok:
+            ineligible(p, reason)
+            continue
+        runs = puff_shape(p.region.polygon, p.shape_id, cfg)
+        if not runs:
+            ineligible(p, "no satin column")
+            continue
+        satins[id(p)] = runs
+
+    picked = [p for p in planned if id(p) in satins]
+    # Bottom-to-top, as appliqué orders its pieces: stage 5 settled the layers.
+    picked.sort(key=lambda p: (p.region.meta.get("layer", 0), p.sew_index, p.shape_id))
+    threads: list[int] = []
+    for p in picked:
+        if p.region.thread_index not in threads:
+            threads.append(p.region.thread_index)
+
+    blocks: list = []
+    sewn: set[int] = set()
+    for t_index in threads:
+        group = [p for p in picked if p.region.thread_index == t_index]
+        tack = puff_tackdown([p.region.polygon for p in group],
+                             [p.shape_id for p in group], cfg)
+        if not tack:
+            # No foam stop without a tack-down to hold the foam: sew flat.
+            for p in group:
+                ineligible(p, "no room for a foam tack-down")
+            continue
+        # The tack-down is ordinary flat stitching: stage 7's own tie rule,
+        # and its run-start locks go when stage 7's do (`cfg.tie_in_off`).
+        tack[0].jump = tack[0].trim = True
+        apply_ties(tack)
+        top = [r for p in group for r in satins[id(p)]]
+        steps = [
+            Step(code=PUFF_TACKDOWN_CODE, label="Puff outline", runs=tack,
+                 action="Stop: lay 3 mm puff foam over the outline, then continue",
+                 function=COLOR_CHANGE),
+            Step(code=PUFF_CODE, label="3D puff", runs=top,
+                 action="Tear away the excess foam, then continue",
+                 function=COLOR_CHANGE),
+        ]
+        assert_steps_valid(steps)
+        thread = chart[t_index]
+        for st in steps:
+            # A new block always lifts in and cuts out, as appliqué's do.
+            st.runs[0].jump = st.runs[0].trim = True
+            blk = StitchBlock(thread_index=t_index, thread_number=thread.number,
+                              rgb=tuple(thread.rgb), runs=st.runs)
+            if st.code == PUFF_TACKDOWN_CODE and cfg.tie_in_off:
+                drop_tie_ins([blk])
+            blk.step = st.as_meta(len(blocks) + 1, thread.number)
+            blocks.append(blk)
+        sewn.update(id(p) for p in group)
+
+    if wanted and not sewn:
+        warnings.append(warn(
+            PUFF_NONE_ELIGIBLE,
+            "3D puff is on, but no shape is between "
+            f"{machine.PUFF_MIN_WIDTH_MM:g} and {machine.PUFF_MAX_WIDTH_MM:g} mm "
+            "wide, so nothing was puffed and the design sews flat.",
+            count=len(wanted)))
+    return blocks, warnings, [p for p in planned if id(p) not in sewn]

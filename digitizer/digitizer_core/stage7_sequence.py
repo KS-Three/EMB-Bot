@@ -69,6 +69,7 @@ from .beanletters import BEAN_LETTER_KEY
 from .stage5_overlap import PlannedRegion, _largest_polygon, clip_piece_floor_mm2, widened_lettering
 from .silhouette_underfill import RIDER_HOLES_KEY, STRIPE_HOST_KEY, STRIPE_ON_KEY, UNDERFILL_KEY
 from .stage6_applique import applique_pass, nn_group_key
+from .stage6_puff import puff_pass
 from .stage6_beanletter import bean_letter
 from .columns import (HANDBACK_COVER_MIN, handback_wins, is_fine_bar, is_lettering, is_thin_stem,
                       lettering_columns_shape, satin_cover,
@@ -3585,6 +3586,15 @@ def sequence(
     if applique_cursor is not None:
         cursor = applique_cursor
 
+    # --- The 3D puff tier (stage6_puff, docs/superpowers/specs/
+    # 2026-11-19-3d-puff-design.md). Off unless asked for, and when off this
+    # returns ([], [], planned) and changes nothing. Puffed shapes leave the
+    # colour loop here, but their blocks are held back and appended LAST, at
+    # the very end of this function: foam goes on top of finished flat work,
+    # and no later pass (ties, tie-in strip, jump bury, colour fold) may touch
+    # a puff block -- its satin is already tied at PUFF_TIE_STITCHES.
+    puff_blocks, puff_warnings, planned = puff_pass(planned, cfg, chart_for(cfg))
+
     # `cfg.detail_spokes` (built OFF): a spoked detail mark leaves the colour
     # loop here, the way an appliqué piece does, and is placed AFTER its host
     # once every block exists (`_place_spoke_marks`, below the hairline
@@ -5891,7 +5901,7 @@ def sequence(
         spoke_report = _place_spoke_marks(spoke_marks, planned, blocks, cfg, trim_at,
                                           design_width_mm=_design_w)
 
-    warnings: list[dict] = list(applique_warnings) + fold_warnings
+    warnings: list[dict] = list(applique_warnings) + list(puff_warnings) + fold_warnings
     if spoke_report is not None and spoke_report["count"]:
         n, s = spoke_report["count"], spoke_report["spokes"]
         warnings.append(
@@ -6206,6 +6216,14 @@ def sequence(
             int(cfg.max_colors), chart_for(cfg))
         if folded:
             warnings.append(folded)
+    # The 3D puff blocks, LAST: after every artwork, border, edge-cap,
+    # hairline and spoke block and after every pass over the finished list,
+    # so nothing merges into, re-ties, buries through or recolours them.
+    # (`knockdown.prepend` in the pipeline adds at the FRONT, so they stay
+    # last.) Each step's index is its block's place in the plan.
+    for k, blk in enumerate(puff_blocks):
+        blk.step["index"] = len(blocks) + k + 1
+    blocks.extend(puff_blocks)
     return blocks, warnings
 
 
