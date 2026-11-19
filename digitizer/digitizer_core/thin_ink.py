@@ -865,8 +865,11 @@ def one_lane_per_line(regions) -> int:
 
     Over the gate, the line's beans drop their spines and sew with their
     mates. Under it, the mates take spines (their skeleton, as
-    `bean_dark_ink` makes them) and the ground their bean mates name. A
-    shape the review pinned to a tier is never moved. Returns the shapes
+    `bean_dark_ink` makes them) and the ground their bean mates name --
+    only when that ground is ANOTHER thread's: the Merchant Marine seal's
+    black letters named the black keyline ring round the whole seal, and
+    beaned onto it with `underfill_keeps_thin_letters` four of them were
+    lost. A shape the review pinned to a tier is never moved. Returns the shapes
     moved; nothing mixed, nothing touched."""
     from collections import Counter
     from statistics import median
@@ -877,6 +880,7 @@ def one_lane_per_line(regions) -> int:
     from .shapefield import build_shape_field
     from .textcluster import _skeleton_chains_mm
 
+    by_id = {r.shape_id: r for r in regions}
     lines: dict = {}
     for r in regions:
         tc = r.meta.get("text_cluster_id")
@@ -902,6 +906,9 @@ def one_lane_per_line(regions) -> int:
         if not grounds:
             continue
         ground = grounds.most_common(1)[0][0]
+        g = by_id.get(ground)
+        if g is None or g.thread_index == members[0].thread_index:
+            continue
         for r in members:
             if r.meta.get(BEAN_LETTER_KEY):
                 continue

@@ -36,12 +36,24 @@ def test_a_bold_line_half_bean_sews_as_one_column_line():
     assert all(r.meta.get(ONE_LANE_KEY) == "column" for r in regs[::2])
 
 
+def _ground(thread=2):
+    p = box(-5, -5, 40, 10)
+    return Region(shape_id="Sring", polygon=p, thread_index=thread, thread_number=str(thread),
+                  area_mm2=p.area, source="test", meta={"layer": 0})
+
+
 def test_a_thin_line_half_bean_sews_as_one_bean_line():
-    regs = [_letter(i, THIN, bean=i % 2 == 0) for i in range(6)]
+    regs = [_letter(i, THIN, bean=i % 2 == 0) for i in range(6)] + [_ground()]
     assert one_lane_per_line(regs) == 3
-    assert all(r.meta.get(BEAN_LETTER_KEY) for r in regs)
-    assert all(r.meta.get(DARK_INK_GROUND_KEY) == "Sring" for r in regs)
-    assert all(r.meta.get("dark_ink") for r in regs)
+    assert all(r.meta.get(BEAN_LETTER_KEY) for r in regs[:6])
+    assert all(r.meta.get(DARK_INK_GROUND_KEY) == "Sring" for r in regs[:6])
+    assert all(r.meta.get("dark_ink") for r in regs[:6])
+
+
+def test_a_thin_line_on_its_own_threads_ground_is_left():
+    """Merchant Marine: beans named the black keyline ring, their own thread."""
+    regs = [_letter(i, THIN, bean=i % 2 == 0) for i in range(6)] + [_ground(thread=4)]
+    assert one_lane_per_line(regs) == 0
 
 
 def test_the_gate_is_the_bean_by_width_gate():
@@ -58,7 +70,7 @@ def test_lines_are_judged_apart():
     """NSA: the thin line's widths never pull the bold one under the gate."""
     top = [_letter(i, BOLD, bean=i < 2, tc="TOP") for i in range(4)]
     bottom = [_letter(10 + i, THIN, bean=True, tc="BOT") for i in range(8)]
-    one_lane_per_line(top + bottom)
+    one_lane_per_line(top + bottom + [_ground()])
     assert not any(r.meta.get(BEAN_LETTER_KEY) for r in top)
     assert all(r.meta.get(BEAN_LETTER_KEY) for r in bottom)
 
