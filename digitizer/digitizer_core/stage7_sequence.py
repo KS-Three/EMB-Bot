@@ -112,7 +112,8 @@ from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, is_straight_slot, satin_shape, satin_shape_judged,
+from .stage6_satin import (_dt_stats, classify_ribbon, is_rectangle_bar, is_small_solid, is_straight_slot,
+                           satin_shape, satin_shape_judged,
                            small_solid_satin)
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
@@ -4640,9 +4641,17 @@ def sequence(
                 # (`stage6_satin.is_straight_slot`). Not lettering, not a
                 # forced tier, no house angle to honour. A slot the lane does
                 # not build as exactly one whole column takes the tier below.
-                if ((cfg.extra or {}).get("satin_straight_slots") and tier == "auto"
-                        and not is_lettering(p.region, cfg) and satin_angle_deg is None
-                        and is_straight_slot(p.polygon, shape_max)):
+                # `cfg.extra["satin_rectangles"]` (built OFF 2026-11-19): a
+                # true rectangle of any length (`stage6_satin.is_rectangle_bar`,
+                # a flag's stripe) takes the same path, its rails held at a
+                # seam with the colour already down as the tier below holds
+                # them (`cfg.satin_seam_hold`), so its ends sew square.
+                _x = cfg.extra or {}
+                _slot = bool(_x.get("satin_straight_slots")) and is_straight_slot(p.polygon, shape_max)
+                _rect = (not _slot and bool(_x.get("satin_rectangles"))
+                         and is_rectangle_bar(p.polygon, shape_max))
+                if ((_slot or _rect) and tier == "auto"
+                        and not is_lettering(p.region, cfg) and satin_angle_deg is None):
                     s_runs, s_report = lettering_columns_shape(
                         p.polygon, p.shape_id, trim_at_mm=trim_at,
                         spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
@@ -4652,10 +4661,13 @@ def sequence(
                         start_near=entry,
                         end_near=exit_near if cfg.satin_exit_toward_next else None,
                         rail_axis=True,
-                        **({"short_columns": True} if cfg.satin_underlay_short_columns else {}))
+                        **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
+                        **({"rail_held": (stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
+                                          else seam_ground(p) if cfg.satin_seam_hold else None)}
+                           if _rect else {}))
                     if (not s_report["empty"] and s_report.get("columns") == 1
                             and not s_report.get("columns_unsewn") and not s_report.get("cuts")):
-                        s_report["straight_slot"] = 1
+                        s_report["rectangle_bar" if _rect else "straight_slot"] = 1
                         return s_runs, s_report, False
                 _cored_s = cored_holes_of(p.polygon)
                 runs, report = satin_shape_judged(

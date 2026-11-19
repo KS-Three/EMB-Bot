@@ -976,40 +976,45 @@ _RAILS_MEMO: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
 
 
 def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None,
-               keep=None):
+               keep=None, held=None):
     """`_sewn_rails`, once per exact call inside a letter (`_RAILS_MEMO`);
     the caller always gets its own lists."""
     memo = _RAILS_MEMO.get()
     if memo is None:
-        return _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep)
+        return _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep, held)
     ink, floor = keep if isinstance(keep, tuple) else (keep, None)
     key = (poly.wkb, tuple((a[0], a[1], b[0], b[1]) for a, b in col.stations), col.kind,
            None if col.axis is None else (float(col.axis[0]), float(col.axis[1])),
            float(pull_mm), float(pull_floor_mm),
            None if hold is None else hold[1],
-           None if ink is None else id(ink), floor, isinstance(keep, tuple))
+           None if ink is None else id(ink), floor, isinstance(keep, tuple),
+           None if held is None else id(held))
     hit = memo.get(key)
     if hit is None:
-        a_pts, b_pts = _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep)
-        hit = memo[key] = (a_pts, b_pts, ink)
+        a_pts, b_pts = _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep, held)
+        hit = memo[key] = (a_pts, b_pts, ink, held)
     return list(hit[0]), list(hit[1])
 
 
 def _sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None,
-                keep=None):
+                keep=None, held=None):
     """One column's crosses as the fabric gets them, before the cross floor:
     rails inset, pushed by the pull, a fanned straight end's face given the
     rails' reach -- and, with `hold` (`end_face_hold`, under
     `cfg.lettering_columns_square_ends`), every end-face penetration held on
     its face. `keep` (`cfg.satin_push_keeps_gaps`, None: off): the
     push held out of the letter's bays and its gaps to same-thread ink, as
-    from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`).
+    from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`). `held`
+    (`cfg.extra["satin_rectangles"]`, None: off): `_push_rails`' seam hold,
+    the colour already down, as the skeleton tier gets it under
+    `cfg.satin_seam_hold`.
     -> (a_pts, b_pts). `tools/column_ends.py` reads it too."""
     from .stage6_satin import _push_rails
     a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
     if pull_mm > 0:
         a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm,
-                                   **({"keep": keep} if keep is not None else {}))
+                                   **({"keep": keep} if keep is not None else {}),
+                                   **({"held": held} if held is not None else {}))
     if col.kind in ("straight", "folded"):      # a folded column's ends are its legs' straight ends
         a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
                                         pull_mm - RAIL_REACH_INSET_MM,
@@ -2293,6 +2298,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 edge_walk: bool = False,
                 cover_hops: bool = False,
                 pull_keep=None,
+                rail_held=None,
                 _walk: list | None = None,
                 _feet: dict | None = None,
                 ) -> tuple[list[StitchRun], dict]:
@@ -2373,7 +2379,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     hold = end_face_hold(columns, poly) if square_ends else None
     for col in columns:
         col_pull = pull_mm if pull_of is None else pull_of(column_width(col))
-        a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold, pull_keep)
+        a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold, pull_keep,
+                                  **({"held": rail_held} if rail_held is not None else {}))
         # `cfg.small_print_floor`: read where the rails land BEFORE the hold
         # below moves them (held, they sit exactly the clearance off)
         near_counter = (counter_clear_mm > 0
@@ -3472,6 +3479,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             whole_letter_floor: bool = False,
                             dropped_branch: bool = False,
                             dropped_hairline: bool = False,
+                            rail_held=None,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3582,6 +3590,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"cover_hops": True} if cover_hops else {}),
                   # `cfg.satin_push_keeps_gaps`: the push kept out of bays and gaps
                   **({"pull_keep": pull_keep} if pull_keep is not None else {}),
+                  # `cfg.extra["satin_rectangles"]`: a rectangle's rails held at its seam
+                  **({"rail_held": rail_held} if rail_held is not None else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):

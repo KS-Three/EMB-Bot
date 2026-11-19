@@ -6711,6 +6711,49 @@ def is_straight_slot(poly: Polygon, max_width_mm: float) -> bool:
     return poly.area >= SLOT_MIN_HULL_SHARE * poly.convex_hull.area
 
 
+#: `is_rectangle_bar` (`cfg.extra["satin_rectangles"]`, built OFF
+#: 2026-11-19). A rectangle fills its own minimum rectangle: Flag.webp's
+#: stripes read 0.997-0.999 at 96 and 113.5 mm; a rounded bar is 0.95 at
+#: elongation 4 and nearer 0.99 only when very long, where its round ends are
+#: a hair of the length. Kent 2026-11-19: "a square needs to be square".
+#: The share alone passes a 12 x 3 mm bar with 1 mm round corners (0.976),
+#: so the outline must also lie within `RECT_MAX_DEV_MM` of the rectangle
+#: everywhere (Hausdorff): the stripes read 0.021-0.035 mm, and a corner
+#: radius r sits 0.414 r off its corner, so 0.1 refuses r over 0.24 mm.
+RECT_MIN_SHARE = 0.97
+RECT_MAX_DEV_MM = 0.1
+
+
+def is_rectangle_bar(poly: Polygon, max_width_mm: float) -> bool:
+    """`cfg.extra["satin_rectangles"]`'s test: a straight bar with square
+    corners -- the shape fills `RECT_MIN_SHARE` of its minimum rotated
+    rectangle and lies within `RECT_MAX_DEV_MM` of it -- of ANY length, no
+    hole, its short side within the satin ceiling and at least
+    `SLOT_MIN_ELONGATION` to one.
+
+    Flag.webp at 113.5 mm: the skeleton tier's spine forks into each stripe's
+    corners and stops short of the end, so the rails wrap in, a short cap
+    stitch sits mid-end (top rail 0.6 mm and bottom 0.2 mm short of the
+    edge), and every stripe's end is rounded by 0.2-0.5 mm; the flag's right
+    edge wandered 2.9 mm. `is_straight_slot` stops at elongation 4; a
+    stripe is about 15-25."""
+    if poly.is_empty or poly.geom_type != "Polygon" or poly.interiors or poly.area <= 0:
+        return False
+    rect = poly.minimum_rotated_rectangle
+    corners = list(getattr(getattr(rect, "exterior", None), "coords", []))
+    if len(corners) < 4:
+        return False
+    s0, s1 = math.dist(corners[0], corners[1]), math.dist(corners[1], corners[2])
+    long_side, short_side = max(s0, s1), min(s0, s1)
+    if short_side <= 0 or short_side > max_width_mm:
+        return False
+    if long_side / short_side < SLOT_MIN_ELONGATION:
+        return False
+    if poly.area < RECT_MIN_SHARE * long_side * short_side:
+        return False
+    return rect.hausdorff_distance(poly) <= RECT_MAX_DEV_MM
+
+
 def small_solid_satin(poly: Polygon, shape_id: str, *, spacing_mm: float,
                       max_width_mm: float,
                       start_near: tuple[float, float] | None
