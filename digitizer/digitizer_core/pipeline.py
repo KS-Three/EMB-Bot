@@ -2267,6 +2267,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # `cfg.lettering_columns_stroke_floor` (ON since 2026-11-16, Kent's flip), the same way, as ONE
     # manager (`columns.floor_scopes`); the scopes now enter through one `ExitStack` below
     from .columns import floor_scopes
+    from .columns import through_last_scope   # `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19), the same way
     from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
@@ -2335,6 +2336,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(patch_merge_scope(bool((cfg.extra or {}).get("script_strokes_patch_merge"))))
         # `cfg.extra["lettering_columns_hairline_leave"]` (built OFF 2026-11-19), the same way
         _enter(hairline_leave_scope(bool((cfg.extra or {}).get("lettering_columns_hairline_leave"))))
+        # `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19), the same way
+        _enter(through_last_scope(bool((cfg.extra or {}).get("lettering_columns_through_last"))))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))
