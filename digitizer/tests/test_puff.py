@@ -39,11 +39,10 @@ def test_wants_puff_modes():
 def test_puff_eligible_width():
     cfg = PipelineConfig(puff=True)
     assert puff_eligible(_region(4), cfg) == (True, "")
-    # measure_width_mm is skeleton-based and reads a bar a little off its
-    # nominal width (1.8 -> 1.9, 20 -> 12.2 on a 30 mm bar), so the expected
-    # strings are the measured values, not the nominal ones.
+    # Thin uses the skeleton mean (reads 1.8 as 1.9); wide uses the widest
+    # inscribed circle, which is exact on a bar (the mean read 14 as 9.8).
     assert puff_eligible(_region(1.8), cfg) == (False, "too thin for foam (1.9 mm)")
-    assert puff_eligible(_region(20), cfg) == (False, "too wide to puff (12.2 mm)")
+    assert puff_eligible(_region(14), cfg) == (False, "too wide to puff (14.0 mm)")
 
 
 def test_puff_eligible_ignores_flat_satin_ceiling():

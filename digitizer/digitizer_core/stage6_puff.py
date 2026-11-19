@@ -7,6 +7,7 @@ never the flat satin ceiling.
 from __future__ import annotations
 
 from . import machine
+from .stage5_overlap import _inscribed_width
 from .stitchwidth import measure_width_mm
 
 
@@ -26,6 +27,9 @@ def puff_eligible(region, cfg) -> tuple[bool, str]:
     if w is None or w < machine.PUFF_MIN_WIDTH_MM:
         shown = "0.0" if w is None else f"{w:.1f}"
         return False, f"too thin for foam ({shown} mm)"
-    if w > machine.PUFF_MAX_WIDTH_MM:
-        return False, f"too wide to puff ({w:.1f} mm)"
+    # Too wide is the widest inscribed circle, not the skeleton mean: the mean
+    # under-reads wide bars (a 14 mm bar reads 9.8) and would defeat the ceiling.
+    widest = _inscribed_width(region.polygon)
+    if widest > machine.PUFF_MAX_WIDTH_MM:
+        return False, f"too wide to puff ({widest:.1f} mm)"
     return True, ""
