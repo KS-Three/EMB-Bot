@@ -19,6 +19,7 @@ Folder: `G:\My Drive\EMB-Bot\` (also visible at drive.google.com under
 
 | Item | Contents |
 |---|---|
+| `scratch-backup-2026-11-19.zip` | 146.6 MB, 721 files: the gitignored, not-disposable folders `scratch_kent\`, `scratch_corpus\`, `scratch_packs\`, `scratch_digitized_study\`, `scratch_pro_pair_proseal\`, `scratch_commons_logos\` (Kent's call 2026-11-19). Verified the same day: entry count matches the source file count and the Drive copy's hash matches the zip built locally. |
 | `Ink-Stitch Fonts\` | 637 files, about 364 MB: the downloaded clone of the Ink/Stitch open font collection (see below). |
 | `Embroidery Files\` | 139 files, about 15 MB, in 13 client and test folders (Becker Marine, Bridge Bar, C Gaulke Plowing, Gaulke Roofing, Golden Tee, Hotel Fremont, MFAB, Precision Drone, Proseal, Test Files, TIRES, To a T Machine, To a T_Becker Beanies): reference stitch files and art. |
 | `worktree-leftovers-2026-11-08\` | 52 small files in 12 or more `wt-*` folders: what was left behind when old git worktrees were cleaned up on 2026-11-08. Not a backup of anything current. |
@@ -26,14 +27,13 @@ Folder: `G:\My Drive\EMB-Bot\` (also visible at drive.google.com under
 | `.claude\` | Two small files from 2026-08-14 (`scheduled_tasks.lock`, `settings.local.json`). |
 | `corpus\` | Empty. |
 
-**There is no git bundle and no `scratch_*` zip on Drive.** The files the
-2026-08-14 version of this page described (`EMB-Bot-2026-08-11.bundle`,
-`EMB-Bot-2026-07-27.bundle`, `EMB-Bot-2026-07-27-files.zip`,
-`scratch_ink-2026-08-11.zip`) were not found on 2026-11-19. So Drive holds no
-copy of the repository's history and no copy of any gitignored `scratch_*`
-folder other than what is regenerable from `Ink-Stitch Fonts\`. **Whether to cut
-new bundles or zips is Kent's decision and is still open**; nothing here
-decides it.
+**There is no git bundle on Drive.** The files the 2026-08-14 version of this
+page described (`EMB-Bot-2026-08-11.bundle`, `EMB-Bot-2026-07-27.bundle`,
+`EMB-Bot-2026-07-27-files.zip`, `scratch_ink-2026-08-11.zip`) were not found on
+2026-11-19. Kent decided the same day: zip the irreplaceable `scratch_*` folders
+(the row above), and no git bundle, because GitHub already holds every pushed
+branch. The zip is a point-in-time copy; re-cut it (procedure below) after
+adding anything to those folders that matters.
 
 ## GitHub (stays current — best reference copy)
 
@@ -43,10 +43,12 @@ the tracked files. It does not hold the gitignored `scratch_*` folders. (The old
 `kent746/EMB-Bot` URL redirected here for a while after the transfer; treat
 this one as current.)
 
-## Procedure, if new snapshots are ever made
+## Procedure for new snapshots
 
-This is how the old snapshots were made; it is not a statement that they exist.
-
+- Scratch zip (how the 2026-11-19 one was made), PowerShell from the repo root:
+  `Compress-Archive -Path scratch_kent,scratch_corpus,scratch_packs,scratch_digitized_study,scratch_pro_pair_proseal,scratch_commons_logos -DestinationPath <scratchpad>\scratch-backup-<date>.zip`,
+  then copy it to the Drive folder and check the zip's entry count against
+  the source file count before trusting it.
 - Full-history bundle (every version of every file, every branch), from the
   repo root: `git bundle create <name>.bundle --all`, copied to the Drive
   folder. Restore on any computer with git: `git clone <name>.bundle EMB-Bot`.
@@ -72,5 +74,5 @@ This is how the old snapshots were made; it is not a statement that they exist.
 - `node_modules\` — restore with `npm install` inside `app\`
 - `scratch_ink\` — the font clone is restorable from the Drive folder; the
   `_tiers.json` and `_out\` results are not backed up.
-- `scratch_corpus\`, `scratch_kent\`, `scratch_packs\` — gitignored and not
-  disposable (CLAUDE.md footgun 5); no Drive copy.
+- `scratch_bench\`, `scratch_trials\`, `scratch_lanes\` — run outputs, not in
+  the 2026-11-19 zip.

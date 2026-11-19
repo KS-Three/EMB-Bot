@@ -245,5 +245,5 @@ runs are a thin sample; re-measure over a dozen before tightening it.
 
 `bench-digitize` and `art-fidelity-baseline` are push-to-`main`-only,
 `continue-on-error`, and gate nothing. A PR that touches neither `digitizer/`
-nor `.github/` runs only the wire tests on `digitizer` shard 1 (07e7fd5f, #791),
+nor `.github/` runs only the wire tests on `digitizer` shard 1 (07e7fd5f, #795),
 so on such a PR the `studio-e2e` shards are the slow check.

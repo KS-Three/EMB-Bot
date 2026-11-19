@@ -159,10 +159,9 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
 ```
 
 - **`.venv/Scripts/` is Kent's Windows box. On Linux — every cloud session —
-  the same venv is `.venv/bin/python`.** Nothing else changes. This is not
-  repeated in `README.md` (platform table) and
-  `.claude/skills/run-emb-bot/SKILL.md`, which handles both layouts, but it is
-  easy to miss, so each session used to rediscover it.
+  the same venv is `.venv/bin/python`.** Nothing else changes. `README.md`
+  (platform table) and `.claude/skills/run-emb-bot/SKILL.md` carry it too, but
+  it is easy to miss, so sessions kept rediscovering it.
 
 - **Build the digitizer venv with `python3.12` explicitly, NOT the bare `python3`**
   (cloud containers default to 3.11). On 3.11 the `requirements.txt` path leaves a
@@ -232,7 +231,7 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    same command and names the target (footgun 2). Detail: memory
    `wrong-root-sessions-and-global-guards-2026-10-04`, `memory-outside-the-repo`.
 
-5. **`scratch_*` directories are gitignored but NOT disposable.** `scratch_corpus/` (37-file third-party DST corpus), `scratch_ink/` (Ink/Stitch font clone — `build-embf.mjs` needs it), `scratch_kent/` (Kent's commissioned files), `scratch_packs/`. "Gitignored" here means "kept out of the public repo on purpose", not "safe to delete" — none of them has a Drive backup (checked 2026-11-19; only `scratch_ink/`'s font source, `Ink-Stitch Fonts/`, is on Drive; `BACKUPS.md`). Details: `COOKBOOK.md` "Gitignored reference material that is NOT disposable".
+5. **`scratch_*` directories are gitignored but NOT disposable.** `scratch_corpus/` (37-file third-party DST corpus), `scratch_ink/` (Ink/Stitch font clone — `build-embf.mjs` needs it), `scratch_kent/` (Kent's commissioned files), `scratch_packs/`. "Gitignored" here means "kept out of the public repo on purpose", not "safe to delete" — `scratch_kent/`, `scratch_corpus/` and `scratch_packs/` (with three other reference folders) are in `scratch-backup-2026-11-19.zip` on Drive, a point-in-time copy; of `scratch_ink/` only the font source (`Ink-Stitch Fonts/`) is there (`BACKUPS.md`). Details: `COOKBOOK.md` "Gitignored reference material that is NOT disposable".
 
 6. **Playwright MCP needs an explicit browser path in this class of sandbox.** `@playwright/mcp`'s bundled `playwright-core` expects a newer browser revision than what's pre-cached at `/opt/pw-browsers/`, and outbound access to Playwright's browser-download CDN is blocked (403) in this environment class — so the plain `npx @playwright/mcp@latest` config fails outright, with no download fallback. `.mcp.json` launches it through `tools/mcp-playwright.mjs` instead, which passes `--executable-path /opt/pw-browsers/chromium` only when that path exists (so a machine without it, e.g. Kent's local setup, still gets normal auto-download behavior). Don't simplify `.mcp.json` back to a bare `npx @playwright/mcp@latest` command. Confirmed 2026-08-03.
 
@@ -264,7 +263,7 @@ cd digitizer && .venv/Scripts/python -m digitizer_service   # service on 127.0.0
    stale: refresh it (`digitizer/tools/ci_shard_durations.py` over a run's
    `digitizer-shard-*` JUnit artifacts; `node tools/e2e-spec-times.mjs <run-id>`)
    rather than adding shards. A PR that touches neither `digitizer/` nor
-   `.github/` runs only the wire tests, on shard 1 alone (07e7fd5f, #791), so on
+   `.github/` runs only the wire tests, on shard 1 alone (07e7fd5f, #795), so on
    such a PR the e2e shards are the slow check. Two more jobs, `art-fidelity-baseline`
    and `bench-digitize`, are push-to-`main`-only and `continue-on-error`; they
    never appear on a PR and gate nothing.
