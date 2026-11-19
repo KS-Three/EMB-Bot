@@ -40,11 +40,14 @@ def card(tmp_path_factory):
 
     from digitizer_core import PipelineConfig
 
-    from .conftest import THIN_ARM_STOP_2026_11_17_OFF
+    from .conftest import SATIN_RECTANGLES_2026_11_19_OFF, THIN_ARM_STOP_2026_11_17_OFF
 
+    # ...and `satin_rectangles` (ON since 2026-11-19): the card's bars sew as
+    # rectangles, 40wt 5,318 -> 5,025 (60wt 5,789 -> 5,555), past the +-3% band
     out = tmp_path_factory.mktemp("cardv2")
     mp = pytest.MonkeyPatch()
-    mp.setattr(v2, "PipelineConfig", partial(PipelineConfig, **THIN_ARM_STOP_2026_11_17_OFF))
+    mp.setattr(v2, "PipelineConfig", partial(PipelineConfig, **THIN_ARM_STOP_2026_11_17_OFF,
+                                              **SATIN_RECTANGLES_2026_11_19_OFF))
     try:
         table = v2.generate(out, None, quiet=True)
     finally:

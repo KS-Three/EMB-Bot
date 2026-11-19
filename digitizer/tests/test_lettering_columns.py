@@ -697,8 +697,10 @@ def _off_then_stubbed_lane(monkeypatch, shapes, letters, end_at):
     from digitizer_core.fabrics import fabric_for_garment
 
     fabric = fabric_for_garment("left_chest")
+    # the shapes are bars; `satin_rectangles` (ON since 2026-11-19) would send
+    # the non-letters through the lane this stubs too. Both arms hold it off.
     off_blocks, _ = S7.sequence(_one_colour(shapes, letters), fabric,
-                                PipelineConfig(underlay=False))
+                                PipelineConfig(underlay=False, satin_rectangles=False))
     off = _sew_order(off_blocks)
     end = end_at(off)
     calls = []
@@ -713,7 +715,7 @@ def _off_then_stubbed_lane(monkeypatch, shapes, letters, end_at):
     monkeypatch.setattr(S7, "lettering_columns_shape",
                         own_thread_only(fake_lane, S7.lettering_columns_shape))
     on_blocks, _ = S7.sequence(_one_colour(shapes, letters), fabric,
-                               PipelineConfig(underlay=False, lettering_columns=True))
+                               PipelineConfig(underlay=False, lettering_columns=True, satin_rectangles=False))
     assert any(r.points[-1] == end for b in on_blocks for r in b.runs
                if r.shape_id in letters)
     return off, _sew_order(on_blocks), calls

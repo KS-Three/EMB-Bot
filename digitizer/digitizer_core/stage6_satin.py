@@ -6711,6 +6711,84 @@ def is_straight_slot(poly: Polygon, max_width_mm: float) -> bool:
     return poly.area >= SLOT_MIN_HULL_SHARE * poly.convex_hull.area
 
 
+#: `is_rectangle_bar` (`cfg.satin_rectangles`, ON since 2026-11-19). A rectangle fills its own minimum rectangle: Flag.webp's
+#: stripes read 0.997-0.999 at 96 and 113.5 mm; a rounded bar is 0.95 at
+#: elongation 4 and nearer 0.99 only when very long, where its round ends are
+#: a hair of the length. Kent 2026-11-19: "a square needs to be square".
+#: The share alone passes a 12 x 3 mm bar with 1 mm round corners (0.976),
+#: so the outline must also lie within `RECT_MAX_DEV_MM` of the rectangle
+#: everywhere (Hausdorff): the stripes read 0.021-0.035 mm, and a corner
+#: radius r sits 0.414 r off its corner, so 0.1 refuses r over 0.24 mm.
+RECT_MIN_SHARE = 0.97
+RECT_MAX_DEV_MM = 0.1
+
+
+def is_rectangle_bar(poly: Polygon, max_width_mm: float) -> bool:
+    """`cfg.satin_rectangles`' test: a straight bar with square
+    corners -- the shape fills `RECT_MIN_SHARE` of its minimum rotated
+    rectangle and lies within `RECT_MAX_DEV_MM` of it -- of ANY length, no
+    hole, its short side within the satin ceiling and at least
+    `SLOT_MIN_ELONGATION` to one.
+
+    Flag.webp at 113.5 mm: the skeleton tier's spine forks into each stripe's
+    corners and stops short of the end, so the rails wrap in, a short cap
+    stitch sits mid-end (top rail 0.6 mm and bottom 0.2 mm short of the
+    edge), and every stripe's end is rounded by 0.2-0.5 mm; the flag's right
+    edge wandered 2.9 mm. `is_straight_slot` stops at elongation 4; a
+    stripe is about 15-25."""
+    if poly.is_empty or poly.geom_type != "Polygon" or poly.interiors or poly.area <= 0:
+        return False
+    rect = poly.minimum_rotated_rectangle
+    corners = list(getattr(getattr(rect, "exterior", None), "coords", []))
+    if len(corners) < 4:
+        return False
+    s0, s1 = math.dist(corners[0], corners[1]), math.dist(corners[1], corners[2])
+    long_side, short_side = max(s0, s1), min(s0, s1)
+    if short_side <= 0 or short_side > max_width_mm:
+        return False
+    if long_side / short_side < SLOT_MIN_ELONGATION:
+        return False
+    if poly.area < RECT_MIN_SHARE * long_side * short_side:
+        return False
+    return rect.hausdorff_distance(poly) <= RECT_MAX_DEV_MM
+
+
+def rectangle_zigzag_underlay(poly: Polygon, start: tuple[float, float],
+                              shape_id: str) -> list[StitchRun]:
+    """`cfg.satin_rectangles`' underlay where the skeleton tier lays a
+    zigzag (`_stroke_underlay`: style zigzag, or a column past
+    `machine.SATIN_ZIGZAG_ABOVE_MM`): a centre run from the end nearer
+    `start` (where the satin begins) to the far end, then a zigzag back,
+    each leg 0.82 of the width (corpus law 23's 0.09 inset from each rail)
+    at `machine.SATIN_ZIGZAG_PITCH_MM`, ending at the start end. The column
+    path lays only a centre walk; without this the flag's 4.6 mm stripes
+    lost their zigzag, and with it most of the 16-30% fewer stitches."""
+    c = list(poly.minimum_rotated_rectangle.exterior.coords)[:4]
+    sides = [(c[i], c[(i + 1) % 4]) for i in range(4)]
+    short = sorted(sides, key=lambda s: math.dist(*s))[:2]
+    mids = [((a[0] + b[0]) / 2.0, (a[1] + b[1]) / 2.0) for a, b in short]
+    s_end, f_end = sorted(mids, key=lambda m: math.dist(m, start))
+    length = math.dist(s_end, f_end)
+    width = math.dist(*short[0])
+    inset = 0.4                                  # `columns._UNDERLAY_INSET_MM`
+    if length <= 2 * inset:
+        return []
+    ux, uy = (f_end[0] - s_end[0]) / length, (f_end[1] - s_end[1]) / length
+    vx, vy = -uy, ux
+    a = (s_end[0] + ux * inset, s_end[1] + uy * inset)
+    b = (f_end[0] - ux * inset, f_end[1] - uy * inset)
+    n = max(2, int(math.ceil((length - 2 * inset) / machine.UNDERLAY_STITCH_MM)))
+    runs = [StitchRun(points=_resample([a, b], n), kind=stitches.UNDERLAY, shape_id=shape_id)]
+    half = 0.5 * width * (1.0 - 2 * 0.09)
+    steps = max(2, int(math.ceil((length - 2 * inset) / machine.SATIN_ZIGZAG_PITCH_MM)))
+    pts = []
+    for i, (px, py) in enumerate(_resample([b, a], steps)):
+        side = 1.0 if i % 2 == 0 else -1.0
+        pts.append((px + vx * half * side, py + vy * half * side))
+    runs.append(StitchRun(points=pts, kind=stitches.UNDERLAY, shape_id=shape_id))
+    return runs
+
+
 def small_solid_satin(poly: Polygon, shape_id: str, *, spacing_mm: float,
                       max_width_mm: float,
                       start_near: tuple[float, float] | None

@@ -69,6 +69,9 @@ def _sewn(path: Path, **kw):
         return real(poly, shape_id, **kwargs)
 
     s7.satin_shape = own_thread_only(spy, real)
+    # `satin_rectangles` (ON since 2026-11-19) sends a bar to the column path,
+    # past the `satin_shape` this file reads; it prices the skeleton tier's rails
+    kw.setdefault("satin_rectangles", PRE_FLIP["satin_rectangles"])
     try:
         result, plan = digitize(path, PipelineConfig(garment_id="left_chest", **kw))
     finally:
