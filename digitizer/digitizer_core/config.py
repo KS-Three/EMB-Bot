@@ -1658,6 +1658,22 @@ class PipelineConfig:
     # mover, but leaves golden_tee and the Drone's own pins. Not a flip
     # candidate yet: the Drone's gain costs trims and stacked-thread area.
     merge_chroma_guard: bool = False
+    # `dark_neutral_split` (built OFF 2026-11-19, the prime grader's Precision
+    # Drone: "body, camera and arms come out as disconnected fragments"). The
+    # drone's body and arm panels (neutral, L* ~20) end up in the ONE 800 mm2
+    # near-black stage-2 region (neutral L* < 3) with the shadows, ring and dark
+    # glass, so the body has no shape of its own. With this on, stage 2 cuts a
+    # large DARK NEUTRAL region into its near-black remainder and its mid-dark
+    # panels (neutral L* >= `DARK_SPLIT_T`), only where both tones are large,
+    # coherent and far apart (`stage2_photo_segment.dark_split_bounds`) and the
+    # ordinary tonal split is not in force. 2 of the 44 sweep runs qualify
+    # (docs/renders/dark_neutral_split-2026-11-19/). False is the engine as it was.
+    # NOT A FLIP CANDIDATE (director, 2026-11-19): drone_render at 80 mm is worse
+    # (navy base goes charcoal, camera-housing outline and body top lines are
+    # lost) and the hat's gain is the arms only. At 62 mm the drone's body is
+    # 1-2 mm gloss edges, a thread-width limit; fuse, chroma guard and this
+    # tonal split have not given it a shape.
+    dark_neutral_split: bool = False
     # `light_thin_stroke_keep` (built OFF 2026-11-18, the prime grader's
     # Precision Drone: "the lower left propeller is a thick black slab ...
     # instead of a thin grey blade"). Traced: the blade's silver highlight is
@@ -4563,6 +4579,34 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_block_butt.py`.
     lettering_columns_block_butt: bool = True
+    # `lettering_columns_r_bowl`, `_block_butt_small`, `_a_bar`, `_block_lean` (built OFF 2026-11-18 as `cfg.extra`
+    # keys, #1686; `docs/marine-pro-construction-2026-11-18.md` measures the professional's MARINE letter by letter and
+    # these four close its biggest differences from `lettering_columns_block_butt`'s). All four are layout only (no
+    # satin floor, pull compensation, cover tolerance or density number changes, ROADMAP gate 1):
+    #   r_bowl: an R (one counter, a stem-head butt) sews as the stem (level, to its top, no slab), a level leg, and ONE
+    #     bowl column on rays from the counter's centre at even angular steps, each cross starting
+    #     `outline_cut.BOWL_INNER_INSET_MM` = 0.5 mm off the counter's edge;
+    #   block_butt_small: block_butt's heavy-stroke gate 3.5 -> 3.0 mm (Becker's E measures 3.46 mm at 76.5-79.8);
+    #   a_bar: a flat-topped block A's crossbar is its own column of upright crosses between two uncut legs;
+    #   block_lean: on a heavy block letter the lean cap is 50 deg, not the satin convention's 30, so the M's V and the
+    #     N's diagonal cross level.
+    # **ON since 2026-11-19, Kent's flip**, verbatim: "Flip all four ON (Recommended)" (2026-11-19, shown the MARINE word at all five Becker placements, the R close-ups at
+    # 101.9 and 76.5 mm and the three-flag fallback, ORIGINAL | BEFORE | AFTER, and told the catches below). His standing words of
+    # 2026-11-18 still apply: "make sure the MARINE strokes match the pros. These letters need to be perfect."
+    # **Caveats he was told:** the R's 0.5 mm stand-off is read from the professional's file (his bowl cross 4.4 mm
+    # over a 5.3 mm wall, his counter 9.85 mm2 against the art's 6.63), not from cloth (`docs/sew-out-list-2026-11-18.md`
+    # row 15; without it the R's counter is 3.2 mm2 at 101.9); `block_butt_small` undoes his 2026-11-14 E fold
+    # (`corner_fold_apex_side`) at 76.5-79.8 mm too; top slabs are not built, so the word is closer to the
+    # professional's, not identical; Becker is the only design with a letter this heavy (every other committed
+    # job's widest is 0.8-1.7 mm) and `block_lean`'s gate is stroke width alone; +1..2 trims and up to +14 mm
+    # needle-up travel on a Becker placement; not sewn on cloth. Six runs of 44 move, all Becker
+    # (`docs/renders/marine-match-2026-11-18/flag-sweeps/all-four.md`). False is the columns as they were;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin all four False. Tests:
+    # `tests/test_r_bowl.py`, `tests/test_marine_match.py`.
+    lettering_columns_r_bowl: bool = True
+    lettering_columns_block_butt_small: bool = True
+    lettering_columns_a_bar: bool = True
+    lettering_columns_block_lean: bool = True
     # Under `lettering_columns`, a needle-down CONNECTOR between two of a
     # letter's runs stays inside the letter as far as its own satin reaches
     # (2026-10-13, `columns.column_runs`, `inside_connectors`). The link rule

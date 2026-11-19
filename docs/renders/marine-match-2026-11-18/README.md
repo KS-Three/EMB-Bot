@@ -9,6 +9,7 @@ rebuilt one (no slab, one radial bowl column, 0.5 mm inset); an earlier slab R i
 | `all-four/` | `r_bowl` + `block_butt_small` + `a_bar` + `block_lean` | `<placement>_word.jpg` (the whole MARINE line, three rows) and `<placement>_letters.jpg` (each letter M A R I N E, 2x, shown at 0.6) |
 | `three-flags/` | `block_butt_small` + `a_bar` + `block_lean` (no `r_bowl`) | the same files, plus `flag-sweep-three.md` |
 | `r-closeups/` | `r_bowl` alone | the R at 101.9 and 76.5 mm, ORIGINAL / BEFORE / AFTER side by side |
+| `e-top-arm/`, `top-slab/` | `e_top_arm`, `top_slab` (built OFF 2026-11-19), BEFORE = main with the four on | the E (five placements + 114) and the slab (two placements; it stays OFF) |
 | `flag-sweeps/<flag>.md` | one flag against main | `tools.flag_sweep` over 18 tripwire placements and 26 fixtures: 6 Becker runs move, 38 do not. `all-four.md` is the four together |
 
 Placements: `becker_hat_large` (101.9 mm), `becker_lc_large` (95.7), `becker_hat_small` and `becker_chest_small` (76.5, one file at two

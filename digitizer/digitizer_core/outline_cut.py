@@ -594,6 +594,120 @@ def _bowl_column_normal(piece: Polygon, hole: Polygon, W: float, pitch_mm: float
                   rail_a=[a for a, _ in out], rail_b=[b for _, b in out])
 
 
+# ONE FAMILY WITH `top_slab` / `e_top_arm` (director, 2026-11-19): either every letter wears the pro's top band or none does. At the whole word `e_top_arm` gives the E alone a banded top
+# with a seam under it while M, A, R, I, N have none, and `top_slab` gives all six a seam (the #1659 look). BOTH STAY OFF; neither is a flip question until
+# a sew-out (`docs/sew-out-list-2026-11-18.md` row 17) shows whether the seam is a preview matter or a real one.
+# `e_top_arm` (`cfg.extra["lettering_columns_e_top_arm"]`, 2026-11-19, built OFF): the pro's E sews its top
+# arm as ONE column across the whole width of the letter, over the stem's top, with near-vertical crosses
+# (12.2 mm at 101.9, crosses -79 deg 5.3 mm long; the stem below it starts where the arm ends,
+# `docs/marine-pro-construction-2026-11-18.md`). block_butt's E butts the top arm to a full-height stem.
+# ON, the first slot cut (the stem line up through the top arm) is replaced by a level cut from the
+# stem's left edge to the slot's back corner: stem top and top arm are one piece whose crosses are upright.
+_E_TOP: contextvars.ContextVar[bool] = contextvars.ContextVar("e_top", default=False)
+
+
+@contextlib.contextmanager
+def e_top_scope(on: bool):
+    """`cfg.extra["lettering_columns_e_top_arm"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _E_TOP.set(True)
+    try:
+        yield
+    finally:
+        _E_TOP.reset(token)
+
+
+def _e_top_cuts(poly: Polygon, W: float, cuts: list):
+    """`e_top_arm`: -> (cuts, point inside the top band) or (cuts, None) when the letter has no
+    slot cut running down from its top edge to the top slot's back corner with open outline to
+    the left of that corner."""
+    ymin = poly.bounds[1]
+    tops = [c for c in cuts if c[2] == "slot" and min(c[0][1], c[1][1]) <= ymin + 0.05]
+    if len(tops) != 1:
+        return cuts, None
+    top = tops[0]
+    v = top[0] if top[0][1] > top[1][1] else top[1]
+    far = 3.0 * W + poly.bounds[2] - poly.bounds[0]
+    hit = _ray_hit(poly, v, (-1.0, 0.0), far)
+    if hit is None or not (0.8 * W <= math.dist(hit, v) <= 2.6 * W) or not _inside(poly, hit, v):
+        return cuts, None
+    out = [c for c in cuts if c is not top] + [(hit, v, "through", math.dist(hit, v))]
+    return out, ((hit[0] + v[0]) / 2, (hit[1] + v[1]) / 2 - 0.35 * W)
+
+
+# ONE FAMILY WITH `top_slab` / `e_top_arm` (director, 2026-11-19): either every letter wears the pro's top band or none does. At the whole word `e_top_arm` gives the E alone a banded top
+# with a seam under it while M, A, R, I, N have none, and `top_slab` gives all six a seam (the #1659 look). BOTH STAY OFF; neither is a flip question until
+# a sew-out (`docs/sew-out-list-2026-11-18.md` row 17) shows whether the seam is a preview matter or a real one.
+# `top_slab` (`cfg.extra["lettering_columns_top_slab"]`, 2026-11-19, built OFF): the pro's sheared slab across the top
+# of every MARINE letter (`docs/marine-pro-construction-2026-11-18.md`, rule 2): one column across the whole
+# letter's top, `SLAB_DEPTH_W` stroke widths deep (his spine at y 16.1 from a cap top of 13.5, cross 4.5-5.4 mm),
+# crosses near upright and parallel to the art's own sheared left edge (-77 deg, `SLAB_CROSS_DEG`), ending
+# on the outline (inside it, no overhang). Everything under it keeps its own cuts. Kent turned the apex family's
+# caps off on 2026-11-17 (#1659) because they overhung the A and the R and showed a seam: the band here is a piece of
+# the letter's own polygon, so it cannot overhang; the seam is the question the whole-word pictures answer.
+_TOP_SLAB: contextvars.ContextVar[bool] = contextvars.ContextVar("top_slab", default=False)
+SLAB_DEPTH_W = 1.0
+SLAB_CROSS_DEG = -77.0         # off level, y down (his: -74 to -90; the art's flag edge runs at -77)
+
+
+@contextlib.contextmanager
+def top_slab_scope(on: bool):
+    """`cfg.extra["lettering_columns_top_slab"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _TOP_SLAB.set(True)
+    try:
+        yield
+    finally:
+        _TOP_SLAB.reset(token)
+
+
+def _slab_cuts(poly: Polygon, W: float, cuts: list):
+    """`top_slab`: -> (cuts, y of the band's lower edge). Cuts wholly inside the band go; a cut that
+    crosses its lower edge is clipped to the part below it; the edge itself is cut across the letter."""
+    x0, y0, x1, y1 = poly.bounds
+    yc = y0 + min(SLAB_DEPTH_W * W, 0.36 * (y1 - y0))
+    # an E's top arm is thicker than the stroke (6.5 mm against 5.3): the band ends at the top slot's back
+    # corner, not 1.2 mm above it, or the arm's last millimetre is a sliver column of its own
+    tops = [c for c in cuts if c[2] == "slot" and min(c[0][1], c[1][1]) <= y0 + 0.05]
+    if len(tops) == 1:
+        yv = max(tops[0][0][1], tops[0][1][1])
+        if y0 + 0.8 * W <= yv <= y0 + 1.4 * W:
+            yc = yv
+    out = []
+    for c in cuts:
+        a, b = c[0], c[1]
+        ya, yb = a[1], b[1]
+        if max(ya, yb) <= yc + 0.05:
+            continue
+        if min(ya, yb) < yc - 0.05:
+            lo, hi = (a, b) if ya > yb else (b, a)            # lo = the end below the edge
+            t = (yc - hi[1]) / (lo[1] - hi[1])
+            q = (hi[0] + (lo[0] - hi[0]) * t, yc)
+            c = (q, lo, c[2], math.dist(q, lo))
+        out.append(c)
+    row = LineString([(x0 - 1.0, yc), (x1 + 1.0, yc)]).intersection(poly)
+    for g in getattr(row, "geoms", [row]):
+        if g.geom_type == "LineString" and g.length > 0.3 * W:
+            out.append((g.coords[0], g.coords[-1], "through", g.length))
+    return out, yc
+
+
+def _slab_merge(pieces: list, yc: float):
+    """`top_slab`: the pieces above the edge as one polygon each (connected bands), -> (pieces, slab wkbs)."""
+    from shapely.ops import unary_union
+    above = [g for g in pieces if g.representative_point().y < yc]
+    below = [g for g in pieces if g.representative_point().y >= yc]
+    if not above:
+        return pieces, []
+    band = unary_union([g.buffer(0.001) for g in above]).buffer(-0.001)
+    bands = [g for g in getattr(band, "geoms", [band]) if g.geom_type == "Polygon" and g.area > 0.4]
+    return below + bands, [g.wkb for g in bands]
+
+
 def _bowl_band(poly: Polygon, pieces: list):
     """`r_bowl`: the piece that runs the longest along the counter's edge (the bowl's band), as WKB."""
     ring = LineString(list(poly.interiors[0].coords))
@@ -3433,7 +3547,7 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
     key = ("build_column", piece.wkb, _lines_key(cut_lines), float(W), float(pitch_mm),
            bool(mitre_ends), bool(rail_axis), _SMALL_BOLD.get(), _SMALL_BOLD_SIMPLIFY.get(),
            _APEX_CUT.get(), _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get(), _BLOCK_BUTT.get(),
-           _BLOCK_SMALL.get(), _R_BOWL.get(), _A_BAR.get())
+           _BLOCK_SMALL.get(), _R_BOWL.get(), _A_BAR.get(), _E_TOP.get(), _TOP_SLAB.get())
     if key not in memo:
         memo[key] = _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     return _fresh(memo[key])
@@ -4190,7 +4304,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     W = stroke_width(poly)
     cuts, _reflex, _convex = find_cuts(poly, W)
     block = _BLOCK_BUTT.get() and W >= _butt_min_w()       # `block_butt` (built OFF): heavy strokes only
-    bowl, bar_pt = False, None
+    bowl, bar_pt, e_pt = False, None, None
     if block and _A_BAR.get():        # `a_bar` (built OFF): the pro's A, legs uncut and an upright bar between
         cuts, bar_pt = _a_bar_cuts(poly, W, cuts, _reflex)
     if block:
@@ -4230,16 +4344,39 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
             return any(ln.crosses(sl) for sl in slines)
 
         cuts = [c for c in cuts if c[2] == "corner_cap" or not clashes(c)] + _trim_under_caps(scuts, cuts, W)
+        if block and _E_TOP.get():        # `e_top_arm` (built OFF): the top arm one column over the stem's top
+            cuts, e_pt = _e_top_cuts(poly, W, cuts)
+            if e_pt is not None and memo is not None:
+                memo["block"] = True
+    slab_y = None
+    if block and _TOP_SLAB.get():       # `top_slab` (built OFF): one column across the letter's top
+        cuts, slab_y = _slab_cuts(poly, W, cuts)
+        if memo is not None:
+            memo["block"] = True
+        e_pt = None
     pieces = split(poly, cuts)
+    slab_wkbs = []
+    if slab_y is not None:
+        pieces, slab_wkbs = _slab_merge(pieces, slab_y)
+        if memo is not None and slab_wkbs:
+            sa = math.radians(SLAB_CROSS_DEG + 90.0)             # the along-stroke direction: square to the cross
+            memo["bowl_axes"] = {**memo.get("bowl_axes", {}), **{w: (math.cos(sa), math.sin(sa)) for w in slab_wkbs}}
+    if e_pt is not None and memo is not None:
+        band = [g for g in pieces if g.buffer(0.02).contains(Point(e_pt))]
+        if len(band) == 1:
+            # the top band and every arm cross upright (his: -79, -88, -88 deg); the stem below the band stays level
+            tall = max(pieces, key=lambda g: g.bounds[3] - g.bounds[1])
+            memo["bowl_axes"] = {**memo.get("bowl_axes", {}),
+                                 **{g.wkb: (1.0, 0.0) for g in pieces if g.wkb != tall.wkb}}
     if bar_pt is not None and memo is not None:
         bar = [g for g in pieces if g.buffer(0.02).contains(Point(bar_pt))]
-        memo["bowl_axes"] = {bar[0].wkb: (1.0, 0.0)} if len(bar) == 1 else {}
+        memo["bowl_axes"] = {**memo.get("bowl_axes", {}), **({bar[0].wkb: (1.0, 0.0)} if len(bar) == 1 else {})}
     if bowl and memo is not None:
         memo["bowl_piece"] = _bowl_band(poly, pieces)      # `r_bowl`: the band round the counter sews as a curve
         memo["bowl_hole"] = Polygon(poly.interiors[0])
         rest = [g for g in pieces if g.wkb != memo["bowl_piece"]]
-        if len(pieces) == 3 and len(rest) == 2:     # stem, band, leg: the leg's crosses level, the pro's
-            memo["bowl_axes"] = {max(rest, key=lambda g: g.centroid.y).wkb: (0.0, 1.0)}
+        if (len(pieces) == 3 and len(rest) == 2) or (slab_wkbs and len(rest) >= 2):    # the leg's crosses level, the pro's
+            memo["bowl_axes"] = {**memo.get("bowl_axes", {}), max(rest, key=lambda g: g.centroid.y).wkb: (0.0, 1.0)}
     # a cut that only shaves off a scrap is not a junction: take it back out
     apex = _APEX_CUT.get()
     while cuts:

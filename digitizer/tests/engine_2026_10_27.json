@@ -391,6 +391,7 @@
  "color_cap_least_loss": false,
  "color_cap_fuse_split_tones": false,
  "merge_chroma_guard": false,
+ "dark_neutral_split": false,
  "light_thin_stroke_keep": false,
  "keyline_fragment_drop": false,
  "lettering_columns_apex_pro": false,
@@ -406,5 +407,9 @@
  "cap_merged_layer_home": false,
  "shadow_to_page": false,
  "keyline_under_face": false,
- "lettering_columns_block_butt": false
+ "lettering_columns_block_butt": false,
+ "lettering_columns_r_bowl": false,
+ "lettering_columns_block_butt_small": false,
+ "lettering_columns_a_bar": false,
+ "lettering_columns_block_lean": false
 }

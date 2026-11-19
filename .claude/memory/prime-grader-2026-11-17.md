@@ -33,6 +33,10 @@ Still open on the Drone: the navy sky is black from stage 2; "A" of AND a shade 
 - The first run's nine readers were started with no `model`, so they ran on the session's own model: a
   breach of [[agents-cheap-models-2026-11-02]] (that note had not been read). RUNBOOK A.3 now requires the
   worker model on every reader. The 11-17 card and later cards are different instruments.
+- Kent 2026-11-19, after a status that ended on "the biggest unlock is the sew-out page": "Yes, i know. We are
+  not ready for sew out, don't push me por favor." Record a sew-out question on `docs/sew-out-list-2026-11-18.md`
+  and move on; do not close a report by steering him to the machine or counting what it would unlock. He decides
+  when. (Interpretation: one line saying a fault waits for cloth is fine; a nudge is not.)
 - Kent heard "stop trying to make a formula imitate Claude" as mean. Lead with what he asked for; do not
   frame his ask as a mistake.
 - Golden Tee's scorecard faults are what `bevel_ring_fold` (his 11-14 tickbox, OFF) cures: not a new fault.
@@ -43,3 +47,4 @@ Still open on the Drone: the navy sky is black from stage 2; "A" of AND a shade 
 Related: [[vlm-judge-100-2026-11-06]], [[eye-first-diagnosis-2026-11-13]], [[bevel-ring-fold-2026-11-13]].
 
 - **2026-11-18:** kit renders flat-ended (butt) strips (`stitchviz.render_design(caps="butt")`, kit-only) after readers called round-cap bumps "saw-toothed"; rubric 2026-11-18 adds "what the pictures cannot show truthfully". Next card is the first under it, not comparable with earlier.
+- **2026-11-19:** repeat test (27 sonnet readers, one kit; `repeat`, `docs/prime-grader/repeat-2026-11-19.md`): grade kappa 0.64 [-0.17, 1.00] n 9, 1 design in 7 moves a step unchanged, 62% of fault places one-reader only. Kent: "Two readers, twice a week (Recommended)": Monday and Thursday, `scorecard --verdicts V1 V2`, a fault counts only when both place it, a grade only when both give it; about 1.9M tokens a run (RUNBOOK A).

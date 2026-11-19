@@ -85,14 +85,18 @@ Notes that save a wasted session:
 - The engine's PES/EXP/DST cross-validation tests **skip** when the digitizer
   venv cannot import `pystitch`. A green run with skips proves less than it
   looks.
-- A full local digitizer run is slow (budget ~45 minutes on 4 cores; ~9 on a
-  fast desktop). Start only one at a time, and redirect to a log
+- A full local digitizer run is slow: budget ~80 minutes on 4 cores (79.0
+  measured 2026-11-17, one run on a cloud container; the "~9 on a fast
+  desktop" that stood here predates the suite's growth and has not been
+  re-measured). Start only one at a time, and redirect to a log
   (`pytest ... > log 2>&1; echo EXIT=$? >> log`) rather than piping to
   `tail`, which hides pytest's exit code.
-- Three golden-file digitizer tests fail on machines that did not capture the
-  golden; CI deselects them by node ID (see
-  `.github/workflows/python-package-conda.yml`). A fourth failure is a real
-  regression. OCR tests skip without the `tesseract` binary.
+- Two golden-file digitizer tests fail on machines that did not capture the
+  golden (`test_flat_lane_byte_identical` and `test_stage2_photo_segment`,
+  both on `photo/enthusiast_logo.png`); CI deselects them by node ID (see
+  `.github/workflows/python-package-conda.yml`). A third failure is a real
+  regression. It was three until 2026-10-08, when `test_pushcomp` was
+  re-pinned. OCR tests skip without the `tesseract` binary.
 - CI runs `engine`, `studio`, `studio-e2e` and a sharded `digitizer` job, all
   required on `main`. The digitizer job takes well over 15 minutes, so three
   green checks is not a green PR.
