@@ -1,5 +1,7 @@
 # Golden Tee red keyline: measured, and `keyline_under_face` (built OFF, not clearly better) (2026-11-19)
 
+**Not a flip candidate (director, 2026-11-19): ON erases the outline the art draws; left OFF, no thin-red variant to be built.**
+
 Prime-grader `L_goldentee_hat`, after #1681: GOLF and the big GT still read red-edged, "not as flat as a professional's".
 Hat at 74.9 mm, `hat_front`, main `e4b0428e`.
 

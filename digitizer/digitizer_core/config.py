@@ -1575,6 +1575,8 @@ class PipelineConfig:
     # `tests/test_layer_shadow.py`.
     cap_merged_layer_home: bool = True
     shadow_to_page: bool = True
+    # NOT A FLIP CANDIDATE (director, 2026-11-19): ON erases the dark-red outline the art
+    # draws (GOLF and GT), it does not thin it. Left OFF; no thin-red variant is to be built.
     # `keyline_under_face` (built OFF 2026-11-19, the prime grader's Golden Tee: the
     # red keylines still sew heavy and GOLF reads red-edged). `borders_last` sews the
     # burnt-orange keyline layer LAST, over the gold and pumpkin faces; ON, a layer of
