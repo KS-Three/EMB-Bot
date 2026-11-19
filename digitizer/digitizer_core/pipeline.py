@@ -87,7 +87,8 @@ from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_la
                               depth_sort_layers, sequence, cut_every_jump_step_mm,
                               stamp_ribbon_outliers, tag_border_by_size_groups)
 from .stitches import StitchPlan
-from .thin_ink import (bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean,
+from .thin_ink import (bean_dark_ink, carve_flat_dark_ink, ink_after_ground, one_lane_per_line,
+                       settle_dark_ink_bean,
                        thin_letters_after_ground)
 from .threads import chart_for, rgb_to_lab
 from .warnings_codes import (
@@ -1596,6 +1597,9 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # lettering. Here, not in `build_generation`, for `tag_bean_letters`'
     # reason: the pinned tier only exists after the edits.
     if cfg.dark_ink_bean:
+        # built OFF 2026-11-19: one line of lettering, one lane (NSA, GAO)
+        if (cfg.extra or {}).get("dark_ink_line_one_lane"):
+            one_lane_per_line(regions)
         settle_dark_ink_bean(regions)
 
     # Resolution of a region's effective "stitched" state: a

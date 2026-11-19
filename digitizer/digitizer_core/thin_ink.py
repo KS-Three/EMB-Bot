@@ -843,6 +843,80 @@ def settle_dark_ink_bean(regions) -> int:
     return kept
 
 
+#: `cfg.extra["dark_ink_line_one_lane"]` (built OFF 2026-11-19): on a line
+#: one lane gave half its letters, the shape ids it moved, for reports.
+ONE_LANE_KEY = "dark_ink_line_one_lane"
+
+
+def one_lane_per_line(regions) -> int:
+    """`cfg.extra["dark_ink_line_one_lane"]` (built OFF 2026-11-19), before
+    `settle_dark_ink_bean`: a line of lettering sews in ONE lane. The text
+    reader's line (`text_cluster_id`, one thread) whose letters are part
+    bean (`bean_dark_ink`) and part not takes the lane its OWN median mean
+    width (2 x area / perimeter) names against `DARK_INK_BEAN_MAX_WIDTH_MM`,
+    the gate `bean_dark_ink(by_width=True)` reads per ground.
+
+    The NSA seal at 90 mm: the white ring carries two lines, the bold
+    "NATIONAL SECURITY AGENCY" (median 0.98 mm) and the thin "UNITED STATES
+    OF AMERICA" (0.68). The dark read tagged 14 of the top line's 22
+    letters; judged per GROUND, both lines together fell under the gate, so
+    those 14 sewed as thin beans and their 8 untagged mates as bold satin:
+    one line, two weights. The GAO seal: three lines split the same way.
+
+    Over the gate, the line's beans drop their spines and sew with their
+    mates. Under it, the mates take spines (their skeleton, as
+    `bean_dark_ink` makes them) and the ground their bean mates name. A
+    shape the review pinned to a tier is never moved. Returns the shapes
+    moved; nothing mixed, nothing touched."""
+    from collections import Counter
+    from statistics import median
+
+    from shapely.geometry import Polygon
+
+    from .beanletters import BEAN_LETTER_KEY
+    from .shapefield import build_shape_field
+    from .textcluster import _skeleton_chains_mm
+
+    lines: dict = {}
+    for r in regions:
+        tc = r.meta.get("text_cluster_id")
+        if (tc and isinstance(r.polygon, Polygon) and r.polygon.length > 0
+                and r.meta.get("stitched", True)
+                and str(r.meta.get("tier", "auto")).lower() == "auto"):
+            lines.setdefault((tc, r.thread_index), []).append(r)
+    moved = 0
+    for members in lines.values():
+        bean = [r for r in members if r.meta.get(BEAN_LETTER_KEY)]
+        if not bean or len(bean) == len(members):
+            continue
+        width = median(2.0 * r.polygon.area / r.polygon.length for r in members)
+        if width >= DARK_INK_BEAN_MAX_WIDTH_MM:
+            for r in bean:
+                r.meta.pop(BEAN_LETTER_KEY, None)
+                r.meta.pop(DARK_INK_GROUND_KEY, None)
+                r.meta[ONE_LANE_KEY] = "column"
+                moved += 1
+            continue
+        grounds = Counter(r.meta.get(DARK_INK_GROUND_KEY) for r in bean
+                          if r.meta.get(DARK_INK_GROUND_KEY))
+        if not grounds:
+            continue
+        ground = grounds.most_common(1)[0][0]
+        for r in members:
+            if r.meta.get(BEAN_LETTER_KEY):
+                continue
+            field = build_shape_field(r.polygon)
+            spines = _skeleton_chains_mm(field) if field is not None else []
+            if not spines:
+                continue
+            r.meta[BEAN_LETTER_KEY] = spines
+            r.meta[DARK_INK_GROUND_KEY] = ground
+            r.meta["dark_ink"] = True
+            r.meta[ONE_LANE_KEY] = "bean"
+            moved += 1
+    return moved
+
+
 #: On a bean stroke `ink_after_ground` moved ONLY because of
 #: `cfg.extra["dark_ink_ground_innermost"]`: the shape id of the ground it now
 #: sews after. Stage 5 pins that ground's fill angle and no other. Internal.
