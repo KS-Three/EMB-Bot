@@ -74,6 +74,9 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_APEX_BAND_KNOTS"),
     ("outline_cut", "_A_CAP_CENTERED"),
     ("outline_cut", "_BLOCK_BUTT"),
+    ("outline_cut", "_R_BOWL"),
+    ("outline_cut", "_BLOCK_SMALL"),
+    ("outline_cut", "_A_BAR"),
     ("outline_cut", "_FLARE_TOP_FOLD"),
     ("outline_cut", "_ABSORB_UNSEWN"),
     ("outline_cut", "_NECK_ARMED"),
@@ -93,6 +96,7 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("stage6_border", "_LOOP_CHAIN"),
     ("column_lean", "_ITALIC"),
     ("column_lean", "_LEAN_FLAT_ENDS"),
+    ("column_lean", "_BLOCK_LEAN"),
     ("stage6_satin", "_CHORD_AIM"),
     # `cfg.script_strokes_pull_by_stroke` == "counter" (built OFF): the push a counter-facing rail gets
     ("stage6_satin", "COUNTER_PULL"),

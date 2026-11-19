@@ -70,14 +70,45 @@ _MIN_SEG_MM = 0.05
 _FAR = 200.0
 
 
-def cross_direction(axis, house_deg: float) -> tuple[float, float, float]:
+# `block_lean` (`cfg.extra["lettering_columns_block_lean"]`, 2026-11-18, built OFF): on a heavy block
+# letter (stroke >= `outline_cut`'s `_butt_min_w()`, 3.5 mm or 3.0 under `block_butt_small`) a
+# straight column is crossed level up to a 50 degree lean, not the satin convention's 30, so the
+# M's V diagonals (45 deg to the line) sew with the stems' own cross. The pro's: every Becker
+# MARINE file, the M's V in four level pieces whose crosses run 7.4-7.7 mm
+# (`docs/marine-pro-construction-2026-11-18.md`, rule 3). Layout only (gate 1): the cross is
+# longer along a leaning stroke, no floor, compensation or density number changes.
+BLOCK_LEAN_SPAN_DEG = 40.0         # span floor 40 = lean cap 50
+_BLOCK_LEAN: contextvars.ContextVar[bool] = contextvars.ContextVar("block_lean", default=False)
+
+
+@contextlib.contextmanager
+def block_lean_scope(on: bool):
+    """`cfg.extra["lettering_columns_block_lean"]` for one plan. False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _BLOCK_LEAN.set(True)
+    try:
+        yield
+    finally:
+        _BLOCK_LEAN.reset(token)
+
+
+def cross_direction(axis, house_deg: float, wide: bool = False) -> tuple[float, float, float]:
     """The cross direction the convention gives a straight piece of unit
     `axis` under the house cross `house_deg` (degrees, plan frame): a unit
     vector along the clamped house (`stage6_satin._clamp_to_span`) and the
     lean, in degrees, off the piece's own normal."""
     from .stage6_satin import _clamp_to_span
     tangent = math.atan2(axis[1], axis[0])
-    cross = _clamp_to_span(math.radians(house_deg), tangent)
+    house = math.radians(house_deg)
+    cross = _clamp_to_span(house, tangent)
+    if wide and cross != house:
+        # the wider cap only lets the house THROUGH on a steep stroke (the M's V, the N's diagonal); past it
+        # the fade toward the house grows with the cap, which would tilt an arm's near-upright cross
+        cross = _clamp_to_span(house, tangent, BLOCK_LEAN_SPAN_DEG)
+        if cross != house:
+            cross = _clamp_to_span(house, tangent)
     c = (math.cos(cross), math.sin(cross))
     n = (-axis[1], axis[0])
     cosl = max(-1.0, min(1.0, c[0] * n[0] + c[1] * n[1]))
@@ -337,7 +368,11 @@ def lean_column(col: Column, house_deg: float, pitch_mm: float, cut_lines=()) ->
     on one is a cut, not an end."""
     if col.kind != "straight" or col.axis is None or not col.stations:
         return col
-    cx, cy, lean = cross_direction(col.axis, house_deg)
+    wide = False
+    if _BLOCK_LEAN.get():
+        from .outline_cut import _butt_min_w
+        wide = col.width_mm >= _butt_min_w()
+    cx, cy, lean = cross_direction(col.axis, house_deg, wide)
     if lean < MIN_LEAN_DEG:
         return col
     sc = lean_stations(col.piece, col.axis, (cx, cy), pitch_mm)

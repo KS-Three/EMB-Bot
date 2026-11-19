@@ -14,7 +14,7 @@ float clearance drafted, not built),
 Stitches"), card v7 beside it, and the other `docs/sewout/card-*` folders. MASTER_SCOPE items
 33 (pull comp per rail or total; line 335), 44 (`forbid_gap_mm`, 0.8 mm; line 393) and the
 hairline-bean question (item 24, card block 5; line 133) already name their own sew-outs.
-Rows 1-9 and 12 below are the questions that have NO card block yet.
+Rows 1-9, 12, 14 and 15 below are the questions that have NO card block yet.
 
 ## Grouping: what to sew so that one sitting answers the most rows
 
@@ -213,6 +213,21 @@ other two.
    design), or the closed counters are the picture and not the cloth.
 5. **Source.** `docs/gaulke-fine-detail-2026-11-18.md` (PR #1679).
 
+### 15. Becker MARINE's R counter: how far to hold the bowl's crosses off the counter
+1. **Design, spot.** `becker_hat_large` 101.9 mm and the other four Becker placements (76.5-101.9 mm), the R of MARINE,
+   its counter about 4 mm wide at 101.9 (art 6.63 mm2).
+2. **In doubt.** `lettering_columns_r_bowl` starts every bowl cross `BOWL_INNER_INSET_MM` = **0.5 mm** off the counter's edge
+   (`outline_cut.py`). The number is read from the professional's file, not from cloth: his bowl cross is 4.4 mm over a 5.3 mm
+   wall and his counter 9.85 mm2 at 101.9 (art 6.63; 4.49 at 76.5). With no inset the crosses, pushed into the counter by
+   `Fabric.pull_comp_mm` = 0.4 (`digitizer_core/fabrics.py:47`), left 3.2 mm2 at 101.9 and 1.7 at 76.5; with 0.5 mm ours measure
+   6.04 / 3.47 (block_butt alone 4.59 / 2.2).
+3. **Sew, look.** The R at 101.9 and 76.5 mm: `block_butt` alone against `block_butt` + `r_bowl` (OFF by default,
+   `docs/marine-pro-construction-2026-11-18.md`). Look: is the counter a clear hole of bare cloth, does the R read as an R at
+   arm's length, does the thread ridge on the counter's edge show, does 0.5 mm leave a gap between the bowl's crosses and the
+   counter edge (a ring of bare cloth around the hole).
+4. **Unlocks.** If the counter reads closed or the ring shows: change the one constant (0.3-0.7 mm). If it reads fine:
+   `r_bowl` flips on its construction.
+5. **Source.** `docs/marine-pro-construction-2026-11-18.md` (#1686), the R rows of sections 3 and 4.
 
 ## What this list does not claim
 
