@@ -1,5 +1,7 @@
 # Memory Index — Archive (through 2026-10-22, three of 10-23, most of 10-25/26)
 
+Flag states in this file are as built at the time; check config.py for current state.
+
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date
 the note file was first committed), moved out of the live index on 2026-10-23 (and
