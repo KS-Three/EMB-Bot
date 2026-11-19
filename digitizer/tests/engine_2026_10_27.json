@@ -214,6 +214,7 @@
  "outline_loop_mitre": true,
  "outline_loop_split_shared": false,
  "outline_one_band": false,
+ "outline_strip_column": false,
  "overlap_by_angle": false,
  "overlap_mm": 0.25,
  "overlap_parallel_mm": 1.0,
