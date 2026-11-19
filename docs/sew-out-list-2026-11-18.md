@@ -229,6 +229,14 @@ other two.
    `r_bowl` flips on its construction.
 5. **Source.** `docs/marine-pro-construction-2026-11-18.md` (#1686), the R rows of sections 3 and 4.
 
+### 16. To a T hat small caps: the A counter and the C-to-L gap at the hat pull (2026-11-19)
+
+Source: `docs/toat-a-and-c-2026-11-19.md`. The A of "To A T" (stroke 1.5 mm) sews a 1.1 mm2 counter where
+the art has 2.26 mm2 (a 1.25 mm slit becomes 1.03 mm). The C of "LLC" (stroke 1.0 mm) sews its stems at
+2.0-2.1 mm against the art's 1.23 mm and the L-to-C gap at 2.9 mm against 3.8 mm. Cause: the fixed 0.4 mm
+per side pull on the hat (gate 1). Sew with the Toat Machine hat at 89.5 mm; the question is whether the
+slit and the 2.9 mm gap read on cloth. No flag built.
+
 ## What this list does not claim
 
 - No row says a sew-out will come out any particular way.
