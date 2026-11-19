@@ -376,6 +376,9 @@ def _require_token(supplied: str | None) -> None:
 # resolves it directly off `cfg.shape_overrides` (see the comment above that
 # resolution) — but it is still validated here, in this same closed set, so a
 # bad value is still a 400 at submit.
+# v1.11 (2026-11-19): `puff` -- a boolean per shape (None = no override),
+# enforced by `regions.apply_shape_edits`; the review rows echo
+# `puff_eligible`/`puff_reason` when `cfg.puff` is on.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "sew_order", "stitched", "underlay_style", "boundary_override",
                   "stitch_width_mm", "thread_wt", "holes_override", "puff"}

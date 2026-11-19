@@ -554,3 +554,19 @@ def test_puff_meta_carried():
     b.polygon = box(30, 0, 60, 5)
     merged, _w = apply_shape_merges([a, b], [["A", "B"]])
     assert len(merged) == 1 and merged[0].meta.get("puff") is True
+
+
+def test_puff_carried_by_match_shape_ids():
+    from digitizer_core.regions import match_shape_ids
+    prev = [_edit_region("P1", puff=True)]
+    cur = [_edit_region("C1")]
+    match_shape_ids(prev, cur)
+    assert cur[0].shape_id == "P1" and cur[0].meta.get("puff") is True
+
+
+def test_puff_kept_on_both_split_pieces():
+    from digitizer_core.regions import apply_shape_splits
+    r = _edit_region("Q", puff=True)
+    pieces, _w = apply_shape_splits([r], {"Q": [[15.0, -20.0], [15.0, 20.0]]})
+    assert len(pieces) == 2
+    assert all(p.meta.get("puff") is True for p in pieces)

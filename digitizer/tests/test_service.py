@@ -2100,7 +2100,14 @@ def test_puff_override_400(client):
                         data={"config": json.dumps(
                             {"shape_overrides": {"S1": {"puff": "yes"}}})})
     assert r.status_code == 400, r.text
-    assert "puff" in r.text
+    assert "puff" in r.text and "boolean" in r.text
+
+
+def test_puff_override_none_is_accepted():
+    from digitizer_service.app import _parse_config
+    out = json.loads(json.dumps(_parse_config(json.dumps(
+        {"shape_overrides": {"S1": {"puff": None}}}))))
+    assert isinstance(out, dict)
 
 
 def test_shape_rows_carry_puff_eligibility(client):
