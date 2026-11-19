@@ -2274,7 +2274,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import r_bowl_scope, block_small_scope, a_bar_scope, e_top_scope, top_slab_scope   # `cfg.lettering_columns_r_bowl` / `_block_butt_small` / `_a_bar` (ON since 2026-11-19), the same way
     from .outline_cut import block_butt_scope        # `cfg.lettering_columns_block_butt` (ON since 2026-11-18), the same way
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
-    from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
+    from .outline_cut import absorb_unsewn_scope     # `cfg.lettering_columns_absorb_unsewn` (ON since 2026-11-19), the same way
     from .outline_cut import neck_cuts_scope
     from .wedge_cap import wedge_cap_scope
     from .end_overlap import end_overlap_scope, junction_align_scope
@@ -2323,7 +2323,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(top_slab_scope(bool((cfg.extra or {}).get("lettering_columns_top_slab"))))      # built OFF 2026-11-19
         _enter(block_small_scope(cfg.lettering_columns_block_butt_small))
         _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
-        _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
+        _enter(absorb_unsewn_scope(cfg.lettering_columns_absorb_unsewn))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
         _enter(neck_cuts_scope(bool((cfg.extra or {}).get("lettering_columns_neck_cuts"))))
         # `cfg.lettering_columns_stem_wedge_cap` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key)

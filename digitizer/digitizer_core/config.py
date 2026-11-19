@@ -4528,6 +4528,22 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_stroke_floor.py`.
     lettering_columns_stroke_floor: bool = True
+    # A small bold letter's pieces that no construction fits (a junction blob,
+    # a foot) merge into the column they share the longest edge with, kept only
+    # if the letter sews better for it, judged (`outline_cut._absorb_unsewn`,
+    # `columns.absorb_gains`; built OFF 2026-11-16 as
+    # `cfg.extra["lettering_columns_absorb_unsewn"]`, #1584). **ON since
+    # 2026-11-19**: Kent delegated the review pack ("You review them yourself,
+    # Claude is just as good, if not better than me."), the review picked this
+    # flag, and he answered "Open flip PR". Evidence on main 283a54df, 41
+    # designs (the 26 scorecard fixtures + committed lettering/logo art, 80 mm
+    # left chest, 6 colours): ONE moves, Bukit Asam's tagline, whose 2.5 mm a
+    # sewed as an o ("cool") and now sews its stem and foot ("coal"), 2,036 ->
+    # 2,042 stitches, trims 9 both; the other 40 are byte-identical. Layout,
+    # not a cloth number (gate 1). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_absorb_unsewn.py`.
+    lettering_columns_absorb_unsewn: bool = True
     # A small letter the small-bold ladder leaves NOT whole (satin cover under
     # `columns.SMALL_BOLD_COVER_MIN`) sews the lane's plain cut once more with
     # EVERY thin cross at the 0.5 mm floor, kept only if the letter is then

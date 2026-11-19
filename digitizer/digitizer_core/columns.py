@@ -3669,7 +3669,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 return runs, report
         runs, report = sew_cut(cut.columns, cut.cuts, cut.unsewn, cut.poly, rk)
         if cut.before_absorb is not None:
-            # `absorb_unsewn` (built OFF) merged a bare piece: kept only if
+            # `absorb_unsewn` (ON since 2026-11-19) merged a bare piece: kept only if
             # the letter sews better for it (`absorb_gains`)
             runs0, report0 = sew_cut(*cut.before_absorb, cut.poly, rk)
             if absorb_gains(runs0, runs, poly):

@@ -3173,8 +3173,8 @@ def _fold_join(A: Column, B: Column, sa, ia: int, sb, ib: int, p, q, poly: Polyg
                   width_mm=W, dropped_mm=A.dropped_mm + B.dropped_mm)
 
 
-# `absorb_unsewn` (`cfg.extra["lettering_columns_absorb_unsewn"]`, 2026-11-16,
-# built OFF). A small bold letter (`_SMALL_BOLD`, under 5 mm) can be cut into
+# `absorb_unsewn` (`cfg.lettering_columns_absorb_unsewn`; built OFF 2026-11-16
+# as a `cfg.extra` key, ON since 2026-11-19, the review pack's flip). A small bold letter (`_SMALL_BOLD`, under 5 mm) can be cut into
 # a column plus pieces that neither construction fits (`build_column` ->
 # None): a junction blob, a foot. They sew nothing and the letter loses that
 # part. Bukit Asam's tagline at 80.4 mm left chest, the 2.5 mm italic a of
@@ -3200,7 +3200,7 @@ ABSORB_SHARE_W = 0.25          # an unsewn piece joins a column only along this 
 
 @contextlib.contextmanager
 def absorb_unsewn_scope(on: bool):
-    """`cfg.extra["lettering_columns_absorb_unsewn"]` for one plan. False
+    """`cfg.lettering_columns_absorb_unsewn` for one plan. False
     sets nothing."""
     if not on:
         yield
@@ -4472,7 +4472,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         columns, cuts = _fold_corners(columns, cuts, poly, W, pitch_mm)
     if _FLARE_TOP_FOLD.get():      # `flare_top_fold` (built OFF): an I's wedge folded
         columns = _flare_top_folds(columns, cuts, poly, W, pitch_mm)
-    if _ABSORB_UNSEWN.get() and _SMALL_BOLD.get() and unsewn:   # `absorb_unsewn` (built OFF)
+    if _ABSORB_UNSEWN.get() and _SMALL_BOLD.get() and unsewn:   # `absorb_unsewn` (ON since 2026-11-19)
         before = (columns, cuts, unsewn)
         columns, cuts, unsewn = _absorb_unsewn(columns, cuts, unsewn, W, pitch_mm, mitre_ends)
         if len(unsewn) < len(before[2]):    # the caller sews both and keeps the better
