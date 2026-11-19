@@ -3593,7 +3593,8 @@ def sequence(
     # the very end of this function: foam goes on top of finished flat work,
     # and no later pass (ties, tie-in strip, jump bury, colour fold) may touch
     # a puff block -- its satin is already tied at PUFF_TIE_STITCHES.
-    puff_blocks, puff_warnings, planned = puff_pass(planned, cfg, chart_for(cfg))
+    puff_blocks, puff_warnings, planned = puff_pass(planned, cfg, chart_for(cfg),
+                                                    design_class=design_class)
 
     # `cfg.detail_spokes` (built OFF): a spoked detail mark leaves the colour
     # loop here, the way an appliqué piece does, and is placed AFTER its host

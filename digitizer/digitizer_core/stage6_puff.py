@@ -336,9 +336,35 @@ def puff_tackdown(polys: list, shape_ids: list[str], cfg) -> list[StitchRun]:
 
 PUFF_TACKDOWN_CODE = "PUFF_TACKDOWN"
 PUFF_CODE = "PUFF"
+NOT_A_COLUMN = "not a column shape"
 
 
-def puff_pass(planned, cfg, chart) -> tuple[list, list[dict], list]:
+def puff_column(region, cfg, design_class: str = "flat") -> bool:
+    """Puff is satin only, so a shape puffs only if it is a column shape:
+    never the design's ground (`meta["enclosed_background"]`, stage 4's tag
+    from stage 1's mask -- the one region-level background fact stage 7's
+    depth order reads), and only when stage 7's own satin decision
+    (`stage7_sequence._sews_satin`, the predicate `stitch_one` routes on)
+    says satin with puff's width ceiling in place of the flat one. A white
+    ground stage 1 could not find (BACKGROUND_ABSENT) carries no tag; it is
+    refused here because it is no column. `outlines` is not passed: stage 7
+    builds that set later, and without it the predicate errs toward fill.
+
+    Asked with `cfg.border_by_size` off: that rule sends every shape about
+    6 mm across or more to "a fill under a border, never whole satin", which
+    is the flat width preference the spec re-routes for puff ("puff's own
+    ceiling applies"); left on, the 3-11 mm band would end near 6 mm."""
+    from dataclasses import replace
+    from .stage7_sequence import _sews_satin
+    if region.meta.get("enclosed_background"):
+        return False
+    if getattr(cfg, "border_by_size", False):
+        cfg = replace(cfg, border_by_size=False)
+    return _sews_satin(region, cfg, machine.PUFF_MAX_WIDTH_MM, design_class)
+
+
+def puff_pass(planned, cfg, chart, design_class: str = "flat"
+              ) -> tuple[list, list[dict], list]:
     """The stage-7 puff branch. -> (blocks, warnings, remaining).
 
     Off (`cfg.puff` False) this is `([], [], list(planned))` and touches
@@ -374,6 +400,9 @@ def puff_pass(planned, cfg, chart) -> tuple[list, list[dict], list]:
             shape_id=p.shape_id, reason=reason))
 
     for p in wanted:
+        if not puff_column(p.region, cfg, design_class):
+            ineligible(p, NOT_A_COLUMN)
+            continue
         ok, reason = puff_eligible(p.region, cfg)
         if not ok:
             ineligible(p, reason)

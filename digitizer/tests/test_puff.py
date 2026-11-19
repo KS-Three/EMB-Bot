@@ -227,6 +227,16 @@ def logo_puff():
     return digitize(TESTDATA / "logo_whitebg.png", cfg(garment_id="hat_front", puff=True))
 
 
+@pytest.fixture(scope="module")
+def tires_puff():
+    """The puff-on end-to-end fixture. logo_whitebg.png has no shape stage 7
+    sews as a satin column in the puff band (its one in-band candidate is
+    pinned `tier: "fill"` by `columns.py`), so it puffs nothing;
+    logo_script_tires.png puffs one thread and sews a flat block of that
+    same thread straight before the puff blocks."""
+    return digitize(TESTDATA / "logo_script_tires.png", cfg(garment_id="hat_front", puff=True))
+
+
 class _PRegion:
     def __init__(self, poly, thread_index, meta):
         self.polygon = poly
@@ -273,10 +283,10 @@ def test_puff_pass_off_returns_planned_untouched():
     assert puff_pass(planned, c, chart_for(c)) == ([], [], planned)
 
 
-def test_puff_blocks_last(logo_puff):
-    _result, plan = logo_puff
+def test_puff_blocks_last(tires_puff):
+    _result, plan = tires_puff
     flags = [_is_puff(b) for b in plan.blocks]
-    assert any(flags), "logo_whitebg has eligible shapes; puff on must puff them"
+    assert any(flags), "logo_script_tires has a puffable column; puff on must puff it"
     first = flags.index(True)
     assert all(flags[first:]), "every puff block comes after every flat block"
     puff = plan.blocks[first:]
@@ -295,8 +305,8 @@ def test_puff_blocks_last(logo_puff):
     assert not any(r.kind == stitches.FILL for b in puff for r in b.runs)
 
 
-def test_puff_steps_valid(logo_puff):
-    _result, plan = logo_puff
+def test_puff_steps_valid(tires_puff):
+    _result, plan = tires_puff
     puff = [b for b in plan.blocks if _is_puff(b)]
     steps = [Step(code=b.step["code"], label=b.step["label"], runs=b.runs,
                   action=b.step["action"], function=b.step["function"]) for b in puff]
@@ -364,13 +374,29 @@ def test_puff_same_thread_shapes_share_one_stop():
     assert {r.shape_id for r in blocks[1].runs} == {"A", "B"}
 
 
-def test_puff_not_merged_with_flat(logo_puff):
-    """logo_whitebg's thread 119 carries a puffed shape AND a thin flat one;
-    with `merge_adjacent_same_thread` (default True) the puff blocks stay
-    blocks of their own, holding only puffed shapes."""
-    _result, plan = logo_puff
-    assert cfg().merge_adjacent_same_thread is True
+def _bar_and_line(path):
+    """Transparent ground, one colour: a ~5 mm bar (puffable column) and a
+    ~1.4 mm line (too thin for foam), so the flat line and the puffed bar
+    share one thread and sew as ADJACENT blocks."""
+    import cv2
+    import numpy as np
+    img = np.zeros((400, 800, 4), np.uint8)
+    cv2.rectangle(img, (100, 100), (700, 137), (0, 0, 0, 255), -1)
+    cv2.line(img, (100, 250), (700, 250), (0, 0, 0, 255), 8)
+    cv2.imwrite(str(path), img)
+    return path
+
+
+def test_puff_not_merged_with_flat(tmp_path):
+    """A flat shape on the puff thread, sewn straight before its puff
+    blocks: with `merge_adjacent_same_thread` (default True) the puff blocks
+    stay blocks of their own, holding only puffed shapes."""
+    path = _bar_and_line(tmp_path / "bar_line.png")
+    c = cfg(garment_id="hat_front", puff=True)
+    assert c.merge_adjacent_same_thread is True
+    plan = digitize(path, c)[1]
     puff = [b for b in plan.blocks if _is_puff(b)]
+    assert [b.step["code"] for b in puff] == ["PUFF_TACKDOWN", "PUFF"]
     puff_ids = {r.shape_id for b in puff for r in b.runs}
     for b in plan.blocks:
         ids = {r.shape_id for r in b.runs}
@@ -378,9 +404,19 @@ def test_puff_not_merged_with_flat(logo_puff):
             assert ids <= puff_ids
         else:
             assert not ids & puff_ids
-    shared = {b.thread_index for b in puff} & {b.thread_index for b in plan.blocks
-                                               if not _is_puff(b)}
-    assert shared, "the fixture must put a flat shape on a puff thread"
+    k = plan.blocks.index(puff[0])
+    assert k > 0 and not _is_puff(plan.blocks[k - 1])
+    assert plan.blocks[k - 1].thread_index == puff[0].thread_index,         "the fixture must sew a flat block on the puff thread right before it"
+
+
+def test_puff_not_merged_with_flat_tires(tires_puff):
+    _result, plan = tires_puff
+    puff = [b for b in plan.blocks if _is_puff(b)]
+    k = plan.blocks.index(puff[0])
+    assert plan.blocks[k - 1].step is None
+    assert plan.blocks[k - 1].thread_index == puff[0].thread_index
+    puff_ids = {r.shape_id for b in puff for r in b.runs}
+    assert not puff_ids & {r.shape_id for r in plan.blocks[k - 1].runs}
 
 
 def test_puff_not_merged_stub():
@@ -406,15 +442,71 @@ def test_puff_ineligible_warned():
 def test_puff_ineligible_warned_end_to_end(logo_puff):
     _result, plan = logo_puff
     hits = {w["shape_id"] for w in plan.warnings if w["code"] == PUFF_SHAPE_INELIGIBLE}
-    # Sdf9f8b3c is logo_whitebg's 0.7 mm sliver on puff thread 119.
+    # Sdf9f8b3c is logo_whitebg's 0.7 mm sliver on thread 119.
     assert "Sdf9f8b3c" in hits
     puff_ids = {r.shape_id for b in plan.blocks if _is_puff(b) for r in b.runs}
     assert not hits & puff_ids
 
 
+def test_puff_never_puffs_the_ground(logo_puff):
+    """Mode "all" on logo_whitebg.png: the ground (stage 4's
+    `enclosed_background` tag) sews flat with a "not a column shape"
+    warning. Before the column gate it was the 14.1 mm ground that was
+    refused only for width; on a narrower ground it puffed."""
+    from digitizer_core.stage6_puff import NOT_A_COLUMN
+    result, plan = logo_puff
+    ground = {r.shape_id for r in result.regions if r.meta.get("enclosed_background")}
+    assert ground, "logo_whitebg's white ground carries the tag"
+    puff_ids = {r.shape_id for b in plan.blocks if _is_puff(b) for r in b.runs}
+    assert not ground & puff_ids
+    not_col = {w["shape_id"] for w in plan.warnings
+               if w["code"] == PUFF_SHAPE_INELIGIBLE and w["reason"] == NOT_A_COLUMN}
+    assert ground <= not_col
+    # No shape here is a satin column in the puff band, so nothing puffs.
+    assert puff_ids == set()
+    assert [w["code"] for w in plan.warnings].count(PUFF_NONE_ELIGIBLE) == 1
+
+
+def test_puff_puffs_only_columns(tires_puff):
+    from digitizer_core.stage6_puff import NOT_A_COLUMN
+    result, plan = tires_puff
+    puff_ids = {r.shape_id for b in plan.blocks if _is_puff(b) for r in b.runs}
+    assert puff_ids
+    not_col = {w["shape_id"] for w in plan.warnings
+               if w["code"] == PUFF_SHAPE_INELIGIBLE and w["reason"] == NOT_A_COLUMN}
+    ground = {r.shape_id for r in result.regions if r.meta.get("enclosed_background")}
+    assert not (not_col | ground) & puff_ids
+
+
+def test_puff_white_ground_not_puffed(tmp_path):
+    """A white ground stage 1 could not find (BACKGROUND_ABSENT, no tag) is
+    no column either: thin strokes on white sew exactly as with puff off."""
+    import cv2
+    import numpy as np
+    img = np.full((400, 800, 3), 255, np.uint8)
+    for y in (100, 200, 300):
+        cv2.line(img, (60, y), (740, y), (0, 0, 0), 8)
+    path = tmp_path / "thin_white.png"
+    cv2.imwrite(str(path), img)
+    a = digitize(path, cfg(garment_id="hat_front"))[1]
+    b = digitize(path, cfg(garment_id="hat_front", puff=True))[1]
+    assert not any(_is_puff(blk) for blk in b.blocks)
+    assert export.export_dst(a) == export.export_dst(b)
+    assert [w["code"] for w in b.warnings].count(PUFF_NONE_ELIGIBLE) == 1
+
+
+def test_puff_rejects_stub_ground():
+    planned = [_PPlanned(BAR_A, 20, 0, "G", enclosed_background=True),
+               _PPlanned(BAR_B, 21, 1, "B")]
+    blocks, warnings, remaining = _run_puff_pass(planned)
+    assert [p.shape_id for p in remaining] == ["G"]
+    assert [(w["shape_id"], w["reason"]) for w in warnings] == [("G", "not a column shape")]
+    assert {r.shape_id for b in blocks for r in b.runs} == {"B"}
+
+
 def test_puff_satin_never_tatami_even_past_flat_ceiling():
     # 8 mm: the flat pipeline would send it to tatami (> SATIN_MAX_WIDTH_MM).
-    blocks, _w, _rem = _run_puff_pass([_PPlanned(box(0, 0, 30, 8), 20, 0, "W")])
+    blocks, _w, _rem = _run_puff_pass([_PPlanned(box(0, 0, 60, 8), 20, 0, "W")])
     assert blocks[1].step["code"] == "PUFF"
     assert stitches.SATIN in {r.kind for r in blocks[1].runs}
     assert stitches.FILL not in {r.kind for r in blocks[1].runs}
