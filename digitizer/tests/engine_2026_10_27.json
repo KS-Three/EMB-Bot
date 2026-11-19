@@ -405,5 +405,6 @@
  "lettering_columns_stem_wedge_cap": false,
  "cap_merged_layer_home": false,
  "shadow_to_page": false,
+ "keyline_under_face": false,
  "lettering_columns_block_butt": false
 }
