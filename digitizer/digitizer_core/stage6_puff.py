@@ -355,6 +355,8 @@ def puff_column(region, cfg, design_class: str = "flat") -> bool:
     is the flat width preference the spec re-routes for puff ("puff's own
     ceiling applies"); left on, the 3-11 mm band would end near 6 mm."""
     from dataclasses import replace
+    # Local on purpose: stage7_sequence imports this module (puff_pass), so
+    # a top-level import of stage 7 here would be a circular pair.
     from .stage7_sequence import _sews_satin
     if region.meta.get("enclosed_background"):
         return False
@@ -436,7 +438,16 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
         # and its run-start locks go when stage 7's do (`cfg.tie_in_off`).
         tack[0].jump = tack[0].trim = True
         apply_ties(tack)
-        top = [r for p in group for r in satins[id(p)]]
+        top: list[StitchRun] = []
+        for p in group:
+            runs = satins[id(p)]
+            if top:
+                # Shape to shape is a lift, never a needle-down drag across
+                # the foam; cut at TRIM_AT_MM, as `puff_tackdown` does.
+                gap = math.dist(top[-1].points[-1], runs[0].points[0])
+                runs[0].jump = True
+                runs[0].trim = gap >= machine.TRIM_AT_MM
+            top += runs
         steps = [
             Step(code=PUFF_TACKDOWN_CODE, label="Puff outline", runs=tack,
                  action="Stop: lay 3 mm puff foam over the outline, then continue",
@@ -461,8 +472,8 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
     if wanted and not sewn:
         warnings.append(warn(
             PUFF_NONE_ELIGIBLE,
-            "3D puff is on, but no shape is between "
-            f"{machine.PUFF_MIN_WIDTH_MM:g} and {machine.PUFF_MAX_WIDTH_MM:g} mm "
-            "wide, so nothing was puffed and the design sews flat.",
+            "No shape in this design can be puffed (puff needs satin columns "
+            f"{machine.PUFF_MIN_WIDTH_MM:g}–{machine.PUFF_MAX_WIDTH_MM:g} mm "
+            "wide), so it sews flat.",
             count=len(wanted)))
     return blocks, warnings, [p for p in planned if id(p) not in sewn]

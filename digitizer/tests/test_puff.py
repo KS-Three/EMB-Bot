@@ -372,6 +372,13 @@ def test_puff_same_thread_shapes_share_one_stop():
     assert [b.step["code"] for b in blocks] == ["PUFF_TACKDOWN", "PUFF"]
     assert {r.shape_id for r in blocks[0].runs} == {"A", "B"}
     assert {r.shape_id for r in blocks[1].runs} == {"A", "B"}
+    # A -> B is a lift (cut at this gap), never a needle-down drag over foam.
+    top = blocks[1].runs
+    k = next(i for i, r in enumerate(top) if r.shape_id == "B")
+    gap = math.dist(top[k - 1].points[-1], top[k].points[0])
+    assert top[k].jump is True
+    assert top[k].trim is (gap >= machine.TRIM_AT_MM)
+    assert gap >= machine.TRIM_AT_MM  # the stubs sit 15+ mm apart: a cut
 
 
 def _bar_and_line(path):
