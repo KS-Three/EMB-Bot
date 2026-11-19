@@ -112,7 +112,10 @@ the one of [[logo-batch-5-2026-11-18]] (`lettering_columns_sew_dropped_branch`, 
 wing and the Gaulke '&' with it) and `alpha_extend_keeps_interior` (the HUD alpha-253 fix, Kent 11-18, same
 answer; look at the real Becker jobs with it) and `off_line_mark_row_only`
 ([[logo-batch-6-2026-11-18]], Kent 11-18, same answer): twelve named, ELEVEN to run: `thin_letters_after_ground` left the list
-2026-11-18 (Kent: "Flip ON now", it is a config field ON now); a job that moves is re-run one flag at a
+2026-11-18 (Kent: "Flip ON now", it is a config field ON now), and
+`lettering_columns_sew_dropped_branch` is covered by
+`lettering_columns_sew_dropped_hairline`, ON since 11-19 (Kent: "Flip ON
+now"), so TEN to run; a job that moves is re-run one flag at a
 time to say which moved it. Look at the real Becker jobs for the bare A
 counter named above.
 

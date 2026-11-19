@@ -4495,6 +4495,28 @@ class PipelineConfig:
     # as it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
     # pin it False. Tests: `tests/test_whole_letter_floor.py`.
     lettering_columns_whole_letter_floor: bool = True
+    # A branch of a letter the cut left inside ONE column, which then takes no
+    # stitch, is cut as a letter of its own and sewn in the lane with every
+    # thin cross at the 0.5 mm floor; kept when it adds no more thread outside
+    # the letter than in (`columns.absorb_gains`) OR the letter is not whole
+    # without it and whole with it (`columns.stroke_floor_restores`)
+    # (`columns.dropped_branches`; built OFF 2026-11-18 as
+    # `cfg.extra["lettering_columns_sew_dropped_hairline"]`, #1685). **ON
+    # since 2026-11-19, Kent's flip**: shown ART | BEFORE | AFTER for every
+    # changed spot, "Flip ON now". On a serif letter the lane stationed the
+    # bold stroke and left the hairline stems bare: the DIA seal's N of
+    # UNITED (diagonal sewn, both 0.3 mm stems unsewn, cover 0.70 -> 1.00),
+    # the NRC logo's N, the Peace Corps R's whole stem. 82 designs (seven
+    # Commons logo batches, 16 repo logos): 17 change, 65 identical, none
+    # reads worse, trims within 2. It INCLUDES the plain dropped-branch pass
+    # (`cfg.extra["lettering_columns_sew_dropped_branch"]`, Kent 11-18 "Add to
+    # paired check"), which this flip therefore turns on as well. Catches: a
+    # restored stem sews 0.5 mm over thinner ink; the `scratch_kent` paired
+    # corpus, the monarch wing and the Gaulke '&' were not run. Promoted from
+    # `cfg.extra` so the default can be ON. False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_dropped_branch.py`.
+    lettering_columns_sew_dropped_hairline: bool = True
     # `lettering_columns_stem_wedge_cap` (built OFF 2026-11-18 as
     # `cfg.extra["lettering_columns_stem_wedge_cap"]`, #1661 and #1664; prime
     # grader: Toat Machine's "h" stem "built from offset segments with visible
