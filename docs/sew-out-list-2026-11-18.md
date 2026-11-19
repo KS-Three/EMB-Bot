@@ -242,6 +242,19 @@ other two.
 4. **Unlocks.** Whether the satin ceiling can rise for a fanned counter; until then the fill stays.
 5. **Source.** `docs/mfab-top-line-faults-2026-11-19.md`, fault 6; memory `counter-fan-2026-11-14`.
 
+### 17. MFab hat white letters: our satin pitch 0.4 mm against his two passes at about 0.3-0.4
+1. **Design, spot.** `mfab_hat`, 104.9 mm, the white letters (M-F-A-B), the junctions at about (37, 7.5), (44, 11.5), (34.5, 16.5)
+   and (88, 18.5), and the B's left stem (79.3, 10-23).
+2. **In doubt.** Our satin spacing is 0.4 mm same-side (5.1-5.2 stitches per mm of stem per pass; `SATIN_SPACING_MM`); his file's stems run
+   5-7 crossings per mm per pass in two passes. At the junctions ours stacks higher at F4 (15 layers against 9, mean 4.8 against 3.6) and
+   the prime grader read them as lumps (faults 3, 4, 8). Not sewn on cloth. Whether a denser pass or a junction fix is the cure is not
+   known: the like-for-like density is close (`docs/mfab-top-line-faults-2026-11-19.md`, conclusion).
+3. **Sew, look.** The white letters at 105 mm on a hat: do the F-arm and B-slot junctions read as lumps against the stems; does the
+   white cover the black body at the stem edges; does the B stem (sewn twice by our ladder) read heavier than the M stem.
+4. **Unlocks.** A denser lettering satin or a second pass (gate 1, fabric constant) only if the stems read thin; otherwise the junction
+   construction (a satin-piece census of his file first), not density.
+5. **Source.** `docs/mfab-top-line-faults-2026-11-19.md`; PR #1694.
+
 ## What this list does not claim
 
 - No row says a sew-out will come out any particular way.
