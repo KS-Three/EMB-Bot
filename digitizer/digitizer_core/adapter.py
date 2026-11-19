@@ -217,6 +217,11 @@ def plan_to_design(plan: StitchPlan, name: str = "Digitized design") -> dict:
         "colorCount": len(colors),
         "name": name,
     }
+    if any(b.step is not None for b in plan.blocks):
+        # One colour per block, in block order (the loop above), so steps[i] is
+        # colour row i. Absent for an ordinary design: its dict is unchanged.
+        from .stage6_applique import plan_steps
+        design["steps"] = plan_steps(plan)
     w_mm, h_mm = design_size_mm(design)
     design["widthMM"] = round(w_mm, 3)
     design["heightMM"] = round(h_mm, 3)

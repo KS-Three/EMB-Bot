@@ -570,3 +570,28 @@ def test_puff_kept_on_both_split_pieces():
     pieces, _w = apply_shape_splits([r], {"Q": [[15.0, -20.0], [15.0, 20.0]]})
     assert len(pieces) == 2
     assert all(p.meta.get("puff") is True for p in pieces)
+
+
+# --- Task 6: steps reach the Design ------------------------------------------
+
+def test_design_steps_only_when_stepped(tires_puff):
+    from digitizer_core import adapter
+    from digitizer_core.stitches import StitchBlock, StitchPlan, StitchRun
+    sq = [(0.0, 0.0), (5.0, 0.0), (5.0, 5.0), (0.0, 5.0)]
+    plain = StitchPlan(palette=[], blocks=[
+        StitchBlock(0, "1801", (200, 0, 0), [StitchRun(points=sq, kind="run")]),
+        StitchBlock(1, "0015", (250, 250, 250), [StitchRun(points=sq, kind="run")]),
+    ])
+    assert "steps" not in adapter.plan_to_design(plain)
+
+    _result, plan = tires_puff
+    design = adapter.plan_to_design(plan)
+    steps = design["steps"]
+    # R3: one colour per block, in block order, so a step index is a colour row.
+    assert len(design["colors"]) == len(plan.blocks) == len(steps)
+    by_code = {s["code"]: s["action"] for s in steps}
+    assert by_code["PUFF_TACKDOWN"] == "Stop: lay 3 mm puff foam over the outline, then continue"
+    # The design ends in puff: the tear-away instruction survives the END rewrite.
+    assert steps[-1]["code"] == "PUFF"
+    assert steps[-1]["function"] == "end"
+    assert steps[-1]["action"] == "Tear away the excess foam. Design complete."
