@@ -169,7 +169,7 @@ change is hidden behind them. Full-suite status is CI's.
 **`e_top_arm` and `top_slab` are ONE FAMILY (director, 2026-11-19): either every letter wears the pro's top band or none does. Both
 stay OFF.** At the whole word `e_top_arm` gives the E alone a banded top with a seam under it while M, A, R, I and N have none (its
 saving, -1 trim per placement and -1.8 to -8.7 mm needle-up, is real but small), and `top_slab` gives all six a seam, the #1659 look.
-Whether the seam is a preview matter or a real one is for cloth: sew-out row 16 (Becker hat large 101.9 mm sewn twice, main vs both flags ON).
+Whether the seam is a preview matter or a real one is for cloth: sew-out row 17 (Becker hat large 101.9 mm sewn twice, main vs both flags ON).
 
 | flag | function | what | status |
 |---|---|---|---|
