@@ -72,7 +72,7 @@ changes (ROADMAP gate 1). OFF is byte-identical to `lettering_columns_block_butt
 
 | flag | what it does | pro rule (section 1) |
 |---|---|---|
-| `lettering_columns_r_bowl` | on a block letter with one counter and a stem-head butt (R): cut a slab across the top (stem top + bowl top, upright crosses), the stem below it, the leg (level crosses), and sew the bowl as ONE column whose crosses start normal to each edge of the counter and pivot on its corners (`outline_cut._bowl_cuts`, `_bowl_column_normal`) | 2, 4 |
+| `lettering_columns_r_bowl` | on a block letter with one counter and a stem-head butt (R): the stem stays block_butt's (level, to the top, no slab), the leg is its own level column, and the rest sews as ONE bowl column on rays from the counter's centre at even angular steps (about 250 deg here, his 134-176 with a slab), each cross starting `BOWL_INNER_INSET_MM` = 0.5 mm off the counter's edge, which is his geometry (his bowl cross 4.4 mm over a 5.3 mm wall; his counter 9.85 mm2 against the art's 6.63) and not the pull (`outline_cut._bowl_cuts`, `_bowl_column`) | 2, 4 |
 | `lettering_columns_block_butt_small` | block_butt's heavy-stroke gate 3.5 -> 3.0 mm: Becker MARINE at 76.5-79.8 mm measures 3.46 (E), so block_butt did nothing to its E, A and N there. No other committed job has a letter over 1.7 mm | 6 |
 | `lettering_columns_a_bar` | a flat-topped block A: the lane's level cut at the counter's bottom (left foot + bar as one fanned piece) becomes the leg's inner edge, so both legs run uncut and the bar is its own column of upright crosses (`_a_bar_cuts`) | 5 |
 | `lettering_columns_block_lean` | on a heavy block letter the satin convention's lean cap (30 deg) is 50 deg where that lets the house (level) cross through: the M's V diagonals and the N's diagonal cross level, as his do. An arm's near-upright cross keeps today's fade (`column_lean.cross_direction`) | 3 |
@@ -81,20 +81,31 @@ changes (ROADMAP gate 1). OFF is byte-identical to `lettering_columns_block_butt
 
 | design | base | r_bowl | block_butt_small | a_bar | block_lean | all four |
 |---|---|---|---|---|---|---|
-| Becker hat large 101.9 | 15,820 / 18 / 53 / 508.6 | 15,919 / 18 / 53 / 500.4 | = base | 15,800 / 18 / 53 / 508.6 | 15,796 / 18 / 53 / 508.6 | 15,856 / 18 / 53 / 504.6 |
-| Becker LC large 95.7 | 14,291 / 13 / 30 / 236.8 | 14,331 / 13 / 30 / 243.8 | = base | 14,296 / 14 / 32 / 244.6 | = base | 14,336 / 14 / 32 / 251.7 |
-| Becker hat small 76.5 | 10,165 / 9 / 35 / 304.4 | 10,071 / 9 / 35 / 304.4 | 9,999 / 10 / 36 / 309.2 | 10,144 / 9 / 35 / 304.4 | 10,152 / 8 / 34 / 303.6 | 9,871 / 9 / 35 / 308.4 |
-| Becker chest small 76.5 | 10,039 / 7 / 33 / 300.6 | 9,890 / 7 / 33 / 300.6 | 9,877 / 8 / 34 / 305.8 | 10,018 / 7 / 33 / 300.6 | 10,071 / 7 / 33 / 300.6 | 9,739 / 8 / 34 / 305.8 |
-| Becker beanie 79.8 | 13,619 / 12 / 41 / 376.8 | 13,575 / 11 / 40 / 375.3 | 13,473 / 13 / 43 / 380.5 | 13,589 / 12 / 42 / 369.4 | 13,612 / 12 / 41 / 376.8 | 13,392 / 12 / 43 / 371.6 |
-| Becker 114 (hat large art) | 19,621 / 17 / 67 / 641.4 | 19,616 / 17 / 67 / 641.4 | = base | 19,710 / 17 / 67 / 640.6 | 19,559 / 18 / 68 / 642.8 | 19,643 / 18 / 68 / 642.0 |
+| Becker hat large 101.9 | 15,820 / 18 / 53 / 508.6 | 15,858 / 20 / 55 / 518.2 | = base | 15,800 / 18 / 53 / 508.6 | 15,796 / 18 / 53 / 508.6 | 15,820 / 19 / 54 / 516.0 |
+| Becker LC large 95.7 | 14,291 / 13 / 30 / 236.8 | 14,340 / 14 / 31 / 243.1 | = base | 14,296 / 14 / 32 / 244.6 | = base | 14,345 / 15 / 33 / 251.0 |
+| Becker hat small 76.5 | 10,165 / 9 / 35 / 304.4 | 10,086 / 9 / 35 / 304.4 | 9,999 / 10 / 36 / 309.2 | 10,144 / 9 / 35 / 304.4 | 10,152 / 8 / 34 / 303.6 | 9,886 / 9 / 35 / 308.4 |
+| Becker chest small 76.5 | 10,039 / 7 / 33 / 300.6 | 9,948 / 7 / 33 / 300.6 | 9,877 / 8 / 34 / 305.8 | 10,018 / 7 / 33 / 300.6 | 10,071 / 7 / 33 / 300.6 | 9,797 / 8 / 34 / 305.8 |
+| Becker beanie 79.8 | 13,619 / 12 / 41 / 376.8 | 13,518 / 12 / 41 / 380.5 | 13,473 / 13 / 43 / 380.5 | 13,589 / 12 / 42 / 369.4 | 13,612 / 12 / 41 / 376.8 | 13,335 / 13 / 44 / 376.8 |
+| Becker 114 (hat large art) | 19,621 / 17 / 67 / 641.4 | 19,578 / 18 / 68 / 654.1 | = base | 19,710 / 17 / 67 / 640.6 | 19,559 / 18 / 68 / 642.8 | 19,524 / 19 / 69 / 654.7 |
 | MFab hat 30 mm | 2,996 / 10 / 17 / 92.1 | = | = | = | = | = |
 
-**What got worse (all small).** Trims: +1 at LC large (a_bar), hat small and chest small and beanie (block_butt_small), +1 at 114
-mm (block_lean); the worst single row is one extra trim and 2 more jumps. Needle-up travel: +15 mm at LC large (all four),
-+4-5 mm at the 76.5/79.8 placements. Preflight (`run_preflight`, 38 metrics, grade and score unchanged everywhere): bare artwork,
-cover, coverage, uncovered, legibility and element-drop figures do not move on any of the 7 designs x 6 arms; the only
-figures that move are `satin_short_fraction` (+0.001 to +0.003, two rows -0.001), `coverage_p95` +0.01 at hat small and
-`trims_per_1000` +0.1 at five rows. No bare-fabric, cover or coverage figure moved the wrong way.
+**What got worse (all small).** Trims: +2 at hat large (`r_bowl`; +1 with all four), +1 at LC large, 114 mm and the
+small placements for one flag or another; the worst single row is two extra trims and 2 more jumps. Needle-up travel: `r_bowl`
+adds 9.6 mm at hat large, 12.7 at 114 mm, 6.3 at LC large and 3.7 at the beanie; all four add +15 mm at LC large and +4-5
+mm at 76.5/79.8. Preflight (`run_preflight`, 38 metrics, grade and score unchanged everywhere): bare artwork, cover,
+coverage, uncovered, legibility and element-drop figures do not move on any of the 7 designs x 7 arms; the only figures that
+move are `satin_short_fraction` (+0.001 to +0.004, two rows -0.001), `coverage_p95` +0.01 at hat small and `trims_per_1000`
++0.1 at six rows. No bare-fabric, cover or coverage figure moved the wrong way.
+
+**The three without `r_bowl`** (`block_butt_small` + `a_bar` + `block_lean`, one `flag_sweep --flag a,b,c`, the director's
+flip question; pictures in `docs/renders/marine-match-2026-11-18/three-flags/`): 44 runs, 6 Becker movers, 38 identical, 0
+errors. Stitches / trims / jumps / needle-up mm, base to three: hat large 15,820/18/53/508.6 to 15,776/18/53/508.6; LC large
+14,291/13/30/236.8 to 14,296/14/32/244.6; hat small 10,165/9/35/304.4 to 9,965/9/35/308.4; chest small 10,039/7/33/300.6 to
+9,888/8/34/305.8; beanie 13,619/12/41/376.8 to 13,436/13/44/373.1; 114 mm 19,621/17/67/641.4 to 19,648/18/68/642.0; MFab hat
+30 mm unchanged. Only `satin_short_fraction` (+0.001 to +0.002) and `coverage_p95` (+0.01, hat small) move.
+
+**R counters, thread-free mm2** (acceptance number; art 6.63 at 101.9): block_butt -> `r_bowl` (the pro's): hat large 4.59 -> 6.04
+(9.85); LC large 4.57 -> 6.29 (8.06); hat small 2.2 -> 3.47 (4.49); chest small 2.2 -> 4.05 (4.49); beanie 2.15 -> 3.88 (4.44).
 
 ### Related tests with the four flags forced ON (with block_butt; measured before #1684 landed, the 11 below are the flags' own)
 
@@ -114,7 +125,7 @@ forced ON: 23 fail; the 11 added by these flags, none a bare-fabric, travel-guar
 **One to read:** `mfab105_band_letters` is MFab's 105 mm outline-band letters, heavy enough (>= 3.5 mm) for `block_lean`'s gate when
 the lane is driven directly. The pipeline does not send them through `lean_columns` (MFab hat is byte-identical under the
 flag), but the gate is stroke width alone, so a heavy-stroked design that does reach `lean_columns` would take it.
-New tests: `tests/test_r_bowl.py` (7), `tests/test_marine_match.py` (10), on `testdata/marine102_*_letter(s).json`.
+New tests: `tests/test_r_bowl.py` (8), `tests/test_marine_match.py` (10), on `testdata/marine102_*_letter(s).json`.
 
 ## 4. Per letter: matches the pro / differs / cannot match
 
@@ -125,7 +136,7 @@ Pictures: `docs/renders/marine-match-2026-11-18/<placement>_word.jpg` (ORIGINAL 
 |---|---|---|
 | **M** | **matches** the V's cross direction; differs in the cuts | the V's diagonals cross level (0 +/- 3 deg, his 0) under `block_lean`. Differs: his V is four 3-5 mm pieces whose crosses run 7.4-7.7 mm, plus a slab-and-left-diagonal piece fanning 31 deg; ours is two diagonals of 11.7-11.9 mm cut at the stems' edges, crosses 2.8-3.6 mm median, and no slab |
 | **A** | **matches** the bar and the legs; differs at the apex | `a_bar`: bar 3.9 mm span, crosses 87 deg (his 86), 4.9 mm long (his 4.6-4.7), butting both legs; legs level and uncut (18.3 and 18.6 mm; his 13.1 and 19.4). Differs: his bar tucks 1.5 mm under each leg (ours butts, overlap 0.5-1.0), his right leg fans 37 deg into a two-piece cap (we have none, apex family OFF) |
-| **R** | **matches** the construction, **cannot match the counter** | slab upright (89 deg, his 78-90), stem level, leg level, bowl one column (30 crosses, 19.5 mm; his 101 crosses, 31.9 mm: his slab ends at the counter's right edge and the bowl takes the top-right corner, ours takes it with the slab). Counter 3.2 mm2 at 101.9 (his 9.85, art 6.63, block_butt alone 4.59) and 1.7 at 76.5 (his 4.5): normal crosses push the pull into the counter on all four sides where block_butt's level crosses push only into two. **Needs the pull's counter hold-off (gate 1): sew-out row 14.** Also: the bowl's outer edge steps 0.4 mm where horizontal crosses clip the arc |
+| **R** | **matches** the construction; counter at or above block_butt's, short of his | `r_bowl`: stem level to the top (no slab), level leg, ONE bowl column on rays from the counter's centre at even angular steps (his 101 crosses over 31.9 mm; ours about 100 over 33 mm), crosses 4.8 mm median from 0.5 mm off the counter's edge, fan about 250 deg (his 134-176 because his slab takes the top). Counter 6.04 at 101.9 (his 9.85, art 6.63, block_butt 4.59) and 3.47 at 76.5 (his 4.49, block_butt 2.2). The 0.5 mm inset is read from his bowl and his counter, not from a sew-out: row 14 asks the cloth to confirm it. The old fan the reader faulted pivoted at the counter's corner and crossed its top; this pivots round its centre and keeps every cross off it |
 | **I** | unchanged, differs | one 17.2 mm column; his has a 5 mm slab piece and 3-4 junction patches |
 | **N** | **matches** the diagonal's cross; differs at the head | diagonal level (-1.6 to -1.4 deg), 19.5 mm; his fans 78 deg from the slab at the head and sews level at the foot. The slab is not built |
 | **E** | **matches** the arms at 76.5-79.8 now; differs at the corners | `block_butt_small`: stem and three butted arms at 76.5 and 79.8 (before: a 24 mm folded fan and a 23.6 mm fan). Differs: his top arm is one 12.2 mm piece over the stem's top, his lower-left corner three small fans (we butt square) |

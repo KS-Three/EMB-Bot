@@ -201,20 +201,19 @@ other two.
 
 ### 14. Becker MARINE's R counter: how far to hold the bowl's crosses off the counter
 1. **Design, spot.** `becker_hat_large` 101.9 mm and the other four Becker placements (76.5-101.9 mm), the R of MARINE,
-   its counter at about 4 mm wide at 101.9 (art 6.63 mm2).
-2. **In doubt.** The satin pull on crosses that run square to the counter's edge. Thread-free counter area, mm2, measured
-   on bare renders (24 px/mm, 0.4 mm thread): art **6.63**, the professional's file **9.30** (9.85 by the 2026-11-18 reader,
-   `tools/marine_construct.py`), ours with `lettering_columns_block_butt` **4.59**, ours with `lettering_columns_r_bowl`
-   (crosses normal to every edge of the counter, the pro's construction) **3.2** at 101.9 mm and **1.7** at 76.5 mm
-   (art about 3.7 there, his 4.5). His counter is LARGER than the art's: he holds his crosses off it. Ours are pushed
-   into it by `Fabric.pull_comp_mm` = 0.4 on the rail that faces it (`digitizer_core/fabrics.py:47`).
-3. **Sew, look.** The R at 101.9 mm and at 76.5 mm, `block_butt` alone against `block_butt` + `r_bowl` (both OFF-by-default
-   flags, `docs/marine-pro-construction-2026-11-18.md`). Look: is the counter a clear hole of thread-free cloth, does the R
-   read as an R at arm's length, does the bowl's outer edge (crosses clipped by the arc, 0.4 mm steps) show.
-4. **Unlocks.** If the counter fills at 76.5 mm: a counter hold-off for the bowl's inner rail (an inset of about 0.3 mm,
-   the number his counter implies, to be read off the cloth), which `counter_clear_mm` (`columns.py`, default 0) already
-   carries for small print. If it reads fine: `r_bowl` can flip on its construction alone.
-5. **Source.** `docs/marine-pro-construction-2026-11-18.md` (this PR), the R rows of section 2 and of the per-letter report.
+   its counter about 4 mm wide at 101.9 (art 6.63 mm2).
+2. **In doubt.** `lettering_columns_r_bowl` starts every bowl cross `BOWL_INNER_INSET_MM` = **0.5 mm** off the counter's edge
+   (`outline_cut.py`). The number is read from the professional's file, not from cloth: his bowl cross is 4.4 mm over a 5.3 mm
+   wall and his counter 9.85 mm2 at 101.9 (art 6.63; 4.49 at 76.5). With no inset the crosses, pushed into the counter by
+   `Fabric.pull_comp_mm` = 0.4 (`digitizer_core/fabrics.py:47`), left 3.2 mm2 at 101.9 and 1.7 at 76.5; with 0.5 mm ours measure
+   6.04 / 3.47 (block_butt alone 4.59 / 2.2).
+3. **Sew, look.** The R at 101.9 and 76.5 mm: `block_butt` alone against `block_butt` + `r_bowl` (OFF by default,
+   `docs/marine-pro-construction-2026-11-18.md`). Look: is the counter a clear hole of bare cloth, does the R read as an R at
+   arm's length, does the thread ridge on the counter's edge show, does 0.5 mm leave a gap between the bowl's crosses and the
+   counter edge (a ring of bare cloth around the hole).
+4. **Unlocks.** If the counter reads closed or the ring shows: change the one constant (0.3-0.7 mm). If it reads fine:
+   `r_bowl` flips on its construction.
+5. **Source.** `docs/marine-pro-construction-2026-11-18.md` (#1686), the R rows of sections 3 and 4.
 
 ## What this list does not claim
 
