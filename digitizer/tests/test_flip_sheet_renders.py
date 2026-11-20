@@ -160,16 +160,15 @@ def test_wave_two_flags_are_on_the_sheet():
     prs = {f: s["pr"] for f, s in fsr.FLAGS.items()}
     assert prs["monoline_script_satin"] == 1063
     assert prs["silhouette_underfill"] == 1064
-    assert prs["border_from_outline"] == 1065
     assert prs["small_text_cap_reach_edges"] == 1066
     for f in prs:
         assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f
 
 
 def test_flags_with_one_base_share_one_off_arm():
-    # Kent flipped sew_enclosed_white and the keyline 2026-10-24: both wave-2 white flags
-    # are diffed against that one OFF, digitized once per fixture
-    assert fsr.off_arm("border_from_outline") == fsr.off_arm("silhouette_underfill") == "white_sewn__off"
+    # Kent flipped sew_enclosed_white and the keyline 2026-10-24: the wave-2 white flag
+    # is diffed against that one OFF, digitized once per fixture
+    assert fsr.off_arm("silhouette_underfill") == "white_sewn__off"
     assert fsr.arm_sets("white_sewn__off") == {"sew_enclosed_white": True, "enclosed_white_keyline": True}
     # the reach flag acts only under #1029's re-set: its OFF is that set, without the flag
     off = fsr.arm_sets(fsr.off_arm("small_text_cap_reach_edges"))

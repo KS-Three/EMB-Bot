@@ -27,7 +27,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.stage7_sequence import _merge_adjacent_same_thread
 from digitizer_core.stitches import StitchBlock, StitchRun
-from tests.conftest import PRE_FLIP, own_thread_only
+from tests.conftest import own_thread_only
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
@@ -268,44 +268,6 @@ def test_a_one_point_run_still_has_geometry():
     b = _block(7, [StitchRun(points=[(1.0, 1.0)], shape_id="s")])
     g = _block_thread_geom(b)
     assert g is not None and not g.is_empty
-
-
-@pytest.mark.usefixtures("source_line_grid")
-def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl(monkeypatch):
-    """The whole safety argument, end to end: if the gate is right, reordering
-    disjoint blocks cannot change what the design looks like. A changed render
-    would mean the gate let through a reorder that moved a seam."""
-    from digitizer_core.adapter import plan_to_design
-    from digitizer_core.stitchviz import render_png_bytes
-
-    img = TESTDATA / "photo/owl_kent.jpg"
-    # Pinned to the pixel-centre trace (`subpixel_edges=False`) 2026-09-09:
-    # with sub-pixel edges on by default the owl at 100 mm plans 14 blocks
-    # with the hoist off as well as on -- the 15th block, the one revisit
-    # this argument needs, is no longer planned -- and the assertion below
-    # would read as "the hoist did nothing" on a plan that gave it nothing
-    # to do. The old polygon keeps the revisit, so the end-to-end argument
-    # keeps its ground; the gate itself is flag-blind.
-    # ... and to the engine before the 2026-09-10 colour-bundle flip
-    # (PRE_FLIP), for the same reason: the four flags re-cone the owl's
-    # blocks and the plan the hoist argument needs is the pre-flip one. Two of
-    # the four (and four more colour switches) are folded into the code now, so
-    # `legacy_engine` patches back what their False paths did.
-    from tests.conftest import PRE_FLIP_FOLDED, legacy_engine
-    legacy_engine(monkeypatch, **PRE_FLIP_FOLDED)
-    off = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                       hoist_same_thread_margin_mm=0.0,
-                                       subpixel_edges=False, **PRE_FLIP))[1]
-    on = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                      subpixel_edges=False, **PRE_FLIP))[1]
-
-    assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
-    n_off = sum(len(r.points) for b in off.blocks for r in b.runs)
-    n_on = sum(len(r.points) for b in on.blocks for r in b.runs)
-    assert n_on == n_off, "hoisting changed the stitch count"
-    assert (render_png_bytes(plan_to_design(off), px_per_mm=8.0)
-            == render_png_bytes(plan_to_design(on), px_per_mm=8.0)), (
-        "the render moved — the disjointness gate let a real seam reorder through")
 
 
 def test_flat_artwork_is_untouched_by_the_hoist_too():

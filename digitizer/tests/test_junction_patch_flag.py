@@ -44,7 +44,6 @@ def _cfg(**kw) -> PipelineConfig:
     # open observation about the satin cover on the new polygon, recorded
     # in scope-history's flip addendum; this file pins the patch mechanism
     # on the polygons it was measured on.
-    kw.setdefault("subpixel_edges_upscaled", False)
     # `letterform_priors_k` held OFF for the same reason (ON at 0.75 since
     # Kent's 2026-10-07 ruling): the refit letters have no bare crotch for
     # the patch to find -- with the default ON all three patch tests read
@@ -63,10 +62,6 @@ def _cfg(**kw) -> PipelineConfig:
     # by default since Kent's 2026-10-12 flip) sews the letters this file's
     # tatami patch lies under, from their outline, with no patch to fire.
     kw.setdefault("lettering_columns", False)
-    # ... and `border_from_outline` (ON since 2026-10-24): it sews Becker's
-    # keyline as one loop per face and the faces as fills, so the satin
-    # junctions this patches are gone
-    kw.setdefault("border_from_outline", PRE_FLIP["border_from_outline"])
     # ... and the white-keyline recipe on every job (2026-10-27): its under-fill
     # sews a ground under the letters this patches
     for k, v in RECIPE_2026_10_27.items():

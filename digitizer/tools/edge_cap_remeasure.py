@@ -39,7 +39,7 @@ for p in (str(ROOT), str(HERE)):
 
 FIXTURES = ["fremont", "becker", "enthusiast", "drone", "whitebg", "gaulke"]
 #: The edge work landed since the 2026-09-11 measurement, all ON on main.
-EDGE_FLAGS = ["border_by_size", "border_by_size_fabric_edges", "border_from_outline",
+EDGE_FLAGS = ["border_by_size", "border_by_size_fabric_edges",
               "silhouette_underfill", "silhouette_underfill_rim", "outline_loop_mitre"]
 SATIN = ("satin", {"edge_cap": "satin"})
 BEAN_LEGACY = ("bean-legacy", {"edge_cap": "bean", "bean_only_lines": False})

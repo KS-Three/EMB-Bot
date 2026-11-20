@@ -81,7 +81,7 @@ class Prep:
     # threshold that makes `bg_mask` throws it away, then the NEAREST
     # upscale of that mask turns every edge into a staircase of source
     # pixels (0.68 mm a step on Becker at 100 mm). `stage4_vectorize` reads
-    # the edge from these under `cfg.subpixel_edges_upscaled`; the Lanczos
+    # the edge from these (the native sub-pixel read); the Lanczos
     # ramp in `rgb` is manufactured and `subpixel.py` declines it.
     native_rgb: np.ndarray | None = None
     native_alpha: np.ndarray | None = None
@@ -129,7 +129,7 @@ class Prep:
     bg_rgb: tuple[int, int, int] | None = None
     # The raster with the file's OWN colour under the transparency, in
     # `rgb`'s frame and through the same denoise and upscale — set only
-    # under `cfg.alpha_edge_extend`, where `rgb` carries nearest-opaque
+    # where the alpha extension ran, where `rgb` carries nearest-opaque
     # colour there instead. For the readers that want the exporter's colour
     # (preflight's `GROUND_SEWN` border colour); `bg_edge_rgb` above is
     # already read from it. None otherwise: read `rgb`.
@@ -392,12 +392,11 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     rgb, alpha = _load(image, cfg.crop)
     warnings: list[dict] = []
 
-    # `cfg.alpha_edge_extend`: every stage reads nearest-opaque colour under
+    # Alpha edge extension: every stage reads nearest-opaque colour under
     # every non-opaque pixel instead of whatever the exporter left there;
     # `raw` keeps the file's own, carried through the same steps, for the two
     # readers that want exactly that (`bg_edge_rgb` below, preflight's border
-    # colour — see `extend_opaque_colour`). With the flag off nothing here
-    # runs and `raw` is never read.
+    # colour — see `extend_opaque_colour`).
     extend = extension_applies(cfg, alpha, design_class=design_class)
     raw = rgb
     if extend:
@@ -710,8 +709,8 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for
     # both an opaque backdrop and an alpha cutout (where it picks up whatever
-    # RGB sits under the transparency — from `raw` under `alpha_edge_extend`,
-    # so the flag changes what the filters read and not what this reads).
+    # RGB sits under the transparency — from `raw` under the alpha extension,
+    # so the extension changes what the filters read and not what this reads).
     bg_edge_rgb = None
     if bg.any():
         near_fg = (

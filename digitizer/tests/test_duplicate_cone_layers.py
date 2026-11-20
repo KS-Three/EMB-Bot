@@ -178,7 +178,7 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # 2026-10-12, Kent): it sews drone's lettering from the outline, and the fold's
 # thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
 # The engine these claims were measured on has the skeleton tier.
-PRE_FLIP_RC = {"border_by_size": False, "enclosed_alpha_hole_parts": False,
+PRE_FLIP_RC = {"border_by_size": False,
                "lettering_columns": False}
 
 

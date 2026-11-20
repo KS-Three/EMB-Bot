@@ -74,7 +74,6 @@ def test_white_keyline_art_reads():
 
 
 @pytest.mark.parametrize("why, regs, cfg", [
-    ("no outline pass", keyline_art(), replace(ON, border_from_outline=False)),
     ("field is not background", keyline_art(field_meta={}), ON),
     ("letters are not text", keyline_art(letter_meta={}), ON),
     ("letters are background (Becker's white faces)",

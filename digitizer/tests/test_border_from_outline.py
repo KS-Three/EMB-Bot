@@ -1,15 +1,15 @@
-"""Border from the art's outline (`cfg.border_from_outline`, built OFF 2026-10-24).
+"""Border from the art's outline (built OFF 2026-10-24, ON by Kent's flip the same
+day, folded into the engine: the `border_from_outline` switch is retired).
 
 The pro's border choice is not a stroke threshold: he borders a shape when
 the ART draws an outline round it (BECKER's white faces in their black
 keyline, MFab's M-FAB in its white one) and satins the same stroke when it
 does not (MARINE). `tools/outline_census.py` over ten paired files: kappa
-0.76 (raw 0.980, n 586). ON, an outline -- a region whose hole holds a body
+0.76 (raw 0.980, n 586). An outline -- a region whose hole holds a body
 at least as wide as the outline is thick, a letter's counters excluded --
 sews as one satin loop per hole at his width (the art outline's own
 thickness, 1.5-2.5), rail on the body's edge; its bodies sew as plain fills,
 never satin, and never a ring of their own (`border_by_size` included).
-OFF, byte-identical.
 """
 from __future__ import annotations
 
@@ -57,9 +57,6 @@ def _plan(outline, body, *, body_sewn=True, body_meta=None, outline_meta=None, *
     planned = [PlannedRegion(region=o, polygon=outline, sew_index=1)]
     if body_sewn:
         planned.insert(0, PlannedRegion(region=b, polygon=body, sew_index=0))
-    # the flag is ON by default since 2026-10-24 (Kent); a call that does not
-    # name it is the OFF arm, as it was when these tests were written
-    cfg_kw.setdefault("border_from_outline", False)
     cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **FLAG_ENDS_SEAM_2026_11_17_OFF, **cfg_kw})
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
                          art_outlines=_art_outlines([b, o], cfg))
@@ -82,26 +79,9 @@ def _crosses(runs, sid):
     return out
 
 
-def test_flag_default_is_on_and_the_widths_are_the_pros():
-    # Kent's flip 2026-10-24 (wave-2 flip sheet, PR #1069)
-    assert PipelineConfig().border_from_outline is True
+def test_the_widths_are_the_pros():
     assert machine.OUTLINE_WIDTH_MM == (1.5, 2.5)
     assert machine.OUTLINE_BODY_RATIO == 1.0
-
-
-def test_off_ignores_the_outlines_even_when_handed_them():
-    b = _region("Sbody", FACE, 0, 0)
-    o = _region("Souter", KEY, 1, 1)
-    planned = [PlannedRegion(region=b, polygon=FACE, sew_index=0),
-               PlannedRegion(region=o, polygon=KEY, sew_index=1)]
-    on_cfg = PipelineConfig(underlay=False, border_from_outline=True)
-    found = _art_outlines([b, o], on_cfg)
-    assert found
-    blocks, _ = sequence(planned, fabric_for_garment("hat_front"),
-                         PipelineConfig(underlay=False, border_from_outline=False, **FLIP_2026_10_23,
-                                        **FLAG_ENDS_SEAM_2026_11_17_OFF),
-                         art_outlines=found)
-    assert _md5([r for blk in blocks for r in blk.runs]) == _md5(_plan(KEY, FACE))
 
 
 def test_a_keyline_round_a_wide_body_is_an_outline():
@@ -172,7 +152,7 @@ def test_two_touching_bodies_in_one_hole_are_both_bodies():
 
 
 def test_on_the_outline_is_one_satin_loop_on_the_bodys_edge():
-    on = _plan(KEY, FACE, border_from_outline=True)
+    on = _plan(KEY, FACE)
     loops = [r for r in on if r.shape_id == "Souter" and r.kind == stitches.SATIN]
     assert len(loops) == 1
     assert min(FACE.exterior.distance(Point(p)) for p in loops[0].points[0::2]) < 1e-6
@@ -190,7 +170,7 @@ def test_on_a_thin_ring_is_widened_to_the_pros_width_but_not_into_a_neighbour():
     ring = Polygon(box(-16, -7, 16, 7).exterior, [left.exterior, right.exterior])
     b1, b2 = _region("Sleft", left, 0, 0), _region("Sright", right, 0, 0)
     o = _region("Souter", ring, 1, 1)
-    cfg = PipelineConfig(underlay=False, border_from_outline=True)
+    cfg = PipelineConfig(underlay=False)
     planned = [PlannedRegion(region=b1, polygon=left, sew_index=0),
                PlannedRegion(region=b2, polygon=right, sew_index=0),
                PlannedRegion(region=o, polygon=ring, sew_index=1)]
@@ -206,14 +186,11 @@ def test_on_a_thin_ring_is_widened_to_the_pros_width_but_not_into_a_neighbour():
 
 
 def test_on_the_body_is_a_fill_with_no_ring_of_its_own():
-    off = _plan(KEY, FACE)
-    on = _plan(KEY, FACE, border_from_outline=True)
-    assert [r for r in off if r.shape_id == "Sbody" and r.kind == stitches.SATIN] or \
-        [r for r in off if r.shape_id == "Sbody"]
+    on = _plan(KEY, FACE)
     body = [r for r in on if r.shape_id == "Sbody"]
     assert body and {r.kind for r in body} <= {stitches.FILL, stitches.UNDERLAY, stitches.TRAVEL}
     # border_by_size would ring a 12 mm non-lettering fill in its own colour
-    both = _plan(KEY, FACE, border_from_outline=True, border_by_size=True)
+    both = _plan(KEY, FACE, border_by_size=True)
     assert not [r for r in both if r.shape_id == "Sbody" and r.kind == stitches.BORDER]
     assert _md5([r for r in both if r.shape_id == "Sbody"]) == _md5(body)
 
@@ -225,7 +202,7 @@ def test_on_a_thicker_outline_keeps_the_pros_width_and_fills_the_rest_under():
     # keyline round a 360 mm2 face, 1.11) reads as a field under it, so the
     # arm keeps the guard off, as every flip's OFF dict is spread.
     for ring in (THICK, FAT):
-        on = _plan(ring, FACE, border_from_outline=True, **FRAME_GUARD_2026_11_15_OFF)
+        on = _plan(ring, FACE, **FRAME_GUARD_2026_11_15_OFF)
         widths = sorted(math.dist(a, b) for a, b in _crosses(on, "Souter"))
         assert abs(widths[len(widths) // 2] - 2.5) < 0.05
         assert max(widths) < 2.5 * 1.1          # one width (a zigzag diagonal), no fringe
@@ -237,24 +214,21 @@ def test_on_a_thicker_outline_keeps_the_pros_width_and_fills_the_rest_under():
 
 def test_on_with_the_body_left_unsewn_the_outline_still_loops():
     # BECKER's faces with `sew_enclosed_white` off: the face is a region, unsewn
-    on = _plan(KEY, FACE, body_sewn=False, border_from_outline=True,)
+    on = _plan(KEY, FACE, body_sewn=False)
     assert len([r for r in on if r.shape_id == "Souter" and r.kind == stitches.SATIN]) == 1
 
 
 def test_on_an_outline_that_does_not_sew_leaves_its_body_alone():
     b = _region("Sbody", FACE, 0, 0)
     o = _region("Souter", KEY, 1, 1)
-    cfg_on = PipelineConfig(underlay=False, border_from_outline=True)
+    cfg_on = PipelineConfig(underlay=False)
     found = _art_outlines([b, o], cfg_on)
     planned = [PlannedRegion(region=b, polygon=FACE, sew_index=0)]
     on, _ = sequence(planned, fabric_for_garment("hat_front"), cfg_on, art_outlines=found)
-    off, _ = sequence(planned, fabric_for_garment("hat_front"),
-                      PipelineConfig(underlay=False, border_from_outline=False))
-    assert _md5([r for x in on for r in x.runs]) == _md5([r for x in off for r in x.runs])
+    alone, _ = sequence(planned, fabric_for_garment("hat_front"), cfg_on, art_outlines=None)
+    assert _md5([r for x in on for r in x.runs]) == _md5([r for x in alone for r in x.runs])
 
 
 def test_on_a_per_shape_tier_still_wins():
-    a = _plan(KEY, FACE, outline_meta={"tier": "fill"}, body_meta={"tier": "satin"})
-    b = _plan(KEY, FACE, outline_meta={"tier": "fill"}, body_meta={"tier": "satin"},
-              border_from_outline=True)
-    assert _md5(a) == _md5(b)
+    on = _plan(KEY, FACE, outline_meta={"tier": "fill"}, body_meta={"tier": "satin"})
+    assert not [r for r in on if r.shape_id == "Souter" and r.kind == stitches.SATIN]
