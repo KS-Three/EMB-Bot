@@ -1430,20 +1430,18 @@ def test_the_rescued_door_with_the_ink_link_keeps_one_ink_rows_and_one_step_neig
         "one quantization step is still one ink")
 
 
-def test_the_pipeline_passes_the_rescued_ink_link_from_the_config():
-    """The flag is ON by default (`PipelineConfig.text_cluster_rescued_ink_link`)
-    and the pipeline's one call hands it to the tagger; the function's own
-    default stays False so every direct caller is the engine as it was."""
+def test_the_pipeline_always_passes_the_rescued_ink_link():
+    """The pipeline's one call hands the link to the tagger (the switch was
+    folded into the code 2026-11-19); the function's own default stays False
+    so every direct caller is the engine as it was."""
     import inspect
 
     from digitizer_core import pipeline
-    from digitizer_core.config import PipelineConfig
 
-    assert PipelineConfig().text_cluster_rescued_ink_link is True
     assert inspect.signature(detect_text_clusters).parameters["rescued_ink_link"].default is False
     src = inspect.getsource(pipeline)
-    assert "rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link)" in src, (
-        "the pipeline must pass the config's value to detect_text_clusters")
+    assert "rescued_ink_link=True," in src, (
+        "the pipeline must pass the link to detect_text_clusters")
 
 
 # --- The letter door reads a glyph AS DRAWN (`counters_as_drawn`, 2026-10-20) --
@@ -1550,21 +1548,14 @@ def test_a_same_ink_speck_inside_a_glyph_is_not_a_counter():
     assert "text_cluster_id" not in a.meta
 
 
-def test_the_pipeline_passes_counters_as_drawn_from_the_config():
-    """ON by default (`PipelineConfig.text_cluster_counters_as_drawn`), pinned
-    False in `PRE_FLIP` and in flagcost's table; the function's own default
-    stays False so every direct caller is the engine as it was."""
+def test_the_pipeline_always_passes_counters_as_drawn():
+    """The pipeline's one call passes it (the switch was folded into the code
+    2026-11-19); the function's own default stays False so every direct
+    caller is the engine as it was."""
     import inspect
 
     from digitizer_core import pipeline
-    from digitizer_core.config import PipelineConfig
-    from tools.pro_parity import flagcost as fc
 
-    from .conftest import PRE_FLIP
-
-    assert PipelineConfig().text_cluster_counters_as_drawn is True
-    assert PRE_FLIP["text_cluster_counters_as_drawn"] is False
-    assert fc.FLAGS["text_cluster_counters_as_drawn"] is False
     assert inspect.signature(detect_text_clusters).parameters["counters_as_drawn"].default is False
     src = inspect.getsource(pipeline)
-    assert "counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn)" in src
+    assert "counters_as_drawn=True," in src

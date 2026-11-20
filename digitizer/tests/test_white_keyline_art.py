@@ -103,7 +103,7 @@ def test_the_recipe_is_every_switch_on():
     assert all(getattr(got, k) is True for k in wka.RECIPE)
     assert all(got.extra.get(k) is True for k in wka.RECIPE_EXTRA)
     assert set(wka.RECIPE) >= {"silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
-                               "silhouette_underfill_panels", "outline_loop_mitre"}
+                               "silhouette_underfill_panels"}
 
 
 def test_the_mfab_extras_ride_the_gate_kent_2026_10_26():

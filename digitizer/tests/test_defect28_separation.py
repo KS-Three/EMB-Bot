@@ -106,8 +106,8 @@ def test_instrument_agrees_with_the_shipped_check(monkeypatch):
     assert chart[b].number in tool_blocks
 
 
-def test_the_two_floors_are_one_floor_when_the_flag_is_on():
-    """The 4x gap (200 vs 50 px) is closed by `revalidate_small_shapes`,
-    which is ON by default."""
+def test_the_two_floors_are_one_floor():
+    """The 4x gap (200 vs 50 px) is closed by the lowered floor
+    `revalidate_threads(small_shapes=True)`, which the pipeline always passes
+    (`revalidate_small_shapes` was folded into the code 2026-11-19)."""
     assert s4.THREAD_REVALIDATE_MIN_PX_SMALL == pf._MIN_COLOR_PIXELS
-    assert PipelineConfig().revalidate_small_shapes is True

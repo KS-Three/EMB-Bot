@@ -138,14 +138,14 @@ def test_on_past_the_wide_bound_is_still_refused():
 
 # --- wiring and OFF ---------------------------------------------------------------
 
-def test_the_flag_is_on_and_the_pipeline_passes_nothing_when_off():
-    # ON by default since 2026-10-24 (Kent, the flip sheet); the function's own
-    # default stays off, so a caller that passes nothing gets the old door
-    assert PipelineConfig().text_cluster_wide_letters is True
+def test_the_pipeline_always_passes_wide_letters():
+    # the switch was folded into the code 2026-11-19 (ON since 2026-10-24, Kent, the
+    # flip sheet); the function's own default stays off, so a caller that passes
+    # nothing gets the old door
     assert inspect.signature(tc.detect_text_clusters).parameters["wide_letters"].default is False
     from digitizer_core import pipeline
     src = inspect.getsource(pipeline)
-    assert '**({"wide_letters": True} if cfg.text_cluster_wide_letters else {})' in src
+    assert "wide_letters=True," in src
 
 
 GOLDEN_MD5 = FLAT_GOLDEN_MD5
@@ -156,15 +156,13 @@ def _md5(coords) -> str:
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
-@pytest.mark.parametrize("on", [False, True])
-def test_goldens_are_byte_identical_off_and_on(fixture, on):
-    """OFF is the engine as it was. ON too: the three flat goldens carry no
-    wide or pinched letter, so there is nothing to split or adopt."""
+def test_goldens_are_byte_identical(fixture):
+    """The three flat goldens carry no wide or pinched letter, so there is
+    nothing to split or adopt."""
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
-                                            text_cluster_wide_letters=on))
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == GOLDEN_MD5[fixture]

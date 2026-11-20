@@ -85,14 +85,6 @@ def test_on_the_italic_arm_sews_square_to_its_rails():
     assert mid_lean(on.columns[0]) < 0.5
 
 
-def test_flag_default_preflip_and_flagcost():
-    from .conftest import PRE_FLIP
-    from tools.pro_parity import flagcost as fc
-    assert PipelineConfig().lettering_columns_rail_axis is True
-    assert PRE_FLIP["lettering_columns_rail_axis"] is False
-    assert fc.FLAGS["lettering_columns_rail_axis"] is False
-
-
 def test_stage7_hands_the_flag_to_the_lane(monkeypatch):
     # the flag reaches `letter_columns`, and OFF the call is today's
     from digitizer_core import columns as C

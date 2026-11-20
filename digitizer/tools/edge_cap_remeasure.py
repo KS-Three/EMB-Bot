@@ -40,7 +40,7 @@ for p in (str(ROOT), str(HERE)):
 FIXTURES = ["fremont", "becker", "enthusiast", "drone", "whitebg", "gaulke"]
 #: The edge work landed since the 2026-09-11 measurement, all ON on main.
 EDGE_FLAGS = ["border_by_size", "border_by_size_fabric_edges", "border_from_outline",
-              "silhouette_underfill", "silhouette_underfill_rim", "outline_loop_mitre"]
+              "silhouette_underfill", "silhouette_underfill_rim"]
 SATIN = ("satin", {"edge_cap": "satin"})
 BEAN_LEGACY = ("bean-legacy", {"edge_cap": "bean", "bean_only_lines": False})
 BECKER_WIDTHS = [60, 70, 80, 86, 88, 90, 91, 92, 95, 95.7, 96, 100, 110, 120]

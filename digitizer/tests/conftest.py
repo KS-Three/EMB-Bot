@@ -538,8 +538,7 @@ def segments(stitch_plan):
 # the others on", which is not the engine any measurement was made on. The
 # shipped engine is BUNDLE_ON (the fifth flag is the default there), and
 # each file pins that once.
-COLOUR_BUNDLE = ("enforce_color_cap", "resnap_mask_matches_grader",
-                 "revalidate_small_shapes", "bind_resnap_all_classes")
+COLOUR_BUNDLE = ("bind_resnap_all_classes",)   # the other three were folded into the code 2026-11-19
 PRE_FLIP = {name: False for name in COLOUR_BUNDLE + ("robust_region_colour",)}
 # `edge_cap` joined the flipped set 2026-09-11 ("bean", Kent's ruling after
 # item 14). It is a STRING, not a bool, so it cannot ride the dict
@@ -792,15 +791,6 @@ PRE_FLIP["small_text_true_size_min_counter_mm"] = None
 # PR #960's 65 mm THE fix, carried by the flip; VP 2026-10-15). None is the
 # pre-flip engine: never filled, read as False.
 PRE_FLIP["small_text_keep_stray_lines"] = None
-# ...and the one-ink link in the text tagger's RESCUED round (2026-10-15,
-# Fremont's THE at 80 mm: its one rescued letter joined the tan date and left
-# T and H short of a cluster). False is the pre-flip engine: round 1 links
-# on size alone. The tests ABOUT it are in `tests/test_textcluster.py`.
-PRE_FLIP["text_cluster_rescued_ink_link"] = False
-# The letter door reads a glyph's stroke as drawn, with a filled counter
-# punched back in (Proseal's two A's, 2026-10-20). False is the door before
-# it: the stroke read on the traced polygon. Tests: `tests/test_textcluster.py`.
-PRE_FLIP["text_cluster_counters_as_drawn"] = False
 # The two bean-letter holds (Kent's flip 2026-10-15, "flip both holds ON"):
 # needle points 0.25 mm off a small counter (#952) and stations 0.2 mm off an
 # open bay (#967). Plain defaults, not switch values: None is OFF, the engine
@@ -882,10 +872,6 @@ PRE_FLIP["lettering_columns_fold_cuts"] = False
 # The tests ABOUT them are `tests/test_small_stem.py`,
 # `tests/test_small_dot_rung.py` and `tests/test_dot_rung_lettering.py`.
 PRE_FLIP["lettering_columns_small_stem"] = False
-# The rail axis (2026-10-20): a short italic bar in the Column lane runs along
-# its rails, not its spine's chord, so an italic wordmark's arms move. False
-# is the pre-flip lane. The tests ABOUT it are `tests/test_column_rail_axis.py`.
-PRE_FLIP["lettering_columns_rail_axis"] = False
 # The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF
 # 2026-09-04 and flipped it ON 2026-10-20, MASTER_SCOPE item 46, on PR
 # #1003's pricing): a merged label that is mostly boundary and a blend of its
@@ -910,25 +896,12 @@ PRE_FLIP["edge_cap_skip_bean_letters"] = False
 # Kent's wave-2 flips (2026-10-24, from the flip sheet of PR #1069), for the
 # reason every entry above gives. `border_from_outline` (#1065): an art outline
 # sews as one satin loop per body at the outline's width, its bodies as fills.
-# `small_text_cap_reach_edges` (#1066): the re-set reaches a line on the
-# design's edge; inert while the re-set itself is unset.
 PRE_FLIP["border_from_outline"] = False
-PRE_FLIP["small_text_cap_reach_edges"] = False
-# Three lettering flags Kent flipped ON 2026-10-24 ("Flip it ON", then "Ship
-# 3, fix white next" on 2026-10-25), for the reason every entry above gives:
-# each moves lettering only. False is the engine before the flip. The tests
-# ABOUT them are `tests/test_column_text_lean.py`,
-# `tests/test_column_inside_stagger.py` and `tests/test_wide_letters.py`.
+# `lettering_columns_text_lean`, which Kent flipped ON 2026-10-24 ("Flip it
+# ON"), for the reason every entry above gives: it moves lettering only. False
+# is the engine before the flip. The tests ABOUT it are
+# `tests/test_column_text_lean.py`.
 PRE_FLIP["lettering_columns_text_lean"] = False
-PRE_FLIP["lettering_columns_inside_stagger"] = False
-PRE_FLIP["text_cluster_wide_letters"] = False
-# `border_from_outline_line_art_guard` (#1078), Kent's flip 2026-10-25 ("Flip
-# it ON", from the bowl renders), for the reason every entry above gives: ON,
-# a hairline drawing that leaves strokes beyond its loops (Bridge's bowl) is
-# not an art outline, so it sews as it did before `border_from_outline`.
-# False is the engine before the flip. The tests ABOUT it are in
-# `tests/test_outline_line_art_guard.py`.
-PRE_FLIP["border_from_outline_line_art_guard"] = False
 # Kent's wave-3 flips (2026-10-26), for the reason every entry above gives.
 # `small_text_bay_mouth` (#1085, "Flip ON"): the re-set cuts back a terminal
 # that shuts a bay. `sew_enclosed_white` (#1087's option A, "Flip, but prove
@@ -948,14 +921,6 @@ FLIP_2026_10_30 = {"fill_bridge_cut_exposed": False, "fill_seam_order": False,
 FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
                    "small_text_reset_grow_away": False, "script_strokes": False}
 PRE_FLIP.update(FLIP_2026_10_26)
-# `outline_loop_mitre` (#1059's loops, built 2026-10-25), Kent's flip on the
-# wave-3 flip sheet 2026-10-26: "Outline corners pivot" (`fine_bars_satin`,
-# the sheet's other flip, was folded into the code 2026-11-19). False is the
-# engine before the flip; the test ABOUT it is `tests/test_outline_loop_mitre.py`.
-PRE_FLIP["outline_loop_mitre"] = False
-#: The one, OFF: for a test that pins a number the flip moved but that is
-#: ABOUT something else (spread into a PipelineConfig).
-WAVE3_2026_10_26_OFF = {k: PRE_FLIP[k] for k in ("outline_loop_mitre",)}
 # Kent's flips on the wave-5 flip sheet 2026-10-27 (#1140):
 # `bean_ink_outlined_letters` (#1128) with `text_cluster_part_touching` ("Both
 # ON (Recommended)": each alone leaves a letter of MFab LC's AND hollow) and
@@ -1302,8 +1267,7 @@ THROUGH_LAST_2026_11_19_OFF = {"lettering_columns_through_last": False}
 PRE_FLIP.update(THROUGH_LAST_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
-LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
-    "lettering_columns_text_lean", "lettering_columns_inside_stagger", "text_cluster_wide_letters")}
+LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in ("lettering_columns_text_lean",)}
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
 
 

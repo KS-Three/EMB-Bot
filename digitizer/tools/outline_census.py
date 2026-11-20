@@ -207,7 +207,7 @@ def measure_cmd(args) -> int:
     for s in slugs:
         regions = _regions(json.loads((cache / s / "ours.json").read_text(encoding="utf-8")))
         by_id = {r.shape_id: r for r in regions}
-        for o, bodies in find_art_outlines(regions).items():
+        for o, bodies in find_art_outlines(regions, line_art_guard=False).items():
             fill, dropped = line_art_reading(by_id[o], [(by_id[b], h) for b, h in bodies])
             art = (fill < machine.OUTLINE_LINE_ART_FILL_SHARE
                    and dropped >= machine.OUTLINE_LINE_ART_DROP_FRAC)
@@ -240,8 +240,7 @@ def digitize_cmd(args) -> int:
     for tag, out, guard in (("on", args.on, False), ("guard", args.guard, True)):
         if out is None:
             continue
-        plan = plan_stitches(d.result, replace(d.cfg, border_from_outline=True,
-                                               border_from_outline_line_art_guard=guard))
+        plan = plan_stitches(d.result, replace(d.cfg, border_from_outline=True))
         bc.write_ours(Path(out) / args.slug, args.slug, row[3], width, pro, art, d.result, plan, d.secs)
         plans.append((tag, plan))
     for tag, plan in plans:
@@ -258,8 +257,7 @@ def replan_cmd(args) -> int:
     from tools import border_census as bc
     from digitizer_core.pipeline import plan_stitches
     k = pickle.loads((Path(args.off) / args.slug / "result.pkl").read_bytes())
-    plan = plan_stitches(k["result"], replace(k["cfg"], border_from_outline=True,
-                                              border_from_outline_line_art_guard=args.line_art_guard))
+    plan = plan_stitches(k["result"], replace(k["cfg"], border_from_outline=True))
     bc.write_ours(Path(args.on) / args.slug, args.slug, k["garment"], k["width"], k["pro"], k["art"],
                   k["result"], plan, k["secs"])
     print(args.slug, "on:", sum(len(r.points or []) for _b, r in plan.iter_runs()), "points")
