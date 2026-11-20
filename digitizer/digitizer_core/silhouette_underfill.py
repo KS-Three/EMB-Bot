@@ -400,7 +400,63 @@ def _on_jumped_ground(ring, host, inner, regions) -> bool:
     return _jumped_ground_share(ring, host, inner, regions) >= GROUND_EDGE_MIN
 
 
-def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False):
+#: `cfg.extra["underfill_keeps_thin_letters"]` (built OFF 2026-11-19).
+def _thin_in_ground_hole(r, others) -> bool:
+    """Is `r` a stroke too thin to show through the hole it sits in?
+    (`_hole_ground` names the shape.)"""
+    return _hole_ground(r, others) is not None
+
+
+def _keep_thin(same, grounds):
+    """The shapes of `same` kept out of the under-fill: thin strokes in a
+    ground's holes (`_hole_ground`), only where that ground holds at least
+    one LETTER (`_is_letter`) of the same thread kept this way -- a line of
+    lettering, and the untagged letters the text read missed with it. A thin
+    star point or feather alone in a hole is no line: on the OPM seal they
+    sewed white on top where the art draws them pale (24 of 91 designs moved
+    without this, most on shapes that are not letters)."""
+    by_ground: dict = {}
+    for r in same:
+        g = _hole_ground(r, grounds)
+        if g is not None:
+            by_ground.setdefault((g.shape_id, r.thread_index), []).append(r)
+    return {r.shape_id for rs in by_ground.values() if any(_is_letter(r) for r in rs)
+            for r in rs}
+
+
+def _hole_ground(r, others):
+    """The shape of `others` in whose holes `r` sits too thin to show, or None. Its
+    measured width (`stitchwidth`) is under `thin_ink.THIN_LETTER_PULLS` x its
+    pull -- the measure `thin_letters_after_ground` moves a line by -- and it
+    lies in the holes of one of `others` (at most `ON_RING_MAX` of it on that
+    shape or outside its outline: the seal's C and E trace 0.12-0.14 onto
+    the white), a FILL by the same measure and no white-keyline field (those
+    holes are the riders')."""
+    from .stitchwidth import MEASURED_KEY, PULL_KEY
+    from .thin_ink import THIN_LETTER_PULLS
+
+    def narrow(x):
+        m = x.meta or {}
+        return bool(m.get(MEASURED_KEY) and m.get(PULL_KEY)
+                    and float(m[MEASURED_KEY]) < THIN_LETTER_PULLS * float(m[PULL_KEY]))
+    if not narrow(r):
+        return None
+
+    def in_holes(o):
+        shell = Polygon(o.polygon.exterior)
+        if not shell.intersects(r.polygon):
+            return False
+        held = shell.intersection(r.polygon).area - o.polygon.intersection(r.polygon).area
+        return held >= (1.0 - ON_RING_MAX) * r.polygon.area
+    for o in others:
+        if (o.polygon is not None and o.polygon.geom_type == "Polygon" and o.polygon.interiors
+                and (o.meta or {}).get("sew_enclosed_white") != "field" and not narrow(o)
+                and in_holes(o)):
+            return o
+    return None
+
+
+def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False, keep_thin=False):
     """-> [(ring, host, outline, merged ids, inner shapes)] for every ring
     this reads, the biggest first; a shape serves one ring at most.
 
@@ -423,7 +479,20 @@ def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False):
     keyline without `sew_enclosed_white`. They never count as holding a hole.
 
     `riders` (shape ids, `cfg.silhouette_underfill_panels`) are never merged:
-    they sew on their own, on top. Empty: as before."""
+    they sew on their own, on top. Empty: as before.
+
+    `keep_thin` (`cfg.underfill_keeps_thin_letters`, ON since Kent's flip; built OFF
+    2026-11-19): a shape of the under-fill's colour is never merged when it
+    is a thin stroke in a hole of another colour's fill inside the ring
+    (`_keep_thin`: a line of lettering). The Merchant Marine seal at 90 mm: the black
+    keyline round the eagle and the disc is one ring, black covers most of
+    its outline, and its 27 black ring letters (0.7 mm strokes, each in a
+    hole of the white disc) merged into the black under-fill. The white disc
+    sews on top with every row laid long for pull, the 0.7 mm holes close,
+    and "UNITED STATES MERCHANT MARINE" is gone. MFab's letters show through
+    their holes because they are 2-6 mm wide. Kept, the letters sew on their
+    own and `thin_letters_after_ground` / `ink_after_ground` put them after
+    the white. False: as before."""
     used: set[str] = set()
     out = []
     for ring in sorted(_ring_candidates(regions), key=lambda r: -r.polygon.area):
@@ -458,6 +527,9 @@ def plan(regions, unsewn=(), riders=(), outlines=None, ground_guard=False):
             over = unary_union(others)
             same = [r for r in same
                     if r.polygon.intersection(over).area < COVERED_KEEP_MIN * r.polygon.area]
+        if keep_thin and same:
+            kept = _keep_thin(same, [r for r in inner if r.thread_index != colour])
+            same = [r for r in same if r.shape_id not in kept]
         if ring.thread_index != colour and not same:
             continue
         if ring.thread_index == colour:
@@ -503,7 +575,7 @@ def _hole_of(r, field):
 
 
 def find_riders(regions, unsewn=(), outlines=None, untagged=False,
-                ground_guard=False) -> list[str]:
+                ground_guard=False, keep_thin=False) -> list[str]:
     """`cfg.silhouette_underfill_panels`: the shape ids that ride a white
     panel instead of merging into the under-fill (module note above).
     `outlines`: `art_outline.find_art_outlines`' {outline id: [(body id,
@@ -522,7 +594,8 @@ def find_riders(regions, unsewn=(), outlines=None, untagged=False,
              if sum(1 for i in ids if i not in bodies) > WORD_NONBODY_MIN * len(ids)}
     out = []
     for _ring, host, _outline, _merged, inner in plan(regions, unsewn,
-                                                      ground_guard=ground_guard):
+                                                      ground_guard=ground_guard,
+                                                      keep_thin=keep_thin):
         for r in inner:
             if untagged and _untagged_rider(r, host, inner, fields):
                 out.append(r.shape_id)
@@ -579,22 +652,24 @@ def apply_cfg(regions, unsewn, cfg, outlines, pinned=()):
     as before and the outlines untouched. `pinned`: see `apply`.
     `cfg.silhouette_underfill_ground_guard` goes to every `plan` read."""
     guard = bool(getattr(cfg, "silhouette_underfill_ground_guard", False))
+    keep_thin = bool(getattr(cfg, "underfill_keeps_thin_letters", False))
     riders = []
     if (getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white
             and cfg.border_from_outline):
         riders = find_riders(regions, unsewn, outlines,
                              untagged=getattr(cfg, "underfill_untagged_riders", False),
-                             ground_guard=guard)
+                             ground_guard=guard, keep_thin=keep_thin)
     if not riders:
         out, report = apply(regions, unsewn, outlines=outlines, pinned=pinned,
-                            ground_guard=guard)
+                            ground_guard=guard, keep_thin=keep_thin)
         return out, report, outlines
     gone = set(riders)
     outlines = {oid: [b for b in bodies if b[0] not in gone]
                 for oid, bodies in (outlines or {}).items()}
     outlines = {k: v for k, v in outlines.items() if v} or None
     out, report = apply(regions, unsewn, riders=riders, outlines=outlines,
-                        overlap_mm=cfg.overlap_mm, pinned=pinned, ground_guard=guard)
+                        overlap_mm=cfg.overlap_mm, pinned=pinned, ground_guard=guard,
+                        keep_thin=keep_thin)
     return out, report, outlines
 
 
@@ -797,7 +872,7 @@ def apply_stripes(regions, pinned=()):
 
 
 def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0, pinned=(),
-          rings=None, ground_guard=False):
+          rings=None, ground_guard=False, keep_thin=False):
     """`cfg.silhouette_underfill` ON: -> (regions as copies, report). The
     hosts carry `UNDERFILL_KEY` and the fill tier, merged shapes are gone,
     and each host's layer sews before its ring's and its inner colours'.
@@ -817,9 +892,10 @@ def apply(regions, unsewn=(), riders=(), outlines=None, overlap_mm: float = 0.0,
     before.
 
     `rings`: a plan already made (`apply_stripes`); None reads the rings.
-    `ground_guard`: see `plan`; not read when `rings` is given."""
+    `ground_guard`, `keep_thin`: see `plan`; not read when `rings` is given."""
     if rings is None:
-        rings = plan(regions, unsewn, riders, outlines, ground_guard=ground_guard)
+        rings = plan(regions, unsewn, riders, outlines, ground_guard=ground_guard,
+                     keep_thin=keep_thin)
     if not rings:
         return regions, []
     panels = _panels(regions, set(riders), outlines, overlap_mm) if riders else {}
