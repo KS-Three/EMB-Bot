@@ -1151,7 +1151,8 @@
   // satinfont.js's constant block — and `satinZigzag`, ON by default since 2026-10-13:
   // constant rail order in the satin emitter, see satinplay.emitZigzag.
   // Since 2026-10-20 it also reads `dedupeHoles` and `underlayDirection`,
-  // the same names and values as here, BOTH default OFF in that lane — the
+  // the same names and values as here: `dedupeHoles` defaults ON there
+  // (`!== false`), `underlayDirection` defaults OFF there (`!!`) while the
   // shape lane's `underlayDirection` is ON; see the two notes beside `ties`.)
   //   `densityMm` (legacy, pre-2026-09-04) is one number for BOTH fillRowMm
   //   and satinSpacingMm and is still honoured exactly as it was — see the

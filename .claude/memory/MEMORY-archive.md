@@ -1,5 +1,7 @@
 # Memory Index — Archive (through 2026-10-22, three of 10-23, most of 10-25/26)
 
+Flag states in this file are as built at the time; check config.py for current state.
+
 Same one-line format as `MEMORY.md`: `- [Title](file.md) — hook`. These are the
 index lines for every note dated through 2026-10-04 (filename date, else the date
 the note file was first committed), moved out of the live index on 2026-10-23 (and
@@ -318,3 +320,5 @@ live index; new archive lines go at the bottom.
 - [Defect 28 leftovers](thread-match-leftovers-2026-11-10.md) — bridge_bar 3, screenshot 1, stub 0722 = CHART LIMITS: best of 398 spools still 10.6-29.4 dE00 per pixel; nothing built; excess-over-chart yardstick priced only
 - [Kent's judging rubric](kent-judging-rubric-2026-11-07.md) — his 22 reasons: lettering follows pen strokes, smooth curves, straight uprights, no blobs; first picks noisy; phase B judge FAILED (#1363)
 - [Compare ends on regenerate](compare-ends-on-regenerate-2026-11-08.md) — Kent 11-08 "Keep as is": Compare view (#1345) is an Original sub-mode, a regeneration ends it; don't build survival
+- [Border colour change](border-colour-change-2026-11-11.md) — low_poly pin 2: a drawn black line re-snapped to grey, not a border; pro borders per patch; both fixes (`resnap_hairline_never_lightens`, fix B) ruled OFF by Kent 11-11
+- [Line chain, one thread](line-chain-one-thread-2026-11-11.md) — fix B `line_chain_one_thread`: Kent 11-11 "Keep off, very little improvements were made, if any"; stays OFF, no flip, no retune; 4 of 21 rows move

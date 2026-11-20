@@ -28,6 +28,10 @@ def cfg(**kw) -> PipelineConfig:
     # flipped ON 2026-11-06 and moves tires / MFab LC / TOAT from gradient to
     # flat, so it is held at its pre-flip value here (PRE_FLIP posture).
     kw.setdefault("stage0_scale_relative_grad", False)
+    # Likewise `stage0_grain_needs_texture` (flipped ON 2026-11-19): ON, the
+    # grain route alone no longer decides on an opaque file, which is the
+    # route several rows here pin (MFab hat).
+    kw.setdefault("stage0_grain_needs_texture", False)
     return PipelineConfig(**kw)
 
 

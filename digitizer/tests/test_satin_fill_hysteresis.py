@@ -250,7 +250,9 @@ def test_the_band_leaves_the_compact_solid_satin_rescue_where_off_has_it():
                      meta={"layer": 0})
         blocks, _w = sequence([PlannedRegion(region=reg, polygon=star, sew_index=0)],
                               fabric_for_garment("hat_front"),
-                              PipelineConfig(underlay=False, **cfg_kw))
+                              # `satin_stars` (ON since 2026-11-19) would sew this
+                              # star point by point; the band is priced on the blob
+                              PipelineConfig(underlay=False, satin_stars=False, **cfg_kw))
         return [r.kind for b in blocks for r in b.runs if r.shape_id == "Sstar"]
 
     off = kinds()

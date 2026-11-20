@@ -113,7 +113,9 @@ from .stage6_fill import pro_offset_fill_angle, stitch_shape
 from .stage6_meander import meander_fill
 from .stage6_scanline import scanline_fill
 from .stage6_sketch import sketch_fill
-from .stage6_satin import (_dt_stats, classify_ribbon, is_small_solid, is_straight_slot, satin_shape, satin_shape_judged,
+from .stage6_satin import (_dt_stats, classify_ribbon, is_rectangle_bar, is_small_solid, is_straight_slot,
+                           read_star, rectangle_zigzag_underlay, ribbon_width_mm,
+                           satin_shape, satin_shape_judged, star_satin,
                            small_solid_satin)
 from .stage6_streamline import streamline_fill
 from .stitches import StitchBlock, StitchRun
@@ -4349,6 +4351,23 @@ def sequence(
             # (`handback_trying`); the ladder then reads it as untagged.
             handed_back = (p.shape_id in handback_trying
                            or _ribbon_handback(p.region, cfg, satin_max, design_class))
+            # `cfg.satin_stars` (ON since 2026-11-19): a regular pointed
+            # star sews point by point, one satin pass per point, a needle on
+            # every tip (`stage6_satin.read_star` / `star_satin`). Flag.webp's 50 stars came here tagged as
+            # lettering (a row of like small marks), and the Column lane and
+            # the skeleton tier both stopped every point where its taper fell
+            # under the cross floor: the stars sewed blunt. Read on the
+            # ARTWORK. No house cross angle applies (a group's, the design's,
+            # the review's): each point has its own axis.
+            if cfg.satin_stars and tier == "auto" and cfg.satin:
+                _star = read_star(p.region.polygon, satin_max)
+                if _star is not None:
+                    st_runs, st_report = star_satin(
+                        p.region.polygon, _star, p.shape_id, spacing_mm=satin_spacing_for(p),
+                        start_near=entry,
+                        end_near=exit_near if cfg.satin_exit_toward_next else None)
+                    if not st_report["empty"]:
+                        return st_runs, st_report, False
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
                     and not handed_back and is_lettering(p.region, cfg)):
                 _ax0, _ay0, _ax1, _ay1 = p.region.polygon.bounds
@@ -4651,9 +4670,17 @@ def sequence(
                 # (`stage6_satin.is_straight_slot`). Not lettering, not a
                 # forced tier, no house angle to honour. A slot the lane does
                 # not build as exactly one whole column takes the tier below.
-                if ((cfg.extra or {}).get("satin_straight_slots") and tier == "auto"
-                        and not is_lettering(p.region, cfg) and satin_angle_deg is None
-                        and is_straight_slot(p.polygon, shape_max)):
+                # `cfg.satin_rectangles` (ON since 2026-11-19): a true
+                # rectangle of any length (`stage6_satin.is_rectangle_bar`, a
+                # flag's stripe) takes the same path, its rails held at a
+                # seam with the colour already down as the tier below holds
+                # them (`cfg.satin_seam_hold`), so its ends sew square.
+                _x = cfg.extra or {}
+                _slot = bool(_x.get("satin_straight_slots")) and is_straight_slot(p.polygon, shape_max)
+                _rect = (not _slot and bool(cfg.satin_rectangles)
+                         and is_rectangle_bar(p.polygon, shape_max))
+                if ((_slot or _rect) and tier == "auto"
+                        and not is_lettering(p.region, cfg) and satin_angle_deg is None):
                     s_runs, s_report = lettering_columns_shape(
                         p.polygon, p.shape_id, trim_at_mm=trim_at,
                         spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
@@ -4663,10 +4690,27 @@ def sequence(
                         start_near=entry,
                         end_near=exit_near if cfg.satin_exit_toward_next else None,
                         rail_axis=True,
-                        **({"short_columns": True} if cfg.satin_underlay_short_columns else {}))
+                        **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
+                        **({"rail_held": (stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
+                                          else seam_ground(p) if cfg.satin_seam_hold else None)}
+                           if _rect else {}))
                     if (not s_report["empty"] and s_report.get("columns") == 1
                             and not s_report.get("columns_unsewn") and not s_report.get("cuts")):
-                        s_report["straight_slot"] = 1
+                        s_report["rectangle_bar" if _rect else "straight_slot"] = 1
+                        _ul_style = "none" if small and not cfg.satin_underlay_short_columns else satin_underlay
+                        _sat = [i for i, r in enumerate(s_runs) if r.kind == stitches.SATIN]
+                        if _rect and _sat and _ul_style != "none":
+                            # the skeleton tier's zigzag where it would lay
+                            # one (`stage6_satin._stroke_underlay`): the
+                            # column path lays only a centre walk
+                            _w = ribbon_width_mm(p.polygon) + 2.0 * rail_comp_mm
+                            if _ul_style == "zigzag" or _w > machine.SATIN_ZIGZAG_ABOVE_MM:
+                                _ul = rectangle_zigzag_underlay(p.polygon, s_runs[_sat[0]].points[0],
+                                                                p.shape_id)
+                                if _ul:
+                                    # in place of everything the lane laid
+                                    # before its satin: it ends on the satin's start end
+                                    s_runs = _ul + s_runs[_sat[0]:]
                         return s_runs, s_report, False
                 _cored_s = cored_holes_of(p.polygon)
                 runs, report = satin_shape_judged(

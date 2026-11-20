@@ -603,6 +603,18 @@ PRE_FLIP["stage0_texture_gate"] = False
 # arms in `tests/test_classifier_scale_invariance.py`) name the flag themselves.
 # `tests/engine_2026_10_27.json` carries it False too.
 PRE_FLIP["stage0_scale_relative_grad"] = False
+# `stage0_grain_needs_texture` joined the flipped set 2026-11-19 (Kent's "Flip
+# ON (Recommended)" on `docs/stage0-grain-needs-texture-2026-11-19.md`): ON, an
+# opaque file the grain gate alone sent to `photo_scene` (MFab hat at native,
+# small logos downscaled) routes flat, so an arm measured on the photo lane's
+# plan of one was measured on the pre-flip tree. Tests ABOUT the gate
+# (`tests/test_stage0_grain_needs_texture.py`) name the flag themselves.
+PRE_FLIP["stage0_grain_needs_texture"] = False
+# `rescue_needs_drawn_edge` joined the flipped set 2026-11-19 (Kent's "Flip ON
+# (Recommended)" on the enclosed-speck renders): ON, a contrasting sub-floor
+# speck one shape encloses, with no drawn edge in the art, goes to its host,
+# so an arm measured on a plan that kept one was measured on the pre-flip tree.
+PRE_FLIP["rescue_needs_drawn_edge"] = False
 # `flat_page_fringe_soft_ramp` and `flat_ramp_blend_dissolve` joined with it
 # (Kent 2026-11-06, "Re-open flip + both flags (Recommended)",
 # `docs/flat-fringe-soft-ramp-2026-11-06.md`): both act on the flat lane of an
@@ -1253,6 +1265,25 @@ PRE_FLIP.update(BLOCK_BUTT_2026_11_18_OFF)
 MARINE_MATCH_2026_11_19_OFF = {"lettering_columns_r_bowl": False, "lettering_columns_block_butt_small": False,
                                "lettering_columns_a_bar": False, "lettering_columns_block_lean": False}
 PRE_FLIP.update(MARINE_MATCH_2026_11_19_OFF)
+# `satin_rectangles` (Kent 2026-11-19, shown his Flag.webp at 113.5 mm and the 9
+# of 44 sweep runs it moves, before | after: "Flip ON (Recommended)"): a true
+# rectangle sews square ends. `tests/test_satin_rectangles.py`.
+SATIN_RECTANGLES_2026_11_19_OFF = {"satin_rectangles": False}
+PRE_FLIP.update(SATIN_RECTANGLES_2026_11_19_OFF)
+# `lettering_columns_absorb_unsewn` (2026-11-19: Kent delegated the review pack, "You review
+# them yourself, Claude is just as good, if not better than me.", then "Open flip PR"):
+# `tests/test_absorb_unsewn.py`.
+ABSORB_UNSEWN_2026_11_19_OFF = {"lettering_columns_absorb_unsewn": False}
+PRE_FLIP.update(ABSORB_UNSEWN_2026_11_19_OFF)
+# `satin_stars` (Kent 2026-11-19, shown the flag's 50 stars at 113.5 and 96 mm and
+# ENTHUSIAST's four-point star, before | after: "Flip ON (Recommended)"): a star
+# sews point by point with a needle on every tip. `tests/test_satin_stars.py`.
+SATIN_STARS_2026_11_19_OFF = {"satin_stars": False}
+PRE_FLIP.update(SATIN_STARS_2026_11_19_OFF)
+# `seam_hold_skips_outline_bodies` (2026-11-19, regression repair of #1641 on Ahora's gear;
+# Kent: "We need to make sure we are not going backwards"): `tests/test_seam_hold_bodies.py`.
+SEAM_HOLD_BODIES_2026_11_19_OFF = {"seam_hold_skips_outline_bodies": False}
+PRE_FLIP.update(SEAM_HOLD_BODIES_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

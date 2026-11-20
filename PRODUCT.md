@@ -38,7 +38,7 @@ row 8 (added 2026-11-10) has its freeze, installer and launcher built.
 | # | Item | Status | Evidence |
 |---|---|---|---|
 | 1 | PES hardened to byte-verified + JEF export, plus XXX (Singer) and VP3 (Husqvarna Viking / Pfaff) | ✅ Done — JEF only became REACHABLE 2026-09-07; XXX/VP3 are Kent's 2026-09-12 scope call | PES/JEF live in `digitizer/digitizer_service/formats.py` (pyembroidery-backed; `digitizer_core/export.py` itself is DST-only); PES/JEF round-trip verified. **This row was verified against the module that can write JEF, not against the product that exposes it** — the Studio's Download step offered DST/PES/EXP only, so from 2026-08-11 to 2026-09-07 a Janome owner could not export anything, while this line said the item was done. The button now exists (`DownloadStep.svelte`, disabled with a reason when the service is down — there is no browser JEF encoder), and the bytes it produces were decoded with `pystitch` rather than inferred: 80.5×16.6 mm, 1 colour change, 2 threads, matching the design the app promised. **Machine formats that ship are DST, PES, EXP, JEF, XXX and VP3** — XXX and VP3 added on Kent's 2026-09-12 call, service-written and buttoned like JEF, both round-tripping `identity` through `digitizer/tools/format_roundtrip.py` (70/70 stitches, 1/1 colour change, 1725×200 units) and both returning the design's own thread RGB, which PES and JEF do not. **PEC and U01 stay out of scope** — U01 is the one that would need work first: its colour change does not survive the round trip. |
-| 2 | Home-machine hoop picker (4×4 / 5×7 / 6×10 / 8×8 presets) | ✅ Done | `src/garments.js` `HOOPS`/`suggestHoop`/`hoopFit` (orientation-aware ceiling check, replaces the generic 200×200mm one); Studio picker on the Garment step with per-garment suggestion + manual override, persisted as `project.hoopId` (`.embproj`-safe); chosen hoop on the review stats line, Review summary, and PDF worksheet. Auto-rotating an only-fits-rotated design is a noted follow-up (the warning names the rotate fix) |
+| 2 | Home-machine hoop picker (4×4 / 5×7 / 6×10 / 8×8 presets) | ✅ Done | `src/garments.js` `HOOPS`/`suggestHoop`/`hoopFit` (orientation-aware ceiling check, replaces the generic 200×200mm one); Studio picker on the Garment step with per-garment suggestion + manual override, persisted as `project.hoopId` (`.embproj`-safe); chosen hoop on the review stats line, Review summary, and PDF worksheet. Turning an only-fits-rotated design is now one click: the "Rotate to fit" button shipped in d01ca84c (PR #1414, 2026-11-12) and keeps the design's size when turning it (a2df0b87, PR #1446); it is a button, not an automatic rotation |
 | 3 | Curated starter design pack (12 designs — Kent's 2026-11-10 ruling; the row read "12–24 licensed designs via DST import" until then) | ✅ Done — the designs are on main and the Studio opens them (re-verified 2026-11-12) | **Sourcing, Kent 2026-11-10:** 12 designs, each strict CC0 or Public Domain Mark vector art digitized by EMB-Bot's own pipeline; no open stitch files, no commission, no CC-BY, no logos or brand marks; provenance logged per design (`docs/starter-pack-sourcing-2026-11-10.md`, PR #1381). **Files (PR #1382):** `app/public/starter/` holds the 12 SVGs, their 12 DSTs and `manifest.json` (source page, author, licence as the page states it, check date, sha256 of art and DST, size, stitches, colours, preflight grade); `test/starter-pack.test.js` checks the licence allowlist, every sha256, and that every DST decodes with `src/dstimport.js` to the recorded counts. **Studio surface (PR #1402):** "Starter designs" in the panel's start control opens a picker (each design's SVG, title, "Art by <author> · <licence>" with a link to its source page); picking one adds an ordinary design element through the DST import path, as one undo step, browser-side, so it works with the digitizer service down (`app/e2e/starter-pack.spec.js`, `app/src/lib/designImport.js`, `starterThreads.js`). The manifest's grade and score are deliberately not shown. Not sewn. A 24-design pack or CC-BY art is a new question for Kent. The 12, the three Kent dropped and the known weak spots: `docs/starter-pack-2026-11-10.md`. |
 | 4 | Basic shapes tool (circle / rect / heart / star) | ✅ Done | `app/src/lib/shapePresets.js` generators + `ShapePanel.svelte`, new `"shape"` element type riding the manual-draw lane (`shapesToRegions → buildQualityDesign`); all four kinds verified digitizing live 2026-08-11 (star-tip coverage pinned in vitest); recipe (`kind`+`params`) persists in `.embproj` |
 | 5 | Thread palette sweep (remaining Ink/Stitch `.gpl` brands) | ✅ Done | 68 brand charts in `tools/palettes/`, matching the policy-filtered count (brands from companies that sell embroidery machines/software are excluded on purpose) |
@@ -48,7 +48,8 @@ row 8 (added 2026-11-10) has its freeze, installer and launcher built.
 
 ## Launch posture (decided)
 
-- Desktop-only, stated on the site.
+- Desktop-only (to be stated wherever the product is described; there is no
+  public site yet, and none is planned until Kent says launch is near).
 - **Delivered as one local Windows app (Kent, 2026-11-10)** — launch row 8.
   The hosted web Studio (PR #550) stays reversed (Kent, 2026-09-28).
   Engineering constraint this brings, not a ruling: the app has to hold ONE
@@ -133,7 +134,7 @@ edits survive a re-digitize. **Add-hole** (draw a polygon inside a digitized
 shape, appended to `holes_override`) is **in scope**, Studio only, after the
 sparse-nodes Studio PR. **Add-hole shipped 2026-11-05 (PR #1244).** Spec:
 `docs/superpowers/specs/2026-11-04-sparse-smooth-nodes-design.md`.
-**Move shape in scope (Kent 2026-11-05):** select a shape and move it whole,
+**Move shape in scope (Kent 2026-11-05; shipped in 7e27f9f6, PR #1255):** select a shape and move it whole,
 outline and digitized profile together. The outline moves live; the stitches
 regenerate at the new place after the commit through the normal restitch. Studio
 only, digitized lane only. Spec: `docs/superpowers/specs/2026-11-05-move-shape-design.md`.
@@ -157,7 +158,7 @@ only, digitized lane only. Spec: `docs/superpowers/specs/2026-11-05-move-shape-d
     is a plain USB WiFi network card that gives the machine its radio. It hosts
     no files, so there is nothing on the LAN to copy a design onto; the only
     thing that sends a file over that link is RnEmbNet's own protocol.
-  - **What shipped instead (this PR): "save to a folder" in the Download step.**
+  - **What shipped instead (ac387213, 2026-09-30): "save to a folder" in the Download step.**
     The operator points EMB-Bot at RnEmbNet's send-folder once and every export
     lands there, cutting the hunt-for-the-file step. It does not talk to the
     machine — RnEmbNet still does the transfer. Chromium-desktop only (File

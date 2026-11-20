@@ -1,0 +1,163 @@
+# Stage 0's photo gate, scale half — `cfg.stage0_grain_needs_texture` (built OFF, FLIPPED ON 2026-11-19)
+
+**Kent's ruling 2026-11-19: "Flip ON (Recommended)"**, taken on the
+ORIGINAL | BEFORE | AFTER renders of both moved designs (§6) with the 146-px
+photograph cost in front of him. The OFF arm is pinned in
+`tests/engine_2026_10_27.json` and `PRE_FLIP`.
+
+ROADMAP phase 2 (framing). Every number here is an instrument reading, not a
+quality claim (gate 4). No constant moves (gate 2): the flag changes which
+route may decide, not where any gate sits. The real tonal artwork gate 2 asks
+for is the 39-row Commons corpus plus `owl_kent`, the set the texture gate
+was sited on (spec 2026-10-28). Nothing was sewn (gate 1).
+
+## 1. The defect
+
+`unique_color_mass` (the grain gate, `UCM_PHOTO_MIN` 0.28) counts pixels
+that differ from their 3x3 neighbourhood's mode. The window is in pixels, so
+the smaller a logo is exported, the larger the share of its foreground that
+sits on an anti-aliased edge, and the more "grain" it reads. Since
+2026-10-28 an opaque file enters photo territory when grain OR texture fires;
+grain alone sends small real logos to `photo_scene`:
+`art/logo_mfab_hat.png` at its native 418 px (ucm 0.298, texture 0.063), and
+MFab LC and TOAT machine once downscaled to 146–320 px. This is limit 3 of
+`docs/stage0-scale-relative-grad-2026-11-06.md`.
+
+## 2. Why the grain route can be demoted
+
+On opaque files every real photograph read here clears the texture gate at
+every export width — min 0.169 (`watercolor` at 250 px; spec 2026-10-28 §4)
+— so grain-alone adds no photograph at the sizes the texture gate was
+measured on. What it adds is small logos, `fur_ramp` (synthetic), and the
+two corpus code images.
+
+## 3. The rule
+
+```
+ON, opaque file, texture gate ON:
+    two_tone veto      -> not photo        (unchanged, decides first)
+    grain and not texture -> not photo     (route `grain_held`, new)
+    otherwise          -> unchanged
+cut-out file or texture gate OFF -> the grain gate alone (`legacy`), unchanged
+```
+
+A held verdict's confidence is the texture gate's. OFF is byte-identical to
+today on every input (`tests/test_stage0_grain_needs_texture.py`).
+`tools/classify_lens.py` restates it.
+
+## 4. What moves — stage 0 class, OFF -> ON
+
+72 files (the repo fixtures `tools/stage0_photo_gate.py` lists and the 39
+Commons rows), each at native and at every ladder width below native (146,
+200, 250, 320, 400, 640, 900, 1200, 1600 px; PIL LANCZOS, the scale test's
+resampler): **577 readings, 21 move**, every one photo -> non-photo, every one
+on route `grain`.
+
+| file | kind | widths that move | OFF -> ON |
+|---|---|---|---|
+| `art/logo_mfab_hat.png` | real logo | native, 146, 250, 320 | photo_scene -> flat |
+| `art/logo_mfab_lc.png` | real logo | 146, 200, 320 | photo_scene -> flat |
+| `art/logo_toat_machine.png` | real logo | 146, 250 | photo_scene -> flat |
+| corpus `qr_code` | designed graphic | 146, 200, 250 | photo_scene -> flat |
+| corpus `barcode` | designed graphic | 400, 640 | photo_scene -> gradient |
+| `photo/fur_ramp.png` | synthetic | native, 146, 250, 400, 640 | photo_scene -> flat |
+| corpus `stained_glass` | **photograph** | **146** | photo_scene -> flat |
+| corpus `vintage_engraved_badge` | photographed graphic | 146 | photo_scene -> flat |
+
+Nothing else moves: the 18 other corpus photographs, `owl_kent`, every
+cut-out (drone, enthusiast, Fremont webp), and every opaque logo at every
+width.
+
+**Not reproduced:** the 11-06 doc listed Gaulke and Fremont reaching
+`photo_scene` at 146–250 px. On today's main neither does under either arm
+(`photo/logo_gaulke_roofing.png`, `art/logo_golke_roofing.png`,
+`art/logo_hotel_fremont_patch.png`: no move at any width).
+
+## 5. Stated limits
+
+1. **A photograph exported at 146 px loses photo territory** (`stained_glass`;
+   the texture gate's 512-px raster reads a 146-px file as it is, and its
+   texture falls under 0.13 there). The ladder the texture gate was sited on
+   starts at 250, where no photograph moves. The Studio sends up to 1200 px
+   and never upscales, so this is a customer who uploads a thumbnail.
+2. Cut-outs are untouched, so a small logo on a transparent background still
+   reads the grain gate alone.
+3. Stage-0 class only. What the moved designs SEW is the flag sweep below.
+
+## 6. Flag sweep (stitches)
+
+`python -m tools.flag_sweep --flag stage0_grain_needs_texture --pictures`
+(18 tripwire placements + 26 corpus fixtures, main `1089931d` + this
+change): **2 of 44 moved, 0 errored.**
+
+| run | stitches | jumps | needle-up mm | colours |
+|---|---|---|---|---|
+| `mfab_hat` | 20564 -> 20540 | 80 -> 66 | 741.9 -> 560.4 | 3 |
+| `fur_ramp` (synthetic) | 7240 -> 7073 | 17 -> 23 | 153.9 -> 251.5 | 5 -> 6 |
+
+`mfab_lc` does not move: as placed by the tripwire and the corpus it already
+reads flat (its misroute is a downscale). Trims unchanged on both. The
+renders (ORIGINAL | BEFORE | AFTER) were shown to Kent with the flip
+question; on `mfab_hat` the visible change is small — the M's inner notch
+and the dash read cleaner ON — and the needle-up saving is the larger effect.
+
+## 7. `cfg.rescue_needs_drawn_edge` — built OFF, HELD OFF by Kent 2026-11-19
+
+Found on the flip's pictures: with the flag ON, `fur_ramp`'s top-right disc
+sewed as a starburst ring. Its darkest centre (1.3 mm², a smooth shade the
+quantiser cut into a different thread) was kept by the `keep_thin_strokes`
+contrast rescue, which punched a hole in the disc. The new flag also asks
+that the artwork step across the region's boundary by more than
+`merge_delta_e` (`stage3_segment.drawn_edge`). With it ON, the speck goes to
+its disc.
+
+Flag sweep, OFF -> ON: **11 of 44 designs move.** The fix is visible only on
+`fur_ramp`. Elsewhere:
+
+- **Trims:** +1 on `precision_drone`, `goldentee_hat`, `drone_render`,
+  `region_blobs`, `photo_chrome_specular` and `photo_sunset_backlit`; +2 on
+  `photo_dof_meadow`; +5 on `screenshot_phone_ui_golke`; −2 on
+  `logo_golden_tee`, −21 on `photo_scene_stub`, −1 on `fur_ramp`.
+- **Golden Tee's "GOLF" O** loses some of its white highlight.
+- **Synthetic photos:** `photo_dof_meadow` sews 940 fewer stitches and
+  `photo_sunset_backlit` 770 fewer.
+
+It reaches every class that runs `pipeline`'s own `resolve_small_regions`
+call, not the flat lane alone. **Kent: "Keep OFF (Recommended)"**. The
+starburst was seen only on a synthetic fixture, and on real art the flag costs
+trims for no visible gain. The narrower form (a speck one shape fully
+encloses) is unbuilt.
+
+**Kent, on the pictures (2026-11-19): "The sunset image improved with the
+starburst fix (the only image)".** `photo_sunset_backlit` (synthetic) is the
+one design he read as better ON. The hold stands. If it is revisited, the
+place to start is what changed on the sunset (−770 stitches, +89.6 mm
+needle-up, +1 trim), measured beside the narrower enclosed-speck form.
+
+**CI after the flip:** `test_underfill_small_size` 36.7 mm default row graded
+C on Linux against its B floor. The default route is now flat, so the row
+takes the forced-flat row's C floor. On Kent's Windows box it read B. A
+preflight grade, not a quality claim (gate 4).
+
+## 8. The enclosed form — FLIPPED ON 2026-11-19
+
+Built at Kent's request ("Yes, build it"). `drawn_edge` is now asked only of
+a region that ONE neighbour encloses: nine tenths of its ring, the enclosure
+`detail_spokes` and `keep_counters` already read. A stroke or edge region
+that touches two or more shapes keeps today's contrast verdict.
+
+Flag sweep, OFF -> ON: **8 of 44 move.** `goldentee_hat`, `logo_golden_tee`
+and `screenshot_phone_ui_golke` no longer move.
+
+| run | trims | needle-up mm |
+|---|---|---|
+| `precision_drone` | 92 -> 93 | +5.7 |
+| `drone_render` | 102 -> 101 | −4.1 |
+| `photo_sunset_backlit` | 106 -> 90 | −124.5 |
+| `photo_scene_stub` | 81 -> 73 | +198.5 |
+| `photo_dof_meadow` | 47 -> 51 | −3 |
+| `fur_ramp` | 3 -> 2 | −18.5 (the starburst disc sews as a disc) |
+| `photo_chrome_specular`, `region_blobs` | ±1 | under 13 |
+
+The sunset's stray sky specks are gone, as Kent read the unscoped form.
+**Kent: "Flip ON (Recommended)"** on these renders.

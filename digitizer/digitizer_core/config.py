@@ -534,6 +534,16 @@ class PipelineConfig:
     # side-by-side page shows the change; the OFF arm is pinned in
     # `tests/engine_2026_10_27.json`.
     stage0_texture_gate: bool = True
+    # Stage 0's photo gate, the scale half (built OFF 2026-11-19, ROADMAP
+    # phase 2; `docs/stage0-grain-needs-texture-2026-11-19.md`). The grain
+    # gate reads a 3x3 window in pixels, so a small logo's anti-aliased edges
+    # count as grain and it routes `photo_scene` (MFab hat at native, TOAT
+    # machine, Gaulke, Fremont at 146-250 px). ON, an OPAQUE file enters
+    # photo territory only when `texture_frac` agrees; a cut-out keeps the
+    # grain gate alone (`legacy`). Needs `stage0_texture_gate`. FLIPPED ON
+    # 2026-11-19 by Kent ("Flip ON (Recommended)") on the before/after renders;
+    # the OFF arm is pinned in `tests/engine_2026_10_27.json`.
+    stage0_grain_needs_texture: bool = True
     # Stage 0's flat/gradient gate on a scale-relative read (built OFF
     # 2026-11-06, ROADMAP phase 2; `docs/stage0-scale-relative-grad-2026-11-06.md`).
     # FLIPPED ON 2026-11-06 by Kent, together with the flat lane's soft-edge
@@ -1209,6 +1219,22 @@ class PipelineConfig:
     # holding OFF beside the teal patch being kept ON, and
     # `test_flag_defaults_on` there pins this default itself.
     keep_thin_strokes: bool = True
+    # The contrast rescue above, asked of the ARTWORK too (built OFF
+    # 2026-11-19; `docs/stage0-grain-needs-texture-2026-11-19.md` §7). A
+    # quantiser cuts a smooth shade into thread bands, so the darkest centre
+    # of a shaded disc can come out as a sub-floor region whose LAYER colour
+    # is another thread: kept, it punched a 1.3 mm2 hole in `fur_ramp`'s disc
+    # and the disc sewed as a starburst ring round it. ON, a region is kept
+    # for contrast only when the source pixels also step across its boundary
+    # by more than `merge_delta_e` (`stage3_segment.drawn_edge`); otherwise
+    # it goes to its host as a sliver does. No new number. Asked only of a
+    # region ONE neighbour encloses (nine tenths of its ring); Kent held the
+    # unscoped form OFF on its trims and Golden Tee's O. Reaches every class
+    # that runs `pipeline`'s own `resolve_small_regions` call. Enclosed form:
+    # 8 of 44 sweep designs move, sunset 16 fewer trims. FLIPPED ON 2026-11-19
+    # by Kent ("Flip ON (Recommended)") on the renders; OFF arm pinned in
+    # `tests/engine_2026_10_27.json` and `PRE_FLIP`.
+    rescue_needs_drawn_edge: bool = True
     # Dark thin strokes on a SHADED ground, read by lightness
     # (`thin_ink.find_dark_thin_ink`; gradient class only, the gate
     # `keep_thin_strokes` has). `keep_thin_strokes` reads the artwork with the
@@ -4106,6 +4132,21 @@ class PipelineConfig:
     # sew-out question (gate 1); no constant changed. False is the engine as
     # it was; PRE_FLIP (FLAG_ENDS_SEAM_2026_11_17_OFF) pins it False.
     satin_seam_hold: bool = True
+    # `seam_hold_skips_outline_bodies` (2026-11-19, a regression repair): an
+    # outline's BODY (`border_from_outline`, stage 7's `outline_bodies`) sews
+    # as a plain fill under its loop, never on satin rails, so
+    # `satin_seam_hold`'s cut tongue (which counts on rails carrying the pull
+    # under the later colour) must not reach it. Ahora's gold O round its
+    # toothed gear at 80 mm left chest lost its 22 mm^2 tongue under the white
+    # gear when #1641 flipped the hold ON (2026-11-17): the fill stopped
+    # round a gear-shaped hole and its travel crossed the hole, bare yellow
+    # bars between the teeth. Kent: "it was previously stitching out a nice
+    # gear just a day or two ago"; "We need to make sure we are not going
+    # backwards". ON, Ahora is byte-identical to the hold OFF; over 41 designs
+    # (scorecard + committed lettering/logo art, 80 mm left chest) only Ahora
+    # and one Golke-screenshot icon move. False is #1641's engine; PRE_FLIP
+    # (SEAM_HOLD_BODIES_2026_11_19_OFF) pins it. `tests/test_seam_hold_bodies.py`.
+    seam_hold_skips_outline_bodies: bool = True
     # `stripe_underfill` (2026-11-12, built OFF, Kent: "Build it, OFF"): a
     # field of parallel bands alternating between two threads (a flag's
     # stripes) sews the LIGHTER thread once as a fill of the whole field and
@@ -4130,6 +4171,39 @@ class PipelineConfig:
     # above). False is the engine as it was; PRE_FLIP
     # (FLAG_ENDS_SEAM_2026_11_17_OFF) pins it False.
     satin_free_end_chord_aim: bool = True
+    # `satin_rectangles` (2026-11-19, Kent's Flag.webp at 113.5 mm: "I thought
+    # you fixed the Flag!?", then "a square needs to be square"): a true
+    # rectangle of any length (`stage6_satin.is_rectangle_bar`: fills 0.97 of
+    # its minimum rectangle and lies within 0.1 mm of it) sews by the
+    # straight-slot column path, rails held at a seam with the colour already
+    # down as `satin_seam_hold` holds the skeleton tier's. The skeleton spine
+    # forked into each stripe's corners: ends rounded by up to 0.46 mm and the
+    # flag's right edge wandering 2.9 mm; ON every end is square to 0.04 mm,
+    # stripe heights unchanged. 9 of 44 sweep runs move (Fremont's bars,
+    # Toat's dash and period, Summit's I, logo_alpha's bar; the Toat Machine
+    # beanie's M takes a short stray bar, +2 trims).
+    # **ON since 2026-11-19** (Kent, shown the flag and the 9 movers before |
+    # after: "Flip ON (Recommended)"). False is the engine as it was; PRE_FLIP
+    # (SATIN_RECTANGLES_2026_11_19_OFF) pins it False.
+    # Tests: `tests/test_satin_rectangles.py`.
+    satin_rectangles: bool = True
+    # `satin_stars` (2026-11-19, Kent: "a triangle needs 3 points", "make sure
+    # the star has flow"): a regular pointed star (`stage6_satin.read_star`:
+    # 4-8 points alternating with inner corners round a centre, tips and
+    # corners each within 15% of their mean radius, outline within 0.12 mm of
+    # the ideal star, every point's base within the satin ceiling) sews point
+    # by point (`star_satin`): one satin pass per point, crosses square to its
+    # axis down to 0.15 mm, a needle on every tip, entered and left on tips.
+    # Flag.webp's 50 stars (3.3 mm at 113.5 mm) came tagged as lettering and
+    # sewed blunt: the lane stopped each point ~0.8 mm short of its tip under
+    # the 0.5 mm cross floor. Flag trims 42 -> 22. 1 of 44 sweep runs moves
+    # (ENTHUSIAST's four-point star: rounded X today, pointed after).
+    # **ON since 2026-11-19** (Kent, shown the flag's stars at 113.5 and 96 mm
+    # and ENTHUSIAST before | after: "Flip ON (Recommended)"). How a 0.15 mm
+    # tip cross sews on cloth is a sew-out question (gate 1). False is the
+    # engine as it was; PRE_FLIP (SATIN_STARS_2026_11_19_OFF) pins it False.
+    # Tests: `tests/test_satin_stars.py`.
+    satin_stars: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
@@ -4512,6 +4586,22 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_stroke_floor.py`.
     lettering_columns_stroke_floor: bool = True
+    # A small bold letter's pieces that no construction fits (a junction blob,
+    # a foot) merge into the column they share the longest edge with, kept only
+    # if the letter sews better for it, judged (`outline_cut._absorb_unsewn`,
+    # `columns.absorb_gains`; built OFF 2026-11-16 as
+    # `cfg.extra["lettering_columns_absorb_unsewn"]`, #1584). **ON since
+    # 2026-11-19**: Kent delegated the review pack ("You review them yourself,
+    # Claude is just as good, if not better than me."), the review picked this
+    # flag, and he answered "Open flip PR". Evidence on main 283a54df, 41
+    # designs (the 26 scorecard fixtures + committed lettering/logo art, 80 mm
+    # left chest, 6 colours): ONE moves, Bukit Asam's tagline, whose 2.5 mm a
+    # sewed as an o ("cool") and now sews its stem and foot ("coal"), 2,036 ->
+    # 2,042 stitches, trims 9 both; the other 40 are byte-identical. Layout,
+    # not a cloth number (gate 1). False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_absorb_unsewn.py`.
+    lettering_columns_absorb_unsewn: bool = True
     # A small letter the small-bold ladder leaves NOT whole (satin cover under
     # `columns.SMALL_BOLD_COVER_MIN`) sews the lane's plain cut once more with
     # EVERY thin cross at the 0.5 mm floor, kept only if the letter is then

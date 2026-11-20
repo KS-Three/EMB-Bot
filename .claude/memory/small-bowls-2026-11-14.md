@@ -1,6 +1,6 @@
 ---
 name: small-bowls-2026-11-14
-description: Bukit "beyondcoal" lost its small bowls in column_runs' cross floor (a ring column's thin top and bottom dropped); `lettering_columns_ring_floor` widens a bowl wall's thin crosses instead (#1558); ruled ON 11-15, flip pending
+description: Bukit "beyondcoal" lost its small bowls in column_runs' cross floor (a ring column's thin top and bottom dropped); `lettering_columns_ring_floor` widens a bowl wall's thin crosses instead (#1558); ruled ON 11-15, flipped ON (#1583, survived the #1659 revert)
 metadata:
   type: project
 ---
@@ -18,5 +18,5 @@ pull untouched).
 **How to apply:** on a closed ring a dropped cross is a gap; never drop
 crosses on a column with no ends.
 
-**Kent 2026-11-15:** ticked ON. Ruled ON 11-15, flip pending.
+**Kent 2026-11-15:** ticked ON. Ruled ON 11-15; flipped ON in code (#1583), kept through the #1659 revert.
 Related: [[flat-ends-pro-2026-11-14]].

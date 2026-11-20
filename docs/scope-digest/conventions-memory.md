@@ -1,5 +1,7 @@
 # Conventions & memory digest
 
+> Frozen digest as of 2026-08-17; current status is `MASTER_SCOPE.md`, decisions are `DOCTRINE.md`.
+
 Source scope: COOKBOOK.md, CLAUDE.md, README set (app/, digitizer/, BACKUPS.md,
 sam2_isolated/, rembg_isolated/, testdata/inbox/), all `.claude/memory/`, all
 `.claude/agents/`, all `.claude/skills/`, `.claude/settings.json` hooks.

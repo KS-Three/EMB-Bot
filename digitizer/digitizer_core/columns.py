@@ -83,6 +83,38 @@ from .stitches import StitchRun
 # plan-wide by `pipeline.plan_stitches` (`ring_floor_scope`).
 _RING_FLOOR: contextvars.ContextVar[bool] = contextvars.ContextVar("ring_floor", default=False)
 
+# `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19): at a T
+# junction the professional sews the butting stroke FIRST and then the stroke
+# it butts WHOLE, end to end, over its root. Read on his Gaulke Roofing LC
+# (`c golke logo LC.DST`, 95.2 mm): the T is stem, then one bar across it; the
+# E is the middle arm, then ONE column top arm -> stem -> bottom arm. The
+# lane's cut already makes exactly those columns (`outline_cut.find_cuts`'
+# "through" cut), but the walk splits the through column at the junction
+# (`_span_graph`) and sews it in two halves round the butting stroke -- the
+# T's bar right half, the stem, the left half; the E's stem in two folded
+# halves with the middle arm before or after. ON: a letter whose junctions
+# all land on ONE through column, each from a branch with a free tip, is
+# walked branch by branch (run out under the branch, sewn back to its join),
+# then run under the through column to its far end and sewn whole, keeping
+# the walk's own entry and exit end (`_through_last_walk`); kept only when
+# its stitches cost no more trims and no more hop on finished satin than
+# the walk it replaces (`_walk_cost`). Off, unread. Set plan-wide by
+# `pipeline.plan_stitches` (`through_last_scope`).
+_THROUGH_LAST: contextvars.ContextVar[bool] = contextvars.ContextVar("through_last", default=False)
+
+
+@contextlib.contextmanager
+def through_last_scope(on: bool):
+    """`_THROUGH_LAST` for the length of one plan; False sets nothing."""
+    if not on:
+        yield
+        return
+    token = _THROUGH_LAST.set(True)
+    try:
+        yield
+    finally:
+        _THROUGH_LAST.reset(token)
+
 
 @contextlib.contextmanager
 def ring_floor_scope(on: bool):
@@ -976,40 +1008,45 @@ _RAILS_MEMO: contextvars.ContextVar[dict | None] = contextvars.ContextVar(
 
 
 def sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None,
-               keep=None):
+               keep=None, held=None):
     """`_sewn_rails`, once per exact call inside a letter (`_RAILS_MEMO`);
     the caller always gets its own lists."""
     memo = _RAILS_MEMO.get()
     if memo is None:
-        return _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep)
+        return _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep, held)
     ink, floor = keep if isinstance(keep, tuple) else (keep, None)
     key = (poly.wkb, tuple((a[0], a[1], b[0], b[1]) for a, b in col.stations), col.kind,
            None if col.axis is None else (float(col.axis[0]), float(col.axis[1])),
            float(pull_mm), float(pull_floor_mm),
            None if hold is None else hold[1],
-           None if ink is None else id(ink), floor, isinstance(keep, tuple))
+           None if ink is None else id(ink), floor, isinstance(keep, tuple),
+           None if held is None else id(held))
     hit = memo.get(key)
     if hit is None:
-        a_pts, b_pts = _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep)
-        hit = memo[key] = (a_pts, b_pts, ink)
+        a_pts, b_pts = _sewn_rails(col, poly, pull_mm, pull_floor_mm, hold, keep, held)
+        hit = memo[key] = (a_pts, b_pts, ink, held)
     return list(hit[0]), list(hit[1])
 
 
 def _sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float, hold=None,
-                keep=None):
+                keep=None, held=None):
     """One column's crosses as the fabric gets them, before the cross floor:
     rails inset, pushed by the pull, a fanned straight end's face given the
     rails' reach -- and, with `hold` (`end_face_hold`, under
     `cfg.lettering_columns_square_ends`), every end-face penetration held on
     its face. `keep` (`cfg.satin_push_keeps_gaps`, None: off): the
     push held out of the letter's bays and its gaps to same-thread ink, as
-    from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`).
+    from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`). `held`
+    (`cfg.satin_rectangles`, None: off): `_push_rails`' seam hold,
+    the colour already down, as the skeleton tier gets it under
+    `cfg.satin_seam_hold`.
     -> (a_pts, b_pts). `tools/column_ends.py` reads it too."""
     from .stage6_satin import _push_rails
     a_pts, b_pts = _inset_rails(col.stations, RAIL_REACH_INSET_MM)
     if pull_mm > 0:
         a_pts, b_pts = _push_rails(a_pts, b_pts, poly, pull_mm, pull_floor_mm,
-                                   **({"keep": keep} if keep is not None else {}))
+                                   **({"keep": keep} if keep is not None else {}),
+                                   **({"held": held} if held is not None else {}))
     if col.kind in ("straight", "folded"):      # a folded column's ends are its legs' straight ends
         a_pts, b_pts = _reach_fan_faces(col.stations, a_pts, b_pts,
                                         pull_mm - RAIL_REACH_INSET_MM,
@@ -2293,6 +2330,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 edge_walk: bool = False,
                 cover_hops: bool = False,
                 pull_keep=None,
+                rail_held=None,
                 _walk: list | None = None,
                 _feet: dict | None = None,
                 ) -> tuple[list[StitchRun], dict]:
@@ -2373,7 +2411,8 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     hold = end_face_hold(columns, poly) if square_ends else None
     for col in columns:
         col_pull = pull_mm if pull_of is None else pull_of(column_width(col))
-        a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold, pull_keep)
+        a_pts, b_pts = sewn_rails(col, poly, col_pull, pull_floor_mm, hold, pull_keep,
+                                  **({"held": rail_held} if rail_held is not None else {}))
         # `cfg.small_print_floor`: read where the rails land BEFORE the hold
         # below moves them (held, they sit exactly the clearance off)
         near_counter = (counter_clear_mm > 0
@@ -2513,6 +2552,26 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                                end_near=end_near,
                                **({"dead_ends": dead, "span_mm": span_mm} if dead else {}))
                   if _walk is None else _walk)
+    if _THROUGH_LAST.get() and _walk is None and not dead:
+        # `cfg.extra["lettering_columns_through_last"]` (built OFF): the
+        # professional's T-junction order, kept only when it costs nothing
+        # (`_THROUGH_LAST`); both walks are sewn with the flag unset
+        pro = [_through_last_walk(c, nodes, spans, junctions, ready) for c in components]
+        if any(p is not None for p in pro):
+            walk = [p if p is not None else c for p, c in zip(pro, components)]
+            token = _THROUGH_LAST.set(False)
+            try:
+                base_runs, base_rep = column_runs(**_call)
+                pro_runs, pro_rep = column_runs(**{**_call, "_walk": walk, "edge_walk": False,
+                                                   "connectors_buried": connectors_buried})
+            finally:
+                _THROUGH_LAST.reset(token)
+            kb = _walk_cost(base_runs, start_near, end_near, trim_at_mm)
+            kp = _walk_cost(pro_runs, start_near, end_near, trim_at_mm)
+            if kp[0] <= kb[0] and kp[1] <= kb[1]:
+                pro_rep["through_last"] = 1
+                return pro_runs, pro_rep
+            return base_runs, base_rep
 
     # 3. Emit: the last visit of a span sews satin, earlier visits run under it.
     #    (`poly_link` is the sew-or-jump rule's polygon, see step 4; the
@@ -2972,6 +3031,85 @@ def _cut_bare_travel(linked: list[StitchRun], grounds: list, report: dict,
             dirty = True
         # the run after the last piece is reached from where that piece ended
         dirty = True
+    return out
+
+
+def _through_last_walk(comp, nodes, spans, junctions, columns) -> list | None:
+    """`_THROUGH_LAST`: one component's walk -> the professional's T-junction
+    order, or None when the component is not one through column with
+    free-tipped branches butting it (or the walk would not change).
+
+    Each branch is run out under itself from its join to its tip and sewn
+    back (a branch the walk enters at its tip is sewn straight in); then the
+    through column is run under to the end away from the exit and sewn whole
+    to the exit. The walk's own entry is kept, and its exit when that is a
+    through-column end (else the end nearer it). Every span's satin is its
+    LAST visit (`_trail_legs`), so every run out lies under satin to come."""
+    sis = {si for si, _a, _b in comp}
+    js = [j for j in junctions if any(spans[si]["ci"] == j["ci"] for si in sis)]
+    if not js or len({j["through"] for j in js}) != 1:
+        return None
+    t = js[0]["through"]
+    branches = [j["ci"] for j in js]
+    if len(set(branches)) != len(branches) or t in branches:
+        return None
+    by_col: dict[int, list[int]] = {}
+    for si in sis:
+        by_col.setdefault(spans[si]["ci"], []).append(si)
+    if set(by_col) != {t, *branches}:
+        return None
+    deg: dict[int, int] = {}
+    for si in sis:
+        for key in ("na", "nb"):
+            deg[spans[si][key]] = deg.get(spans[si][key], 0) + 1
+    chain = sorted(by_col[t], key=lambda si: spans[si]["i0"])
+    vs = [spans[chain[0]]["na"]] + [spans[si]["nb"] for si in chain]
+    if len(set(vs)) != len(vs) or deg[vs[0]] != 1 or deg[vs[-1]] != 1:
+        return None
+    paths: dict[int, list[tuple[int, int, int]]] = {}     # branch -> (span, from, to), join to tip
+    for j in js:
+        own = sorted(by_col[j["ci"]], key=lambda si: spans[si]["i0"])
+        steps = [(si, spans[si]["na"], spans[si]["nb"]) for si in own]
+        if j["end"] != 0:
+            steps = [(si, b, a) for si, a, b in steps[::-1]]
+        if steps[0][1] not in vs or deg[steps[-1][2]] != 1:
+            return None
+        paths[j["ci"]] = steps
+
+    def along(a, b):
+        ia, ib = vs.index(a), vs.index(b)
+        if ia <= ib:
+            return [(chain[k], vs[k], vs[k + 1]) for k in range(ia, ib)]
+        return [(chain[k], vs[k + 1], vs[k]) for k in range(ia - 1, ib - 1, -1)]
+
+    def back(steps):
+        return [(si, b, a) for si, a, b in steps[::-1]]
+
+    start, finish = comp[0][1], comp[-1][2]
+    if finish in (vs[0], vs[-1]):
+        exit_ = finish
+    else:
+        exit_ = min((vs[0], vs[-1]), key=lambda v: math.dist(nodes[v], nodes[finish]))
+    far = vs[-1] if exit_ == vs[0] else vs[0]
+    out: list[tuple[int, int, int]] = []
+    todo = dict(paths)
+    cur = start
+    for ci, steps in paths.items():
+        if steps[-1][2] == start:          # entered at this branch's tip: sewn straight in
+            out += back(steps)
+            cur = steps[0][1]
+            del todo[ci]
+            break
+    if cur not in vs:
+        return None
+    while todo:
+        ci = min(todo, key=lambda c: abs(vs.index(todo[c][0][1]) - vs.index(cur)))
+        steps = todo.pop(ci)
+        out += along(cur, steps[0][1]) + steps + back(steps)
+        cur = steps[0][1]
+    out += along(cur, far) + along(far, exit_)
+    if [tuple(s) for s in out] == [tuple(s) for s in comp]:
+        return None
     return out
 
 
@@ -3472,6 +3610,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                             whole_letter_floor: bool = False,
                             dropped_branch: bool = False,
                             dropped_hairline: bool = False,
+                            rail_held=None,
                             ) -> tuple[list[StitchRun], dict]:
     """One lettering shape (its ARTWORK polygon) -> runs, report. The
     stage 7 entry point behind `cfg.lettering_columns`: cut, then construct.
@@ -3582,6 +3721,8 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"cover_hops": True} if cover_hops else {}),
                   # `cfg.satin_push_keeps_gaps`: the push kept out of bays and gaps
                   **({"pull_keep": pull_keep} if pull_keep is not None else {}),
+                  # `cfg.satin_rectangles`: a rectangle's rails held at its seam
+                  **({"rail_held": rail_held} if rail_held is not None else {}),
                   **({"counter_poly": counter_hold_polygon(poly, counter_holes)} if cored else {}))
 
     def recorded(cpoly):
@@ -3659,7 +3800,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                 return runs, report
         runs, report = sew_cut(cut.columns, cut.cuts, cut.unsewn, cut.poly, rk)
         if cut.before_absorb is not None:
-            # `absorb_unsewn` (built OFF) merged a bare piece: kept only if
+            # `absorb_unsewn` (ON since 2026-11-19) merged a bare piece: kept only if
             # the letter sews better for it (`absorb_gains`)
             runs0, report0 = sew_cut(*cut.before_absorb, cut.poly, rk)
             if absorb_gains(runs0, runs, poly):

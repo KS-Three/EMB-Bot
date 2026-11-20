@@ -1,6 +1,6 @@
 ---
 name: point-touch-split-2026-11-14
-description: NSYNC at 70.9 mm: the star touches the N at one point, so one region and a fan of satin spikes; `point_touch_split` cuts a body that pinches under 0.15 mm into body-sized pieces before the text tagger (#1544); ticked ON 11-15, flip pending
+description: NSYNC at 70.9 mm: the star touches the N at one point, so one region and a fan of satin spikes; `point_touch_split` cuts a body that pinches under 0.15 mm into body-sized pieces before the text tagger (#1544); ticked ON 11-15, flipped ON (#1582, logos only)
 metadata:
   type: project
 ---
@@ -19,4 +19,4 @@ it, before the text tagger. Each piece must itself be a body (mean width over
 background are left alone. ON, the N sews as one clean italic N and the star
 stands apart; controls md5-identical.
 
-**Kent 2026-11-15:** ticked ON. Ruled ON 11-15, flip pending.
+**Kent 2026-11-15:** ticked ON. Ruled ON 11-15; flipped ON in code (#1582, logos only).

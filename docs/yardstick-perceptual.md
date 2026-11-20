@@ -12,6 +12,11 @@ chance against his 115 labelled pairs except the trim family, and the
 blind Claude judge cleared only on ties and plain damage
 (`.claude/memory/vlm-judge-2026-11-04.md`, kappa +0.36 [+0.16, +0.55]).
 
+**Superseded 2026-11-08: the kappa was measured.** See
+[`yardstick-perceptual-result-2026-11-08.md`](yardstick-perceptual-result-2026-11-08.md):
+DreamSim's three-way kappa against Kent is +0.197 [+0.07, +0.32] on n 100. The
+paragraph below is the 2026-11-07 state, kept as written.
+
 **Status (2026-11-07): the kappa against Kent is NOT measured.** His labels'
 renders and the pro files exist only on his laptop, so a cloud session built
 and validated the instrument (determinism, the two sanity oracles, 18

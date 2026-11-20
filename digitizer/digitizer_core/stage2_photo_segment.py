@@ -2654,16 +2654,39 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
 
     pad_lab = np.pad(out, 1, constant_values=-1)
     pad_valid = np.pad(valid, 1, constant_values=False)
+    # Speed, exact (2026-11-19): a pass decides each pixel from its own label
+    # and its 8 neighbours' in the pass's snapshot, against means that never
+    # change. A pixel no move touched (itself or a neighbour) last pass would
+    # decide what it decided then -- stay -- so only the moved pixels and
+    # their neighbours are read again. The first pass reads the whole frame.
+    # `tests/test_speed_exact_1119.py` holds it to the full-frame loop.
+    ys = xs = None
+    my = mx = None              # last pass's moved pixels, set at its end
     for _ in range(max_passes):
         deadline.check("stage 2")
         pad_lab[1:-1, 1:-1] = out
-        edge = np.zeros((h, w), bool)
-        for dy, dx in _NEIGHBOURS_8:
-            nb = pad_lab[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
-            nbv = pad_valid[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
-            edge |= nbv & (nb != out)
-        edge &= valid
-        ys, xs = np.nonzero(edge)
+        if ys is None:
+            edge = np.zeros((h, w), bool)
+            for dy, dx in _NEIGHBOURS_8:
+                nb = pad_lab[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+                nbv = pad_valid[1 + dy:1 + dy + h, 1 + dx:1 + dx + w]
+                edge |= nbv & (nb != out)
+            edge &= valid
+            ys, xs = np.nonzero(edge)
+        else:
+            # candidates: the moved pixels and their 8 neighbours, row-major
+            # (the order `np.nonzero` gives, so every array below is the
+            # full-frame pass's own subsequence)
+            near = np.zeros((h + 2, w + 2), bool)
+            for dy in (-1, 0, 1):
+                for dx in (-1, 0, 1):
+                    near[my + 1 + dy, mx + 1 + dx] = True
+            cy, cx = np.nonzero(near[1:-1, 1:-1] & valid)
+            own_c = out[cy, cx]
+            e = np.zeros(cy.size, bool)
+            for dy, dx in _NEIGHBOURS_8:
+                e |= pad_valid[cy + dy + 1, cx + dx + 1] & (pad_lab[cy + dy + 1, cx + dx + 1] != own_c)
+            ys, xs = cy[e], cx[e]
         if ys.size == 0:
             break
         px = lab_img[ys, xs]
@@ -2686,7 +2709,8 @@ def snap_region_edges(labels: np.ndarray, valid: np.ndarray, lab_img: np.ndarray
         moved = best != own
         if not moved.any():
             break
-        out[ys[moved], xs[moved]] = best[moved]
+        my, mx = ys[moved], xs[moved]
+        out[my, mx] = best[moved]
     return out
 
 

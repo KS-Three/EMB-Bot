@@ -1,5 +1,5 @@
-// SessionStart hook: injects ROADMAP.md's current phase, hard gates and standing
-// items so a session knows the ordering before it proposes work.
+// SessionStart hook: injects ROADMAP.md's current phase and hard gates so a
+// session knows the ordering before it proposes work.
 //
 // It EXTRACTS those sections from ROADMAP.md rather than carrying its own copy —
 // two copies of a rule drift, and the copy nobody reads is the one that goes
@@ -8,9 +8,11 @@
 const fs = require('fs');
 const path = require('path');
 
-// Headings lifted verbatim. Keep in sync with ROADMAP.md's own headings; a
-// rename here fails SILENT, which is the safe direction for a doc nudge.
-const WANTED = ['## Where we are', '## Hard gates', '## Standing item'];
+// Headings lifted verbatim (prefix match). A rename in ROADMAP.md fails SILENT
+// here, so digitizer/tests/test_roadmap_budget.py reads this list and fails CI
+// when any entry has no heading. ("## Standing item" sat here as a no-op after
+// ROADMAP dropped that section; removed 2026-11-19.)
+const WANTED = ['## Where we are', '## Hard gates'];
 
 let data;
 try {
