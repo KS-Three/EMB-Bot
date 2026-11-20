@@ -123,7 +123,8 @@ def _gate_conf(value: float, threshold: float, margin: float) -> float:
 
 
 def _photo_gate(ucm: float, texture: float, two_tone: float, cutout: bool,
-                th: Thresholds, gate_on: bool) -> tuple[bool, float, str]:
+                th: Thresholds, gate_on: bool,
+                grain_needs_texture: bool = False) -> tuple[bool, float, str]:
     """Local restatement of `stage0_classify.decide_photo`, parameterised by
     `th` so the sweep can move its thresholds."""
     by_grain = ucm >= th.ucm_photo_min
@@ -138,6 +139,8 @@ def _photo_gate(ucm: float, texture: float, two_tone: float, cutout: bool,
         return False, min(grain_conf, texture_conf), "none"
     if two_tone_fires:
         return False, veto_conf, "veto"
+    if grain_needs_texture and not by_texture:
+        return False, texture_conf, "grain_held"
     route = "+".join(n for n, fired in (("grain", by_grain), ("texture", by_texture)) if fired)
     strongest = max(c for c, fired in ((grain_conf, by_grain), (texture_conf, by_texture)) if fired)
     return True, min(strongest, veto_conf), route
