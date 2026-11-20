@@ -3730,6 +3730,14 @@ def sequence(
     # their own centreline. Off, no tie call gains an argument.
     small_letter_ids: set[str] = set()
     tie_kw = {"small_letters": small_letter_ids} if cfg.small_letter_ties else {}
+    # `cfg.extra["satin_rect_lock_in_column"]` (built OFF 2026-11-19): the
+    # rectangle bars whose satin run is locked inside its own column. A
+    # `tie_run` bounce lays 0.8 mm along the last cross, the cap face, and
+    # shows as a red nub at every stripe's finish end on the last-sewn colour.
+    _rect_lock = bool((cfg.extra or {}).get("satin_rect_lock_in_column"))
+    if _rect_lock and not tie_kw:
+        tie_kw = {"small_letters": set()}
+    _lock_ids = tie_kw.get("small_letters")
     # `cfg.border_from_outline` (built OFF, 2026-10-24): an outline in the
     # art that sews (its id in `planned`) loops every looped hole at the
     # width of the body it holds (`outline_holes`); its bodies sew as plain
@@ -4686,6 +4694,8 @@ def sequence(
                     if (not s_report["empty"] and s_report.get("columns") == 1
                             and not s_report.get("columns_unsewn") and not s_report.get("cuts")):
                         s_report["rectangle_bar" if _rect else "straight_slot"] = 1
+                        if _rect and _rect_lock:
+                            _lock_ids.add(p.shape_id + stitches.COLUMN_LOCK_TAG)
                         _ul_style = "none" if small and not cfg.satin_underlay_short_columns else satin_underlay
                         _sat = [i for i, r in enumerate(s_runs) if r.kind == stitches.SATIN]
                         if _rect and _sat and _ul_style != "none":
