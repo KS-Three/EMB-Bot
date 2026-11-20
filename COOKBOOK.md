@@ -7,11 +7,13 @@ sections retired from this file, in
 [`docs/cookbook-history.md`](docs/cookbook-history.md) — this file is the
 self-contained handoff.
 
-**Last refreshed 2026-11-19** over `0eb5e02..df50b217` on `main` (2026-10-19 →
-11-19, 837 commits). That pass corrected claims the code had overtaken (flag
-defaults, CI shape) and moved dated history to `docs/cookbook-history.md`; it
-did not re-read every section against the code, so a claim here without a
-date or a pointer is still worth checking. `.claude/hooks/nudge-cookbook-stale.js` nags once 150
+**Last refreshed 2026-11-20** over `df50b217..713660bf` on `main` (21 source
+commits; the pass before it, `0eb5e02..df50b217`, covered 2026-10-19 → 11-19
+and moved dated history to `docs/cookbook-history.md`). This pass re-read the
+flag/flip pipeline, "Running things" and "Working conventions" against the
+tree and added the 2026-11-19 flag consolidation; the font, manual-digitize
+and `preview.js` sections were not re-read, so a claim there without a date
+or a pointer is still worth checking. `.claude/hooks/nudge-cookbook-stale.js` nags once 150
 source commits have landed past the end SHA in the line above (keep that
 `a..b` format when you refresh: the hook reads it); the foreman then assigns
 ONE named session per refresh (the K3 standing rule under "Branches &
@@ -291,7 +293,10 @@ hand-rolling it in JS.
   contour vectorize (`stage4_vectorize.py`) → stitch planning: overlap
   resolution, fill/satin/border/contour/appliqué/**blend** tiers plus the
   photo tonal tiers (scan-line, meander, streamline, sketch —
-  `stage6_scanline/meander/streamline/sketch.py`), sequencing
+  `stage6_scanline/meander/streamline/sketch.py`), the 3D-puff tier
+  (`stage6_puff.py`, `cfg.puff`, default OFF and load-bearing: with it False
+  nothing puff-related is read — PR #1727, 2026-11-19, spec
+  `docs/superpowers/specs/2026-11-19-3d-puff-design.md`), sequencing
   (stages 5–7) → DST/PES/EXP/SVG export via **pystitch** (pyembroidery's
   actively maintained Ink/Stitch fork, same API and coordinate convention —
   swapped 2026-08-11, `docs/pystitch-evaluation-2026-08-11.md`; this bullet
@@ -1766,28 +1771,88 @@ within a week. Read the live state instead:
   [--pictures]` ("The flag sweep" below); the pictures go to Kent before the
   question (CLAUDE.md, "A flip question comes with pictures").
 
-**Three registries travel with every flip, and a flip PR touches all
-three:**
+**The flip pattern.** A flag is built OFF first (a `PipelineConfig` field
+whose default is the old behaviour), and the flip is Kent's ruling, with
+pictures (CLAUDE.md, "A flip question comes with pictures"). The flip PR then
+touches three places:
 
-1. `tests/conftest.py`'s `PRE_FLIP` — the pre-flip value, so a test pricing
-   one OTHER flag measures against the engine its arms were made on. Since
-   2026-10-23 flips are folded in as dated bundles (`FLIP_2026_10_23` …
-   `MARINE_MATCH_2026_11_19_OFF`, each `PRE_FLIP.update(...)`); the bundles
-   and their comments are the flip log, newest at the bottom.
-2. `tools/pro_parity/flagcost.py`'s `FLAGS` — what each default-ON flag
+1. The field's default in `digitizer_core/config.py`, with the ruling, the
+   measurement and the PR pointer written into the comment above it.
+2. `tests/conftest.py`'s `PRE_FLIP` — the **OFF arm**: the pre-flip value, so
+   a test pricing one OTHER flag measures against the engine its arms were
+   made on. Since 2026-10-23 flips go in as dated bundles (`FLIP_2026_10_23`
+   … `MARINE_MATCH_2026_11_19_OFF`, each `PRE_FLIP.update(...)`); the bundles
+   and their comments are the flip log, newest at the bottom. *(read
+   2026-11-20 — `tests/conftest.py`)*
+3. `tools/pro_parity/flagcost.py`'s `FLAGS` — what each default-ON flag
    costs in wall clock per design, turned off one at a time.
-3. `tests/test_off_flags_smoke.py`'s `OFF_FLAGS` — runs the pipeline with
-   each OFF flag turned ON; nothing to edit, but its list shrinking by one is
-   how a reviewer sees the flip landed.
+
+`tests/test_off_flags_smoke.py`'s `OFF_FLAGS` needs no edit (it is read off
+the dataclass), but its list shrinking by one is how a reviewer sees a flip
+landed. **`tests/engine_2026_10_27.json` is never edited:** it is the engine's
+declared defaults on that date, spread by `frozen_cfg(...)` so a test that
+pins an md5 of something other than the golden cannot move when a flag flips.
+A flip wave rolls forward with a NEW dated file (`tests/test_pins_are_frozen.py`
+enforces it); a flag that flipped after 10-27 has not entered the snapshot
+yet. *(read 2026-11-20 — `tests/conftest.py`, the snapshot's `_about`)*
+
+**Never loosen a quality guard to pass a flip.** When a flipped default
+fails a guard, a coverage floor or a pinned md5, the guard is evidence, not
+an obstacle: fix the flag (or build the missing piece behind its own flag)
+and re-pin a number only when it moved for a reason you can state. A guard
+that looks too tight is a measurement to bring to Kent, not a tolerance to
+widen in the flip PR. *(ruled in DOCTRINE — "a real radial logo is the
+missing evidence, not a reason to loosen it"; and `.claude/memory/
+white-keyline-art-gate-2026-10-26.md`, "Don't loosen it")*
+
+**Flag consolidation (2026-11-19, Kent: "Let's do the flag sprawl").** The
+audit (`docs/flag-audit-2026-11-19.md`) counted 342 switches and sorted each
+into fold / delete / keep / ask. The fold deletes the `if cfg.x:` branch of
+a flag that has been ON for weeks, so the ON behaviour is the only one.
+Folds are **byte-identical** or they are a bug in the fold. *(landed
+2026-11-19 — PRs #1724, #1726, #1730)*
+
+- **`RETIRED_FIELDS`** (`digitizer_core/config.py`, one quoted name per line,
+  ALPHABETICAL so concurrent fold PRs insert on different lines) names every
+  removed field (29 on 2026-11-20). A name there must not also be a
+  `PipelineConfig` field (`tests/test_retired_fields.py`). The service drops
+  a retired key from a request instead of answering 400
+  (`digitizer_service/app.py`), and `tests/conftest.py:engine_snapshot` drops
+  it from the dated snapshots, so old clients and old snapshot files keep
+  working. *(PR #1724)*
+- **`python -m tools.fold_check`** (run from `digitizer/`) is the proof every
+  fold PR carries: it digitizes the same 44 jobs `tools.flag_sweep` sweeps
+  at the default config and writes `{job: stitch md5}`; run it on
+  `origin/main` and on the branch on the SAME machine, then
+  `--compare main.json branch.json` (exit 1 on any difference). *(PR #1724)*
+- **What has folded:** tier D (6 flags Kent ruled dead) deleted, 13 stale
+  "built OFF" comments fixed (#1724); the 16 satin construction flags,
+  "tier B1" (#1726); 9 of the 20 tier-A flags (#1730). The OTHER 11 tier-A
+  flags are NOT folded: `PRE_FLIP` and friends set them False under ~90 test
+  files, so folding moves 20 pinned tests that need a judged re-pin, not a
+  mechanical one. Tier B (67 flags) folds in batches by stage, deleting each
+  flag's OFF-arm tests; tier C (flipped after 10-27) waits for a rolled-forward
+  snapshot. What each fold removed, verbatim from its config comment, is in
+  `docs/flag-history/` (`tier-a.md`, `tier-b1-satin.md`, `tier-d.md`).
+- **When you fold:** move the flag's comment history to `docs/flag-history/`
+  with the PR pointer, add the name to `RETIRED_FIELDS`, delete its OFF-arm
+  tests, and attach the `fold_check` comparison to the PR body.
 
 A few long-standing OFF flags a session will meet (checked against
-`PipelineConfig()` on 2026-11-19; re-check before relying on any):
+`PipelineConfig()` on 2026-11-20; re-check before relying on any). For what
+EVERY built-OFF flag changes on today's engine, read
+[`docs/off-flag-census-2026-11-20.md`](docs/off-flag-census-2026-11-20.md)
+(103 booleans plus two swept values: 28 change no stitch on any of the 44
+placements; measured at `1089931d`, so re-sweep before quoting a row):
 `open_cored_counters`, `lettering_words` (MASTER_SCOPE: not ripe for a
 flip), the `hairline` tier and every `hairline_*` sibling (most are measured
 negatives — read `config.py` before building another), `forbid_gap_mm`
 (`None` is OFF), `small_print_floor`, `sliver_prune`, `stitch_width_auto`,
-`wide_columns` and `detect_photographic`. `coverage_edges` is DEPRECATED
-(Kent 2026-10-12: no). `thread_wt` (40) is a PROFILE, not a flag. The
+`wide_columns` and `detect_photographic`. `coverage_edges` is no longer a
+field: Kent ruled no on 2026-10-12 and flag consolidation moved it into
+`RETIRED_FIELDS` (2026-11-19, PR #1724; it was DEPRECATED in between).
+`lettering_columns_apex_cut` and `line_chain_one_thread` went the same way.
+`thread_wt` (40) is a PROFILE, not a flag. The
 ON/OFF enumeration that stood here through 2026-11-18 is in
 `docs/cookbook-history.md`.
 
@@ -1929,6 +1994,18 @@ Two consequences worth knowing before they cost you an hour:
   An explicit `photo_prep=True` with the cutout flag OFF still gets prep
   alone; only a cutout that was asked for and could not be delivered
   triggers the skip.
+
+**Today's size, as a dated snapshot, not a budget.** From `digitizer/`,
+`python -m pytest --collect-only -q` collected **10,067 tests** in 25 s on
+2026-11-20 from 671 `tests/test_*.py` files (measured 2026-11-20 — collect-only
+on a fresh `python3.12`-class venv, `pip install -e ".[service,dev]"`); the
+tree also holds 91 engine `test/*.test.js` files, 324 Studio `*.spec.js`
+files under `app/src/` and 79 Playwright specs in `app/e2e/`. The count
+moves with every PR, so re-run the collect before quoting it; the 1,564 that
+CLAUDE.md's footgun 7 still cites is the 2026-08-31 figure, and "~123 short
+of the total" is the `test_service.py` collection tripwire, not a fixed
+number. Collection costs seconds and a full run costs the budget in
+CLAUDE.md's Commands section, so collect first.
 
 **No pass counts here anymore — judge a run by its failure classes.** The
 totals this note used to carry (654/658, ~7-11 min) were measured in the
@@ -2985,6 +3062,25 @@ here since it explains *why*, not *what's currently true*.
   parallel lane is also editing, run the module's own parse check by hand
   (see the `preview.js` section) rather than trusting the suite — a module
   that fails to load reports as "0 tests collected", which reads as a pass.
+- **Flags: build OFF, flip on Kent's word, fold when settled.** The
+  mechanics (the `PipelineConfig` field, the `PRE_FLIP` OFF arm, the frozen
+  `tests/engine_2026_10_27.json`, `RETIRED_FIELDS` and `tools.fold_check`)
+  are under "Digitizer flags" above; the three rules that bite are: a flip
+  question goes to Kent with pictures (CLAUDE.md), a fold must be
+  byte-identical on the 44 `fold_check` jobs, and **a flip never loosens a
+  quality guard to get green**: fix the flag, don't widen the check.
+  *(Kent 2026-11-16 and 2026-11-19; DOCTRINE; PRs #1724/#1726/#1730)*
+- **The memory index is a budgeted file, kept in order.**
+  `.claude/memory/MEMORY.md` is loaded whole into every session and the
+  loader cuts from the BOTTOM past 24,986 characters, so each line stays
+  under 260 characters (it is 22,609 characters on 2026-11-20) and
+  each new entry goes at its ALPHABETICAL place by link filename, not at the
+  bottom (two PRs appending there always collided). After any edit run, from
+  `digitizer/`, `.venv/Scripts/python -m tools.memory_budget` (reports the
+  cost) and `-m tools.memory_budget --sort` (puts the entries in order);
+  `tests/test_memory_budget.py` gates both. Entries dated before 2026-09-15
+  live in `MEMORY-archive.md`, which has the per-line cap but no ceiling.
+  *(`tools/memory_budget.py`; rule from 2026-10-24)*
 - When adding a font: must carry real hand-authored Ink/Stitch stitch data —
   `<path inkstitch:satin_column>` rails+rungs for satin fonts, and since
   2026-08-21 also run/bean fonts whose runs carry an AUTHORED stitch
