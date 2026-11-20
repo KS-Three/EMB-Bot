@@ -45,6 +45,7 @@ the OLDEST lines whole to the archive.
 - [Flip candidates 11-14](flip-candidates-2026-11-14.md) — inshape_piece_lift ON (Kent 11-14 "Flip ON"): Becker/MFab 13.7-60.6 mm stitches gone, +1-2 trims; apex_cut corpus 25 of 43 moved: 10 better, 4 worse, guard withdrawn, stays OFF
 - [Flip run 11-15/16](flip-run-2026-11-16.md) — Kent 11-15: 19 of 20 ruled ON (3 reverted 11-17); lean_flat_ends held OFF; 8 built OFF for Kent; nightly tripwire red, re-capture in CI; flat-lane rules reach photos; combined check first
 - [Flow](flow-2026-11-19.md) — Kent 11-19: "flow" = like shapes sew alike, every repeat clean; `satin_rectangles`, `satin_stars` ON; "a square needs to be square": read the primitive first
+- [Handover 11-20](foreman-handover-2026-11-20.md) — state when sessions ended
 - [Foreman wake-up](foreman-wakeup-while-wave-out-2026-11-12.md) — Kent 11-12 "stale for 10 hours": 7 cloud sessions merged while the foreman idled; a wave out = set a wake-up (CronCreate sweep / gh run watch) before ending the turn, delete when empty
 - [Fremont room](fremont-room-2026-11-14.md) — EST 1895 `no_room`: its own white field (0.48 of hull) read as obstacle; `small_text_reset_ground_ring` + `_bean_follows` (spines read at drawn size) ON (#1565): date reads clean at 2x; pro 2.4x
 - [Gaulke through_last](gaulke-through-last-2026-11-19.md) — T/E: branch first, through stroke whole; walk split it; built OFF
@@ -117,4 +118,3 @@ the OLDEST lines whole to the archive.
 - [Under-fill ground guard](underfill-ground-guard-2026-11-16.md) — ON (Kent 11-16): a ring on the ground it would jump reads no ring; NASA orbit + stars back
 - [Wedge cap](wedge-cap-2026-11-18.md) — Toat Machine h stem steps + seam: the Column lane sews a junction wedge into the stem; `lettering_columns_stem_wedge_cap` ON 11-18 (Kent "Flip ON"), hairline bound 0.6, only the hat moves of 44
 - [Z joints, rail-pair bars](z-joints-rail-pair-2026-11-14.md) — and_pizza Z fanned at one joint: its top bar read CURVED (coherence 0.46, spine bent); `rail_pair_bars` (extra, OFF) reads two long parallel rails as a bar; guard still refuses Z tips
-- [Foreman handover 2026-11-20](foreman-handover-2026-11-20.md) — open PRs #1736-1739, unfinished fold A/B2 lanes, pending Kent decisions
