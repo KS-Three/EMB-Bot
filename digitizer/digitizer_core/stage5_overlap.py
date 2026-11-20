@@ -1277,7 +1277,6 @@ def resolve_overlaps(
     keep_pieces = bool(getattr(cfg, "clip_keep_pieces", False))
     piece_floor = clip_piece_floor_mm2(cfg) if keep_pieces else 0.0
     slivers: list[tuple[str, float]] = []
-    small_keep = bool(getattr(cfg, "small_glyph_keep", False))
     # `cfg.fine_bar_survive` (ON since 2026-11-15, Kent: "Flip both ON";
     # `fine_bar`): a thin ink bar the pass
     # redrew keeps its art when the colours already down would take it.
@@ -1416,13 +1415,13 @@ def resolve_overlaps(
             # clipped exactly as before.
             if earlier[L] is not None and not widened_lettering(r):
                 clipped = grown.difference(earlier[L])
-                # `cfg.small_glyph_keep`: a rescued small shape whose whole
+                # `small_glyph_keep`: a rescued small shape whose whole
                 # artwork lies under an earlier colour (the ground's hole for
                 # it fell under stage 4's sliver floor -- Fremont's "1",
                 # 0.47 mm²) would keep no ink here and go unsewn. It sews its
                 # artwork over the colour beneath instead, ungrown. Off, or
                 # any ink left after the clip: the clip as before.
-                if (small_keep and r.meta.get("rescued_small_shape")
+                if (r.meta.get("rescued_small_shape")
                         and clipped.intersection(poly).area <= 1e-9):
                     clipped = poly
                 elif r.shape_id in _KEEP_ART.get():

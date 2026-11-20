@@ -1,4 +1,4 @@
-"""`cfg.lettering_columns_small_bold`'s construction of ~4 mm bold letters,
+"""`lettering_columns_small_bold`'s (folded in 2026-11-20) construction of ~4 mm bold letters,
 the way the pro's Hotel Fremont patch sews them (2026-10-23).
 
 Read off the pro's patch DST (needle paths, `tools/column_harness.py`): each

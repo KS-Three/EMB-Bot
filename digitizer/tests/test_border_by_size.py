@@ -23,10 +23,11 @@ Column lane's and is not read here. Off, byte-identical.
 from __future__ import annotations
 
 import math
+from unittest import mock
 
 from shapely.geometry import LineString, Point, Polygon
 
-from digitizer_core import PipelineConfig, machine, stitches
+from digitizer_core import PipelineConfig, columns, machine, stitches
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
@@ -142,10 +143,14 @@ def test_on_a_thin_ring_whose_border_would_be_a_refill_keeps_its_satin():
 
 def test_on_lettering_is_left_alone():
     sq = _square(8.0)
-    on, _ = _plan(sq, {"text_cluster_id": "TC1", "text_candidate": True, "lettering_group": True},
-                  border_by_size=True, lettering_columns=False, lettering_columns_skip_blobs=False)
-    off, _ = _plan(sq, {"text_cluster_id": "TC1", "text_candidate": True, "lettering_group": True},
-                   lettering_columns=False, lettering_columns_skip_blobs=False)
+    # the square is a solid blob, which `lettering_columns_skip_blobs` (folded
+    # in 2026-11-20) untags as lettering; the blob predicate answers no here so
+    # the text tag stands, as in the arms this test was written on
+    with mock.patch.object(columns, "is_solid_blob", lambda _p: False):
+        on, _ = _plan(sq, {"text_cluster_id": "TC1", "text_candidate": True, "lettering_group": True},
+                      border_by_size=True, lettering_columns=False)
+        off, _ = _plan(sq, {"text_cluster_id": "TC1", "text_candidate": True, "lettering_group": True},
+                       lettering_columns=False)
     assert [r.points for r in on] == [r.points for r in off]
 
 

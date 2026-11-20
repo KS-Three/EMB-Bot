@@ -85,12 +85,13 @@ def test_tag_keeps_an_explicit_tier():
 
 
 def test_is_lettering_reads_the_flag_only_when_on():
-    r = _r("M", box(9, 21, 14, 27), lettering_off_line=True)
-    base = dict(lettering_columns_skip_blobs=False)       # the box is a blob; isolate the flag
-    assert is_lettering(r, PipelineConfig(lettering_columns_off_line_mark=False, **base)) is True
-    assert is_lettering(r, PipelineConfig(lettering_columns_off_line_mark=True, **base)) is False
-    plain = _r("N", box(40, 25.5, 45, 32))
-    assert is_lettering(plain, PipelineConfig(lettering_columns_off_line_mark=True, **base)) is True
+    # stroke-shaped boxes: a solid blob is refused whatever this flag says
+    # (`lettering_columns_skip_blobs`, folded in 2026-11-20), which would hide it
+    r = _r("M", box(9, 21, 10.2, 27), lettering_off_line=True)
+    assert is_lettering(r, PipelineConfig(lettering_columns_off_line_mark=False)) is True
+    assert is_lettering(r, PipelineConfig(lettering_columns_off_line_mark=True)) is False
+    plain = _r("N", box(40, 25.5, 41.2, 32))
+    assert is_lettering(plain, PipelineConfig(lettering_columns_off_line_mark=True)) is True
 
 
 def test_far_dot_like_mark_is_not_flagged():

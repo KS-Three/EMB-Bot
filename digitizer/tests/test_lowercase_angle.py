@@ -9,7 +9,7 @@ own perpendicular (0.0% past it, 80 and 120 mm) but folds lowercase
 crosses through a SHOULDER -- the u's bowl into its right stem, the b's and
 g's bowl into the stem, the m's arch off its first stem -- because the
 junction rules leave a concave corner uncut when its far side is smooth.
-`cfg.lettering_columns_fold_cuts` (ON since 2026-10-20) gives such a piece the
+`lettering_columns_fold_cuts` (ON since 2026-10-20, folded in 2026-11-20) gives such a piece the
 second look `_refine` gives an over-long one -- and, since the follow-up
 (claude/fold-cuts-junctions), refuses a cut that leaves a stub (the u's
 spur), opens a ring with a PAIR of cuts (the a's bowl, which one cut
@@ -29,6 +29,7 @@ import pytest
 from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig, digitize, outline_cut
+from digitizer_core import stage7_sequence as s7
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.columns import lettering_columns_shape
 from tools import lowercase_angle as la
@@ -444,7 +445,7 @@ def test_the_judge_leaves_every_capital_alone(glyphs80):
         assert [r.points for r in on] == [r.points for r in off], ch
 
 
-# --- end to end, OFF arm vs the default (ON since 2026-10-20) --------------------
+# --- end to end, `fold_cuts` forced off vs the shipped lane (ON since 2026-10-20) --
 
 def _md5(plan) -> str:
     import hashlib
@@ -455,30 +456,39 @@ def _md5(plan) -> str:
 
 @pytest.fixture(scope="module")
 def word():
-    # The small stem (ON 2026-10-20, Kent) re-walks the e beside the i, which
-    # moves its one 45-degree fold; the fold-cut arms were measured without
-    # it (conftest.PRE_FLIP).
-    kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False,
+    # `lettering_columns_fold_cuts` (ON 2026-10-20, Kent's flip), the small
+    # stem (ON 2026-10-20: it re-walks the e beside the i, which moves its one
+    # 45-degree fold) and the corner fold (ON 2026-10-23) were folded into the
+    # code 2026-11-20, so these arms were measured without the stem and the
+    # corner fold, and the pre-fix arm without the fold cuts. So were the 2026-10-23/24
+    # small-bold and text-lean flips the other fixtures here pin off
+    # (`FLIP_2026_10_23`, `LETTERING_2026_10_24_OFF`). Each is now stage 7
+    # answering as before: `is_thin_stem` says no, and the Column-lane call
+    # carries `corner_fold` False (both arms) and `fold_cuts` False (the "off"
+    # arm), and omits `small_bold` and `text_lean_deg` -- the keyword defaults of
+    # `lettering_columns_shape`.
+    kw = dict(target_width_mm=80.0, forced_class="flat",
               **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,     # nor with the 2026-10-23/24 flips
               **EDGE_WALK_2026_11_14_OFF,     # nor edge-walk (ON 2026-11-14): one more trim on the word
               **TEXT_GAPS_2026_11_15_OFF)     # nor the six 2026-11-15 text/gap flips
 
-    def boom(*_a, **_k):
-        raise AssertionError("fold_cuts code reached with fold_cuts off")
-    with pytest.MonkeyPatch.context() as mp:      # OFF never runs the new code
-        for name in ("_fold_refine", "_judged_overlong", "sewn_knots", "_uncovered"):
-            mp.setattr(outline_cut, name, own_thread_only(boom, getattr(outline_cut, name)))
-        off_r, off = digitize(la.FIXTURE.with_suffix(".png"),
-                              PipelineConfig(lettering_columns_fold_cuts=False, **kw))
-    # the default IS the ON arm since Kent's flip 2026-10-20
-    _on_r, on = digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
+    real = s7.lettering_columns_shape
+
+    def lane(**forced):
+        def call(poly, shape_id, **k):
+            k.pop("small_bold", None)
+            k.pop("text_lean_deg", None)
+            return real(poly, shape_id, **{**k, **forced})
+        return call
+
+    def digitize_with(**forced):
+        with pytest.MonkeyPatch.context() as mp:
+            mp.setattr(s7, "lettering_columns_shape", own_thread_only(lane(**forced), real))
+            mp.setattr(s7, "is_thin_stem", own_thread_only(lambda *_a, **_k: False, s7.is_thin_stem))
+            return digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
+    off_r, off = digitize_with(corner_fold=False, fold_cuts=False)
+    _on_r, on = digitize_with(corner_fold=False)
     return off_r, off, on
-
-
-def test_the_flag_is_on_by_default():
-    # Kent's flip 2026-10-20, after PR #986's sewn judge; False is the pre-flip lane
-    assert PipelineConfig().lettering_columns_fold_cuts is True
-    assert PipelineConfig() == PipelineConfig(lettering_columns_fold_cuts=True)
 
 
 def test_on_moves_only_lowercase_and_cuts_its_folds(word):

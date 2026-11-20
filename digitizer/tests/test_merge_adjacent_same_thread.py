@@ -173,62 +173,13 @@ def test_ties_are_applied_exactly_once_across_the_merge():
     assert all(x != y for x, y in zip(seq, seq[1:]))
 
 
-def test_the_pipelines_own_output_no_longer_needs_the_merge():
-    """The owl, flag OFF, must sew NO adjacent same-thread blocks: the
-    re-snap splits that used to produce them (t46 at blocks 3-4, t12 at
-    14-15, 2026-08-28) are consolidated upstream by
-    `rehome_resnapped_regions` now, so merge-off equals merge-on. If this
-    ever fails, a NEW split source has appeared — find it before reaching
-    for the merge to paper over it.
-
-    2026-09-13: one appeared, it was FOUND rather than papered over, and it
-    is a default — `cfg.keep_thin_strokes`, flipped ON that day (Kent's
-    ruling). The pipeline arms `resolve_small_regions` with the quantiser's
-    layer colours on EVERY lane when that flag is on, so on the owl two
-    contrasting sub-floor regions are now kept instead of absorbed and come
-    back as their own blocks: with the flag on and the merge off the owl
-    plans `[..., 305, 305, ..., 12, 12, ...]`. The shipped engine still sews
-    no such pair — `merge_adjacent_same_thread` is ON by default and folds
-    them — so what this test pins, the claim that the RE-SNAP splits are
-    consolidated upstream, is pinned on the engine that claim was measured
-    on (PRE_FLIP's posture, and the same reason `test_the_hoist_...` below
-    pins its own arms)."""
-    img = TESTDATA / "photo/owl_kent.jpg"
-    # `photo_prep=False` pinned 2026-10-02 (#553). Declaring the owl
-    # photographic also requests the subject cutout. Where `rembg_isolated/
-    # venv` exists, the owl is re-cut and the run is a different design from
-    # the one this claim was measured on. CI never builds that venv: its
-    # requested-but-unavailable cutout skips prep entirely, which is this
-    # pin's geometry (`test_background_removal.test_an_unavailable_cutout_
-    # falls_back_to_no_prep_at_all`).
-    # `blend_fallback_underlay=False` pinned 2026-10-07, when it flipped ON:
-    # the underlay moves where the owl's gradient fills enter and leave, so
-    # stage 7 picks a different order and two existing thread-17 blocks
-    # (`..., 17, 155, 17, ...` -> `..., 17, 17, 155, ...`) land side by side.
-    # Same regions, same block count — an ORDER change, not a new split, and
-    # the shipped engine's merge (ON) folds it. Pinned for the same reason as
-    # `keep_thin_strokes` above.
-    # `keep_dark_thin_strokes=False` pinned 2026-10-28, when Kent flipped it ON
-    # (#1170): the dark-ink read carves 16 strokes out of the owl's grounds and
-    # they come back as their own blocks, which the merge folds (`..., 248,
-    # 248, ...` with it off). Same reason as `keep_thin_strokes` above.
-    # `stage0_texture_gate=False` pinned 2026-10-28, when it was built ON: the
-    # owl now classes `photo_scene` on the texture route, and the re-snap
-    # claim above was measured on its gradient-lane plan. Same reason as
-    # `keep_thin_strokes` above.
-    _r, off = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                           is_photographic=True,
-                                           keep_thin_strokes=False,
-                                           keep_dark_thin_strokes=False,
-                                           merge_adjacent_same_thread=False,
-                                           blend_fallback_underlay=False,
-                                           photo_prep=False,
-                                           stage0_texture_gate=False))
-    seq = [b.thread_index for b in off.blocks]
-    assert all(x != y for x, y in zip(seq, seq[1:])), (
-        f"adjacent same-thread blocks are back: {seq}"
-    )
-
+# `test_the_pipelines_own_output_no_longer_needs_the_merge` (the owl, merge OFF,
+# sews no adjacent same-thread blocks) was deleted 2026-11-20: it pinned
+# `keep_thin_strokes` OFF (and the other flags it names), and with that folded
+# into the code the owl plans `[..., 305, 305, ..., 12, 12, ...]` with the merge
+# off -- the pair of blocks the kept contrasting sub-floor regions come back as,
+# which the shipped merge (ON) folds. The claim it priced, that the re-snap's
+# own splits are consolidated upstream, was measured on the engine without it.
 
 # --- The non-adjacent half: _hoist_same_thread -----------------------------
 #

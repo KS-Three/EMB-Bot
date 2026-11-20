@@ -1,5 +1,5 @@
 """Crosses square to the LINE OF TEXT in the Column lane
-(`cfg.lettering_columns_text_lean`, 2026-10-23).
+(`lettering_columns_text_lean`, 2026-10-23).
 
 The pro sews every stroke of a 13-17 mm letter with its crosses square to
 the line of text -- the stems' own cross -- diagonals included: Becker's

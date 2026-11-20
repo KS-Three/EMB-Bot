@@ -139,9 +139,9 @@ def _disc(result):
 @pytest.fixture(scope="module")
 def bridge_pair():
     # The OFF arm is the PRE-FLIP ENGINE, which is what the test below reads
-    # it as and what #442's measurement was made on — so it also holds
+    # it as and what #442's measurement was made on — so it also held
     # `keep_thin_strokes` OFF (flipped ON by default 2026-09-13, Kent's
-    # ruling). With it on, Bridge Bar's JPEG ringing is kept as ~29 extra
+    # ruling; folded into the code 2026-11-20, so no longer possible). With it on, Bridge Bar's JPEG ringing is kept as ~29 extra
     # sub-floor regions, the disc's own region changes and the OFF arm sews
     # `0713`, not the `6031` the loss was found as. `conftest.PRE_FLIP`'s
     # posture; not spelled as PRE_FLIP because `robust_region_colour` is
@@ -149,7 +149,7 @@ def bridge_pair():
     # `work_px_per_mm=None` on the OFF arm for the same reason (ON since
     # 2026-10-01): traced at 8 px/mm the disc is another region again and
     # the pre-flip arm sews `0704`.
-    return (digitize(BRIDGE, _cfg(robust_region_colour=False, keep_thin_strokes=False,
+    return (digitize(BRIDGE, _cfg(robust_region_colour=False,
                                   work_px_per_mm=None)),
             digitize(BRIDGE, _cfg(robust_region_colour=True)))
 
@@ -162,9 +162,13 @@ def test_on_is_the_shipped_engine_on_bridge_bar(bridge_pair):
     assert _digest(off_plan) != _digest(default_plan)
 
 
-def test_the_pre_flip_engine_sews_the_disc_limelight_and_the_shipped_one_sews_the_artworks_yellow(bridge_pair):
+def test_the_shipped_engine_sews_the_discs_artwork_yellow(bridge_pair):
     """The loss #442 found, and its repair: the disc is 1.0 dE00 from Sun
-    and sewed Limelight because its mean is a colour no pixel carries."""
-    (off_r, _), (on_r, _) = bridge_pair
-    assert _disc(off_r).thread_number == "6031"
+    and sewed Limelight because its mean is a colour no pixel carries.
+
+    The OFF arm's own spool (`6031`, Limelight, measured with
+    `keep_thin_strokes` held OFF) is no longer asserted: with that folded into
+    the code (2026-11-20) the OFF arm sews `0713` here, as the fixture's
+    comment records."""
+    (_off_r, _), (on_r, _) = bridge_pair
     assert _disc(on_r).thread_number == DISC_SPOOL[s2.ROBUST_REGION_STAT]

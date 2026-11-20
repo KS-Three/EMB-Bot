@@ -239,11 +239,13 @@ def test_glyph_polygon_punches_recorded_counters_back():
 # --- stage 4: the counter record ----------------------------------------------
 
 def _small_a(ppm=30.0):
-    """A sub-detail glyph (1.2 x 1.7 mm at 30 px/mm) with one 0.28 mm2
-    counter, under stage 4's sliver floor."""
+    """A sub-detail glyph (1.2 x 1.7 mm at 30 px/mm) with one 0.11 mm2
+    counter, under the run tier's floor (`machine.RUN_MIN_AREA_MM2`, 0.16),
+    which a rescued small glyph's holes answer to (`small_glyph_keep`, folded
+    in 2026-11-20: a 0.28 mm2 counter is kept now, not dropped)."""
     m = np.zeros((100, 100), bool)
     m[20:71, 30:66] = True
-    m[40:56, 40:56] = False
+    m[43:53, 43:53] = False
     p = Prep(rgb=np.zeros(m.shape + (3,), np.uint8), bg_mask=np.zeros(m.shape, bool),
              px_per_mm=ppm, art_bbox=(0, 0, m.shape[1], m.shape[0]))
     return m, p
@@ -253,11 +255,7 @@ def _small_a(ppm=30.0):
 def test_stage4_records_a_rescued_glyphs_dropped_counter_only_under_the_flag(flag):
     m, p = _small_a()
     regions, _dropped = vectorize([RegionMask.from_full(m, layer=0)], [0], p,
-                                  PipelineConfig(small_lettering_skeleton=flag,
-                                                 # `small_glyph_keep` (ON by default since 2026-10-13)
-                                                 # keeps the counter in the polygon, so nothing is
-                                                 # dropped to record; this test is about the floor.
-                                                 small_glyph_keep=False))
+                                  PipelineConfig(small_lettering_skeleton=flag))
     (r,) = regions
     assert r.meta.get("rescued_small_shape")
     assert len(r.polygon.interiors) == 0                 # the polygon is the floor's, either way

@@ -73,7 +73,7 @@ from . import machine, stitches
 from .stitches import StitchRun
 
 # `cfg.extra["lettering_columns_ring_floor"]` (built OFF 2026-11-14): under
-# `thin_floor` (`cfg.lettering_columns_small_bold`, a letter under 5 mm), a
+# `thin_floor` (`lettering_columns_small_bold`, a letter under 5 mm), a
 # RING column -- a closed bowl, cut as one piece round its counter -- has its
 # crosses under the floor widened to it (`_floor_crosses`) instead of
 # dropped. A ring has no ends, so one dropped cross opens the bowl: Bukit
@@ -230,7 +230,7 @@ _APEX_EXIT_MM = 0.2
 # 0.117 / 0.092 / 0.122; this is their mean. Pre-push, the shipped rails sit
 # a mean +0.11-0.12 mm inside (median +0.04-0.06), the lane's +0.03-0.05.
 RAIL_REACH_INSET_MM = 0.11
-# `cfg.lettering_columns_small_bold` (2026-10-21, built OFF): a letter under
+# `lettering_columns_small_bold` (2026-10-21, built OFF): a letter under
 # `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` (stage 7's `_small`) sews like the
 # pro's ~4 mm bold letters. Its pull is a share of its stroke width, not the
 # fabric's fixed `pull_comp_mm`: 0.4 mm a rail on Hat sewed the grown Fremont
@@ -352,23 +352,20 @@ def is_lettering(region, cfg=None) -> bool:
         tagged = bool(m.get("word_id"))
     else:
         tagged = bool(m.get("text_candidate") or m.get("lettering_group"))
-    if tagged and getattr(cfg, "lettering_columns_skip_blobs", False) \
-            and is_solid_blob(region.polygon):
+    if tagged and is_solid_blob(region.polygon):       # `lettering_columns_skip_blobs`, folded in
         return False
-    if tagged and getattr(cfg, "lettering_columns_ink_link", False) \
-            and m.get("lettering_ink_stray"):
+    if tagged and m.get("lettering_ink_stray"):         # `lettering_columns_ink_link`, folded in
         return False
     if tagged and getattr(cfg, "lettering_columns_off_line_mark", False) \
             and m.get("lettering_off_line"):
         return False
-    if tagged and getattr(cfg, "lettering_columns_icon_guard", False) \
-            and m.get("lettering_group") and not m.get("text_candidate") \
-            and is_drawing_fragment(region.polygon):
+    if tagged and m.get("lettering_group") and not m.get("text_candidate") \
+            and is_drawing_fragment(region.polygon):      # `lettering_columns_icon_guard`, folded in
         return False
     return tagged
 
 
-# `cfg.lettering_columns_ink_link`: the text cluster links two letters only
+# `lettering_columns_ink_link`: the text cluster links two letters only
 # when their chart threads sit within `textcluster.TEXT_CLUSTER_DELTA_E_MAX`
 # (CIEDE2000 20); the house-angle group has no such link, so a glyph-sized
 # shape in another colour beside a wordmark joins its line. `ink_strays`
@@ -428,8 +425,7 @@ def ink_strays(regions, chart, *, max_delta_e: float | None = None,
 
 def tag_ink_strays(regions, chart) -> int:
     """Write `meta["lettering_ink_stray"] = True` on every `ink_strays`
-    shape; returns how many. Called only under
-    `cfg.lettering_columns_ink_link`, so OFF no key is written."""
+    shape; returns how many (`lettering_columns_ink_link`, folded in)."""
     ids = set(ink_strays(regions, chart))
     for r in regions:
         if r.shape_id in ids:
@@ -576,7 +572,7 @@ def tag_off_line_marks(regions, single_only: bool = False, row_only: bool = Fals
     return len(ids)
 
 
-# `cfg.lettering_columns_skip_blobs`: a tagged shape that is a solid blob, not
+# `lettering_columns_skip_blobs`: a tagged shape that is a solid blob, not
 # a stroke, is not a letter. Both old taggers ask only for glyph-sized,
 # glyph-aspect, alike shapes; `tools/column_capture_census.py` found the
 # house-angle group (no ink link) admitting twelve colour patches
@@ -603,7 +599,7 @@ def is_solid_blob(poly) -> bool:
             and hull > 0 and poly.area / hull >= BLOB_MIN_SOLIDITY)
 
 
-# `cfg.lettering_columns_small_stem`: a thin STEM under the area floor.
+# `lettering_columns_small_stem`: a thin STEM under the area floor.
 # Stage 7 sends every auto-tier shape under `min_detail_mm`^2 (1.5 mm ->
 # 2.25 mm^2) to the run tier before the Column lane is asked
 # (`stage7_sequence.routes_to_run`, the small-shape rescue). The floor is an
@@ -716,7 +712,7 @@ def _de00(a, b) -> float:
     return float(deltaE_ciede2000(np.array(a), np.array(b)))
 
 
-# `cfg.lettering_columns_icon_guard`: a house-group-only shape whose medial
+# `lettering_columns_icon_guard`: a house-group-only shape whose medial
 # axis is a TANGLE is a piece of drawing, not a letter. Neither guard above
 # reaches the phone screenshot's three 4.5-6 mm captures (S4a2d12c4,
 # Sf90dec39, S84f354eb: thin-stroked pieces of the truck drawing, not solid
@@ -883,7 +879,7 @@ def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float,
     letter, 2026-10-11, `docs/renders/columns-slant-fan-2026-10-11/`).
     The face gets the rails' own net reach, no constant of its own. Ends
     that are not fanned are returned as they are.
-    `outline` (`cfg.lettering_columns_square_ends` only): a fan face that
+    `outline` (`lettering_columns_square_ends` only): a fan face that
     does not lie on that polygon's boundary is a CUT, the far side of which
     is the next column's (the M's V, where both diagonals fan to one cut);
     it gets no reach."""
@@ -911,7 +907,7 @@ def _reach_fan_faces(stations, a_pts, b_pts, reach_mm: float,
     return a_pts, b_pts
 
 
-# `cfg.lettering_columns_square_ends` (2026-10-13, built OFF). An outline
+# `lettering_columns_square_ends` (2026-10-13, built OFF). An outline
 # edge that runs ACROSS a column -- more than this far off the column's own
 # direction at that station -- is an END face of that column, not one of its
 # sides. Geometry, not cloth: 45 deg is the bisector (an edge nearer the
@@ -1025,7 +1021,7 @@ def _sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float
     """One column's crosses as the fabric gets them, before the cross floor:
     rails inset, pushed by the pull, a fanned straight end's face given the
     rails' reach -- and, with `hold` (`end_face_hold`, under
-    `cfg.lettering_columns_square_ends`), every end-face penetration held on
+    `lettering_columns_square_ends`), every end-face penetration held on
     its face. `keep` (`cfg.satin_push_keeps_gaps`, None: off): the
     push held out of the letter's bays and its gaps to same-thread ink, as
     from a counter (`stage6_satin.PUSH_KEEP_MARGIN_MM`). `held`
@@ -1051,7 +1047,7 @@ def _sewn_rails(col: Column, poly: Polygon, pull_mm: float, pull_floor_mm: float
 
 def _hold_end_faces(col: Column, a_pts, b_pts, edges, letter_faces, poly: Polygon, reach_mm: float,
                     pull_mm: float | None = None):
-    """`cfg.lettering_columns_square_ends`: every penetration that started ON
+    """`lettering_columns_square_ends`: every penetration that started ON
     an end face keeps only the part of its displacement (rail inset, pull
     push, fan-face reach) that runs ALONG that face -- it slides on the
     outline, never off it -- so a column ends on the letter's own edge.
@@ -1788,7 +1784,7 @@ def _span_graph(columns: list[Column], merge_r: float, within: Polygon | None = 
     cut where another column's END lands on its centreline away from its
     own ends, and each such landing is a junction (the butting column and
     end, the through column and the station it lands on).
-    `within` (`cfg.lettering_columns_corner_fold`, a letter with a folded
+    `within` (`lettering_columns_corner_fold`, a letter with a folded
     column only): two ends within `merge_r` of each other are one node only
     when the letter covers the line between them. The radius alone (1.3 W +
     0.3 + the pull, 2.5 mm on Drone's E) made the E's top-arm and middle-arm
@@ -2162,12 +2158,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     counters are held, and the letter's other holes sew as the lane sews
     them with the floor off. Reads the hold's interiors and nothing else:
     rails, end faces and the walk still read `poly`.
-    `square_ends` (`cfg.lettering_columns_square_ends`) holds every
+    `square_ends` (`lettering_columns_square_ends`) holds every
     penetration that starts on an end face on that face (`_hold_end_faces`).
-    `inside_connectors` (`cfg.lettering_columns_inside_connectors`) keeps
+    `inside_connectors` (`lettering_columns_inside_connectors`) keeps
     every needle-down connector within the rails' side reach of the letter
     (`poly_hop` in step 3).
-    `thin_floor` (`cfg.lettering_columns_small_bold`): a column that would
+    `thin_floor` (`lettering_columns_small_bold`): a column that would
     keep fewer than three crosses over `min_cross_mm` has its thin ones
     widened to it about their own middles (`_floor_crosses`) instead of
     dropped, so a serif or bar thinner than the floor sews at the floor
@@ -2313,7 +2309,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     merge_r = _MERGE_WIDTHS * W + _MERGE_PAD_MM + pull_mm
     nodes, spans, junctions = _span_graph(
         ready, merge_r,
-        # `cfg.lettering_columns_corner_fold`: a folded letter's nodes must
+        # `lettering_columns_corner_fold`: a folded letter's nodes must
         # be joined through the letter (`_span_graph`); off, the radius alone
         poly.buffer(0.1 + pull_mm) if any(c.kind == "folded" for c in ready) else None)
     report["junctions"] = len(junctions)
@@ -2331,7 +2327,7 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
     prefer: set[int] = set()
     for j in junctions if roomy else ():
         if ready[j["through"]].kind == "folded":
-            # `cfg.lettering_columns_corner_fold`: an arm butting a FOLDED
+            # `lettering_columns_corner_fold`: an arm butting a FOLDED
             # column (an E's middle arm on the stem of its top-arm / stem /
             # bottom-arm column) does not start the walk: the trail would
             # then have to double one of the folded column's long spans to
@@ -3125,7 +3121,7 @@ def _connectors_under(linked: list[StitchRun], ground_of: dict, allow: float, po
 
 
 def _floor_crosses(stations, min_cross_mm: float):
-    """`cfg.lettering_columns_small_bold`: every cross under `min_cross_mm`
+    """`lettering_columns_small_bold`: every cross under `min_cross_mm`
     widened to it about its own middle, along its own direction -- or, for a
     cross with none (both rails on one point, a fan's tip), along the
     nearest cross that has one. A grown 4 mm letter's serifs and bars run
@@ -3286,9 +3282,9 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     (`counter_hold_polygon`), and the cut's polygon is handed over as it
     is, the letter's other holes sewn as the lane sews them with the floor
     off. None, the floor's own reading: every hole of the letter.
-    `fold_cuts`: `cfg.lettering_columns_fold_cuts` (`outline_cut._fold_refine`).
+    `fold_cuts`: `lettering_columns_fold_cuts` (`outline_cut._fold_refine`).
     `rail_axis`: `cfg.lettering_columns_rail_axis` (`outline_cut.straight_axis`).
-    `small_bold`: `cfg.lettering_columns_small_bold`, stage 7 passes it for
+    `small_bold`: `lettering_columns_small_bold`, stage 7 passes it for
     a letter under `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` only -- the pull a
     `SMALL_BOLD_PULL_FRAC` share of the stroke width when that is less, and
     the cross floor widening instead of dropping (`_floor_crosses`).
@@ -3299,10 +3295,10 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     stroke; neither ever above `pull_mm`, nor, under `small_bold`, above its
     share of the stroke. Read at digitize time on the drawn stroke, so a
     resize keeps its pull (ruling 12, `column-width-on-resize-2026-10-01`).
-    `corner_fold`: `cfg.lettering_columns_corner_fold` (2026-10-23) -- one
+    `corner_fold`: `lettering_columns_corner_fold` (2026-10-23) -- one
     column folded round each L corner of the letter
     (`outline_cut._fold_corners`); off, the cut's columns as they are.
-    `text_lean_deg` (`cfg.lettering_columns_text_lean`, 2026-10-23): the
+    `text_lean_deg` (`lettering_columns_text_lean`, 2026-10-23): the
     word's house cross angle (degrees, `satin_angle_deg`); given, every
     straight column the house can span within the lean cap is re-stationed
     with its crosses along the house (`column_lean.lean_columns`), the way
@@ -3356,12 +3352,12 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
     # on EACH rail). The spike stationed at half that with both ends down
     # and sewed every letter twice as dense.
     lc_kw = {**({"fold_cuts": True} if fold_cuts else {}),
-             # `cfg.lettering_columns_square_ends`: a slanted end face is mitred
+             # `lettering_columns_square_ends`: a slanted end face is mitred
              **({"mitre_ends": True} if square_ends else {}),
              # `cfg.lettering_columns_rail_axis`: a short italic bar runs along its rails
              **({"rail_axis": True} if rail_axis else {}),
              **({"small_bold": True} if small_bold else {}),
-             # `cfg.lettering_columns_corner_fold`: one column round an L corner
+             # `lettering_columns_corner_fold`: one column round an L corner
              **({"corner_fold": True} if corner_fold else {})}
     cored = bool(counter_holes) and counter_clear_mm > 0        # none named: the floor's reading
     run_kw = dict(trim_at_mm=trim_at_mm,

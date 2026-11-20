@@ -63,19 +63,16 @@ NO_GATE = 110.0     # `_sewn_linear_cover` returns None: no gate at all
 
 @lru_cache(maxsize=None)
 def _run(fixture: str, width: float, cap: str = "bean",
-         over_budget: str = "warn", keep_thin_strokes: bool | None = None):
+         over_budget: str = "warn"):
     """One `digitize` per (fixture, width, knobs), cached.
 
     Cached for the reason `test_resnap_mask_matches_grader` records: CI
     runners are 2-core and becker at 88 mm is a 17-second design. Every test
     below reuses these.
 
-    `keep_thin_strokes=None` means the shipped default (ON since 2026-09-13),
-    so every caller that compares against a plain `PipelineConfig` keeps
-    comparing against the same engine. Pass `False` for an arm whose number
-    was measured before that flip — only the 110 mm no-gate reading needs it.
+    (`keep_thin_strokes`, ON since 2026-09-13, was a parameter here for the
+    110 mm no-gate arm; folded into the code 2026-11-20.)
     """
-    extra = {} if keep_thin_strokes is None else {"keep_thin_strokes": keep_thin_strokes}
     # `subpixel_edges_upscaled` is held OFF: every number in this file was
     # measured on becker's staircase polygons (1.46-1.8 px/mm, upscaled), and
     # Kent's 2026-09-18 flip reads that source from its own pixels instead.
@@ -121,7 +118,7 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        # (`work_px_per_mm`, ON since 2026-10-01): becker
                        # traced at 5.8-7.2 px/mm is a third set of polygons,
                        # and the sweep reads [54.1, 57.6, 54.5] flat.
-                       work_px_per_mm=None, **extra))
+                       work_px_per_mm=None))
     return plan
 
 
@@ -218,16 +215,13 @@ def test_the_bill_reports_what_the_gate_saved_and_it_collapses_with_size():
     stitching on its own edge at all — `_sewn_linear_cover` returns `None`,
     the gate does not exist, and the cap is back in the pre-gate regime.
 
-    The 110 mm arm holds `keep_thin_strokes` at its PRE-FLIP `False`
-    (flipped ON by default 2026-09-13, Kent's ruling), because that flip is
-    what "no linear stitching at all" stops being true of: ON, becker keeps
-    one contrasting sub-floor region here and the bill reads
-    `omit_cover_mm2` 1.5 and `gate_saved_pct` 0.3 (measured 2026-09-13,
-    against 0.0 and 0.0 OFF; `percent` 53.4 -> 53.2). That is a third of a
-    percent of saving on a region the flag added, not the no-gate regime
-    ending, and pinning it keeps the three-width sweep the one measurement
-    it was taken as. The 80 and 88 mm arms are unmoved by the flip and stay
-    on the shipped engine.
+    The 110 mm arm used to hold `keep_thin_strokes` at its PRE-FLIP `False`
+    (ON by default since 2026-09-13, Kent's ruling; folded into the code
+    2026-11-20, so every arm now runs with it): ON, becker keeps one
+    contrasting sub-floor region here and the bill read `omit_cover_mm2` 1.5
+    and `gate_saved_pct` 0.3 (measured 2026-09-13, against 0.0 and 0.0 OFF;
+    `percent` 53.4 -> 53.2). That is a third of a percent of saving on a
+    region the flag added, not the no-gate regime ending.
 
     **Re-pinned 2026-11-19 on the engine with the satin construction flags
     folded in** (`satin_lettering_split` was held OFF here; it is the code
@@ -239,7 +233,7 @@ def test_the_bill_reports_what_the_gate_saved_and_it_collapses_with_size():
     """
     cheap = _bill(_run(BECKER, CHEAP))
     cliff = _bill(_run(BECKER, CLIFF))
-    none = _bill(_run(BECKER, NO_GATE, keep_thin_strokes=False))
+    none = _bill(_run(BECKER, NO_GATE))
 
     assert cheap["gate_saved_pct"] > 50.0, cheap["gate_saved_pct"]
     assert cheap["omit_cover_mm2"] > 1000.0, cheap["omit_cover_mm2"]

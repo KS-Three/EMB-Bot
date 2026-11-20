@@ -139,12 +139,12 @@ ART_FALLBACK = {
 #: judged from renders; "FABRIC": gate 1, a sew-out).
 _SMALL_TEXT_SET = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
                    "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
-                   "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
+                   "small_text_cap_bold_scale": 1.45}
 _WHITE_SEWN = {"sew_enclosed_white": True, "enclosed_white_keyline": True}
 #: the engine before the 2026-10-26 flips (both ON by default since), with rembg's
 #: timeout pinned: its 60 s default fails under load and reroutes MFab (photo_scene)
 _REMBG_900 = {"photo_prep_background_removal_timeout_s": 900.0}
-_WAVE3_OFF = {"small_text_bay_mouth": False, "sew_enclosed_white": False, **_REMBG_900}
+_WAVE3_OFF = {"sew_enclosed_white": False, **_REMBG_900}
 #: The jobs that sew enclosed white off MFab (white ON by default since #1112): where
 #: the keyline switches can act now that MFab-type art has them through the gate (#1122)
 KEYLINE_OFF_MFAB = ("becker_hat_large", "becker_lc_large", "becker_hat_small", "becker_chest_small",
@@ -200,7 +200,7 @@ FLAGS: dict[str, dict] = {
     "small_text_set": {
         "sets": {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
                  "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
-                 "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True},
+                 "small_text_cap_bold_scale": 1.45},
         "metric": "letter_height", "about": "median small-letter height, mm", "pr": 1029},
     # ---- wave 2 (2026-10-24)
     "small_text_cap_reach_edges": {
@@ -290,7 +290,7 @@ FLAGS: dict[str, dict] = {
     # but prove it first"). Both are ON by default from this PR, so OFF pins both False.
     "wave3_flips": {
         "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
-        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": True, **_REMBG_900},
+        "sets": {"sew_enclosed_white": True, **_REMBG_900},
         "fixtures": ["becker_hat_large", "mfab_hat", "hotel_fremont_hat"],
         "metric": "white_stitches", "about": "stitches in white thread", "pr": 1112,
         "note": "OFF pins both flips False (the engine before 2026-10-26); ON is the shipped "
@@ -380,18 +380,6 @@ FLAGS: dict[str, dict] = {
                 "MFab-type art through the gate since #1122, with its panel fix (the join keeps "
                 "the riders' panel), so this row is the jobs off MFab. Older bases' numbers "
                 "(#1100's 77 -> 60) are not quoted: read the cells."},
-    "small_text_bay_mouth": {
-        # a field since #1112 and ON by default (Kent 2026-10-26), so OFF pins it False
-        "base": dict(_WAVE3_OFF), "base_name": "wave3_off",
-        "sets": {"small_text_bay_mouth": True, "sew_enclosed_white": False, **_REMBG_900},
-        "fixtures": ["hotel_fremont_hat", "proseal_hat"],
-        "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
-        "pr": 1085,
-        "note": "On the re-set: the widening shuts a bay where a terminal curls back to its own "
-                "letter, so Fremont's EST 1895 sews as BST 1893. ON cuts the terminal back along "
-                "its stroke until the mouth holds the pro's 0.51 mm (n 18). No letter's height "
-                "moves, so read the picture, not the column; ProSeal is the byte-identical control. "
-                "Flipped ON by #1112, so OFF here pins it (and white) False."},
     # ---- script words (2026-10-26, Kent: "Measure, then build OFF")
     "script_strokes": {
         "base": {"photo_prep_background_removal_timeout_s": 900}, "base_name": "rembg900",

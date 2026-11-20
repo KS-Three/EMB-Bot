@@ -98,10 +98,8 @@ BASE = {
     "small_text_cap_min_stroke_mm": 0.85,
     "small_text_cap_letter_gap_mm": 0.25,
     "small_text_cap_bold_scale": 1.45,
-    "lettering_columns_small_bold": True,
     "border_by_size": True,
     "enclosed_alpha_hole_parts": True,
-    "lettering_columns_corner_fold": True,
     "small_text_cap_reach_edges": True,
 }
 

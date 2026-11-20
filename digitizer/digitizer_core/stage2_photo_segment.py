@@ -2336,7 +2336,7 @@ def kept_masks_to_quant(
     the CALLER's job — `pipeline.run_stages` derives and passes the bool,
     the same division of labour the stage-7 bind keeps with `_shade_layers`.
 
-    `thin` (`thin_ink.find_thin_ink`, `cfg.keep_thin_strokes`) is the third
+    `thin` (`thin_ink.find_thin_ink`, `keep_thin_strokes`) is the third
     population: appended after the enclosed block as its own label block,
     wearing the spools the flat quantiser snapped it to. None — every
     pre-existing caller, and the flag on with nothing thin found — is
@@ -2874,7 +2874,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     has_enclosed = enclosed is not None and enclosed.any()
     base_valid = valid & ~enclosed if has_enclosed else valid
 
-    # --- thin ink, the THIRD population (`cfg.keep_thin_strokes`) -----------
+    # --- thin ink, the THIRD population (`keep_thin_strokes`) -----------
     # The same split again, for the same reason: a stroke a quarter of a
     # superpixel wide is assigned to a block whose mean is the ground and is
     # gone before any floor is consulted (`thin_ink.py`). Found with the flat
@@ -2883,7 +2883,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # by `kept_masks_to_quant`. None — the caller not asking, or nothing thin
     # — is byte-identical to the path below never having heard of it.
     # `thin_population` is the caller's gate, the way `split_tonal` is: the
-    # pipeline passes `cfg.keep_thin_strokes and class_ == "gradient"`, so
+    # pipeline passes `keep_thin_strokes and class_ == "gradient"`, so
     # the photo classes keep today's path (see `pipeline.run_stages`).
     # Dark thin strokes on a shaded ground (`cfg.keep_dark_thin_strokes`,
     # `thin_ink.find_dark_thin_ink`): the same population read by LIGHTNESS

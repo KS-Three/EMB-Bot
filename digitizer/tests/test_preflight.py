@@ -190,7 +190,7 @@ def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     # block in a cone the design already loads, so the operator really does
     # get one more stop. Kent ruled that price acceptable (the alternative
     # put a 5.4%-frontage cone on gaulke's edge instead of a 95.0% one).
-    # 6, not 5, since 2026-09-13: `cfg.keep_thin_strokes` ON by default
+    # 6, not 5, since 2026-09-13: `keep_thin_strokes` ON by default
     # (Kent's ruling) keeps this fixture's ~1.2 mm teal patch as its own run
     # in its own thread, which is a sixth colour block and a sixth cone. The
     # whole arithmetic is pinned in `tests/test_keep_thin_strokes.py`; this
@@ -2393,7 +2393,7 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     #
     # This used to assert only `uncovered_worst_mm2 < 1.0`, a single number
     # that drifted with unrelated work: `== 0.0` until 2026-09-13
-    # (`cfg.keep_thin_strokes` ON by default gained gaulke sub-floor
+    # (`keep_thin_strokes` ON by default gained gaulke sub-floor
     # regions), then `< 1.0`, and the letterbox crop put the worst patch at
     # exactly 1.0 — failing a guard whose defect is two orders of magnitude
     # away. Asserting the total pins what the bug actually moved.

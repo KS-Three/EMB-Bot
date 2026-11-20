@@ -3,7 +3,7 @@
 The measurement behind `tools/legibility.py` (PR 1 of
 `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`) and,
 since 2026-09-10, behind preflight's `LETTERING_ILLEGIBLE` check
-(`cfg.legibility_check`; quality review 2026-09-08 item 11, plan
+(`legibility_check`; quality review 2026-09-08 item 11, plan
 `docs/superpowers/plans/2026-09-10-legibility-yardstick.md`). It moved here
 so the yardstick and the instrument are the same code: `dropped_elements`
 reads 0.2% on Hotel Fremont while Kent calls its tagline "completely lost",
