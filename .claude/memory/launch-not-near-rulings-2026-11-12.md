@@ -30,6 +30,13 @@ near. Show him the running build first. A foreman that dispatches work follows
 - On defect 28: "Close it (Recommended)". NOT yet written into `MASTER_SCOPE.md`;
   the next scope-refresh lane moves it to Closed and keeps the chart-limit note.
 
+**Added to the launch list 2026-11-20 (Kent: "Park both till launch"):**
+the frozen app bundles no rembg, although background removal defaults ON and
+DOCTRINE makes rembg a deploy requirement. So installed-app photos run with no
+cutout. It is one decision with the shipped `isnet-general-use` model's possible
+DIS5K non-commercial training-data terms; BiRefNet shares those terms
+(`docs/external-repo-sourcing-2026-11-20.md` §2).
+
 **State on main `ffefc3b1`:** `windows-app.yml` run 43244077001 green (the frozen
 exe matched the venv service on five lanes; installer 109 MB, zip 167 MB; a
 hosted runner, not a clean PC). Still unasked from the PR bodies: signing, update

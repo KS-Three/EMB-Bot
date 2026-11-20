@@ -87,6 +87,11 @@ nothing breaks today. **Never bump rembg without re-checking both.** [V]
   the onnxruntime wheel (~16.7 MB on Windows, 1.32.0). Item A decides whether
   isnet is the model to bundle at all, so **A and B are one decision.**
 
+**Kent's ruling, 2026-11-20: "Park both till launch."** The packaging doc's
+wrong line is corrected in the same PR; A and B are on the launch list in
+`.claude/memory/launch-not-near-rulings-2026-11-12.md`. Until launch, the
+installed app's photo results differ from the venv's and the scorecard's.
+
 ## 3. Track 1 — earlier lists re-checked
 
 | Item | Was | Now | Verdict |
@@ -219,8 +224,7 @@ no recommendation:
    in #1304.
 3. The 11-06 sweep says filum had not released; v0.1.0 and v0.2.0 predate it.
 
-Not fixed in this PR: each needs Kent's ruling (1) or belongs to a scope-refresh
-lane (2).
+Gap 1 is corrected in this PR. Gaps 2 and 3 are left for a scope-refresh lane.
 
 ## 8. Not checked
 
