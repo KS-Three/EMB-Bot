@@ -1,4 +1,4 @@
-"""Read the simple shape first (`cfg.extra["read_primitives"]`, built OFF 2026-11-19).
+"""Read the simple shape first (`cfg.read_primitives`, ON since 2026-11-19).
 
 Kent, 2026-11-19: "a square needs to be square / a circle round / a triangle
 needs 3 points / you need to do a better job reading the image before
@@ -18,7 +18,7 @@ import math
 from dataclasses import replace
 
 import numpy as np
-from shapely.geometry import Point, Polygon
+from shapely.geometry import Point, Polygon, box
 
 #: how far the traced outline may lie from the ideal shape (mm). A corner of
 #: radius r sits 0.414 r off its square corner, so 0.2 reads corners rounded
@@ -31,6 +31,7 @@ PRIMITIVE_MIN_FILL = 0.94
 #: smaller than this, the tolerance is below the stitch's own width
 PRIMITIVE_MIN_SIDE_MM = 1.5
 CIRCLE_SEGMENTS = 64
+AXIS_SNAP_DEG = 0.5
 #: below this deviation a shape already is its ideal; leave it byte for byte
 ALREADY_MM = 0.01
 
@@ -61,6 +62,12 @@ def read_primitive(poly: Polygon) -> tuple[str, Polygon] | None:
     if short_side < PRIMITIVE_MIN_SIDE_MM:
         return None
     tol = _tol(short_side)
+    # A rectangle within half a degree of the axes IS axis-aligned: tracing
+    # jitter tilts its minimum rectangle by hundredths of a degree, which
+    # would sew each stripe's end a hair off its neighbours'.
+    ang = math.degrees(math.atan2(c[1][1] - c[0][1], c[1][0] - c[0][0])) % 90.0
+    if min(ang, 90.0 - ang) < AXIS_SNAP_DEG:
+        rect = box(*poly.bounds)
     found = None
     if _fits(poly, rect, tol):
         found = ("rect", rect)
@@ -89,7 +96,10 @@ def _triangle(poly: Polygon) -> Polygon | None:
     pts = np.asarray(poly.convex_hull.exterior.coords[:-1], dtype=np.float32)
     if len(pts) < 3:
         return None
-    area, tri = cv2.minEnclosingTriangle(pts)
+    try:
+        area, tri = cv2.minEnclosingTriangle(pts)
+    except cv2.error:        # degenerate hulls make OpenCV raise: not a triangle
+        return None
     if tri is None or area <= 0:
         return None
     t = Polygon([tuple(map(float, p)) for p in tri.reshape(-1, 2)])

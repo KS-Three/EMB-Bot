@@ -370,7 +370,7 @@ COLUMN_LOCK_TAG = "#satin"
 
 
 def _small_letter_run(run: StitchRun, small_letters: set[str] | None) -> bool:
-    # `cfg.extra["satin_rect_lock_in_column"]` (built OFF 2026-11-19) adds
+    # `cfg.satin_rect_lock_in_column` (ON since 2026-11-19) adds
     # `shape_id + COLUMN_LOCK_TAG` for a rectangle bar: its SATIN run is then
     # locked along its own stations like a small letter's run.
     return (small_letters is not None

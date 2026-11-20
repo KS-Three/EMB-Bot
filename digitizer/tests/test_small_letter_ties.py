@@ -20,7 +20,7 @@ from digitizer_core.stitches import (RUN, StitchRun, apply_ties, opened_by_retra
                                      spread_tie_in, spread_tie_off, tie_run)
 from tools import small_letter_ties as slt
 
-from .conftest import FLAT_GOLDEN_MD5, TESTDATA
+from .conftest import FLAT_GOLDEN_MD5, FLOW_2026_11_19_OFF, TESTDATA
 
 BRIDGE = Path(__file__).resolve().parent.parent / "testdata" / "photo" / "logo_bridge_bar.jpg"
 
@@ -174,7 +174,7 @@ def test_help_is_cheap():
 
 def _md5(fixture: str, **kw) -> str:
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, **kw))
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, **FLOW_2026_11_19_OFF, **kw))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()
@@ -244,6 +244,6 @@ def test_the_flag_reaches_every_tie_call_and_off_passes_nothing(monkeypatch):
     for name in ("off", "on"):
         arm["name"] = name
         digitize(TESTDATA / "logo_whitebg.png",
-                 PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, small_letter_ties=(name == "on")))
+                 PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, small_letter_ties=(name == "on"), **FLOW_2026_11_19_OFF))
     assert seen["off"] and all(kw == {} for kw in seen["off"])
     assert seen["on"] and all(set(kw) == {"small_letters"} for kw in seen["on"])

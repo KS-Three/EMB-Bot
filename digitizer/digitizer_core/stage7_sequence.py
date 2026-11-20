@@ -3730,11 +3730,11 @@ def sequence(
     # their own centreline. Off, no tie call gains an argument.
     small_letter_ids: set[str] = set()
     tie_kw = {"small_letters": small_letter_ids} if cfg.small_letter_ties else {}
-    # `cfg.extra["satin_rect_lock_in_column"]` (built OFF 2026-11-19): the
+    # `cfg.satin_rect_lock_in_column` (ON since 2026-11-19): the
     # rectangle bars whose satin run is locked inside its own column. A
     # `tie_run` bounce lays 0.8 mm along the last cross, the cap face, and
     # shows as a red nub at every stripe's finish end on the last-sewn colour.
-    _rect_lock = bool((cfg.extra or {}).get("satin_rect_lock_in_column"))
+    _rect_lock = bool(cfg.satin_rect_lock_in_column)
     if _rect_lock and not tie_kw:
         tie_kw = {"small_letters": set()}
     _lock_ids = tie_kw.get("small_letters")
