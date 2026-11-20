@@ -498,8 +498,7 @@ def vectorize(
         outer = max(outers, key=lambda i: cv2.contourArea(contours[i]))
 
         # Sub-detail masks are simplified at the floor only — see docstring.
-        sub_detail = (cfg.small_shape_rescue
-                      and cv2.contourArea(contours[outer]) < min_detail_px2)
+        sub_detail = cv2.contourArea(contours[outer]) < min_detail_px2
         eps = 0.5 if sub_detail else eps_px
 
         def ring_source(contour: np.ndarray) -> tuple[np.ndarray, float | None, np.ndarray | None]:
@@ -633,9 +632,8 @@ def vectorize(
         parts = [poly] if poly.is_valid else _polygon_parts(make_valid(poly))
 
         thread = chart[thread_indices[rm.layer]]
-        # `cfg.small_dot_rung` (default ON, 2026-10-20), and its lettering scope.
-        dot_rung = bool(cfg.small_dot_rung and (not cfg.small_dot_rung_lettering
-                                                or getattr(rm, "dot_rung", False)))
+        # `small_dot_rung` and its lettering scope (folded in, 2026-10-20).
+        dot_rung = bool(getattr(rm, "dot_rung", False))
         # `cfg.detail_spokes` (default OFF): a mask stage 3 kept as a spoked
         # mark bypasses the loop floor below (stage 7 sews spokes, not the
         # outline) and carries its centre and tips in design mm, on its
@@ -652,10 +650,9 @@ def vectorize(
                 # a lower bound, so this is the authoritative test of whether
                 # the bean run has a sewable loop and the shape outweighs the
                 # thread.
-                # `cfg.small_dot_rung` (default ON, 2026-10-20): down to the dot rung's
-                # own loop floor, the ring the run tier then sews as a tack.
-                # Scoped (`cfg.small_dot_rung_lettering`), only for a mask
-                # stage 3 admitted over a stem.
+                # `small_dot_rung` (folded in, 2026-10-20): down to the dot rung's
+                # own loop floor, the ring the run tier then sews as a tack,
+                # only for a mask stage 3 admitted over a stem.
                 rescueable = (sub_detail
                               and (part is spoke_part
                                    or (part.area >= machine.RUN_MIN_AREA_MM2
@@ -665,7 +662,7 @@ def vectorize(
                 if not rescueable:
                     continue
             meta = {"layer": rm.layer}
-            if cfg.small_dot_rung_lettering and dot_rung:
+            if dot_rung:
                 meta["dot_rung"] = True
             if sub_detail:
                 meta["rescued_small_shape"] = True

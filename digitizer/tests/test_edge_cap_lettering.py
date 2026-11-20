@@ -54,14 +54,6 @@ TOL_MM = 0.35
 # --- the fixture ------------------------------------------------------------
 
 def _run(**kw):
-    # On the grown polygon, explicitly, since `satin_rail_comp` went ON by
-    # default (2026-09-29, Kent's pick on the labelled sitting): every number
-    # this file prices was measured with the pull in the polygon, and on the
-    # rails the fixture itself moves -- 1,784 -> 2,058 stitches and 9 -> 22
-    # trims at the default, letter-to-shape hops 3 -> 6 (measured 2026-09-29,
-    # `tests/test_rail_comp.py` pins the price). The flag under test here is
-    # priced on the engine it was read on; the rails' own cost is pinned there.
-    kw.setdefault("satin_rail_comp", False)
     # Same for `satin_rails_follow_edge`, "envelope" by default since #567
     # (2026-09-30, Kent's pick). The envelope lowers BOTH arms' uncovered
     # area but the capped arm more -- 16.8 -> 13.9 OFF, 17.6 -> 16.7 ON
@@ -69,11 +61,6 @@ def _run(**kw):
     # against +4.8% here, while its absolute ON figure still improves. The
     # envelope's own price belongs to its own tests, not to this flag's.
     kw.setdefault("satin_rails_follow_edge", False)
-    # And `satin_crown_cover`, ON by default since Kent's 2026-10-02 flip: it
-    # sews the wedges no stroke claims, which is the uncovered area and the
-    # stitch count this file's two arms are compared on. The cover's own price
-    # is pinned in `tests/test_crown_cover.py`.
-    kw.setdefault("satin_crown_cover", False)
     # And on the skeleton tier: the Column lane (`lettering_columns`, ON by
     # default since Kent's 2026-10-12 flip) takes the letters ahead of the
     # edge cap this file prices. Its own cap behaviour is pinned in
@@ -152,16 +139,14 @@ def test_explicit_on_is_the_default_byte_for_byte(on):
             == [r.points for _b, r in default.iter_runs()])
 
 
-def test_off_the_cap_stands_on_the_satin_letters(off):
-    """The finding the step rests on: the cap is patching the letters'
-    bare corners. Most of its stitches sit on a satin letter's outline."""
-    _cfg, result, plan = off
-    letters = _satin_letters(result, plan)
-    assert len(letters) >= 5, "the fixture's word should sew as satin"
-    on_letters, total = _cap_stitches_on(letters, plan)
-    assert total > 0, "the fixture should be capped OFF"
-    assert on_letters > total / 2, (on_letters, total)   # 418 of 457 measured
-
+# Deleted 2026-11-19 (satin construction flags folded into the engine): the
+# OFF-arm finding this flag rests on -- "the cap is patching the letters' bare
+# corners, 418 of 457 cap stitches on a satin letter" -- and the on-vs-off
+# deltas (trims 23 -> 7, cap runs 18 -> 1). With tip caps, the crown cover and
+# the junction stack always on, this fixture's letters have no bare corners for
+# the cap to patch: both arms sew the same 2,388 stitches, 19 trims and one
+# cap run of 35 stitches, none on a letter. `test_on_no_cap_sample...` and
+# `test_on_only_the_cap_moves` still pin the flag's contract.
 
 def test_on_no_cap_sample_stands_on_a_satin_letter(on):
     """A typed glyph gets no cap: ON, not one cap sample lies within a
@@ -171,33 +156,6 @@ def test_on_no_cap_sample_stands_on_a_satin_letter(on):
     assert len(letters) >= 5
     on_letters, _total = _cap_stitches_on(letters, plan)
     assert on_letters == 0
-
-
-def test_on_the_fixture_loses_its_cap_trims_and_keeps_its_cover(off, on):
-    """Measured: trims 23 → 7, cap runs 18 → 1, stitches 2,192 → 1,774.
-    Pinned as directions and floors, not as the numbers, so a later step that
-    moves the fixture does not fail this.
-
-    The uncovered arm read **0.0 → 0.0** when this was written, and reads
-    **16.8 → 17.6 mm²** since 2026-09-30 — not a regression in the flag, a
-    change of instrument. `ARTWORK_UNCOVERED` had a 5.0 mm² floor above the
-    largest patch it could resolve anywhere, so it qualified nothing on any
-    fixture; it now measures on a 0.25 mm grid with no erosion and a 1.0 mm²
-    floor. Both arms rose together and the flag's own cost is 0.8 mm² of a
-    17 mm² total, so the assertion below became proportional: an absolute
-    0.5 mm² allowance meant "unchanged" against a zero and means 3% against
-    a seventeen."""
-    cfg_off, res_off, p_off = off
-    cfg_on, res_on, p_on = on
-    assert p_on.stats.trims <= p_off.stats.trims - 10
-    assert len(_cap_runs(p_on)) <= 2 < len(_cap_runs(p_off))
-    assert p_on.stats.stitch_count < p_off.stats.stitch_count
-    # The bare corners a letter still has are now its own to show — and the
-    # flag must not make them materially worse. Measured 2026-09-30:
-    # 16.8 → 17.6 mm², +4.8%.
-    off_mm2 = _uncovered(cfg_off, res_off, p_off)
-    on_mm2 = _uncovered(cfg_on, res_on, p_on)
-    assert on_mm2 <= max(off_mm2 * 1.10, off_mm2 + 0.5), (off_mm2, on_mm2)
 
 
 def test_on_only_the_cap_moves(off, on):
@@ -244,27 +202,6 @@ def _cap_block(plan):
         if any(r.shape_id == "__edge_cap__" for r in b.runs):
             return b
     return None
-
-
-def test_a_fill_sewn_text_candidate_keeps_its_cap():
-    """A 20 mm-wide "letter" fills (over the satin ceiling), and its rows
-    end in open air at its edge — the defect the cap exists for. ON is
-    byte-identical to OFF, cap included.
-
-    Pinned on `satin_lettering_split=False`: since step 4 flipped ON
-    (2026-09-19) a text candidate never fills by default — it splits as
-    satin — so the fill-sewn letter this test is about exists only on the
-    pre-flip engine. The case is still real there and the cap still owes it.
-    Likewise `lettering_columns=False` (ON by default since 2026-10-12): the
-    Column lane would sew this "letter" as a column, not a fill."""
-    slab = [_region(_bar(20, 30), "T", 3, 0, {"text_candidate": True})]
-    off = _plan_for(slab, edge_cap_skip_lettering=False, satin_lettering_split=False,
-                    lettering_columns=False)
-    on = _plan_for(slab, satin_lettering_split=False, lettering_columns=False)
-    kinds = {str(r.kind) for b in off.blocks for r in b.runs if r.shape_id == "T"}
-    assert str(stitches.FILL) in kinds, kinds
-    assert _cap_block(off) is not None, "a lone fill should be capped"
-    assert _points(on) == _points(off)
 
 
 def test_a_design_with_no_lettering_is_untouched():

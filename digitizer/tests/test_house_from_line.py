@@ -1,4 +1,4 @@
-"""`cfg.satin_house_from_line` — the house angle's THIRD reading
+"""`satin_house_from_line` (folded into the code 2026-11-19) — the house angle's THIRD reading
 (`textcluster._cluster_house_angle_deg`, 2026-09-19).
 
 The fixture is a real font's own word, built at test time from the committed
@@ -15,11 +15,12 @@ source rails at the same 80 mm, 4.5 at 60 mm), which is its own finding
 about the vote; "MARINE" at 127 mm passes the doubled-angle vote and pins the
 "untouched" contract.
 
-The contracts. OFF, the refused word carries no `satin_angle_deg` (the
-fail-open behaviour before the flip, byte for byte). ON — the default since
-Kent's flip the day it was built — every letter of it carries ONE angle, the
-line of text's own direction. A word either vote accepts is untouched by the
-flag. A group with no line of text still fails open.
+The contracts. Since Kent's flip the day it was built, every letter of the
+refused word carries ONE angle, the line of text's own direction (the anchor
+reading, `satin_house_anchor`, takes the group first now that both are folded
+in; the third reading itself is still `_cluster_house_angle_deg`'s
+`from_line=True`, pinned at function level). A group with no line of text
+still fails open.
 """
 from __future__ import annotations
 
@@ -100,12 +101,6 @@ def _word_raster(word: str, width_mm: float, px_per_mm: float = 12.0, *,
     return canvas
 
 
-# The third reading is tried only when a group is NOT anchored (plan step 1,
-# `satin_house_anchor`, ON since the same day), so every run in this file
-# turns the anchor off to test the reading it is about.
-PRE_ANCHOR = dict(satin_house_anchor=False)
-
-
 @pytest.fixture(scope="module")
 def refused_word(tmp_path_factory) -> Path:
     """The word both votes refuse: KAYAK at 80 mm."""
@@ -115,10 +110,9 @@ def refused_word(tmp_path_factory) -> Path:
 
 
 @pytest.fixture(scope="module")
-def refused_off(refused_word):
-    """One digitize of the refused word with the flag OFF, shared by the
-    tests that only read it."""
-    return _run(refused_word, 80.2, satin_house_from_line=False, **PRE_ANCHOR)
+def refused_run(refused_word):
+    """One digitize of the refused word, shared by the tests that only read it."""
+    return _run(refused_word, 80.2)
 
 
 @pytest.fixture(scope="module")
@@ -154,13 +148,8 @@ def _angle_gap(a: float, b: float) -> float:
     return abs((a - b + 90.0) % 180.0 - 90.0)
 
 
-def test_the_flag_is_on_by_default():
-    """Kent's flip, 2026-09-19, the day it was built."""
-    assert PipelineConfig().satin_house_from_line is True
-
-
-def test_both_votes_refuse_the_word_at_80mm_and_off_it_keeps_no_house(refused_off):
-    result = refused_off
+def test_both_votes_refuse_the_word_at_80mm(refused_run):
+    result = refused_run
     letters = [r for r in result.regions if r.meta.get("text_candidate")]
     assert len(letters) >= len(WORD), len(letters)
     groups = tc._lettering_groups(result.regions)
@@ -169,11 +158,10 @@ def test_both_votes_refuse_the_word_at_80mm_and_off_it_keeps_no_house(refused_of
     assert all(r.shape_id in ids for r in letters)
     assert tc._cluster_house_angle_deg(groups[0], fourfold=True) is None
     assert tc._cluster_house_angle_deg(groups[0], fourfold=True, from_line=False) is None
-    assert all("satin_angle_deg" not in r.meta for r in groups[0])
 
 
-def test_on_the_refused_word_takes_one_cross_along_its_line_of_text(refused_word):
-    result = _run(refused_word, 80.2, **PRE_ANCHOR)                              # from_line at its default, ON
+def test_the_refused_word_takes_one_cross_along_its_line_of_text(refused_word):
+    result = _run(refused_word, 80.2)
     group = tc._lettering_groups(result.regions)[0]
     letters = [r for r in result.regions if r.meta.get("text_candidate")]
     angles = [r.meta.get("satin_angle_deg") for r in group]
@@ -187,17 +175,8 @@ def test_on_the_refused_word_takes_one_cross_along_its_line_of_text(refused_word
     assert all(r.meta.get("fill_angle_deg") == angles[0] for r in group)
 
 
-def test_a_word_a_vote_accepts_is_untouched_by_the_flag(accepted_word):
-    off = _letters(accepted_word, 127.4, satin_house_from_line=False, **PRE_ANCHOR)
-    on = _letters(accepted_word, 127.4, **PRE_ANCHOR)
-    a_off = sorted(r.meta.get("satin_angle_deg") for r in off)
-    a_on = sorted(r.meta.get("satin_angle_deg") for r in on)
-    assert a_off and a_off[0] is not None                        # the doubled-angle vote passes here
-    assert a_on == a_off
-
-
-def test_a_group_with_no_line_of_text_still_fails_open(refused_off):
-    group = tc._lettering_groups(refused_off.regions)[0]
+def test_a_group_with_no_line_of_text_still_fails_open(refused_run):
+    group = tc._lettering_groups(refused_run.regions)[0]
     # Two letters make no line by `_line_of_text_deg`'s own rule only when
     # they do not spread; a single member never does.
     assert tc._line_of_text_deg(group[:1]) is None

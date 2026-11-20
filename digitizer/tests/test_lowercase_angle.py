@@ -455,11 +455,10 @@ def _md5(plan) -> str:
 
 @pytest.fixture(scope="module")
 def word():
-    # The small stem and the scoped dot rung (ON 2026-10-20, Kent) re-walk
-    # the e beside the i, which moves its one 45-degree fold; the fold-cut
-    # arms were measured without them (conftest.PRE_FLIP).
+    # The small stem (ON 2026-10-20, Kent) re-walks the e beside the i, which
+    # moves its one 45-degree fold; the fold-cut arms were measured without
+    # it (conftest.PRE_FLIP).
     kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False,
-              small_dot_rung=False, small_dot_rung_lettering=False,
               **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,     # nor with the 2026-10-23/24 flips
               **EDGE_WALK_2026_11_14_OFF,     # nor edge-walk (ON 2026-11-14): one more trim on the word
               **TEXT_GAPS_2026_11_15_OFF)     # nor the six 2026-11-15 text/gap flips
@@ -509,9 +508,11 @@ def test_on_moves_only_lowercase_and_cuts_its_folds(word):
     # 5 -> 0 of ~365 lowercase station crosses on Kent's box (#887 left 2,
     # the a's and the e's; #893 cut the a's, claude/lowercase-e-folds the e's)
     assert f_off >= 3 and f_on < f_off, (f_off, n_off, f_on, n_on)
-    # the e: one sewn cross past 45 deg OFF, at its bar's end; none ON
-    assert e_ids and folds(off, e_ids)[0] >= 1 and folds(on, e_ids)[0] == 0
-    assert on.stats.trims == off.stats.trims
+    # the e: one sewn cross past 45 deg OFF, at its bar's end; none ON. On the
+    # engine with the satin construction flags folded in (2026-11-19) the OFF
+    # arm no longer folds the e (0 past 45 deg), so only the ON side is pinned.
+    assert e_ids and folds(on, e_ids)[0] == 0
+    assert on.stats.trims <= off.stats.trims   # equal before the 2026-11-19 folds; 10 against 11 now
     assert math.isclose(on.stats.stitch_count, off.stats.stitch_count, rel_tol=0.03)
 
 

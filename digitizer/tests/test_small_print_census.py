@@ -73,9 +73,12 @@ def test_the_synthetic_60wt_off_row_at_three_millimetres(monkeypatch):
     m, _ = census.cell(small_print.synthetic_text(), ref, 3.0, 60, False)
     assert (m["thread_wt"], m["floor"]) == (60, False)
     assert m["cap_mm"] == pytest.approx(3.0, abs=0.05)
-    assert m["stitches"] == pytest.approx(532, abs=40)
+    # stitches and dust re-pinned 2026-11-19 on the engine with the B1 satin
+    # flags folded in (532 / 0.100 before them: the small-solid and rescue
+    # constructions that are always on now sew this row's marks differently)
+    assert m["stitches"] == pytest.approx(389, abs=40)
     assert m["counters"] == 10 and 7 <= m["counters_shut"] <= 9
     assert m["counter_open"] == pytest.approx(0.34, abs=0.06)
-    assert m["dust"] == pytest.approx(0.100, abs=0.02)
+    assert m["dust"] == pytest.approx(0.046, abs=0.02)
     assert m["col_min_mm"] == pytest.approx(0.64, abs=0.05)
     assert m["cross_min_mm"] >= 0.45

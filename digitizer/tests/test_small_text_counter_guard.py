@@ -250,9 +250,14 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # cap. So at 3 mm this file's "the default is the switch" is now vacuous --
 # the switch is inert there -- and the cell pins the door's admission
 # instead. 1.55 and 2.5 mm (restored either way, under the cap) did not move.
+# The 2.5 and 3 mm cells were re-pinned 2026-11-19 on the engine with the B1 satin
+# flags folded in (short-column underlay, small solids, the rescue, ... are always
+# on now): 2.5 mm `1ad15a6e07` / `ceb3c8109d` -> `c56aa3aa7d` / `7a1175b71f`, 3 mm
+# `5da6cf3d84` -> `67077d073b`. The 1.55 mm cell did not move. The switch relation
+# each test pins (OFF arm vs the unguarded arm, the default one of them) is unchanged.
 MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "db84d85ef4"},
-       2.5: {"off": "1ad15a6e07", "unguarded": "ceb3c8109d"},
-       3: {"off": "5da6cf3d84", "unguarded": "5da6cf3d84"}}
+       2.5: {"off": "c56aa3aa7d", "unguarded": "7a1175b71f"},
+       3: {"off": "67077d073b", "unguarded": "67077d073b"}}
 
 
 def _md5(cap, **kw):

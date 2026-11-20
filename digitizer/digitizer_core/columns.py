@@ -641,7 +641,7 @@ def is_thin_stem(poly, min_long_mm: float,
         and long_side / short_side >= STEM_MIN_ASPECT
 
 
-# `cfg.fine_bars_satin` (built OFF 2026-10-25): a free-standing thin INK bar
+# `fine_bars_satin (folded in)` (built OFF 2026-10-25): a free-standing thin INK bar
 # under the area floor. The pro satins every such bar, at its drawn width
 # plus his ordinary pull, in 5 of 5 artworks that have them (To a T's speed
 # rules, the Precision Drone's AND DRONE rule, Hotel Fremont's separators,
@@ -831,7 +831,7 @@ def _satin_points(stations, split_above_mm: float, comb_thresholds, split_points
 def _centre_underlay(mids, short_columns: bool = False) -> list[tuple[float, float]] | None:
     """Centre walk down the span, inset at both ends, out and back.
 
-    `short_columns` (`cfg.satin_underlay_short_columns`, built OFF
+    `short_columns` (`satin_underlay_short_columns (folded in)`, built OFF
     2026-10-22): a span that holds one stitch (`machine.MIN_STITCH_MM`)
     gets its walk, the end inset giving way first -- the pro runs a centre
     walk under his serif blocks and 1.5 mm bars (Fremont's H at 92.5 mm
@@ -3373,7 +3373,7 @@ def lettering_columns_shape(poly: Polygon, shape_id: str, *, trim_at_mm: float,
                   **({"square_ends": True} if square_ends else {}),
                   **({"inside_connectors": True} if inside_connectors else {}),
                   **({"thin_floor": True} if small_bold else {}),
-                  # `cfg.satin_underlay_short_columns`: a walk under any span that holds a stitch
+                  # `satin_underlay_short_columns (folded in)`: a walk under any span that holds a stitch
                   **({"short_columns": True} if short_columns else {}),
                   # `cfg.lettering_columns_inside_stagger`: the pro's inside at a pivot
                   **({"inside_stagger": True} if inside_stagger else {}),

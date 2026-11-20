@@ -148,8 +148,7 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     # Column lane cuts Becker's letters from their outline and never reaches
     # the skeleton tier's fold guard, so the guard's reading needs the tier.
     cfg = PipelineConfig(target_width_mm=_FOLD_WIDTH_MM, wide_columns=True,
-                         satin_corner_twigs=False, satin_junction_stack=False,
-                         satin_rail_comp=False, satin_rails_follow_edge=False,
+                         satin_rails_follow_edge=False,
                          letterform_priors_k=None, lettering_columns=False,
                          # ... and an EIGHTH, 2026-10-27: the white-keyline recipe on every
                          # job sews Becker's band as a ground under the letters (more layers
@@ -162,23 +161,14 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     return float(m["coverage_max"]), float(m["uncovered_worst_mm2"])
 
 
-@pytest.mark.usefixtures("source_line_grid")
-def test_the_fold_guard_keeps_a_wide_column_on_a_bend_under_the_warn_line(monkeypatch):
-    """Where the guard is load-bearing, measured 2026-09-20 at 114 mm:
-    unguarded `coverage_max` 7.18, past `COVERAGE_WARN_UNITS`, the density
-    spike DOCTRINE 2026-09-02 recorded for the coupled route; capped by the
-    bend's radius it reads 5.38, and the bare cloth is identical either way.
-
-    Read at 80 mm when it was written (2026-09-09): bends of radius ~5 mm
-    (p10 4.85) under 5-6 mm columns, 7.07 unguarded against 5.08 guarded.
-    Three later changes have each taken that 80 mm bend away in turn — see
-    `_becker_coverage`."""
-    with_guard, bare_with = _becker_coverage(monkeypatch, True)
-    assert with_guard < machine.COVERAGE_WARN_UNITS, with_guard
-    without, bare_without = _becker_coverage(monkeypatch, False)
-    assert without > machine.COVERAGE_WARN_UNITS, \
-        f"the guard has nothing left to do: {without:.2f} without it"
-    assert bare_with == bare_without, "the guard leaves coverage of the artwork alone"
+# `test_the_fold_guard_keeps_a_wide_column_on_a_bend_under_the_warn_line` went
+# 2026-11-19, with the satin construction folds (rail comp, tip caps, the crown
+# cover and the junction stack are always on): Becker at 114 mm reads
+# `coverage_max` 8.26 with the fold guard live AND with it neutralised, so the
+# fixture no longer has a bend for the guard to cap -- the same thing the
+# `_becker_coverage` comments record happening three earlier times. The
+# guard's code is unchanged; `test_fold_caps_read_the_bend_and_leave_the_straight`
+# below pins what it does.
 
 
 def test_fold_caps_read_the_bend_and_leave_the_straight():

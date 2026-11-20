@@ -46,7 +46,7 @@ def _scene() -> list[RegionMask]:
 
 
 def _cfg() -> PipelineConfig:
-    return PipelineConfig(keep_thin_strokes=False, small_dot_rung=False)
+    return PipelineConfig(keep_thin_strokes=False)
 
 
 def test_off_the_sub_floor_stroke_is_absorbed():

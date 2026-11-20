@@ -364,7 +364,7 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float,
     """-> (width ceiling, per-stroke rung, fold guard) for THIS region: the
     design's under `machine.satin_ceiling_mm` for every shape, and no
     ceiling at all -- the per-stroke rung on, the fold guard on -- for a
-    text-cluster member under `cfg.satin_lettering_split` (plan step 4,
+    text-cluster member (`satin_lettering_split`, folded in; plan step 4,
     2026-09-19: split, never fill, for lettering). One helper, so the
     borders-last predicate, the classifier call and the emitter agree on
     what a letter is admitted at. `design_class` (given by the sites that
@@ -372,7 +372,7 @@ def _satin_ceiling_for(region, cfg: PipelineConfig, satin_max_mm: float,
     solid member the ordinary ceiling; None, or the flag off, is as before."""
     if design_class is not None and _ribbon_handback(region, cfg, satin_max_mm, design_class):
         return satin_max_mm, cfg.satin_per_stroke, bool(cfg.wide_columns)
-    if cfg.satin_lettering_split and is_text(region, cfg):
+    if is_text(region, cfg):
         return math.inf, True, True
     if cfg.monoline_script_satin and monoline_stroke(region, cfg, satin_max_mm):
         return math.inf, True, True     # `monoline.py`: a script stroke, split never fill
@@ -612,7 +612,7 @@ def _sews_satin(region, cfg: PipelineConfig, satin_max_mm: float,
     NOT brought along: it still calls `is_satin_candidate` with neither flag
     and without `_satin_ceiling_for`'s lettering-split ceiling. Left rather
     than missed, because it is gated one level deeper — `resolve_overlaps`
-    only calls it when `cfg.directional_comp` or `cfg.satin_rail_comp` is on,
+    only calls it when `cfg.directional_comp` or `satin_rail_comp` (now always) is on,
     both default OFF, so it takes TWO flips to reach, not one. Its consumers
     are different too (the axis a shape is compensated along, and
     `PlannedRegion.satin_tier`, which decides rail comp). Kent's call.
@@ -3348,7 +3348,7 @@ def sequence(
     border_iso_max = (cfg.border_abrupt_raggedness
                       if cfg.border_abrupt_raggedness is not None
                       else machine.BORDER_ABRUPT_RAGGEDNESS)
-    rescue = cfg.small_shape_rescue
+    rescue = True        # `small_shape_rescue`, folded in
     # `cfg.lettering_columns_small_stem` (default ON, 2026-10-20): a lettering stem
     # under the area floor goes to the Column lane, not the run tier. Off,
     # `routes_to_run` below is today's, branch for branch. It also needs the
@@ -3386,14 +3386,14 @@ def sequence(
     # exists so a towel's pull cannot flip a tier, and that stays true of
     # everything but this population); with the flag off nothing carries the
     # tag, so the ladder is byte-identical.
-    # `cfg.fine_bars_satin` (built OFF, 2026-10-25): a free-standing thin
+    # `fine_bars_satin (folded in)` (built OFF, 2026-10-25): a free-standing thin
     # INK bar under the area floor (`columns.is_fine_bar`) skips the run
     # rescue and takes the ordinary ladder to the satin tier, as the pro
     # sews it; `stitch_one` falls back to today's ring if no satin comes
     # out. Both ON, `small_solids_satin` tries first and keeps every shape
     # it sews. Off, the set is empty and `routes_to_run` is today's.
     fine_bars: set[str] = set()
-    if cfg.fine_bars_satin and cfg.satin and rescue:
+    if cfg.satin and rescue:
         _sewn = [_pr.region for _pr in planned]
         for _pr in planned:
             if (str(_pr.region.meta.get("tier", "auto")).lower() == "auto"
@@ -4003,13 +4003,13 @@ def sequence(
                     report["as_run"] = 1
                     report["keyline_bean"] = 1
                     return runs, report, False
-            # `cfg.fine_bars_satin`: a fine bar goes down the ladder below
+            # `fine_bars_satin (folded in)`: a fine bar goes down the ladder below
             # ONCE (`fine_bar_trying`), the hairline tier skipped; satin out
             # of it is the bar, anything else becomes today's ring exactly
             # -- the run rung's own call -- so no mark is lost.
             if tier == "auto" and p.shape_id in fine_bars and p.shape_id not in fine_bar_trying:
-                if cfg.small_solids_satin and is_small_solid(p.region.polygon, profile_for(p).width_mm):
-                    # both ON: `small_solids_satin` first, as its rung would
+                if is_small_solid(p.region.polygon, profile_for(p).width_mm):
+                    # `small_solids_satin` first, as its rung would
                     runs, report = small_solid_satin(
                         p.region.polygon, p.shape_id, spacing_mm=satin_spacing_for(p),
                         max_width_mm=_satin_ceiling_for(p.region, cfg, satin_max)[0],
@@ -4028,9 +4028,7 @@ def sequence(
                 ring, ring_rep = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                              entry=entry, trim_at_mm=trim_at,
                                              soft_vertices=cfg.run_soft_vertices,
-                                             **({"dot_rung": True} if cfg.small_dot_rung and (
-                                                 not cfg.small_dot_rung_lettering
-                                                 or p.region.meta.get("dot_rung")) else {}))
+                                             **({"dot_rung": True} if p.region.meta.get("dot_rung") else {}))
                 if ring_rep["empty"]:
                     return runs, report, filled
                 ring_rep["as_run"] = 1
@@ -4108,14 +4106,14 @@ def sequence(
                     small_letter_ids.add(p.shape_id)
                     return runs, report, False
             outline_tried = False
-            # `cfg.small_solids_satin` (built OFF, 2026-10-20): a small SOLID
+            # `small_solids_satin` (folded in, 2026-10-20): a small SOLID
             # -- no hole, not lettering, its inside left bare by a ring --
             # sews one satin column across its own width instead. A column
-            # that comes out degenerate keeps the ring below. Off, unread.
+            # that comes out degenerate keeps the ring below.
             # A shape `cfg.group_consistent_tier` moved ONTO the run tier sews
             # the run its line-mates sew: read as a small solid it came out
             # one satin column across a whole letter (K-Line's W and K).
-            if (cfg.small_solids_satin and cfg.satin and tier == "auto"
+            if (cfg.satin and tier == "auto"
                     and routes_to_run(p, tier)
                     and not group_small.get(p.shape_id, False)
                     and not is_lettering(p.region, cfg)
@@ -4134,18 +4132,14 @@ def sequence(
             # ring and the fill's rows keep their thread off the counter,
             # and nothing the tier routes inside the shape crosses it. Off,
             # the polygon handed over is the same object as before.
-            # `cfg.small_dot_rung` (default ON, 2026-10-20): an outline under the loop
-            # floor (an i dot) sews as a tack ring. Off, the call is
-            # today's, argument for argument. Scoped
-            # (`cfg.small_dot_rung_lettering`), only a dot stage 3 admitted
-            # over a stem.
+            # `small_dot_rung` + `small_dot_rung_lettering` (folded in): an outline under
+            # the loop floor (an i dot) sews as a tack ring -- only a dot stage 3
+            # admitted over a stem.
             if routes_to_run(p, tier):
                 runs, report = run_outline(small_print_cut(p, p.region.polygon, machine.BEAN_STITCH_MM), p.shape_id,
                                            entry=entry, trim_at_mm=trim_at,
                                            soft_vertices=cfg.run_soft_vertices,
-                                           **({"dot_rung": True} if cfg.small_dot_rung and (
-                                               not cfg.small_dot_rung_lettering
-                                               or p.region.meta.get("dot_rung")) else {}))
+                                           **({"dot_rung": True} if p.region.meta.get("dot_rung") else {}))
                 if not report["empty"]:
                     report["as_run"] = 1
                     return runs, report, False
@@ -4334,7 +4328,7 @@ def sequence(
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
                     underlay_style=satin_underlay, start_near=entry,
-                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    end_near=exit_near,
                     inside_connectors=cfg.lettering_columns_inside_connectors,
                     inside_stagger=cfg.lettering_columns_inside_stagger,
                     ink=ink_source, drawn_width=cfg.script_strokes_drawn_width,
@@ -4371,7 +4365,7 @@ def sequence(
                     st_runs, st_report = star_satin(
                         p.region.polygon, _star, p.shape_id, spacing_mm=satin_spacing_for(p),
                         start_near=entry,
-                        end_near=exit_near if cfg.satin_exit_toward_next else None)
+                        end_near=exit_near)
                     if not st_report["empty"]:
                         return st_runs, st_report, False
             if (tier == "auto" and cfg.lettering_columns and cfg.satin
@@ -4407,12 +4401,11 @@ def sequence(
                     _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
-                    # `cfg.satin_underlay_short_columns` (OFF): a small letter
+                    # `satin_underlay_short_columns` (folded in): a small letter
                     # keeps the fabric's centre run, as the pro's do
-                    underlay_style=("none" if _small and not cfg.satin_underlay_short_columns
-                                    else satin_underlay),
+                    underlay_style=satin_underlay,
                     start_near=entry,
-                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    end_near=exit_near,
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
                     **({"counter_holes": _cored} if _cored else {}),
                     # `cfg.lettering_columns_fold_cuts` (default ON, Kent 2026-10-20): off,
@@ -4450,9 +4443,9 @@ def sequence(
                     # and kept when the letter becomes whole
                     **({"dropped_hairline": True}
                        if cfg.lettering_columns_sew_dropped_hairline else {}),
-                    # `cfg.satin_underlay_short_columns` (default OFF, 2026-10-22):
+                    # `satin_underlay_short_columns` (folded in, 2026-10-22):
                     # the lane's centre walk under any span that holds a stitch
-                    **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
+                    short_columns=True,
                     # `cfg.pull_comp_by_stroke` (default OFF, 2026-10-22): the hat,
                     # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
                     **({"pull_by_stroke": True}
@@ -4651,17 +4644,11 @@ def sequence(
                     # `cfg.group_consistent_fill_angle`: the house its group
                     # of like shapes shares (behind every angle above)
                     satin_angle_deg = group_satin[p.shape_id]
-                # Law 50's first rung (machine.SATIN_UNDERLAY_MIN_EXTENT_MM,
-                # 2026-09-03): small lettering sews bare. Judged on the
-                # ARTWORK extent, the same reason the satin/fill call is —
-                # a heavy fabric's compensation must not flip it.
-                ax0, ay0, ax1, ay1 = p.region.polygon.bounds
-                small = max(ax1 - ax0, ay1 - ay0) < machine.SATIN_UNDERLAY_MIN_EXTENT_MM
-                # `cfg.satin_rail_comp` (2026-09-09): stage 5 left this shape
+                # `satin_rail_comp` (folded in, 2026-09-09): stage 5 left this shape
                 # on its artwork polygon, so the fabric's pull lands on the
                 # rails here -- and the end cutback owes only the push, since
                 # nothing lengthened the column at its caps.
-                on_rails = (bool(cfg.satin_rail_comp) and p.satin_tier
+                on_rails = (p.satin_tier
                             and not widened_lettering(p.region)
                             and fabric.pull_comp_mm > 0)
                 rail_comp_mm = fabric.pull_comp_mm if on_rails else 0.0
@@ -4701,12 +4688,11 @@ def sequence(
                         p.polygon, p.shape_id, trim_at_mm=trim_at,
                         spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
                         pull_mm=rail_comp_mm, pull_floor_mm=cfg.min_detail_mm,
-                        underlay_style=("none" if small and not cfg.satin_underlay_short_columns
-                                        else satin_underlay),
+                        underlay_style=satin_underlay,
                         start_near=entry,
-                        end_near=exit_near if cfg.satin_exit_toward_next else None,
+                        end_near=exit_near,
                         rail_axis=True,
-                        **({"short_columns": True} if cfg.satin_underlay_short_columns else {}),
+                        short_columns=True,
                         **({"rail_held": (stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
                                           else seam_ground(p) if cfg.satin_seam_hold else None)}
                            if _rect else {}))
@@ -4717,7 +4703,7 @@ def sequence(
                         s_report["rectangle_bar" if _rect else "straight_slot"] = 1
                         if _rect and _rect_lock:
                             _lock_ids.add(p.shape_id + stitches.COLUMN_LOCK_TAG)
-                        _ul_style = "none" if small and not cfg.satin_underlay_short_columns else satin_underlay
+                        _ul_style = satin_underlay
                         _sat = [i for i, r in enumerate(s_runs) if r.kind == stitches.SATIN]
                         if _rect and _sat and _ul_style != "none":
                             # the skeleton tier's zigzag where it would lay
@@ -4739,10 +4725,9 @@ def sequence(
                     _impl=satin_shape,
                     **({"counter_holes": _cored_s,
                         "counter_clear_mm": profile_for(p).width_mm / 2.0} if _cored_s else {}),
-                    # `cfg.satin_underlay_short_columns` (OFF): a small shape
+                    # `satin_underlay_short_columns` (folded in): a small shape
                     # keeps the fabric's satin underlay, as the pro's do
-                    underlay_style=("none" if small and not cfg.satin_underlay_short_columns
-                                    else satin_underlay),
+                    underlay_style=satin_underlay,
                     trim_at_mm=trim_at,
                     start_near=entry,
                     split_above_mm=split_above,
@@ -4766,18 +4751,18 @@ def sequence(
                                      and bool(p.region.meta.get("text_candidate")) and not handed_back),
                     slab_serifs=cfg.satin_slab_serifs,
                     patch_junctions=cfg.satin_patch_junctions,
-                    crown_cover=cfg.satin_crown_cover,
+                    crown_cover=True,
                     polygon_axis=cfg.satin_polygon_axis,
                     stroke_order=cfg.satin_stroke_order,
-                    corner_twigs=cfg.satin_corner_twigs,
-                    junction_stack=cfg.satin_junction_stack,
-                    end_near=exit_near if cfg.satin_exit_toward_next else None,
+                    corner_twigs=True,
+                    junction_stack=True,
+                    end_near=exit_near,
                     underlay_on_column=cfg.satin_underlay_on_column,
-                    short_column_underlay=cfg.satin_underlay_short_columns,
+                    short_column_underlay=True,
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     hop_under_column=cfg.satin_hop_under_column,
                     cap_recentre=cfg.satin_cap_recentre,
-                    tip_caps=cfg.satin_tip_caps,
+                    tip_caps=True,
                     tip_corner_gate=cfg.satin_tip_corner_gate,
                     thin_arm_stop=cfg.satin_thin_arm_stop,
                     tip_floor_cross=cfg.satin_tip_floor_cross,
@@ -4811,7 +4796,7 @@ def sequence(
                         report["underlay_cleared"] = clear_finished_underlay(runs, trim_at)
                         report["buried_hops"] = bury_hops(runs, trim_at)
                     return runs, report, False
-            # `cfg.compact_solids_satin` (built OFF, 2026-10-22): a solid the
+            # `compact_solids_satin` (folded in, 2026-10-22): a solid the
             # classifier refused for ASPECT only -- a blob whose width fits
             # the ceiling -- sews one satin column across itself instead of
             # tatami rows (which the bean edge cap then rings: Proseal's
@@ -4821,8 +4806,8 @@ def sequence(
             # (the satin tier sews `p.polygon` too), so the column reaches
             # the silhouette the edge cap samples; on the artwork polygon it
             # stopped a pull width short of it and the cap ringed it anyway.
-            # A column that comes out empty keeps the fill below. Off, unread.
-            if (cfg.compact_solids_satin and cfg.satin and tier == "auto"
+            # A column that comes out empty keeps the fill below.
+            if (cfg.satin and tier == "auto"
                     and ribbon is not None and not ribbon.satin
                     and ribbon.reason == "aspect" and not rides_ramp
                     and by_size_width is None
@@ -5423,7 +5408,7 @@ def sequence(
             # every seam it shares — its own border block must not yield to
             # itself, and nothing sewn after it may yield to it either.
             border_later.pop(p.shape_id, None)
-            # `cfg.satin_exit_toward_next`: where the needle goes next -- the
+            # `satin_exit_toward_next` (folded in): where the needle goes next -- the
             # nearest remaining shape by polygon distance, the pick rule's
             # own answer once the needle is there -- handed to the satin
             # emitter so its walk can end facing it. Read only; the pick
@@ -5436,7 +5421,7 @@ def sequence(
             # shape instead sent a letter's exit toward a shape that sews
             # later. Lane-ON only; `off_rank` is None otherwise.
             rest = [i for i in ranked if i != pick]
-            if cfg.satin_exit_toward_next and rest:
+            if rest:
                 nxt = min(rest, key=lambda i: off_rank[group[i].shape_id])
                 span = off_span.get(group[nxt].shape_id)
                 if span is not None and not cap_order:
@@ -5449,7 +5434,7 @@ def sequence(
                             + (off_rank[group[i].shape_id],))
                 q = nearest_points(p.polygon, group[nxt].polygon)[1]
                 exit_near = (float(q.x), float(q.y))
-            elif cfg.satin_exit_toward_next:
+            else:
                 cands = [i for i in pool if i != pick] or list(remaining)
                 if cands:
                     nxt = min(cands, key=lambda i: (

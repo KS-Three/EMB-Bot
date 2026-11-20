@@ -59,7 +59,7 @@ def test_the_split_lettering_fixture_raises_no_density_finding():
     `satin_lettering_split` sews its letters as split satin at a 0.43 mm
     rail pitch and used to read 1.09."""
     cfg = PipelineConfig(target_width_mm=127.4, garment_id="left_chest",
-                         max_colors=6, satin_lettering_split=True)
+                         max_colors=6)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)
