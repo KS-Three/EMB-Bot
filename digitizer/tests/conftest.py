@@ -25,6 +25,7 @@ from pathlib import Path
 import pytest
 
 from digitizer_core import PipelineConfig, run_stages
+from digitizer_core.config import RETIRED_FIELDS
 
 # CI sharding (DIGITIZER_SHARD=k/n); a no-op when unset. See tests/_ci_shard.py.
 from tests._ci_shard import pytest_collection_modifyitems  # noqa: F401
@@ -468,9 +469,13 @@ def engine_snapshot(name: str) -> dict:
     seven `SMALL_TEXT_TRUE_SIZE` fields are stored as the None they are
     DECLARED as, which `PipelineConfig.__post_init__` fills while
     `small_text_true_size` is True; `asdict()` would store the filled values and
-    a later `setattr(small_text_true_size=False)` could no longer clear them."""
+    a later `setattr(small_text_true_size=False)` could no longer clear them.
+    Keys in `RETIRED_FIELDS` (fields flag consolidation removed) are dropped:
+    the snapshot file still names them, and is never edited."""
     out = {}
     for key, value in read_engine_snapshot(name).items():
+        if key in RETIRED_FIELDS:
+            continue
         if key in _ENGINE_TUPLE_FIELDS:
             value = tuple(value)
         elif isinstance(value, (list, dict)) and not value:

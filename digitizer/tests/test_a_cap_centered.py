@@ -21,7 +21,7 @@ from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig, pipeline
 from digitizer_core import outline_cut as oc
-from tests.test_column_apex_cut import LANE, LETTERS
+from tests._apex_letters import LANE, LETTERS
 
 R102 = Path(__file__).resolve().parent.parent / "testdata" / "marine102_R_letter.json"
 

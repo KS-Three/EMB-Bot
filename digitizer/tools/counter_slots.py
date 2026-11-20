@@ -1,7 +1,7 @@
 """Counters and slots per letter: artwork against the stitched output.
 
 Built 2026-10-11 for Waiting-on-Kent item 38 (ship `coverage_edges` with
-the Column lane, or not). `docs/coverage-edges-under-columns-2026-10-11.md`
+the Column lane, or not; Kent said no 2026-10-12 and the flag was deleted). `docs/coverage-edges-under-columns-2026-10-11.md`
 saw, in pictures only, Becker's A lose its counter and the notch between its
 legs at 50 mm, and the E's lower slot narrow at both sizes. PR #818 asked
 for an instrument before any flip. This is it. It flips nothing.
@@ -56,13 +56,13 @@ A feature the artwork already draws under one thread is reported, marked
 Usage, from `digitizer/` with the digitizer venv::
 
     python -m tools.counter_slots --fixture becker --widths 50,80 \
-        --arms shipped,coverage_edges,columns_words,coverage_columns \
+        --arms shipped,columns_words \
         --out OUTDIR [--cache DIR] [--crops A,E]
 
 Writes OUTDIR/<fixture>.json and OUTDIR/<fixture>.md (the table). With
 `--assert-inert ARM_A,ARM_B` it exits 1 unless the two arms produce the
-same stitches and the same table (the opaque-file control: `coverage_edges`
-reads alpha, so it must change nothing on an opaque file).
+same stitches and the same table. (`coverage_edges`, the flag this was built
+to judge, was deleted 2026-11-19: docs/flag-history/tier-d.md.)
 """
 from __future__ import annotations
 
@@ -114,10 +114,7 @@ TEXT_KEYS = ("text_candidate", "lettering_group", "word_id")
 
 ARMS = {
     "shipped": {},
-    "coverage_edges": {"coverage_edges": True},
     "columns_words": {"lettering_columns": True, "lettering_words": True},
-    "coverage_columns": {"coverage_edges": True, "lettering_columns": True,
-                         "lettering_words": True},
 }
 
 
@@ -711,7 +708,7 @@ def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n")[0])
     ap.add_argument("--fixture", required=True, choices=sorted(FIXTURES))
     ap.add_argument("--widths", default="80")
-    ap.add_argument("--arms", default="shipped,coverage_edges")
+    ap.add_argument("--arms", default="shipped,columns_words")
     ap.add_argument("--out", type=Path, required=True)
     ap.add_argument("--cache", type=Path)
     ap.add_argument("--crops", default="", help="letter names, e.g. A,E")

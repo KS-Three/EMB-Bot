@@ -318,13 +318,6 @@ FLAGS: dict[str, dict] = {
                 "fields_fill and the keyline stay OFF in both; rembg's timeout pinned at 900 s in "
                 "both (route checked per cell)."},
     # ---- wave 3 sheet (2026-10-26): every flag built OFF since 10-24 not already above
-    "lettering_columns_apex_cut": {
-        "sets": {"lettering_columns_apex_cut": True},
-        "fixtures": ["becker_hat_large", "mfab_hat", "proseal_hat"],
-        "metric": "sub_1mm", "about": "stitches under 1 mm (whole design)", "pr": 1088,
-        "note": "An acute tip -- the M's V, a W's apexes, a pointed A or N -- sews as ONE column "
-                "cut off its strokes along the cross, as the pro's does (#1088; #1090 skips the slot "
-                "rule for a letter with such a tip: MARINE's M at 95.7 mm). Corner fold is ON on main."},
     "text_cluster_part_touching": {
         "sets": {"text_cluster_part_touching": True},
         "fixtures": ["mfab_hat", "mfab_lc"],
@@ -548,7 +541,7 @@ FLAGS: dict[str, dict] = {
 #: (`silhouette_underfill_rim`, `keyline_fold_slivers`, `skip_covered_shapes` and
 #: `absorb_fragments` left it 2026-10-27: ON with the white-keyline recipe on every
 #: job, Kent "Every job (Recommended)"; their rows are kept)
-WAVE3 = ["lettering_columns_apex_cut", "monoline_script_satin", "fill_section_travel"]
+WAVE3 = ["monoline_script_satin", "fill_section_travel"]   # `lettering_columns_apex_cut` deleted 2026-11-19
 
 #: The wave-5 sheet (2026-10-27): every layout flag still waiting on Kent, on main
 #: after #1112 (white and the bay mouth ON), #1121 (fine bars and the outline pivot
@@ -575,8 +568,6 @@ W5: dict[str, dict] = {
                            "pivot\"); flipped ON by #1121. Wave 3's cells only"},
     "fine_bars_satin": {"ask": False, "label": "Kent ruled ON 2026-10-26 (\"Fine bars as satin\"); "
                         "flipped ON by #1121. Wave 3's cells only"},
-    "lettering_columns_apex_cut": {"ask": False, "label": "existing cells only: claude/apex-walk-w5 "
-                                   "renders this letter set, and Kent rules from its sheet"},
     "monoline_script_satin": {"ask": False, "label": "HELD by Kent 2026-10-24 (#1070); with "
                               "script_strokes ON (#1136) Tires' script word never reaches it"},
     "silhouette_underfill_rim": {"ask": False, "label": "ON on MFab via #1115; elsewhere waits on "

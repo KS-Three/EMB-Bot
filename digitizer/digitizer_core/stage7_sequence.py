@@ -2861,11 +2861,9 @@ def _fill_angle_for(p, cfg: PipelineConfig, group: dict | None = None) -> float 
         off = float(p.region.meta["design_angle_deg"])
     else:
         off = p.stitch_angle_deg
-    # `cfg.extra["fill_angle_pro_offset"]` / `["fill_angle_pro_slant"]`
-    # (built OFF): the pro's fill angle, behind only the review's own angle
-    # and the global one. The slant rule prices its candidates against `off`,
-    # the angle this shape sews with both keys off.
-    pro = pro_offset_fill_angle(cfg, p.region.shape_id, poly=p.polygon, base_deg=off)
+    # `cfg.extra["fill_angle_pro_offset"]` (built OFF): the pro's fill angle,
+    # behind only the review's own angle and the global one.
+    pro = pro_offset_fill_angle(cfg, p.region.shape_id)
     if pro is not None:
         return pro
     if group and (off is None or (getattr(p, "angle_pinned", False)

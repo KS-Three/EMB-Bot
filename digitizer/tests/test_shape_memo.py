@@ -117,11 +117,11 @@ def test_an_ambient_contextvar_is_part_of_the_key():
     from digitizer_core import outline_cut
     with shape_memo.scope():
         stitch_shape(PLATE, "s1", **FILL_KW)
-        token = outline_cut._APEX_CUT.set(True)
+        token = outline_cut._APEX_PRO.set(True)
         try:
             stitch_shape(PLATE, "s1", **FILL_KW)
         finally:
-            outline_cut._APEX_CUT.reset(token)
+            outline_cut._APEX_PRO.reset(token)
         stitch_shape(PLATE, "s1", **FILL_KW)
     assert shape_memo.stats == {"hit": 1, "miss": 2, "bypass": 0}
 
