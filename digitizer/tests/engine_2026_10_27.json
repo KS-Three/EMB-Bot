@@ -422,6 +422,10 @@
  "lettering_columns_block_lean": false,
  "lettering_columns_absorb_unsewn": false,
  "seam_hold_skips_outline_bodies": false,
+ "satin_overlap_run": false,
+ "lettering_columns_through_last": false,
+ "lettering_columns_e_top_arm": false,
+ "lettering_columns_top_slab": false,
  "puff": false,
  "puff_mode": "all"
 }

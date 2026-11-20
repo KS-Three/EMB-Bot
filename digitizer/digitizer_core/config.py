@@ -3776,11 +3776,14 @@ class PipelineConfig:
     # dip. The professional's file sews the stem once and butts it to the
     # border. With this on each loop's crosses stop at the line the two holes
     # share (`stage6_border._split_cross`), so the columns butt. A cross the
-    # cut would leave under the satin floor keeps its length. Built OFF: the
-    # flip is Kent's, judged on the before / after pictures
-    # (`docs/renders/outline-loop-split-shared-2026-11-18/`). Off,
-    # byte-identical. Tests: `tests/test_outline_loop_split_shared.py`.
-    outline_loop_split_shared: bool = False
+    # cut would leave under the satin floor keeps its length. **ON since
+    # 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab". Evidence (review pack, 66 cells): 6 moved;
+    # Becker's B-E stem butts to its border on both sizes, the other 4 the same,
+    # +4 trims. False is the engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False (built OFF, pictures in
+    # `docs/renders/outline-loop-split-shared-2026-11-18/`). Tests:
+    # `tests/test_outline_loop_split_shared.py`.
+    outline_loop_split_shared: bool = True
     # `outline_one_band` (2026-11-18, prime grader / Kent 11-10 "the border around this logo
     # should be smooth"): an outline whose band is shared by two or more bodies and has stems
     # between them (BECKER) is sewn the way the professional's Becker file is -- each stem a
@@ -4237,6 +4240,34 @@ class PipelineConfig:
     # engine as it was; PRE_FLIP (SATIN_STARS_2026_11_19_OFF) pins it False.
     # Tests: `tests/test_satin_stars.py`.
     satin_stars: bool = True
+    # `satin_overlap_run` (built OFF 2026-11-19 as `cfg.extra["satin_overlap_run"]`, MFab top
+    # line, `column_overlap.overlap_run`): a satin stretch lying wholly on its own earlier
+    # satin is sewn as running stitch. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".
+    # Evidence (review pack, 66 cells): 30 moved, all the same to the eye, 1,527 fewer
+    # stitches, -1 trim. Promoted from `cfg.extra` to a field so the default can be ON.
+    # False is the engine as it was; `tests/conftest.py` PRE_FLIP (`FLIP_FOUR_2026_11_19_OFF`)
+    # and `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_satin_overlap_run.py`.
+    satin_overlap_run: bool = True
+    # `lettering_columns_through_last` (built OFF 2026-11-19 as
+    # `cfg.extra["lettering_columns_through_last"]`, Gaulke vs the pro, `columns._through_last_walk`):
+    # T/E junctions sewn whole. Promoted from `cfg.extra` to a field but **left OFF**
+    # (default False) in the 2026-11-19 four-flag flip: Kent ruled it ON ("satin_overlap_run
+    # (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"), but it is
+    # the one flag of the four that raises `test_chaining`'s benchmark bare-thread floor
+    # (enthusiast_logo 93 mm left chest, chain off: 4.28 -> 4.54 mm; the other four leave
+    # 4.28), one walk-in leg of the reordered letter S6ac679b7 lying 0.26 mm further on bare
+    # cloth (ROADMAP gate 3's instrument; "we are not going backwards"). Flip it once its walk
+    # buries that leg. Tests: `tests/test_through_last.py`.
+    lettering_columns_through_last: bool = False
+    # `lettering_columns_e_top_arm` + `lettering_columns_top_slab` (built OFF 2026-11-19 as
+    # `cfg.extra` keys, `outline_cut.e_top_scope` / `top_slab_scope`, #1689): the pro's E top
+    # band and sheared top slab. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".
+    # Evidence (review pack, 66 cells): 10 moved; Becker's E gets the pro's top band.
+    # Catches, shown and ruled ON: a hard seam across `fur_ramp`'s disc, and pizza's trims
+    # go 5 -> 7 and 6 -> 9. Promoted from `cfg.extra` to fields; False is the engine as it
+    # was, pinned in PRE_FLIP (`FLIP_FOUR_2026_11_19_OFF`) and `tests/engine_2026_10_27.json`.
+    lettering_columns_e_top_arm: bool = True
+    lettering_columns_top_slab: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick

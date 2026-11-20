@@ -160,6 +160,14 @@ def _cut_en(name: str, **scopes):
         return oc.letter_columns(_poly_en(name), 0.4, corner_fold=True, **LANE)
 
 
+def test_e_top_arm_and_top_slab_config_default_is_on_and_pre_flip_is_off():
+    # ON since 2026-11-19 (Kent 2026-11-19, shown the OFF | ON review pack: "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab")
+    from tests.conftest import PRE_FLIP
+    for k in ("lettering_columns_e_top_arm", "lettering_columns_top_slab"):
+        assert getattr(PipelineConfig(), k) is True
+        assert PRE_FLIP[k] is False
+
+
 def test_e_top_arm_and_top_slab_scopes_are_off_by_default_and_put_themselves_back():
     for var, scope in ((oc._E_TOP, "e_top"), (oc._TOP_SLAB, "top_slab")):
         assert var.get() is False

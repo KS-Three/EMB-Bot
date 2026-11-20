@@ -53,17 +53,20 @@ def test_apart_and_non_satin_untouched():
     assert n == 0 and out == [a, b, f]
 
 
-def test_off_is_the_default_and_unread():
+def test_config_default_is_on_and_pre_flip_is_off():
+    # ON since 2026-11-19 (Kent 2026-11-19, shown the OFF | ON review pack: "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab")
     from digitizer_core import PipelineConfig
-    assert not (PipelineConfig().extra or {}).get("satin_overlap_run")
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().satin_overlap_run is True
+    assert PRE_FLIP["satin_overlap_run"] is False
     src = (Path(__file__).resolve().parent.parent / "digitizer_core" / "stage7_sequence.py").read_text(encoding="utf-8")
-    assert '(cfg.extra or {}).get("satin_overlap_run")' in src
+    assert "cfg.satin_overlap_run" in src
 
 
 def test_mfab_hat_on_sews_fewer_stitches_and_keeps_the_trims():
     from tools import pro_pair as pp
     art = Path(__file__).resolve().parent.parent / "testdata" / "art" / "logo_mfab_hat.png"
-    off = pp.digitize(art, 104.9, "hat_front")
-    on = pp.digitize(art, 104.9, "hat_front", {"extra.satin_overlap_run": True})
+    off = pp.digitize(art, 104.9, "hat_front", {"satin_overlap_run": False})
+    on = pp.digitize(art, 104.9, "hat_front")
     assert on.plan.stats.stitch_count < off.plan.stats.stitch_count
     assert on.plan.stats.trims == off.plan.stats.trims
