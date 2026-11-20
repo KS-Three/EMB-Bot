@@ -204,6 +204,17 @@ def counter_floor_mm(base_mm: float, thread_wt: int) -> float:
     return float(base_mm) * 40.0 / float(thread_wt)
 
 
+# Fields removed by flag consolidation (docs/flag-audit-2026-11-19.md). A
+# caller that still passes one gets it ignored, never an error: the service
+# drops them from a request, and `tests/conftest.py:engine_snapshot` drops them
+# from the dated engine snapshots, which are never edited. One quoted name per
+# line, ALPHABETICAL, so concurrent fold PRs insert on different lines.
+# A name here must not also be a `PipelineConfig` field
+# (`tests/test_retired_fields.py`).
+RETIRED_FIELDS: frozenset[str] = frozenset({
+})
+
+
 @dataclass
 class PipelineConfig:
     # Physical target: the artwork's finished embroidered width. The px->mm
