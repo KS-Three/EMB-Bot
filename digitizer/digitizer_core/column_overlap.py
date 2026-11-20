@@ -1,4 +1,6 @@
-"""`cfg.extra["satin_overlap_run"]` (built OFF 2026-11-19, MFab top line).
+"""`cfg.satin_overlap_run` (built OFF 2026-11-19 as a `cfg.extra` key; ON since 2026-11-19,
+Kent's flip: "satin_overlap_run (Recommended), outline_loop_split_shared, through_last,
+e_top_arm + top_slab"; MFab top line).
 
 The Column lane sews a letter's columns one walk (component) at a time, and two
 walks can cover the SAME stretch of one stroke: MFab's F diagonal is sewn by the
@@ -24,7 +26,7 @@ import math
 from shapely.geometry import LineString
 from shapely.ops import unary_union
 
-from . import stitches
+from . import deadline, stitches
 
 HALF_MM = 0.2          # half a 0.4 mm laid thread (columns.satin_cover's default)
 MIN_STITCHES = 8       # ~3 mm of a 0.4 mm pitch: a junction's short lap stays
@@ -54,6 +56,9 @@ def overlap_run(runs: list, min_stitches: int = MIN_STITCHES) -> tuple[list, int
         run = runs[ri]
         if run.kind != stitches.SATIN or len(run.points) < 2:
             continue
+        # one big shape's runs cost ~2 s here once the cover grows (ON by default since
+        # 2026-11-19): a cancel must not wait that out (`test_cancel_seams_1113`)
+        deadline.check("stage 7 overlap run")
         P = run.points
         segs = [LineString([P[j], P[j + 1]]) for j in range(len(P) - 1)]
         if pieces:

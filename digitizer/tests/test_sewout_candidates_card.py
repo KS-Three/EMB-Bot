@@ -40,14 +40,18 @@ def card(tmp_path_factory):
 
     from digitizer_core import PipelineConfig
 
-    from .conftest import SATIN_RECTANGLES_2026_11_19_OFF, THIN_ARM_STOP_2026_11_17_OFF
+    from .conftest import (FLIP_FOUR_2026_11_19_OFF, SATIN_RECTANGLES_2026_11_19_OFF,
+                           THIN_ARM_STOP_2026_11_17_OFF)
 
     # ...and `satin_rectangles` (ON since 2026-11-19): the card's bars sew as
     # rectangles, 40wt 5,318 -> 5,025 (60wt 5,789 -> 5,555), past the +-3% band
+    # ...and the 2026-11-19 four (Kent: "satin_overlap_run (Recommended), outline_loop_split_shared,
+    # through_last, e_top_arm + top_slab"): 40wt reads 5,128 against 5,318 +- 3%
     out = tmp_path_factory.mktemp("cardv2")
     mp = pytest.MonkeyPatch()
     mp.setattr(v2, "PipelineConfig", partial(PipelineConfig, **THIN_ARM_STOP_2026_11_17_OFF,
-                                              **SATIN_RECTANGLES_2026_11_19_OFF))
+                                              **SATIN_RECTANGLES_2026_11_19_OFF,
+                                              **FLIP_FOUR_2026_11_19_OFF))
     try:
         table = v2.generate(out, None, quiet=True)
     finally:
