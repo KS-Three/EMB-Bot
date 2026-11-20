@@ -1316,6 +1316,39 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_thin_letters_after_ground.py`.
     thin_letters_after_ground: bool = True
+    # `underfill_keeps_thin_letters` (built OFF 2026-11-19 as a `cfg.extra`
+    # key; ON the same day, Kent's flip, shown ART | BEFORE | AFTER for the
+    # nine designs it moves of 91: "Flip ON now"). A thin letter
+    # (`thin_ink.THIN_LETTER_PULLS` x pull) in the holes of another colour's
+    # fill inside a silhouette ring never merges into the ring's under-fill
+    # when that ground's holes hold a kept letter of its thread
+    # (`silhouette_underfill._keep_thin`); and a dark-ink stroke's ground is
+    # another thread's when one covers it, else its own
+    # (`thin_ink.ink_after_ground(other_thread=)`). The Merchant Marine seal
+    # at 90 mm: the black keyline ring is its own under-fill, its 0.5-0.7 mm
+    # ring letters merged into it, and the white disc sewn on top closed
+    # them: "UNITED STATES MERCHANT MARINE" was gone (35,449 -> 36,761
+    # stitches, trims 149 -> 139). Marshals' field sews navy without strays;
+    # OPM's star points and eagle head sew white (half white in the art).
+    # Paired corpus not run. False is the engine as it was; PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_underfill_keeps_thin_letters.py`.
+    underfill_keeps_thin_letters: bool = True
+    # `dark_ink_line_one_lane` (built OFF 2026-11-19 as a `cfg.extra` key; ON
+    # the same day, Kent's flip, shown the seven designs it moves of 91: "Flip
+    # ON now"). A line of lettering (text cluster + thread) split between
+    # bean and satin sews in the lane its OWN median width names against
+    # `thin_ink.DARK_INK_BEAN_MAX_WIDTH_MM` (`thin_ink.one_lane_per_line`,
+    # before `settle_dark_ink_bean`); a line goes bean only onto another
+    # thread's ground. NSA at 90 mm: 14 of the bold top line's 22 letters sewed
+    # as beans because the thin bottom line on the same ring pulled the
+    # per-ground median under the gate; ON the line is bold all round (trims
+    # 96 -> 73). GAO one weight; Court of Federal Claims "ERAL" and Public
+    # Health's 7 bold like the art. Paired corpus not run. Read only with
+    # `dark_ink_bean`. False is the engine as it was; PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_dark_ink_line_one_lane.py`.
+    dark_ink_line_one_lane: bool = True
     # `dark_ink_bean_by_width` (built OFF 2026-11-16): which dark-ink strokes
     # sew as a bean is decided by WIDTH, not thread contrast. Contrast stood
     # in for "pen line versus designed lettering" and gets real lettering
@@ -4646,6 +4679,28 @@ class PipelineConfig:
     # as it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
     # pin it False. Tests: `tests/test_whole_letter_floor.py`.
     lettering_columns_whole_letter_floor: bool = True
+    # A branch of a letter the cut left inside ONE column, which then takes no
+    # stitch, is cut as a letter of its own and sewn in the lane with every
+    # thin cross at the 0.5 mm floor; kept when it adds no more thread outside
+    # the letter than in (`columns.absorb_gains`) OR the letter is not whole
+    # without it and whole with it (`columns.stroke_floor_restores`)
+    # (`columns.dropped_branches`; built OFF 2026-11-18 as
+    # `cfg.extra["lettering_columns_sew_dropped_hairline"]`, #1685). **ON
+    # since 2026-11-19, Kent's flip**: shown ART | BEFORE | AFTER for every
+    # changed spot, "Flip ON now". On a serif letter the lane stationed the
+    # bold stroke and left the hairline stems bare: the DIA seal's N of
+    # UNITED (diagonal sewn, both 0.3 mm stems unsewn, cover 0.70 -> 1.00),
+    # the NRC logo's N, the Peace Corps R's whole stem. 82 designs (seven
+    # Commons logo batches, 16 repo logos): 17 change, 65 identical, none
+    # reads worse, trims within 2. It INCLUDES the plain dropped-branch pass
+    # (`cfg.extra["lettering_columns_sew_dropped_branch"]`, Kent 11-18 "Add to
+    # paired check"), which this flip therefore turns on as well. Catches: a
+    # restored stem sews 0.5 mm over thinner ink; the `scratch_kent` paired
+    # corpus, the monarch wing and the Gaulke '&' were not run. Promoted from
+    # `cfg.extra` so the default can be ON. False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_dropped_branch.py`.
+    lettering_columns_sew_dropped_hairline: bool = True
     # `lettering_columns_stem_wedge_cap` (built OFF 2026-11-18 as
     # `cfg.extra["lettering_columns_stem_wedge_cap"]`, #1661 and #1664; prime
     # grader: Toat Machine's "h" stem "built from offset segments with visible
