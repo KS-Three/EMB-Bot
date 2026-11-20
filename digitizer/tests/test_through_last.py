@@ -50,6 +50,14 @@ def sewn():
     return {(k, on): _sew(k, on) for k in ("T", "E1", "E2", "L") for on in (False, True)}
 
 
+def test_config_default_is_off_for_now():
+    # Ruled ON by Kent 2026-11-19 but left OFF: it lifts the chaining benchmark's bare thread
+    # 4.28 -> 4.54 mm (`digitizer_core/config.py`); flip it once that leg is buried.
+    from digitizer_core import PipelineConfig
+    assert PipelineConfig().lettering_columns_through_last is False
+    assert PipelineConfig(lettering_columns_through_last=True).lettering_columns_through_last is True
+
+
 def test_off_sets_nothing():
     with through_last_scope(False):
         assert _THROUGH_LAST.get() is False
