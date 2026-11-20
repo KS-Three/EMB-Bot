@@ -102,21 +102,15 @@ def test_fold_fringe_hands_the_outer_halo_to_the_background():
     assert (two_tone.fold_fringe(snapped, tt, bg, None) == bg).all()
 
 
-def test_white_logo_on_transparency_runs_with_the_flag_on():
+def test_white_logo_on_transparency_runs_with_the_snap():
     """The reviewer's crash (2026-10-08): `alpha_edge_extend` paints the
     transparent area with the nearest ink, so a white logo on alpha is an
     all-light raster and the dark mode came from an empty half."""
     rgba = np.zeros((120, 240, 4), np.uint8)
     rgba[..., :3] = 255
     rgba[30:90, 30:210, 3] = 255
-    gen = build_generation(rgba, _cfg(two_tone_snap=True))
+    gen = build_generation(rgba, _cfg())
     assert gen is not None
-
-
-def test_flag_on_by_default():
-    """Approved 2026-10-08, flipped ON 2026-10-11 once the halo-premise tests
-    measured the pre-flip engine (`tests/conftest.py` PRE_FLIP)."""
-    assert PipelineConfig().two_tone_snap is True
 
 
 def _snapped_stage1(rel: str):
@@ -178,7 +172,7 @@ def test_keep_lines_takes_a_long_channel_not_a_short_gap():
     assert lines[:, 200].sum() >= SATIN_MIN_CROSS_MM * ppmm
 
 
-def test_golke_roof_sews_white_with_the_flag_on():
+def test_golke_roof_sews_white_with_the_snap():
     """End to end: the roof lines reach the stitch plan in the light ink.
     The fold alone left 117 white stitches (2026-10-08), the roof as a mass."""
     from tools.eye_pairs.features import base_cfg, digitize_once
@@ -187,8 +181,7 @@ def test_golke_roof_sews_white_with_the_flag_on():
     # `page_line_open` (ON by default since Kent 2026-11-17) leaves this channel
     # bare fabric; this test guards keep_lines' white path, still reachable OFF.
     *_, design = digitize_once(TESTDATA / "art/logo_golke_roofing.png",
-                               base_cfg(80.0, "left_chest", two_tone_snap=True,
-                                        page_line_open=False))
+                               base_cfg(80.0, "left_chest", page_line_open=False))
     white = sum(n for c, n in _blocks(design) if c.lower() == "#ffffff")
     assert white > 400
 
@@ -201,7 +194,7 @@ def test_golke_roof_channel_is_bare_fabric_at_the_default():
     from tools.stroke_colour_probe import _blocks
 
     _g, result, _p, design = digitize_once(TESTDATA / "art/logo_golke_roofing.png",
-                                           base_cfg(80.0, "left_chest", two_tone_snap=True))
+                                           base_cfg(80.0, "left_chest"))
     channel = [r for r in result.regions if r.meta.get("page_line_open")]
     assert channel, "the roof's white line should be read as a page line"
     assert not any(r.meta.get("stitched") for r in channel)
@@ -215,11 +208,11 @@ def test_golke_roof_channel_is_bare_fabric_at_the_default():
 
 # --- preflight's thread grader reads the raster the pipeline sewed ----------
 
-def _preflight(rel: str, on: bool, retint=None):
+def _preflight(rel: str, retint=None):
     from digitizer_core.pipeline import digitize
     from digitizer_core.preflight import run_preflight
 
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", two_tone_snap=on)
+    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest")
     result, plan = digitize(TESTDATA / rel, cfg)
     if retint is not None:
         retint(result, cfg)
@@ -237,10 +230,10 @@ def test_the_kept_lines_do_not_block_their_white_thread(rel):
     `keep_lines` widens and BLOCKED White: golke dE 14.6 (art 190 grey),
     gaulke 33.9 (126), both blocking nothing OFF (2026-10-08). It now judges
     the snapped raster, where those lines are the art's white."""
-    assert _thread_blocks(_preflight(rel, on=True)) == []
+    assert _thread_blocks(_preflight(rel)) == []
 
 
-def test_a_genuinely_wrong_thread_still_blocks_with_the_snap_on():
+def test_a_genuinely_wrong_thread_still_blocks_with_the_snap():
     """The snapped yardstick is not a blindfold: sew golke's white lines in a
     red spool and the grader still blocks it."""
     from digitizer_core.threads import chart_for
@@ -257,20 +250,20 @@ def test_a_genuinely_wrong_thread_still_blocks_with_the_snap_on():
             r.thread_index = red
             r.thread_number = chart[red].number
 
-    blocks = _thread_blocks(_preflight("art/logo_golke_roofing.png", on=True, retint=to_red))
+    blocks = _thread_blocks(_preflight("art/logo_golke_roofing.png", retint=to_red))
     assert blocks
     assert any(min(f["extra"]["artwork_rgb"]) > 230 for f in blocks)
 
 
-def test_the_grader_view_is_the_plain_reread_when_the_snap_is_off():
-    """Flag OFF, the thread grader is handed the very object every other check
-    reads: byte-identical by construction, not by tolerance."""
+def test_the_grader_view_is_the_plain_reread_for_a_photograph():
+    """A declared photograph is never snapped, so the thread grader is handed
+    the very object every other check reads: byte-identical by construction,
+    not by tolerance."""
     from digitizer_core.preflight import _two_tone_view
     from digitizer_core import StitchPlan
 
     p = prep(TESTDATA / "art/logo_golke_roofing.png", _cfg())
     plan = StitchPlan(blocks=[], palette=[])
-    assert _two_tone_view(p, plan, _cfg(two_tone_snap=False)) is p
-    assert _two_tone_view(p, plan, _cfg(two_tone_snap=True, is_photographic=True)) is p
-    q = _two_tone_view(p, plan, _cfg(two_tone_snap=True))
+    assert _two_tone_view(p, plan, _cfg(is_photographic=True)) is p
+    q = _two_tone_view(p, plan, _cfg())
     assert q is not p and q.rgb is not p.rgb

@@ -237,7 +237,8 @@ def test_tracked_fixtures_are_untouched_except_the_screenshot():
 
 # --- the config flag --------------------------------------------------------
 #
-# `cfg.strip_letterbox` is DEFAULT ON as of 2026-09-14.
+# The strip became unconditional 2026-11-20 (the `cfg.strip_letterbox` switch
+# was DEFAULT ON from 2026-09-14 and is folded into the code).
 #
 # It shipped DEFAULT OFF on 2026-09-11, and not out of caution about the fix:
 # turning it on changes `photo/logo_gaulke_roofing.png`, whose letterboxed
@@ -255,54 +256,27 @@ def test_tracked_fixtures_are_untouched_except_the_screenshot():
 # `photo/photo_chrome_specular.png`, which is full bleed on its own pixels and
 # reads 147.5 mm² uncovered with the bug put back.
 #
-# These pin both halves so neither can drift.
-
-def test_flag_defaults_on():
-    from digitizer_core.config import PipelineConfig
-    assert PipelineConfig().strip_letterbox is True
-
-
-def test_the_strip_can_still_be_turned_off():
-    """OFF is the pre-2026-09-14 engine, and stays reachable -- every
-    byte-identical claim in this repo's history was measured there."""
-    from digitizer_core.config import PipelineConfig
-    assert PipelineConfig(strip_letterbox=False).strip_letterbox is False
-
-
-def test_load_is_byte_identical_when_the_flag_is_off():
-    """OFF must not merely 'mostly' match -- it must be the same pixels."""
+def test_load_strips():
     from digitizer_core.stage0_classify import _load as classify_load
     from digitizer_core.stage1_prep import _load as prep_load
     path = TESTDATA / SCREENSHOT
     raw = _load_rgb(SCREENSHOT)
     for loader in (classify_load, prep_load):
-        rgb, _ = loader(path, False)
-        assert rgb.shape == raw.shape
-        assert np.array_equal(rgb, raw)
-
-
-def test_load_strips_when_the_flag_is_on():
-    from digitizer_core.stage0_classify import _load as classify_load
-    from digitizer_core.stage1_prep import _load as prep_load
-    path = TESTDATA / SCREENSHOT
-    raw = _load_rgb(SCREENSHOT)
-    for loader in (classify_load, prep_load):
-        rgb, _ = loader(path, True)
+        rgb, _ = loader(path)
         assert rgb.shape[0] < raw.shape[0]
         assert rgb.shape[1] == raw.shape[1] - 18   # the two chrome strips
 
 
-def test_both_loaders_agree_in_both_states():
+def test_both_loaders_agree():
     """Stage 0 owns its own decode. If the two ever disagreed, stage 0 would
     classify a different picture than stage 1 digitizes -- the single worst
     way this could go wrong, and silent."""
     from digitizer_core.stage0_classify import _load as classify_load
     from digitizer_core.stage1_prep import _load as prep_load
     path = TESTDATA / SCREENSHOT
-    for flag in (False, True):
-        a, _ = classify_load(path, flag)
-        b, _ = prep_load(path, flag)
-        assert np.array_equal(a, b), f"loaders disagree with flag={flag}"
+    a, _ = classify_load(path)
+    b, _ = prep_load(path)
+    assert np.array_equal(a, b), "loaders disagree"
 
 
 # --- A transparent band is the page, not a bar (2026-11-17) ------------------

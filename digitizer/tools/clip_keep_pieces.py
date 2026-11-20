@@ -18,22 +18,9 @@ Per fixture and matrix row, one generation and stages 5-7 twice:
     python -m tools.clip_keep_pieces                     # drone
     python -m tools.clip_keep_pieces --scorecard         # every corpus_scorecard FIXTURE x MATRIX
     python -m tools.clip_keep_pieces photo/drone_render.png --matrix 0 --json
-    python -m tools.clip_keep_pieces --halo-lever        # the six split fixtures
-
-`--halo-lever` prices the flip on top of bridge's JPEG-halo lever, the
-banked `cfg.dissolve_phantom_blends` (MASTER_SCOPE item 46: "the halo at its
-own lever first, then this flip"). Per fixture, garment and lever setting:
-the shipped default against `clip_keep_pieces` ON -- stitches, trims, each
-kept piece's thread and its parent's mean width (`2 * area / perimeter`;
-`thin` is under `tools.halo_spools.HALO_MAX_WIDTH_MM`), and Cohen's kappa of
-thread-down against that arm's own stitched artwork, chance-corrected so a
-gain is not the floor moving (ROADMAP gate 4). `thin` is NOT a halo test:
-gaulke's roof line was thin and real (DOCTRINE: nothing yet tells a halo
-band from a drawn stroke), so the reading names the threads and leaves the
-call to the reader. `halo_spools`' own test flags no region on bridge at
-today's defaults, so it cannot be the tag here (measured 2026-10-20).
-
 Report-only; changes nothing. Measured 2026-10-12 and 2026-10-20, PR bodies.
+(`--halo-lever`, which priced the flip with `dissolve_phantom_blends` OFF and ON, went
+when that switch was folded into the code 2026-11-20.)
 """
 from __future__ import annotations
 
@@ -172,64 +159,6 @@ def coverage_kappa(truth, sewn, bounds, px_per_mm: float = KAPPA_PX_PER_MM) -> f
     return None if pe >= 1.0 else (po - pe) / (1 - pe)
 
 
-def price_halo_lever(rel: str, cfg_kw: dict) -> dict:
-    """The flip, `clip_keep_pieces` OFF -> ON, with the halo lever
-    (`dissolve_phantom_blends`) OFF and ON. See the module docstring."""
-    from tools.halo_spools import HALO_MAX_WIDTH_MM, _width_mm
-
-    path = ROOT / "testdata" / rel
-    out: dict = {"fixture": rel, "cfg": cfg_kw}
-    for lever in (False, True):
-        gen = build_generation(str(path), PipelineConfig(**cfg_kw, dissolve_phantom_blends=lever))
-        arm: dict = {}
-        truth = bounds = None
-        for tag, keep in (("default", False), ("pieces", True)):
-            cfg = PipelineConfig(**cfg_kw, dissolve_phantom_blends=lever, clip_keep_pieces=keep)
-            result = finish_generation(gen.fork(), cfg)
-            plan, planned = _plan(result, cfg)
-            by_id = {r.shape_id: r for r in result.regions}
-            if truth is None:
-                # Stages 1-4 are shared by both plans of an arm.
-                truth = unary_union([r.polygon for r in result.regions
-                                     if r.meta.get("stitched", True)])
-                bounds = unary_union([r.polygon for r in result.regions]).buffer(2.0).bounds
-            pieces = []
-            for p in planned:
-                parent = p.region.meta.get(CLIP_PIECE_OF_KEY)
-                if not parent:
-                    continue
-                w = _width_mm(by_id[parent].polygon)
-                pieces.append({"thread": by_id[parent].thread_number,
-                               "parent_width_mm": round(w, 3),
-                               "thin": w < HALO_MAX_WIDTH_MM,
-                               "art_mm2": round(p.region.polygon.area, 2)})
-            kappa = coverage_kappa(truth, unary_union([p.polygon for p in planned]), bounds)
-            arm[tag] = {
-                "stitches": plan.stats.stitch_count, "trims": plan.stats.trims,
-                "md5": plan_md5(plan),
-                "regions": len(result.regions),
-                "pieces": pieces,
-                "kappa": None if kappa is None else round(kappa, 4),
-            }
-        out["lever_on" if lever else "lever_off"] = arm
-    return out
-
-
-def _print_halo_lever(r: dict) -> None:
-    g = r["cfg"].get("garment_id")
-    for lever in ("lever_off", "lever_on"):
-        d, p = r[lever]["default"], r[lever]["pieces"]
-        ds = p["stitches"] - d["stitches"]
-        pcs = p["pieces"]
-        thin = [x for x in pcs if x["thin"]]
-        threads = ",".join(sorted({x["thread"] for x in thin})) or "-"
-        print(f"{r['fixture']} {g} {lever}: stitches {d['stitches']}->{p['stitches']} "
-              f"({ds:+d}, {100.0 * ds / d['stitches']:+.1f}%), trims {d['trims']}->{p['trims']}, "
-              f"pieces {len(pcs)} ({sum(x['art_mm2'] for x in pcs):.2f} mm2 art), "
-              f"thin {len(thin)} ({sum(x['art_mm2'] for x in thin):.2f} mm2, threads {threads}), "
-              f"kappa {d['kappa']}->{p['kappa']}", flush=True)
-
-
 def _scorecard_cases():
     from tools.corpus_scorecard import FIXTURES, MATRIX
     return [(f, dict(m)) for f in FIXTURES for m in MATRIX]
@@ -246,17 +175,8 @@ def main(argv=None) -> int:
     ap.add_argument("--json", action="store_true", help="one JSON line per run")
     ap.add_argument("--preflight", action="store_true",
                     help="also read ARTWORK_UNCOVERED's per-shape finding OFF and ON")
-    ap.add_argument("--halo-lever", action="store_true",
-                    help="price the flip with dissolve_phantom_blends OFF and ON")
     args = ap.parse_args(argv)
     from tools.corpus_scorecard import FIXTURES, MATRIX
-    if args.halo_lever:
-        rows = MATRIX if args.matrix is None else [MATRIX[args.matrix]]
-        for rel in (args.fixtures or SPLIT_FIXTURES):
-            for m in rows:
-                r = price_halo_lever(rel, dict(m))
-                print(json.dumps(r), flush=True) if args.json else _print_halo_lever(r)
-        return 0
     rows = MATRIX if args.matrix is None else [MATRIX[args.matrix]]
     names = list(FIXTURES) if args.scorecard else (args.fixtures or list(DEFAULT))
     for rel in names:

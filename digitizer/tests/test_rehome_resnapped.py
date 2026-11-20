@@ -139,30 +139,6 @@ def test_repro_sews_one_block_per_spool_end_to_end():
     assert sewn - region_threads <= shade_threads, sewn - region_threads
 
 
-def test_flag_off_reproduces_the_split():
-    """`rehome_resnapped=False` keeps the pre-2026-08-31 behaviour reachable
-    and tested (the family posture `merge_adjacent_same_thread` documents):
-    the repro's re-snap split comes back — one spool sewing more than one
-    block — which is also the lever the sequencing A/B measured with."""
-    # `robust_region_colour=False`: the split is a re-snap on the mean-point
-    # palette (the repro's six medoids, one of them the drifted sliver's);
-    # since the 2026-09-10 flip the repro quantizes to three and nothing
-    # drifts, so the pre-flip engine (False, byte for byte) is the state
-    # this lever is measured on -- the same pin `test_thread_revalidate`
-    # holds on the same fixture.
-    cfg = PipelineConfig(target_width_mm=80.0, rehome_resnapped=False,
-                         merge_adjacent_same_thread=False,
-                         robust_region_colour=False,
-                         stage0_scale_relative_grad=False,   # ...and the gradient lane (ON 2026-11-06 reads the repro flat)
-                         bean_only_lines=False,      # ...and the bean rule (ON 2026-10-27): the split's revisits predate it
-                         edge_cap="bean")            # ...and the "none" default (2026-10-29)
-    _result, plan = digitize(REPRO, cfg)
-    threads = [b.thread_index for b in plan.blocks]
-    assert len(threads) > len(set(threads)), (
-        f"expected the un-rehomed split to revisit a spool: {threads}"
-    )
-
-
 def test_repro_regions_sit_in_their_cones_layer():
     cfg = PipelineConfig(target_width_mm=80.0)
     result = run_stages(REPRO, cfg)

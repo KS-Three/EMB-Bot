@@ -188,7 +188,6 @@ CONFIDENCE_FLOOR = 0.55
 # --- Image loading (standalone -- see module docstring) ---------------------
 
 def _load(image: str | Path | bytes | np.ndarray,
-          strip_bars: bool = False,
           crop=None) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
@@ -210,13 +209,10 @@ def _load(image: str | Path | bytes | np.ndarray,
     # `stage1_prep._load`, and the two MUST stay in step for the same reason
     # the strip below does.
     rgb, alpha = apply_crop(rgb, alpha, crop)
-    # Same strip as `stage1_prep._load`, behind the same `cfg.strip_letterbox`
-    # flag, and the two MUST stay in step: this module deliberately owns its
-    # own decode, so if only one stripped, stage 0 would classify a different
-    # picture than stage 1 digitizes.
-    if strip_bars:
-        return strip_letterbox(rgb, alpha)
-    return rgb, alpha
+    # Same strip as `stage1_prep._load`, and the two MUST stay in step: this
+    # module deliberately owns its own decode, so if only one stripped, stage 0
+    # would classify a different picture than stage 1 digitizes.
+    return strip_letterbox(rgb, alpha)
 
 
 def _fg_mask(rgb: np.ndarray, alpha: np.ndarray | None) -> np.ndarray:
@@ -753,7 +749,7 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         _write_debug(cfg, result)
         return result
 
-    rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
+    rgb, alpha = _load(image, cfg.crop)
     # In step with stage 1 (alpha edge extension): the signals below mask
     # to `fg`, but `_gradient_smoothness`'s kernel sits on the edge and reads
     # what is under the alpha whatever the mask says — Becker with black

@@ -741,10 +741,9 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     defaults, so every existing caller and test is byte-identical.
 
     `underlay_style` is the style stage 7 resolved for this shape, the one
-    it hands tatami and contour. It is sewn only under
-    `cfg.blend_fallback_underlay`, and only on the fallback path below — a
-    region that sews as ordinary full-density tatami. Ramp bands stay bare
-    (see the flag's comment in `config.py`).
+    it hands tatami and contour. It is sewn only on the fallback path below
+    — a region that sews as ordinary full-density tatami. Ramp bands stay
+    bare (`docs/flag-history/tier-b3-colour.md`, `blend_fallback_underlay`).
 
     `start_near` is where the needle already is — the same contract every
     other tier takes from stage 7's picking loop. Until 2026-08-31 this tier
@@ -811,8 +810,7 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         runs, report = stitch_shape(
             sew_poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
             row_mm=row, stitch_mm=stitch,
-            underlay_style=(underlay_style if cfg.blend_fallback_underlay
-                            else "none"),
+            underlay_style=underlay_style,
             trim_at_mm=machine.TRIM_AT_MM,
             start_near=start_near, under_cover=True,
             cut_bridges=cfg.fill_bridge_cut,

@@ -33,6 +33,7 @@ mechanism — artwork no stroke reaches — rather than two.
 """
 from __future__ import annotations
 
+import pytest
 from shapely.geometry import Polygon
 
 from digitizer_core import PipelineConfig
@@ -58,13 +59,6 @@ def _sew(art, width_mm, **kw):
     # run 44158966435), so the cover has less to close.
     for name, value in FLAG_ENDS_SEAM_2026_11_17_OFF.items():
         kw.setdefault(name, value)
-    # ... and without the photo lane's phantom-blend dissolve
-    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
-    # MARINE reads the gradient lane, and with the dissolve ON the cover's
-    # `lost_frac` gate reads 0.1955 -> 0.1968 (CI 2026-10-20). The gate was
-    # read without it; the dissolve's own price is
-    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
-    kw.setdefault("dissolve_phantom_blends", False)
     kw.setdefault("bean_only_lines", False)   # the crowns were counted before the bean rule (ON 2026-10-27)
     kw.setdefault("edge_cap", "bean")         # ...and before the "none" default (2026-10-29)
     cfg =PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
@@ -161,3 +155,17 @@ def test_the_cover_sews_first_in_its_shape_and_only_satin():
     mixed = [s for s, k in kinds.items()
              if stitches.SATIN in k and stitches.FILL in k]
     assert not mixed, f"the cover put tatami inside a satin shape: {mixed}"
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _without_the_phantom_blend_dissolve():
+    """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
+    item 46; folded into the code 2026-11-20): MARINE reads the gradient lane, and with the dissolve ON the cover's
+    `lost_frac` gate reads 0.1955 -> 0.1968 (CI 2026-10-20).
+    The numbers here were read without it; the dissolve's own price is
+    `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
+    what the switch's False path did."""
+    from tests.conftest import legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        yield

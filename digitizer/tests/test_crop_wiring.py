@@ -31,12 +31,12 @@ def test_uncropped_prep_is_unchanged():
 
 
 def test_stage0_sees_the_same_picture_stage1_digitizes():
-    """The strip_letterbox rule, applied to crop: if only one of them
+    """The letterbox-strip rule, applied to crop: if only one of them
     cropped, stage 0 would classify the chrome the crop exists to remove."""
     art = _banner_art()
     crop = (0.0, 0.33, 1.0, 0.67)
     cfg = PipelineConfig(target_width_mm=80.0, crop=crop)
-    rgb0, _ = stage0_classify._load(art, cfg.strip_letterbox, cfg.crop)
+    rgb0, _ = stage0_classify._load(art, cfg.crop)
     p = stage1_prep.prep(art, cfg)
     # Same crop applied, so stage 0's raster and stage 1's PRE-upscale raster
     # describe the same region: identical aspect ratio, and the chrome band

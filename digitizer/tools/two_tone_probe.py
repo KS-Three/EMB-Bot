@@ -12,10 +12,11 @@ plateau (tallest 8-level mid-grey bin over their mean) — and whether it fires.
 gate's constants were set from (2026-10-08): it must fire on every
 black-and-white logo and on nothing else.
 
-The default mode digitizes each fixture at the Studio's config twice —
-`two_tone_snap` off, then on — and prints cones, stitches, trims and the
-per-colour stitch blocks for both. `--render DIR` writes off | on thread
-renders side by side, one PNG per fixture.
+The default mode digitizes each fixture at the Studio's config and prints
+cones, stitches, trims and the per-colour stitch blocks. `--render DIR`
+writes the thread render, one PNG per fixture. (It priced the snap off
+against on until the `two_tone_snap` switch was folded into the code,
+2026-11-20.)
 
     .venv/bin/python -m tools.two_tone_probe --detect
     .venv/bin/python -m tools.two_tone_probe
@@ -30,7 +31,6 @@ import sys
 from pathlib import Path
 
 import cv2
-import numpy as np
 
 from digitizer_core import two_tone
 from digitizer_core.stage0_classify import classify
@@ -121,35 +121,25 @@ def main(argv: list[str]) -> int:
                   f"{r['modes'][0]}/{r['modes'][1]} | {r['ink_fracs'][0]}/{r['ink_fracs'][1]} | {r['mid_frac']:.4f} | "
                   f"{r['plateau']:.2f} | {'**yes**' if r['fires'] else 'no'} |", flush=True)
     else:
-        print("| fixture | cones off → on | stitches off → on | trims off → on |")
+        print("| fixture | cones | stitches | trims |")
         print("|---|---|---|---|")
         for name in args.fixture or list(FIXTURES):
             width_mm, garment = FIXTURES.get(name, (80.0, "left_chest"))
-            rows, designs = [], []
-            for on in (False, True):
-                _g, _r, _p, design = digitize_once(
-                    TESTDATA / name, base_cfg(width_mm, garment, two_tone_snap=on))
-                rows.append(records(design))
-                designs.append(design)
-            a, b = rows
-            out[name] = {"off": a, "on": b}
-            print(f"| `{Path(name).stem}` | {a['cones']} → {b['cones']} "
-                  f"| {a['stitches']:,} → {b['stitches']:,} | {a['trims']} → {b['trims']} |",
-                  flush=True)
-            for label, row in (("off", a), ("on", b)):
-                print(f"|   {label} | " + ", ".join(f"{c} {n}" for c, n in row["blocks"]) + " | | |")
+            _g, _r, _p, design = digitize_once(
+                TESTDATA / name, base_cfg(width_mm, garment))
+            a = records(design)
+            out[name] = a
+            print(f"| `{Path(name).stem}` | {a['cones']} "
+                  f"| {a['stitches']:,} | {a['trims']} |", flush=True)
+            print("|   | " + ", ".join(f"{c} {n}" for c, n in a["blocks"]) + " | | |")
             if args.render:
                 from digitizer_core.stitchviz import render_design
                 args.render.mkdir(parents=True, exist_ok=True)
-                pans = []
-                for d in designs:
-                    img = render_design(d)
-                    k = 700.0 / img.shape[0]
-                    pans.append(cv2.resize(img, (max(1, int(img.shape[1] * k)), 700),
-                                           interpolation=cv2.INTER_AREA))
-                gap = np.full((700, 12, 3), 255, np.uint8)
+                img = render_design(design)
+                k = 700.0 / img.shape[0]
                 cv2.imwrite(str(args.render / f"{Path(name).stem}.png"),
-                            np.hstack([pans[0], gap, pans[1]]))
+                            cv2.resize(img, (max(1, int(img.shape[1] * k)), 700),
+                                       interpolation=cv2.INTER_AREA))
     if args.json:
         args.json.parent.mkdir(parents=True, exist_ok=True)
         args.json.write_text(json.dumps(out, indent=1, default=list), encoding="utf-8")

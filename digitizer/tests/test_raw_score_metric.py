@@ -21,7 +21,13 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import PRE_FLIP, TESTDATA
+from .conftest import PRE_FLIP, TESTDATA, pre_flip_module_gen
+
+
+# The numbers in this file were read on the engine before six colour switches were
+# folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
+# held them False. `legacy_engine` patches their False paths back for the module.
+pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
 
 FLOORED = "photo/screenshot_phone_ui_golke.jpg"   # score 0, raw -272 (-62 under the 2026-09-10 patch floor)
 CLEAN = "logo_alpha.png"                          # score 100, raw 100

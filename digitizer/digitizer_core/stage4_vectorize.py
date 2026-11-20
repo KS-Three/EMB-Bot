@@ -89,7 +89,6 @@ THREAD_REVALIDATE_SAMPLE_PX = 256
 # pins the lockstep so drift fails loud instead of quietly unbinding the
 # resnap for a new photo class.
 from .config import PHOTO_CLASSES as _PHOTO_CLASSES  # canonical copy lives in config.py
-from .config import is_photographic
 
 
 def _to_mm(pts: np.ndarray, cx: float, cy: float, px_per_mm: float) -> np.ndarray:
@@ -972,8 +971,7 @@ def revalidate_threads(regions: list[Region], p: Prep,
     if palette_indices is not None and len(palette_indices) > 0:
         palette_only = np.unique(np.asarray(list(palette_indices),
                                             dtype=np.int64))
-    # `cfg.bind_resnap_all_classes` extends the 2026-08-23 photo binding to
-    # every class. OFF (default) this reads exactly as it always has.
+    # The 2026-08-23 photo binding extends to every class.
     #
     # WHY IT EXISTS (MASTER_SCOPE 15, counted 2026-09-06 with
     # `tools/resnap_escape.py`): off the photo route the argmin runs over the
@@ -984,16 +982,11 @@ def revalidate_threads(regions: list[Region], p: Prep,
     # `logo_gaulke_roofing` 3. All nine photo-class fixtures add none, which is
     # the control: the binding works, and this lane never got it.
     #
-    # It is a FLAG and not a default because the phase-4 spec pins the flat and
-    # gradient lanes byte-for-byte and this moves their goldens — the same
-    # reason `revalidate_threads` gave for leaving them unbound in the first
-    # place. That argument is about golden churn, not about the escape being
-    # wanted.
+    # It was a flag, then a default, because the phase-4 spec pinned the flat
+    # and gradient lanes byte-for-byte and this moved their goldens (folded
+    # into the code 2026-11-20).
     grader_mask = bool(cfg.resnap_mask_matches_grader)
-    bind_all = bool(cfg.bind_resnap_all_classes)
-    allowed: np.ndarray | None = (
-        palette_only if (bind_all or is_photographic(cfg, design_class))
-        else None)
+    allowed: np.ndarray | None = palette_only
     # The cone list an operator actually loads for this design, snapshotted
     # BEFORE the loop mutates any of it. This — not `palette_only` — is what a
     # shape admitted only by the lowered floor may choose from, and the
