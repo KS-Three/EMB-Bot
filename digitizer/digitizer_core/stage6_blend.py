@@ -741,10 +741,9 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
     defaults, so every existing caller and test is byte-identical.
 
     `underlay_style` is the style stage 7 resolved for this shape, the one
-    it hands tatami and contour. It is sewn only under
-    `cfg.blend_fallback_underlay`, and only on the fallback path below — a
-    region that sews as ordinary full-density tatami. Ramp bands stay bare
-    (see the flag's comment in `config.py`).
+    it hands tatami and contour. It is sewn only on the fallback path below
+    — a region that sews as ordinary full-density tatami. Ramp bands stay
+    bare (`docs/flag-history/tier-b3-colour.md`, `blend_fallback_underlay`).
 
     `start_near` is where the needle already is — the same contract every
     other tier takes from stage 7's picking loop. Until 2026-08-31 this tier
@@ -811,14 +810,13 @@ def blend_fill(region: Region, source_pixels: SourcePixels, cfg,
         runs, report = stitch_shape(
             sew_poly, region.shape_id, angle_deg=source_pixels.design_row_angle_deg,
             row_mm=row, stitch_mm=stitch,
-            underlay_style=(underlay_style if cfg.blend_fallback_underlay
-                            else "none"),
+            underlay_style=underlay_style,
             trim_at_mm=machine.TRIM_AT_MM,
             start_near=start_near, under_cover=True,
-            cut_bridges=cfg.fill_bridge_cut,
+            cut_bridges=True,
             underlay_all_pieces=cfg.underlay_all_pieces,
             sewn_paths_only=cfg.fill_order_sewn_paths,
-            slant_turns=cfg.fill_turn_slant,
+            slant_turns=True,
         )
         # Routed to blend, sewn flat. Stage 7 aggregates these across the
         # design so the warning the user reads can say decomposition did
@@ -1075,9 +1073,9 @@ def _emit_bands(region: Region, source_pixels: SourcePixels, cfg,
                 row_mm=part_row_mm, stitch_mm=stitch_mm,
                 underlay_style="none", trim_at_mm=machine.TRIM_AT_MM,
                 start_near=cur, under_cover=True,
-                cut_bridges=cfg.fill_bridge_cut,
+                cut_bridges=True,
                 sewn_paths_only=cfg.fill_order_sewn_paths,
-                slant_turns=cfg.fill_turn_slant,
+                slant_turns=True,
                 row_phase_mm=lattice_phase(part, part_row_mm, offset_rows),
                 keep_row=keep_row,
             )

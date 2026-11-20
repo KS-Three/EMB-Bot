@@ -32,6 +32,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools import sewout_card_v3_1 as v31  # noqa: E402
 
+def _live(overrides):
+    """A committed cut records the flags it was made with, retired ones included
+    (`small_glyph_keep`, `lettering_columns_square_ends` and
+    `lettering_columns_inside_connectors`, folded into the code 2026-11-20):
+    compare the live ones."""
+    from digitizer_core.config import RETIRED_FIELDS
+    return {k: v for k, v in overrides.items() if k not in RETIRED_FIELDS}
+
+
 COMMITTED = v31.v3.REPO / "docs" / "sewout" / "card-v3-2026-10-13"
 CUTS = COMMITTED / "cuts"
 
@@ -84,8 +93,7 @@ def test_the_arm_flags_are_pinned():
     default flip (the ends flags are being turned ON elsewhere) cannot move the
     card; an arm changes only what it names."""
     pins = v31.PINS
-    for key in ("lettering_columns_square_ends", "lettering_columns_inside_connectors",
-                "small_lettering_skeleton", "small_glyph_keep", "lettering_words", "lettering_word_tiers"):
+    for key in ("small_lettering_skeleton", "lettering_words", "lettering_word_tiers"):
         assert pins[key] is False, key
     for key in ("small_lettering_skeleton_floor_mm", "small_text_cap_mm", "small_text_restore_mm",
                 "bean_letter_max_stroke_mm", "bean_letter_stitch_mm"):      # #909 and #911 OFF
@@ -94,8 +102,7 @@ def test_the_arm_flags_are_pinned():
     assert v31.CUT_ARMS["skel"] == {**pins, "small_lettering_skeleton": True}
     assert v31.CUT_ARMS["skel073"] == {**pins, "small_lettering_skeleton": True,
                                        "small_lettering_skeleton_floor_mm": 0.73}
-    assert v31.CUT_ARMS["ends_on"] == {**pins, "lettering_columns_square_ends": True,
-                                       "lettering_columns_inside_connectors": True}
+    assert v31.CUT_ARMS["ends_on"] == pins       # the ends flags were folded into the code 2026-11-20
     assert v31.ENT_ARMS["ent_today"] == pins
     assert v31.ENT_ARMS["ent_skel073"] == v31.CUT_ARMS["skel073"]
     assert v31.BECKER_ARMS == {"becker_off": pins, "becker_on": v31.CUT_ARMS["ends_on"]}
@@ -119,7 +126,7 @@ def test_the_committed_cuts_are_the_replays_that_913_and_912_measured():
     assert set(want) == set(allarms) == set(v31.ALL_CUTS)
     for arm, (stitches, trims) in want.items():
         d = v31.load_cut_file(CUTS, arm)
-        assert d["overrides"] == allarms[arm], arm
+        assert _live(d["overrides"]) == allarms[arm], arm
         assert d["stitches_whole"] == pytest.approx(stitches, rel=0.01), arm
         assert d["trims_whole"] == pytest.approx(trims, abs=3), arm
     for arm in v31.CUT_ARMS:
@@ -173,7 +180,8 @@ def test_regenerated_readback_numbers(card, committed):
     for key in ("extent_mm", "x_range_mm", "y_range_mm"):
         assert new[key] == pytest.approx(old[key], abs=0.5), key
     assert new["stitches_file"] == pytest.approx(old["stitches_file"], rel=0.03)
-    assert new["trims"] == pytest.approx(old["trims"], abs=3)
+    # (`trims` is no longer compared with the committed cut: `trim_bury_under_later` is folded into
+    # the code, 2026-11-20, and buries hops the committed cut cut: 87 against 91 / 144 against 148.)
     assert sorted(new["blocks_mm"]) == sorted(old["blocks_mm"]) == ["B", "E2", "F3", "G", "N", "S", "T", "X"]
     assert set(new["pieces_mm"]) == set(old["pieces_mm"]) == PIECES
 
@@ -236,14 +244,10 @@ def test_every_arm_differs_from_the_first_in_its_block(card):
     assert n["S:today"] != n["S:floor-1.0"] and n["S:today"] != n["S:floor-0.73"]
     assert n["S:floor-1.0"] != n["S:floor-0.73"]
     assert n["E2:today"] != n["E2:floor-0.73"]
-    assert n["X:ends-off"] != n["X:ends-on"]
-    assert n["B:ends-off"] != n["B:ends-on"]
     # the tier sews fewer stitches than the outline it replaces (#913)
     assert n["S:floor-0.73"] < n["S:today"] and n["E2:floor-0.73"] < n["E2:today"]
     pieces = {(p["block"], p["arm"]): p for p in rb["pieces"]}
     assert pieces[("S", "floor-0.73")]["overrides"]["small_lettering_skeleton_floor_mm"] == 0.73
-    assert pieces[("X", "ends-on")]["overrides"]["lettering_columns_square_ends"] is True
-    assert pieces[("B", "ends-off")]["overrides"]["lettering_columns_inside_connectors"] is False
     assert pieces[("B", "ends-off")]["garment_id"] == "left_chest"
 
 

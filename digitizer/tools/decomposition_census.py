@@ -206,7 +206,7 @@ def measure(case: str, arm: str) -> dict:
     tl = split(plan)
     # legibility OFF: it costs ~3.5 s per text cluster and reads the RENDER,
     # not the skeleton, so it cannot answer anything this census asks.
-    rep = run_preflight(result, plan, PipelineConfig(**{**kw, "legibility_check": False}),
+    rep = run_preflight(result, plan, PipelineConfig(**{**kw}),
                         image=ROOT / "testdata" / rel)
     m = rep["metrics"]
     tiers = {sid: v[0] for sid, v in sewn_tiers(result, plan).items()}

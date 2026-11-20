@@ -35,22 +35,15 @@ from tools import flip_sheet_renders as fsr  # noqa: E402
 #: Mirrors `tests/conftest.py`'s FLIP_2026_10_23 (tests/test_flip_eight_proof.py
 #: holds the pair). The small-text set is the flip sheet's exact arm.
 BEFORE: dict[str, object] = {
-    "fill_turn_slant": False,
-    "trim_bury_under_later": False,
-    "tie_in_off": False,
-    "fill_underlay_cross": False,
     "small_text_cap_mm": None,
     "small_text_cap_max_width_scale": None,
     "small_text_cap_min_stroke_mm": None,
     "small_text_cap_letter_gap_mm": None,
     "small_text_cap_bold_scale": None,
-    "lettering_columns_small_bold": False,
     # PR #1057 (Kent 2026-10-23, same day, by the pro's numbers): the two layout
     # flags and the corner fold, so every site that pins "before the 10-23 flips"
     # pins them too.
     "border_by_size": False,
-    "enclosed_alpha_hole_parts": False,
-    "lettering_columns_corner_fold": False,
     # The bean rule (`bean_only_lines`, built OFF and flipped ON by Kent the
     # same day, 2026-10-27, #1165): every site that pins "before the 10-23
     # flips" was measured on an engine that beaned letters, sub-floor solids

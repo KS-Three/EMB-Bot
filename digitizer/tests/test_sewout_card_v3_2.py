@@ -28,6 +28,15 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from tools import sewout_card_v3_1 as v31  # noqa: E402
 from tools import sewout_card_v3_2 as v32  # noqa: E402
 
+def _live(overrides):
+    """A committed cut records the flags it was made with, retired ones included
+    (`small_glyph_keep`, `lettering_columns_square_ends` and
+    `lettering_columns_inside_connectors`, folded into the code 2026-11-20):
+    compare the live ones."""
+    from digitizer_core.config import RETIRED_FIELDS
+    return {k: v for k, v in overrides.items() if k not in RETIRED_FIELDS}
+
+
 COMMITTED = v32.REPO / "docs" / "sewout" / "card-v3-2026-10-13"
 CUTS = COMMITTED / "cuts"
 
@@ -108,7 +117,7 @@ def test_the_committed_cuts_record_the_flags_they_were_made_with():
     allarms = {**v32.CUT_ARMS, **v32.ENT_ARMS, **v32.BECKER_ARMS}
     for arm, flags in allarms.items():
         d = v32.load_cut_file(CUTS, arm)
-        assert d["overrides"] == flags, arm
+        assert _live(d["overrides"]) == flags, arm
         assert d["stitches_whole"] > 1000 and d["trims_whole"] > 0, arm
     for arm in v32.CUT_ARMS:
         assert v32.load_cut_file(CUTS, arm)["width_mm"] == 81.0
@@ -116,12 +125,12 @@ def test_the_committed_cuts_record_the_flags_they_were_made_with():
         assert v32.load_cut_file(CUTS, arm)["width_mm"] == 80.0
     for arm, flags in v32.OWL_ARMS.items():
         d = v32.load_cut_file(CUTS, arm)
-        assert d["overrides"] == {**flags, **v32.OWL_ROUTE}, arm
+        assert _live(d["overrides"]) == {**flags, **v32.OWL_ROUTE}, arm
         assert d["width_mm"] == 127.0 and d["file"] == "photo/owl_kent.jpg"
     # v3's T / N cuts, re-made
     for arm, flags in v32.v3.CUT_ARMS.items():
         d = json.loads((CUTS / v32.TN_DIR / f"cut_{arm}.json").read_text(encoding="utf-8"))
-        assert d["overrides"] == flags, arm
+        assert _live(d["overrides"]) == flags, arm
 
 
 def test_the_e2_note_matches_the_cuts_it_quotes():
@@ -197,7 +206,8 @@ def test_regenerated_readback_numbers(card, committed):
     for key in ("extent_mm", "x_range_mm", "y_range_mm"):
         assert new[key] == pytest.approx(old[key], abs=0.5), key
     assert new["stitches_file"] == pytest.approx(old["stitches_file"], rel=0.03)
-    assert new["trims"] == pytest.approx(old["trims"], abs=3)
+    # (`trims` is no longer compared with the committed cut: `trim_bury_under_later` is folded into
+    # the code, 2026-11-20, and buries hops the committed cut cut: 87 against 91 / 144 against 148.)
     assert sorted(new["blocks_mm"]) == sorted(old["blocks_mm"]) == ["B", "E2", "F3", "G", "N", "O", "S", "T", "X"]
     assert set(new["pieces_mm"]) == set(old["pieces_mm"]) == PIECES
 

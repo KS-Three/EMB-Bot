@@ -147,9 +147,9 @@ def test_bars_cut_into_a_panel_sew_the_same_column_over_the_ground(tmp_path):
     0.3 mm hairline it was."""
     art = tmp_path / "panel.png"
     _thin_bars_on_a_panel(art)
-    off_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, small_text_true_size=False, keep_thin_strokes=True,
+    off_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, small_text_true_size=False,
                              lettering_columns=False)
-    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, small_text_true_size=False, keep_thin_strokes=True,
+    on_cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, small_text_true_size=False,
                             lettering_min_column_mm=FLOOR_MM, lettering_columns=False)
     off, off_plan = digitize(art, off_cfg)
     with patch(_OCR_GATE_PATH, return_value=False):
@@ -209,7 +209,7 @@ def test_the_column_survives_when_its_thread_sews_before_the_ground(tmp_path):
     layers around widened lettering now plan against its sewn column."""
     art = tmp_path / "panel_first.png"
     _thin_bars_on_a_panel(art, lettering_thread_first=True)
-    cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, small_text_true_size=False, keep_thin_strokes=True,
+    cfg = PipelineConfig(target_width_mm=50.0, garment_id="left_chest", **FLIP_2026_10_23, small_text_true_size=False,
                          lettering_min_column_mm=FLOOR_MM, lettering_columns=False)
     with patch(_OCR_GATE_PATH, return_value=False):
         result, plan = digitize(art, cfg)

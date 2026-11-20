@@ -20,15 +20,14 @@ reaches them. This names, per tick, every dark-thread thing that sews within
   half a thread outside the artwork, read on a `PX_PER_MM` raster;
   `bare_mm2`: dark artwork inside the window no dark thread covers.
 
-Two arms: `main` (the Studio request as it is today) and `ends_off`
-(`lettering_columns_square_ends` and `lettering_columns_inside_connectors`
-False, the two flags #922 flipped ON on 2026-10-13, after Kent's render; the
-closest reproducible stand-in for what he saw). Fremont is an UNREPRESENTATIVE
+One arm: `main` (the Studio request as it is today). (The `ends_off` arm,
+`lettering_columns_square_ends` and `lettering_columns_inside_connectors`
+False, the two flags #922 flipped ON on 2026-10-13, after Kent's render, went
+with them when both were folded into the code 2026-11-20.) Fremont is an UNREPRESENTATIVE
 fixture: reproduce defects on it, never size a constant on it. Measurement only.
 
     # one arm (a digitize is ~5 minutes): writes DIR/<arm>.json and DIR/<arm>.pkl
     .venv/Scripts/python -m tools.wordmark_ticks --arm main --out DIR
-    .venv/Scripts/python -m tools.wordmark_ticks --arm ends_off --out DIR
     # re-census a saved arm without digitizing (after a change to this tool)
     .venv/Scripts/python -m tools.wordmark_ticks --arm main --reuse --out DIR
     # the table, and the panels (artwork | each arm, 40 px/mm; then the excess map)
@@ -57,8 +56,6 @@ TICKS = {
 }
 ARMS = {
     "main": {},
-    "ends_off": {"lettering_columns_square_ends": False,
-                 "lettering_columns_inside_connectors": False},
 }
 DARK_MAX = 100        # a block whose darkest channel is under this is "dark thread"
 THREAD_MM = 0.4       # stitchviz.THREAD_MM, the drawn filament

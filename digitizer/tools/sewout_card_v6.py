@@ -54,8 +54,7 @@ NAME = "card_v6_40wt"
 DEFAULT_OUT = REPO / "docs" / "sewout" / "card-v6-2026-10-21"
 DEFAULT_CUTS = DEFAULT_OUT / "cuts"
 
-GROW = {"small_text_cap_mm": 4.0, "small_text_cap_min_stroke_mm": 0.85,
-        "lettering_columns_small_bold": True}
+GROW = {"small_text_cap_mm": 4.0, "small_text_cap_min_stroke_mm": 0.85}
 #: arm -> overrides on today's Studio request, in row (tooth) order
 CUTS = {
     "condensed": {**GROW, "small_text_cap_max_width_scale": 1.05},

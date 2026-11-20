@@ -195,7 +195,7 @@ LOST_FRAC_BAR = 0.30
 
 from tests.conftest import FLIP_2026_10_23  # noqa: E402
 SMALL_TEXT_PRE_FLIP = {k: v for k, v in FLIP_2026_10_23.items()
-                       if k.startswith("small_text_cap") or k == "lettering_columns_small_bold"}
+                       if k.startswith("small_text_cap")}
 
 # Today's measured value, recorded so a future reader can tell a PARTIAL cure
 # from a full one rather than reading a bare pass/fail. 0.3006 was the shipped

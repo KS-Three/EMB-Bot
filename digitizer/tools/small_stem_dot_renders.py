@@ -2,7 +2,7 @@
 """Renders for MASTER_SCOPE item 52: the i/j dot and the small stem, OFF
 beside ON, at the sizes Kent reads. Nothing here changes the engine or a
 constant; it digitizes committed fixtures under the two built-OFF flags
-(`cfg.lettering_columns_small_stem`, PR #896; `cfg.small_dot_rung`, PR #939,
+(`lettering_columns_small_stem`, PR #896; `cfg.small_dot_rung`, PR #939,
 with its lettering scope `cfg.small_dot_rung_lettering`, PR #975) and draws
 what each arm sews, thread at its laid width (`digitizer_core.stitchviz`
 through `tools/fremont_triage`'s panel helpers), so the flips can be decided
@@ -58,16 +58,16 @@ SP_CAPS = (2.5, 3.0, 4.0)
 BECKER = "becker_marine_logo.png"
 
 # `small_dot_rung` and `small_dot_rung_lettering` were folded into the code
-# 2026-11-19: the dot rung (scoped to lettering) is always on, so only the
-# small-stem flag still varies by arm and "off" / "stem" differ from "dot" /
-# "both" / "scope" no more than that flag does. The shipped default is "scope".
-_OFF = {"lettering_columns_small_stem": False}
+# 2026-11-19 and `lettering_columns_small_stem` 2026-11-20: the dot rung (scoped
+# to lettering) and the stem rule are always on, so the five arms below are one
+# engine and a re-run draws the same picture five times. The shipped default is "scope".
+_OFF = {}
 ARMS = {
     "off": dict(_OFF),
-    "stem": {"lettering_columns_small_stem": True},
+    "stem": {},
     "dot": dict(_OFF),
-    "both": {"lettering_columns_small_stem": True},
-    "scope": {"lettering_columns_small_stem": True},
+    "both": {},
+    "scope": {},
 }
 ARM_LABEL = {"off": "OFF (pre-flip)", "stem": "small_stem ON", "dot": "small_dot_rung ON",
              "both": "both ON", "scope": "both ON + lettering scope (shipped)"}

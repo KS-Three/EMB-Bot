@@ -1,4 +1,4 @@
-"""The art's own outline (`cfg.border_from_outline`, built OFF 2026-10-24).
+"""The art's own outline (the border-from-outline rule, built 2026-10-24).
 
 The pro's border choice is not a stroke threshold (#1043 census, #1052):
 MARINE and MFAB carry the same stroke and he satins one and borders the
@@ -97,8 +97,7 @@ def _sews_shaped(poly: Polygon, found, cfg) -> bool:
     """`cfg.border_from_outline_follow_shape`: the outline `poly` round the
     bodies in `found` is one `shaped_band` sews (round one body, thin enough
     for one satin everywhere, its thickness stepped)."""
-    if not (getattr(cfg, "border_from_outline_follow_shape", False)
-            and getattr(cfg, "border_from_outline", False)):
+    if not getattr(cfg, "border_from_outline_follow_shape", False):
         return False
     from .shaped_band import sews_shaped
 

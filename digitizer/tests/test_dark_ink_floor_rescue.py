@@ -46,7 +46,7 @@ def _scene() -> list[RegionMask]:
 
 
 def _cfg() -> PipelineConfig:
-    return PipelineConfig(keep_thin_strokes=False)
+    return PipelineConfig()
 
 
 def test_off_the_sub_floor_stroke_is_absorbed():
@@ -98,15 +98,16 @@ def test_on_the_lettered_blob_the_rescued_letters_reach_the_lettering_path(tmp_p
     art = tmp_path / "blob.png"
     _lettered_blob(art)
 
-    def run(flag: bool):
-        cfg = PipelineConfig(target_width_mm=40.0, max_colors=6, forced_class="gradient",
-                             edge_cap="none", min_detail_mm=2.5, keep_thin_strokes=False,
-                             dark_ink_floor_rescue=flag)
-        return run_stages(str(art), cfg)
-
-    off, on = run(False), run(True)
-    assert not any(r.meta.get("dark_ink_floor_rescued") for r in off.regions)
-    resc = [r for r in on.regions if r.meta.get("dark_ink_floor_rescued")]
-    assert resc, "the letters are sub-floor at 2.5 mm, so stage 3 protects them"
-    assert all(r.meta.get("text_cluster_id") and r.meta.get("dark_ink") for r in resc)
+    # Since `keep_thin_strokes` was folded into the code (2026-11-20) the
+    # gradient lane's thin population claims these sub-floor letters before
+    # stage 3's floor rescue sees them, so `dark_ink_floor_rescued` is never
+    # set on this fixture (it was, with the thin population held off) and the
+    # flag no longer moves it. What still holds, on the shipped engine, is the
+    # outcome: the letters reach the lettering path as dark-ink text.
+    cfg = PipelineConfig(target_width_mm=40.0, max_colors=6, forced_class="gradient",
+                         edge_cap="none", min_detail_mm=2.5)
+    on = run_stages(str(art), cfg)
+    letters = [r for r in _dark_regions_in_blob(on.regions) if r.meta.get("text_cluster_id")]
+    assert len(letters) >= 5
+    assert all(r.meta.get("dark_ink") for r in letters)
     assert len(_dark_regions_in_blob(on.regions)) >= 5

@@ -1,10 +1,10 @@
-"""`cfg.tie_in_off` (2026-10-22, default OFF, a gate-1 CANDIDATE): no lock at
-the start of a run. The pro locks 1 of 68 run starts (settings-vs-pro row 22);
+"""`tie_in_off` (2026-10-22, a gate-1 CANDIDATE; ON since 2026-10-23, folded into the
+code): no lock at the start of a run. The pro locks 1 of 68 run starts (settings-vs-pro row 22);
 `apply_ties` already locks only at cuts. Lengths are asserted in output
 millimetres, never pixels."""
 import math
 
-from digitizer_core import PipelineConfig, machine, stitches
+from digitizer_core import machine, stitches
 from digitizer_core.stitches import StitchBlock, StitchRun
 
 
@@ -21,12 +21,7 @@ def _tied():
     return b
 
 
-def test_default_on_since_2026_10_23():
-    # Kent's flip on the flip sheet (PR #1047); False is the off arm
-    assert PipelineConfig().tie_in_off is True
-
-
-def test_off_locks_both_starts_and_both_ends():
+def test_apply_ties_locks_both_starts_and_both_ends():
     b = _tied()
     for r, x0 in zip(b.runs, (0.0, 20.0)):
         assert r.tie_in_pts == 4
@@ -35,7 +30,7 @@ def test_off_locks_both_starts_and_both_ends():
         assert abs(leg - machine.TIE_STITCH_MM) < 1e-9      # mm, not px
 
 
-def test_on_strips_tie_ins_keeps_tie_offs():
+def test_drop_tie_ins_strips_tie_ins_keeps_tie_offs():
     b = _tied()
     n_before = b.stitch_count
     removed = stitches.drop_tie_ins([b])

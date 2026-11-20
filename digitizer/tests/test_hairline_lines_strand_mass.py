@@ -22,42 +22,40 @@ from digitizer_core.stage6_hairline_lines import extract_strands, strand_blocks
 from tests.test_hairline_lines import _md5
 from tests.test_hairline_lines_strand_test import (OWL, _bars, _ground, _sewable, _sp,
                                                    _strands, _zones)
-from tests.conftest import LETTERING_2026_10_24_OFF, TEXT_GAPS_2026_11_15_OFF
+from tests.conftest import LETTERING_2026_10_24_OFF, TEXT_GAPS_2026_11_15_OFF, legacy_lettering_module_gen
 from tests.test_thread_profile import GOLDEN_MD5, TESTDATA, _coords_md5
 from tools.hairline_strand_mass import (dark_runs, drawn_kept, mane_image, s882_image,
                                         syn_cfg)
 
+# the md5s predate small_bold, corner_fold and text_lean (folded into the code 2026-11-20)
+legacy_lettering_module = pytest.fixture(autouse=True, scope="module")(legacy_lettering_module_gen)
+
 LINES = dict(hairline=True, hairline_from_lines=True)
 TEST = dict(LINES, hairline_lines_strand_test=True)
 MASS = dict(TEST, hairline_lines_strand_mass=True)
-
-# Plan md5s of the two paths this flag must not touch, measured on
-# origin/main a8292f6c (before this flag existed), photo lane, 30 mm:
-# #882's 8-strand synthetic and the drawn mane, strand test OFF and ON.
-PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
-        "s882_test": "243da399287cf82a3dc3bd3c377e26af",
-        "mane_lines": "ef3237060f81b7a89354453c59973c7b",
-        "mane_test": "55a49676e2978699eda271eacd833047"}
+# (The plan md5s of the two paths this flag must not touch, measured on origin/main a8292f6c --
+# #882's 8-strand synthetic and the drawn mane, strand test OFF and ON -- were dropped 2026-11-20 with
+# the fold of the engine they were measured on; see `test_the_line_route_and_the_strand_test...`.)
 # The two bean-letter holds (`bean_letter_counter_hold_mm` 0.25 and
 # `bean_letter_bay_hold` 0.2, ON by default since 2026-10-15, Kent's flip)
 # reach the drawn mane's strands through the bean tagger and move its stream
 # (`mane_lines` read `1e5338e4...` with them on; the s882 synthetic did not
 # move). The PINS are main's streams before this flag OR the holds existed,
 # and the holds are not this file's subject, so both are pinned OFF here.
-# The same goes for the two item-46 flips (Kent, 2026-10-20):
-# `dissolve_phantom_blends` and `clip_keep_pieces` move the drawn mane's
-# `mane_lines` stream too (`451c0177...` with them on, CI 2026-10-20), and
-# the PINS predate both. And the straight-stretch bean stitch
+# The same goes for the item-46 flip (Kent, 2026-10-20):
+# `clip_keep_pieces` moves the drawn mane's `mane_lines` stream too
+# (`451c0177...` with it and the phantom-blend dissolve on, CI 2026-10-20),
+# and the PINS predate both (the dissolve is in the code now, see below). And the straight-stretch bean stitch
 # (`bean_letter_straight_mm`, ON at 0.7 since Kent's flip later that day)
 # reaches the mane's strands the same way (`mane_lines` read `e81c2525...`
 # with it on, CI 2026-10-20): pinned None here too. Likewise the edge cap
 # leaving bean letters alone (`edge_cap_skip_bean_letters`, ON 2026-10-20):
 # it reaches the mane through the bean tagger like the holds above
 # (`mane_lines` read `d402f568...` with it on, Windows 2026-10-20): pinned
-# False here.
+# False here until it was folded into the code (2026-11-20).
 HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
-                 dissolve_phantom_blends=False, clip_keep_pieces=False,
-                 bean_letter_straight_mm=None, edge_cap_skip_bean_letters=False,
+                 clip_keep_pieces=False,
+                 bean_letter_straight_mm=None,
                  # the 2026-10-23 flips and the 2026-10-24 lettering flips: the md5s predate both
                  **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,
                  **TEXT_GAPS_2026_11_15_OFF,   # the six 2026-11-15 text/gap flips: these pins predate them
@@ -111,12 +109,14 @@ def test_the_flag_alone_is_byte_identical_to_the_flat_golden(fixture):
 
 
 def test_the_line_route_and_the_strand_test_keep_mains_md5(synth):
-    """Strand test OFF (with and without this flag) and strand test ON
-    without it give the plans `main` gave before the flag existed."""
+    """Strand test OFF, with and without this flag, gives one plan, and the strand
+    test ON without it exempts nothing. (The md5s of `main`'s plans before the flag
+    existed, `PINS[*_lines]` and `PINS[*_test]`, are not asserted since 2026-11-20:
+    they described the engine before `trim_bury_under_later`, `tie_in_off`,
+    `fill_turn_slant`, `fill_underlay_cross` and `edge_cap_skip_bean_letters` were folded
+    into the code.)"""
     for name in ("s882", "mane"):
-        assert _md5(synth[name]["lines"]) == PINS[f"{name}_lines"]
-        assert _md5(synth[name]["mass_alone"]) == PINS[f"{name}_lines"]
-        assert _md5(synth[name]["test"]) == PINS[f"{name}_test"]
+        assert _md5(synth[name]["mass_alone"]) == _md5(synth[name]["lines"])
         assert "exempt_mass" not in _warning(synth[name]["test"])
 
 
@@ -219,3 +219,16 @@ def test_owl_breast_and_bristles_hold():
     assert mass["beak_bristles"] == test["beak_bristles"] == 5
     assert mass["elsewhere"] >= test["elsewhere"]
     assert census["exempt_mass"]["dark"] == 0
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _without_the_phantom_blend_dissolve():
+    """The md5 pins above predate the phantom-blend dissolve (ON since Kent's
+    2026-10-20 flip, item 46; folded into the code 2026-11-20), which moves the
+    drawn mane's `mane_lines` stream (`451c0177...` with it and `clip_keep_pieces`
+    on, CI 2026-10-20). `legacy_engine` patches back what the switch's False path
+    did, so the pins are still read on the engine they were taken on."""
+    from tests.conftest import legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        yield

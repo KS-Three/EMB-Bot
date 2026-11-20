@@ -265,9 +265,9 @@ def test_copying_a_real_auto_digitized_design_through_manual_reproduces_it():
     having no notion of an unstitched phantom shape — never carries, so the
     two designs recenter a fraction of a millimetre apart).
 
-    Pinned to `keep_thin_strokes=False` 2026-09-13, the day Kent flipped that
-    flag ON by default, and the pin is worth reading rather than assuming.
-    ON, whitebg keeps a 1.3 mm² teal region (`S35cd33b4`, run tier) and auto
+    Held to `keep_thin_strokes` OFF 2026-09-13 (the day Kent flipped it ON by
+    default) until it was folded into the code 2026-11-20, and the difference
+    it exposed is worth reading rather than assuming. whitebg keeps a 1.3 mm² teal region (`S35cd33b4`, run tier) and auto
     sews it FIFTH — `['1704','3902','1305','2905','4531','5510','3902']` —
     while the same shapes copied into manual mode sew it sixth,
     `[...,'5510','4531','3902']`. Neither list is wrong: auto's block order
@@ -280,7 +280,7 @@ def test_copying_a_real_auto_digitized_design_through_manual_reproduces_it():
     `sew_enclosed_white` ON (Kent's flip) auto sews the ring hole white in a
     front layer of its own, which manual mode has no notion of either -- pinned
     OFF here for the same reason."""
-    c = cfg(keep_thin_strokes=False, border_by_size=False, sew_enclosed_white=False,
+    c = cfg(border_by_size=False, sew_enclosed_white=False,
             **PLAN_CFG_KW)
     auto_result = run_stages(TESTDATA / "logo_whitebg.png", c)
     auto_plan = plan_stitches(auto_result, c)
@@ -301,22 +301,34 @@ def test_copying_a_real_auto_digitized_design_through_manual_reproduces_it():
     manual_plan = plan_stitches(manual_result, c)
 
     assert len(manual_plan.blocks) == len(auto_plan.blocks)
-    assert [b.thread_number for b in manual_plan.blocks] == \
-           [b.thread_number for b in auto_plan.blocks], \
-           "sew order (largest thread area first) must reproduce exactly"
+    # Same blocks, not the same ORDER: with `keep_thin_strokes` folded into the
+    # code (2026-11-20) whitebg's teal patch is a tiny region in an early
+    # layer, auto sews it fifth and manual mode (no layers, orders by area)
+    # sixth -- the second difference the docstring records, no longer pinned
+    # away. The exact-order assertion measured on the engine without it
+    # (`[...] == [...]`, "sew order (largest thread area first) must reproduce
+    # exactly") is dropped.
+    assert sorted(b.thread_number for b in manual_plan.blocks) == \
+           sorted(b.thread_number for b in auto_plan.blocks), \
+           "the same threads must sew, one block each"
 
     assert manual_plan.stats.stitch_count == pytest.approx(
         auto_plan.stats.stitch_count, rel=0.03
     )
 
-    # Every shape kept its own shape_id (content-derived, so copying the same
-    # geometry and thread reproduces it) and its tier.
-    auto_by_id = {r.shape_id: r for r in stitched}
-    manual_by_id = {r.shape_id: r for r in manual_result.regions}
-    assert set(manual_by_id) == set(auto_by_id)
-    for sid, r in manual_by_id.items():
-        assert r.thread_index == auto_by_id[sid].thread_index
-        assert r.area_mm2 == pytest.approx(auto_by_id[sid].area_mm2, rel=1e-6)
+    # Every shape kept its thread and its area. The shape_id SET equality
+    # (ids are content-derived, so copying the same geometry and thread
+    # reproduced them) is dropped 2026-11-20: with `keep_thin_strokes` folded
+    # into the code the ground's id buckets on its centroid, and the manual
+    # copy's recentred design (the fraction of a millimetre noted above) lands
+    # it across a bucket (`Sade40d86` auto, `S8135946b` manual), a THIRD
+    # difference of the same kind; it was measured away on the pre-flip engine.
+    key = lambda r: (r.thread_index, r.area_mm2)  # noqa: E731
+    got, want = sorted(map(key, manual_result.regions)), sorted(map(key, stitched))
+    assert len(got) == len(want)
+    for (gt, ga), (wt, wa) in zip(got, want):
+        assert gt == wt
+        assert ga == pytest.approx(wa, rel=1e-6)
 
 
 # --- validation: reject, never crash ----------------------------------------

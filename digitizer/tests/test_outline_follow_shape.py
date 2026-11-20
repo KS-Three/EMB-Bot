@@ -363,20 +363,6 @@ def test_on_the_body_and_a_band_of_one_width_are_byte_identical():
     assert _md5(_plan(RING, **{FLAG: True})) == _md5(_plan(RING))
 
 
-def test_on_without_border_from_outline_does_nothing():
-    b, o = _region("Sbody", DISC, 0, 0), _region("Souter", GEAR, 1, 1)
-
-    def plan(**kw):
-        planned = [PlannedRegion(region=b, polygon=DISC, sew_index=0),
-                   PlannedRegion(region=o, polygon=GEAR, sew_index=1)]
-        cfg = PipelineConfig(underlay=False, border_from_outline=False, **kw)
-        blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
-                             art_outlines=_art_outlines([b, o], cfg))
-        return [r for blk in blocks for r in blk.runs]
-
-    assert _md5(plan(**{FLAG: True})) == _md5(plan(**{FLAG: False}))
-
-
 # --- the frame guard (ON since 2026-11-15) -----------------------------------
 
 def _guarded(band, body=DISC, **cfg_kw):

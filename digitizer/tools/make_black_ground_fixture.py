@@ -94,11 +94,10 @@ def main() -> int:
     print("detect_letterbox -> (top, bottom, left, right) =", bars,
           "(all zero means nothing is stripped)")
 
-    for flag in (False, True):
-        p = prep(OUT, PipelineConfig(target_width_mm=80.0, strip_letterbox=flag))
-        enclosed = None if p.enclosed_mask is None else int(p.enclosed_mask.sum())
-        print(f"  strip_letterbox={flag!s:5s} bg_rgb={p.bg_rgb} "
-              f"enclosed_px={enclosed} warnings={[w['code'] for w in p.warnings]}")
+    p = prep(OUT, PipelineConfig(target_width_mm=80.0))
+    enclosed = None if p.enclosed_mask is None else int(p.enclosed_mask.sum())
+    print(f"  bg_rgb={p.bg_rgb} "
+          f"enclosed_px={enclosed} warnings={[w['code'] for w in p.warnings]}")
     return 0
 
 

@@ -2,7 +2,7 @@
 
 Shared by stage 0 and stage 1, which each decode the file for themselves and
 MUST read the same picture (stage 0's own comment on its `_load`). Both apply
-this under `cfg.alpha_edge_extend`; stage 1 keeps the file's own colour
+this; stage 1 keeps the file's own colour
 aside for the two readers that want it (`Prep.raw_rgb`).
 """
 from __future__ import annotations
@@ -47,7 +47,7 @@ def extend_opaque_colour(rgb: np.ndarray, alpha: np.ndarray, max_px: int = 0,
     Measured 2026-09-20: Becker's file (one colour everywhere, the shape in
     alpha) reads flat / 18 regions / 8,334 stitches / 59 trims; the SAME
     pixels with black under the alpha read gradient / 151 / 15,318 / 175.
-    `cfg.alpha_edge_extend` makes this the image every stage reads, so what
+    The extension makes this the image every stage reads, so what
     sits under the alpha stops mattering. Every reader, not only the two
     filters: stage 0's gradient signal and stage 2's segmentation run
     spatial kernels over the whole raster and mask to the artwork
@@ -109,7 +109,7 @@ def upscale_expected(alpha: np.ndarray, target_width_mm: float, min_px_per_mm: f
     which on the alpha branch IS stage 1's foreground box (border-connected
     transparency is the background; an enclosed transparent hole sits inside
     the box either way). Stage 0 decodes the file for itself before stage 1
-    runs, so both stages decide `alpha_edge_extend_upscaled_only` from this
+    runs, so both stages decide the upscale gate from this
     one rule and read the same picture.
 
     Measured 2026-09-20 (scope-history, the extend addendum): the only
@@ -126,20 +126,18 @@ def upscale_expected(alpha: np.ndarray, target_width_mm: float, min_px_per_mm: f
 
 def extension_applies(cfg, alpha: np.ndarray | None, ignore_gate: bool = False,
                       design_class: str | None = None) -> bool:
-    """The one gate both stages use: the flag, a real alpha, and — under
-    `alpha_edge_extend_upscaled_only` — an upscale ahead.
+    """The one gate both stages use: a real alpha and an upscale ahead.
 
-    `ignore_gate` is stage 0's under `cfg.alpha_edge_extend_stage0_whole`
-    (Kent's pick, 2026-09-20): classification reads the extended raster
+    `ignore_gate` is stage 0's (Kent's pick, 2026-09-20): classification reads the extended raster
     wherever the file has alpha, while stage 1 keeps the gate for the pixels
     it sews. Measured the same day (`tools/stage0_scale_arms.py`): the gate
     left one `photo_*` misroute reachable (ENTHUSIAST at 400 px, exactly the
     pre-flip reading) and added a class flip where the extension switches
     off, and on the nine real logos at native size no class moves under
     any arm — so stage 0 gives up nothing by reading whole-image."""
-    if not cfg.alpha_edge_extend or alpha is None or not (alpha < 255).any():
+    if alpha is None or not (alpha < 255).any():
         return False
-    if cfg.alpha_edge_extend_upscaled_only and not ignore_gate:
+    if not ignore_gate:
         # The working grid, not `min_px_per_mm`: the gate is "will the
         # enlargement run", and under `cfg.work_px_per_mm` it runs up to there
         # (`design_class` is stage 1's, which knows stage 0's verdict; stage 0

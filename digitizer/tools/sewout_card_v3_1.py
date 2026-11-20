@@ -91,7 +91,6 @@ STOP_ORDER, STOPS = v2.STOP_ORDER, v2.STOPS
 
 #: Every flag that could move a piece, pinned OFF. An arm changes only what it names.
 PINS = {
-    "small_glyph_keep": False,
     "small_lettering_skeleton": False,
     "small_lettering_skeleton_floor_mm": None,   # None = machine.MIN_STITCH_MM, 1.0 mm
     "small_text_cap_mm": None,                   # #909, OFF
@@ -100,8 +99,6 @@ PINS = {
     "bean_letter_stitch_mm": None,
     "lettering_words": False,
     "lettering_word_tiers": False,
-    "lettering_columns_square_ends": False,      # #907
-    "lettering_columns_inside_connectors": False,  # #912
 }
 #: `small_text_true_size` is ON by default since 2026-10-14, and while it is ON
 #: the None values above are refilled. The card was cut before that flip, so
@@ -116,7 +113,7 @@ PRE_TRUE_SIZE = {"small_text_true_size": False,
                  # ...and the dark-ink read (`keep_dark_thin_strokes`, ON since 2026-10-28, gradient
                  # class only): the owl card (v3.2) was cut without it
                  "keep_dark_thin_strokes": False}
-ENDS_ON = {"lettering_columns_square_ends": True, "lettering_columns_inside_connectors": True}
+ENDS_ON = {}
 SKEL = {"small_lettering_skeleton": True}
 
 #: Fremont replay arms: the Studio request at 81 mm on a Hat plus PINS plus these.

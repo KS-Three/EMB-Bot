@@ -541,7 +541,7 @@ def _row_points(x0: float, x1: float, y: float, row_index: int, stitch_mm: float
 def _slant_turns(seq: list[tuple[int, float, float, float]]
                  ) -> list[tuple[float, float]]:
     """The column's row spans, in walk order, with one end of every turn
-    pulled in so the turn slants (`cfg.fill_turn_slant`, 2026-10-21).
+    pulled in so the turn slants (2026-10-21).
 
     `seq` is a column as `_fill_paths` walks it: (row index, y, x0, x1), row
     k sewn right to left when k is odd. Stepping straight from one row's
@@ -1809,7 +1809,7 @@ def _cut_is_cheaper(a: tuple[float, float], bridge: list[tuple[float, float]],
     a finished column for 24.5 mm to cross an 8.4 mm gap — 16 travel stitches
     plus 9.3 exposed ones, 34.6 against a cut's 25.
 
-    `PipelineConfig.fill_bridge_cut`, default OFF. No constant is added: the
+    The pipeline always passes `cut_bridges=True` (flag folded 2026-11-20). No constant is added: the
     bridge is priced with the same two the scorer uses, both Kent's.
 
     Only a bridge that SHOWS is weighed — travel under fill still to come is
@@ -2176,7 +2176,7 @@ def _fill_paths(poly: Polygon, angle_deg: float, row_mm: float, stitch_mm: float
                 ) -> list[list[tuple[float, float]]]:
     """Fill one polygon; -> continuous stitch paths in original (unrotated) mm space.
 
-    `slant_turns` (`cfg.fill_turn_slant`, default OFF): each column's spans
+    `slant_turns` (the pipeline always passes True; the flag is folded): each column's spans
     go through `_slant_turns`, so every turn lands `machine.
     FILL_TURN_ALONG_MM` along the row instead of one row spacing straight
     across. False is byte-identical.
@@ -2775,7 +2775,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     parameter itself defaults False so a caller that does not pass it (the
     contour tier's finish patches) is byte-identical to before it existed.
 
-    `cut_bridges` (`PipelineConfig.fill_bridge_cut`, default OFF): a fill
+    `cut_bridges` (the pipeline always passes True): a fill
     bridge that shows and costs more at `_score`'s rate than the cut it
     avoids is lifted instead of sewn — see `_cut_is_cheaper`. Inert without
     `under_cover`, which is what tracks the sewn footprint, and on the two-pass
@@ -2824,7 +2824,7 @@ def stitch_shape(poly: Polygon, shape_id: str, *, angle_deg: float | None,
     `stitch_mm` for the fill pass — the length IS the technique. Underlay is
     unaffected. `seed` and `fur_style_name` are read for no other technique.
 
-    `slant_turns` (`PipelineConfig.fill_turn_slant`, default OFF): the fill
+    `slant_turns` (the pipeline always passes True): the fill
     pass's rows turn on a slant, `machine.FILL_TURN_ALONG_MM` along the row,
     instead of stepping one row spacing straight across -- see
     `_slant_turns`. Every fill technique's pass, never the underlay.
