@@ -1,4 +1,5 @@
-"""One cone, one layer (`cfg.merge_duplicate_cones`, default ON).
+"""One cone, one layer (default ON since 2026-09-01; the `merge_duplicate_cones` switch
+was folded into the code 2026-11-20, and the OFF arm below is the fold patched out).
 
 Defect 18 — the SECOND spool-revisit mechanism, the one defect 16's fix
 correctly ignores. Stage 2 quantizes to COLOURS, and two different quantized
@@ -36,17 +37,38 @@ from pathlib import Path
 
 import pytest
 
-from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.regions import Region
 from digitizer_core.stage3_segment import merge_duplicate_cone_layers
 from digitizer_core.threads import CHART
 from digitizer_core.warnings_codes import DUPLICATE_CONE_LAYERS_MERGED
 
-from .conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, LAYER_SHADOW_2026_11_18_OFF, cfg
+from .conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, LAYER_SHADOW_2026_11_18_OFF, cfg, own_thread_only
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 DRONE = TESTDATA / "photo" / "drone_render.png"
+
+
+def _digitize(fold: bool, snap: bool = True, plain_mean: bool = False, **kw):
+    """Drone @ 80 mm through the whole pipeline. `fold=False` patches the fold out
+    (it hands `thread_indices` back and merges nothing: what `merge_duplicate_cones=False`
+    did); `snap=False` patches the edge snap out the same way (`snap_region_edges=False`);
+    `plain_mean=True` hands each region's palette colour back as its RGB mean
+    (`robust_region_colour=False`)."""
+    import digitizer_core.pipeline as pl
+    import digitizer_core.stage2_photo_segment as ps
+    from tests.conftest import legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, robust=plain_mean)
+        if not fold:
+            real = pl.merge_duplicate_cone_layers
+            mp.setattr(pl, "merge_duplicate_cone_layers",
+                       own_thread_only(lambda regions, thread_indices: (thread_indices, []), real))
+        if not snap:
+            real = ps.snap_region_edges
+            mp.setattr(ps, "snap_region_edges",
+                       own_thread_only(lambda labels, valid, lab, **k: labels, real))
+        return digitize(DRONE, cfg(target_width_mm=80.0, **kw))
 
 
 def region(sid: str, thread: int, layer: int) -> Region:
@@ -128,8 +150,9 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # trades 21 stitches for 56 mm less flying (16,324 -> 16,345 stitches,
 # needle-up 1,568 -> 1,512 mm, 112 lifts either way; measured 2026-09-10).
 # "Fewer stitches AND less needle-up" is a fact of the engine it was
-# measured on, so the fixtures hold that engine (False, byte for byte) and
-# say so here -- the posture `conftest.PRE_FLIP` documents.
+# measured on, so the fixtures hold that engine (`plain_mean`: the switch is
+# folded into the code 2026-11-20, `legacy_engine` patches its False path back)
+# and say so here -- the posture `conftest.PRE_FLIP` documents.
 # `keep_thin_strokes` joined that posture 2026-09-13 (flipped ON by Kent's
 # ruling) for the same reason: ON, drone keeps 33 more sub-floor regions, an
 # artwork cone sews twice again (`[..., 259, ..., 259, ...]`) and the fold
@@ -155,26 +178,18 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
 # The engine these claims were measured on has the skeleton tier.
 PRE_FLIP_RC = {"border_by_size": False, "enclosed_alpha_hole_parts": False,
-               "lettering_columns_corner_fold": False, "robust_region_colour": False, "keep_thin_strokes": False,
+               "lettering_columns_corner_fold": False, "keep_thin_strokes": False,
                "lettering_columns": False}
 
 
 @pytest.fixture(scope="module")
 def drone_off():
-    return digitize(DRONE, cfg(target_width_mm=80.0,
-                              merge_duplicate_cones=False, **PRE_FLIP_RC))
+    return _digitize(False, plain_mean=True, **PRE_FLIP_RC)
 
 
 @pytest.fixture(scope="module")
 def drone_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
-                              **PRE_FLIP_RC))
-
-
-def test_the_default_is_on():
-    """Flipped by Kent 2026-09-01 with the measured pass in hand — the same
-    call, and the same posture, as `borders_last`."""
-    assert PipelineConfig().merge_duplicate_cones is True
+    return _digitize(True, plain_mean=True, **PRE_FLIP_RC)
 
 
 def test_the_fixture_still_declares_duplicate_cones(drone_off):
@@ -276,27 +291,11 @@ def test_an_explicit_layer_override_still_beats_the_fold(drone_on):
     # third block or later, so "sooner" holds whichever thread of layer 0 leads
     sid = next(s for s in sewn if s in by_id and by_id[s].thread_index not in layer0
                and first_block(plan, s) >= 2)
-    _r2, pinned = digitize(DRONE, cfg(target_width_mm=80.0,
-                                      merge_duplicate_cones=True,
-                                      shape_overrides={sid: {"layer": 0}},
-                                      **PRE_FLIP_RC))
+    _r2, pinned = _digitize(True, plain_mean=True, shape_overrides={sid: {"layer": 0}}, **PRE_FLIP_RC)
     k = first_block(pinned, sid)
     lead = next(r.shape_id for r in pinned.blocks[k].runs if r.shape_id)
     assert lead == sid, "a shape pinned to layer 0 must lead its own thread's block"
     assert k < first_block(plan, sid), "and that block must sew sooner than unpinned"
-
-
-def test_off_leaves_the_design_exactly_as_it_was(drone_off):
-    """Gate-3 posture: the flag defaults OFF and OFF must mean the flag does
-    not exist. Same blocks, same threads, same coordinates."""
-    _o, base = drone_off
-    _e, explicit = digitize(DRONE, cfg(target_width_mm=80.0,
-                                       merge_duplicate_cones=False,
-                                       **PRE_FLIP_RC))
-    assert len(base.blocks) == len(explicit.blocks)
-    for a, b in zip(base.blocks, explicit.blocks):
-        assert a.thread_index == b.thread_index
-        assert [r.points for r in a.runs] == [r.points for r in b.runs]
 
 
 # --- the same fold on the engine as it ships -----------------------------------
@@ -314,14 +313,12 @@ def test_off_leaves_the_design_exactly_as_it_was(drone_off):
 
 @pytest.fixture(scope="module")
 def drone_shipped_off():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False,
-                               border_by_size=False))
+    return _digitize(False, border_by_size=False)
 
 
 @pytest.fixture(scope="module")
 def drone_shipped_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
-                               border_by_size=False))
+    return _digitize(True, border_by_size=False)
 
 
 def _artwork_revisits(plan) -> int:
@@ -367,16 +364,14 @@ def drone_presnap_off():
     # `cap_merged_layer_home` + `shadow_to_page` (ON 2026-11-18, Kent): the
     # Drone's cap-merged dark bands re-layer (72 shapes), the shape no longer
     # doubles, the xfail XPASSes (strict, CI shard 3/6): same reason, same hold.
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=False,
-                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF,
-                               **LAYER_SHADOW_2026_11_18_OFF))
+    return _digitize(False, snap=False, **FLAG_ENDS_SEAM_2026_11_17_OFF,
+                     **LAYER_SHADOW_2026_11_18_OFF)
 
 
 @pytest.fixture(scope="module")
 def drone_presnap_on():
-    return digitize(DRONE, cfg(target_width_mm=80.0, merge_duplicate_cones=True,
-                               snap_region_edges=False, **FLAG_ENDS_SEAM_2026_11_17_OFF,
-                               **LAYER_SHADOW_2026_11_18_OFF))
+    return _digitize(True, snap=False, **FLAG_ENDS_SEAM_2026_11_17_OFF,
+                     **LAYER_SHADOW_2026_11_18_OFF)
 
 
 @pytest.mark.xfail(strict=True, reason=(

@@ -208,8 +208,9 @@ def _case_regions(case, rescued_link=True, pre_flip_route=False):
     `rescued_link` is the text tagger's `text_cluster_rescued_ink_link`
     (ON since 2026-10-15); False is the pre-flip tagger, whose rescued round
     linked on size alone, the population the screenshot census was read on.
-    `dissolve_phantom_blends` is held OFF (ON since Kent's 2026-10-20 flip,
-    item 46): the hand labels are shape ids read on the engine without it,
+    The phantom-blend dissolve is held OFF (ON since Kent's 2026-10-20 flip,
+    item 46; folded into the code 2026-11-20, `legacy_engine` patches its False
+    path back): the hand labels are shape ids read on the engine without it,
     and on the screenshot the dissolve re-cuts the regions they name.
     `speck_prune` is held OFF for the same reason (ON since Kent's tick,
     2026-11-16): a pruned speck's pixels join the shape round it, which
@@ -226,10 +227,12 @@ def _case_regions(case, rescued_link=True, pre_flip_route=False):
     if pre_flip_route:
         base.update({k: PRE_FLIP[k] for k in ("stage0_scale_relative_grad",
                                               "flat_page_fringe_soft_ramp", "flat_ramp_blend_dissolve")})
-    res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True,
-                                                    text_cluster_rescued_ink_link=rescued_link,
-                                                    dissolve_phantom_blends=False,
-                                                    speck_prune=False))
+    from tests.conftest import legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True,
+                                                        text_cluster_rescued_ink_link=rescued_link,
+                                                        speck_prune=False))
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
     letters = None

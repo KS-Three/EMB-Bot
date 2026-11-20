@@ -5,7 +5,7 @@ first cap block wears the cone of the LAST artwork block, the two are
 consecutive same-thread blocks -- a machine stop that has the operator cut
 and re-thread the spool already on the machine, and the one repeat
 `tools/cone_revisits.py` reads at gap 1 (`bg_uncertain`, cone 3363, both
-garments, 2026-10-20). `cfg.merge_adjacent_same_thread` (ON since 2026-08-28)
+garments, 2026-10-20). The adjacent same-thread merge (ON since 2026-08-28)
 already folds such pairs inside the artwork; the cap was the one seam it did
 not reach. It reaches it now: the cap's stretches sew at the end of that block,
 still jump + trim + tied exactly as a block start -- every stitch and cut the
@@ -32,7 +32,7 @@ def _seams(blocks) -> list[int]:
 def test_old_path_repeats_the_cone_across_the_cap_seam():
     """The reproduction: a one-colour design sews its cap as a second block in
     the same cone, straight after the artwork."""
-    old = plan_for(ONE, merge_adjacent_same_thread=False)
+    old = plan_for(ONE, merge=False)
     assert [b.thread_index for b in old.blocks] == [3, 3]
     assert all(is_cap(r) for r in old.blocks[1].runs)
     assert stats(old).color_changes == 1
@@ -52,7 +52,7 @@ def test_the_cap_sews_in_the_last_blocks_cone_without_a_stop():
 def test_it_moves_no_stitch_and_no_cut_only_the_stop():
     """Counted off the emitted machine stream, on every fixture here."""
     for regions in (ONE, APART, ABUT):
-        old = plan_for(regions, merge_adjacent_same_thread=False)
+        old = plan_for(regions, merge=False)
         new = plan_for(regions)
         assert points(new.blocks) == points(old.blocks)
         s_old, s_new = stats(old), stats(new)

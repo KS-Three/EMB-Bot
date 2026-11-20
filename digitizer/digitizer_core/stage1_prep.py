@@ -138,7 +138,6 @@ class Prep:
 
 
 def _load(image: str | Path | bytes | np.ndarray,
-          strip_bars: bool = False,
           crop=None) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
@@ -162,15 +161,10 @@ def _load(image: str | Path | bytes | np.ndarray,
     # as ink -- so black bars invert the whole design rather than merely
     # degrading it. Strip before anything reads the pixels.
     #
-    # Behind `cfg.strip_letterbox`, DEFAULT OFF -- see that flag's comment for
-    # why (11 tests depend on one fixture's letterboxed pathology, including a
-    # cv2.erode regression guard whose only full-bleed fixture this removes).
-    # `stage0_classify._load` is gated by the same flag, and they must stay in
+    # `stage0_classify._load` strips the same way, and they must stay in
     # step: if only one stripped, stage 0 would classify a different picture
     # than stage 1 digitizes.
-    if strip_bars:
-        return strip_letterbox(rgb, alpha)
-    return rgb, alpha
+    return strip_letterbox(rgb, alpha)
 
 
 def _border_ring(shape: tuple[int, int], width: int = 2) -> np.ndarray:
@@ -395,7 +389,7 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     """`design_class` is stage 0's verdict when the caller has one: it decides
     whether the working grid applies (`config.work_grid_px_per_mm` — a
     photograph keeps the source line). None reads as not photographic."""
-    rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
+    rgb, alpha = _load(image, cfg.crop)
     warnings: list[dict] = []
 
     # `cfg.alpha_edge_extend`: every stage reads nearest-opaque colour under

@@ -21,7 +21,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.config import PHOTO_CLASSES, is_photographic
 from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.preflight import run_preflight
-from tests.conftest import PRE_FLIP, TESTDATA
+from tests.conftest import PRE_FLIP, TESTDATA, on_the_pre_flip_engine
 
 OWL = TESTDATA / "photo" / "owl_kent.jpg"
 
@@ -56,6 +56,7 @@ def test_one_canonical_photo_class_tuple():
     assert stage6_satin._PHOTO_CLASSES is PHOTO_CLASSES
 
 
+@on_the_pre_flip_engine
 def test_declaring_a_gradient_photograph_brings_it_inside_max_colors():
     """The defect this flag exists to close, end to end.
 

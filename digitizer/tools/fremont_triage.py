@@ -100,8 +100,9 @@ ARMS = {
     # predates `small_text_true_size` (ON since 2026-10-14) and the spoked
     # detail mark on the Wisconsin star (`detail_spokes`, ON since
     # 2026-10-16, one more shape), the small stem and the scoped dot rung,
-    # the photo lane's phantom-blend dissolve (`dissolve_phantom_blends`) and
-    # stage 5's cut-off pieces (`clip_keep_pieces`), all ON since 2026-10-20,
+    # the photo lane's phantom-blend dissolve (a switch until 2026-11-20, now
+    # in the code, so no longer pinned off here) and stage 5's cut-off pieces
+    # (`clip_keep_pieces`), all ON since 2026-10-20,
     # so this arm, the engine as he sewed it, has those OFF too -- and the
     # white-keyline recipe, on every job since 2026-10-27.
     "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False,
@@ -110,7 +111,7 @@ ARMS = {
                              "keep_dark_thin_strokes": False,   # ...and the dark-ink read (ON 2026-10-28)
                              "rope_band": False,   # ...and the rope as one band (2026-11-17)
                              "detail_spokes": False, "lettering_columns_small_stem": False,
-                             "dissolve_phantom_blends": False, "clip_keep_pieces": False,
+                             "clip_keep_pieces": False,
                              **{k: False for k in (
                                  "silhouette_underfill", "enclosed_white_keyline",
                                  "silhouette_underfill_panels", "silhouette_underfill_rim",
