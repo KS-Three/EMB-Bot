@@ -2560,3 +2560,16 @@ describe("Flatten shading", () => {
     expect(getByTestId("flatten-shading").checked).toBe(true);
   });
 });
+
+// Kent 2026-11-19: until a sew-out, the 3D Puff switch says puff is untested.
+describe("3D Puff untested note", () => {
+  test("shows only while the switch is on", () => {
+    const off = baseElement();
+    const a = render(Harness, { props: { element: off } });
+    expect(a.queryByTestId("puff-untested")).toBeNull();
+    a.unmount();
+    const on = { ...off, params: { ...off.params, puff: true } };
+    const b = render(Harness, { props: { element: on } });
+    expect(b.getByTestId("puff-untested")).toHaveTextContent("hasn't been sew-tested yet");
+  });
+});

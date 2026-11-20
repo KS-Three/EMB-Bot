@@ -2439,6 +2439,11 @@
           3D Puff
         </label>
         {#if element.params.puff}
+          <!-- Kent 2026-11-19: puff has never been sewn (ROADMAP gate 1 holds
+               its foam constants), so the switch says so until a sew-out. -->
+          <p class="dgp-note" data-testid="puff-untested">
+            3D Puff hasn't been sew-tested yet. Run a test sew before production.
+          </p>
           <label class="dgp-checkline">
             <input
               type="radio"
