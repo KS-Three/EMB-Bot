@@ -31,7 +31,7 @@ STATION_MM = 0.3        # |offset along the stroke| of two stitches at one stati
 MIN_SHIFT_MM = 0.3      # nearer than this the two are one bar (`column_overlap`'s case)
 MIN_LAP_MM = 0.2        # the two stitches' extents overlap at least this much, or they only butt
 MIN_GAIN_MM = 0.3       # the union is at least this much longer than the longer stitch
-RAMP = 4                # stitches over which each end of a block grows to full width
+RAMP = 16               # stitches over which each end of a block grows to full width (pile: 4 piled F4b 0.51 -> 0.71 3-deep)
 STEP_MM = 2.0           # `column_overlap.OVERLAP_RUN_STEP_MM`
 
 
@@ -121,6 +121,19 @@ def junction_block(runs: list) -> tuple[list, int]:
                 continue
             PA = np.asarray(out[ai].points, float)
             found = _partners(PB, PA)
+            # a partner counts only where the earlier bar's stitches can come out (a lap of 3
+            # or more consecutive ones): a widened stitch over a kept one would pile thread
+            ids_all = sorted({v[0] for v in found.values()})
+            runs_ok: set[int] = set()
+            g: list[int] = []
+            for i in ids_all + [None]:
+                if g and (i is None or i - g[-1] > 1):
+                    if len(g) >= 3:
+                        runs_ok.update(g)
+                    g = []
+                if i is not None:
+                    g.append(i)
+            found = {j: v for j, v in found.items() if v[0] in runs_ok}
             if len(found) < MIN_STITCHES:
                 continue
             a_hits: list[int] = []
