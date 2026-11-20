@@ -428,6 +428,51 @@ SATIN_SPACING_MM = 0.4
 # browser engine still classifies at 3.0 (satinMaxWidthMm) — divergence is
 # deliberate, corpus-driven, and Python-side only until its own sew-out.
 SATIN_MAX_WIDTH_MM = 5.0
+
+# 3D puff constants (spec 2026-11-19-3d-puff-design.md §3). ROADMAP gate-1
+# physical constants: every one is unmeasured until TIRES HAT 3D is measured
+# (ledger R1: the file is not available yet).
+PUFF_MIN_WIDTH_MM = 3.0  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_MAX_WIDTH_MM = 11.0  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_SATIN_SPACING_MM = 0.18  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_JUNCTION_OVERLAP_MM = 0.4  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_INSET_MM = 0.2  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_TIE_STITCHES = 5  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_FOAM_MM = 3.0  # unmeasured — §3; replace from TIRES HAT 3D
+# End-cap (§3.5 method 1, capping): stitches along the spine at each open
+# column end, stepped across the end at the cap spacing (perforation, not
+# coverage, so 4x sparser than the top satin). The depth is §3.5's 0.7 mm
+# "overhang", read as the cap's reach in under the column end from the art
+# edge; the outboard row lands ON the edge, never past it.
+PUFF_CAP_SPACING_MM = 0.30  # unmeasured — §3; replace from TIRES HAT 3D
+PUFF_CAP_DEPTH_MM = 0.7  # unmeasured — §3; replace from TIRES HAT 3D
+# §3.7 inset walk stitch length ("20 point walk"): the two-pass walk of
+# every ring that opens each shape's puff satin, after the foam stop.
+PUFF_TACKDOWN_STITCH_MM = 2.0  # unmeasured — §3; replace from TIRES HAT 3D
+# The pre-stop "puff grip" (spec "Tack-down"; the pro's 279-stitch "Puff
+# Grip" in TIRES HAT 3D): ONE pass round each puffed shape's outer ring,
+# holding the foam's position. The §3.7 walk above sews after the stop, as
+# the start of each shape's puff satin.
+PUFF_GRIP_STITCH_MM = 4.0  # unmeasured — §3; replace from TIRES HAT 3D
+# R18 (Kent 2026-11-19: "If you 3D one part of the letter, the entire letter
+# should be 3D"): a detached letter part -- an i/j tittle, an accent -- joins
+# its letter's puff. The pipeline's letter grouping (`text_cluster_id`) is per
+# WORD, so the part is found by geometry instead. These are GEOMETRY
+# TOLERANCES that recognise a part, not gate-1 physical constants: nothing
+# here changes how a stitch sews.
+# A part is compact: its area at most this many times its widest inscribed
+# circle's (a disc 1.0, a square 1.27, a 3:1 oval 3.0; the TIRES i-dot reads
+# 1.10, its letter strokes 11-29), so a letter stroke never qualifies.
+PUFF_LETTER_PART_MAX_ELONGATION = 3.0
+# ...and small: a 14 mm disc is 154 mm². Past the 11 mm puff ceiling on
+# purpose, so a slightly oversize dot is still recognised and sews flat with
+# "too wide to puff" named rather than an unexplained "not a column".
+PUFF_LETTER_PART_MAX_AREA_MM2 = 160.0
+# It sits beside its letter: the nearest non-ground shape is a puffed shape
+# of the same thread, within this many of the part's own widest diameters
+# (TIRES: the 5.3 mm dot 3.2 mm off its stroke, 0.6x; a typeface tittle
+# gap runs well under one dot diameter).
+PUFF_LETTER_PART_GAP_FACTOR = 1.5
 # The wide-column ceiling (quality review 2026-09-08 item 4; plan
 # 2026-09-09-wide-column-policy.md), live only under `cfg.wide_columns`,
 # DEFAULT OFF. Read off five commissioned Becker files sewn on garments —

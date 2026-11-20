@@ -183,7 +183,7 @@ def match_shape_ids(
         # `apply_shape_edits` is what actually replaces the geometry.
         for key in ("border", "applique", "tier", "fill_angle_deg",
                     "sew_order", "underlay_style", "boundary_override",
-                    "holes_override"):
+                    "holes_override", "puff"):
             if key in previous[pi].meta and key not in current[ci].meta:
                 current[ci].meta[key] = previous[pi].meta[key]
     return remap
@@ -388,6 +388,19 @@ def apply_shape_edits(
                         f"not one of {sorted(_BORDER_VALUES)}"
                     )
             r.meta["border"] = b
+
+        # Contract v1.11: per-shape 3D puff, True/False (None = no override,
+        # the key is simply absent from the entry / cleared by the caller).
+        if "puff" in ov:
+            pv = ov["puff"]
+            if pv is None:
+                r.meta.pop("puff", None)
+            elif isinstance(pv, bool):
+                r.meta["puff"] = pv
+            else:
+                raise ValueError(
+                    f"shape_overrides[{sid!r}].puff {pv!r} is not a boolean"
+                )
 
         if ov.get("sew_order") is not None:
             so = ov["sew_order"]
@@ -607,7 +620,8 @@ def _split_shape_id(source_id: str, line, index: int, salt: int = 0) -> str:
 #   SPECIFIC old polygon. The merge/split result is a different polygon by
 #   construction, so carrying the key forward would silently reapply a stale
 #   hand edit to the wrong shape — it is dropped, never migrated.
-_CARRIED_META_KEYS = ("border", "tier", "fill_angle_deg", "sew_order", "underlay_style")
+_CARRIED_META_KEYS = ("border", "tier", "fill_angle_deg", "sew_order", "underlay_style",
+                      "puff")
 
 
 def _seed_meta(source: Region) -> dict:

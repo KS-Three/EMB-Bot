@@ -417,6 +417,14 @@ APPLIQUE_COVER_WIDTH_CLAMPED = "APPLIQUE_COVER_WIDTH_CLAMPED"
 # that hit either bound sewed with no record that the requirement and the
 # stitched width disagree. extra: {"count": int, "width_mm": float,
 # "bound": "floor" | "ceiling"}
+PUFF_SHAPE_INELIGIBLE = "PUFF_SHAPE_INELIGIBLE"
+# Stage 6 (3D puff, docs/superpowers/specs/2026-11-19-3d-puff-design.md): a
+# shape puff was asked to raise is outside the puff width band (or yields no
+# satin column), so it sews flat. One per shape. extra: {"shape_id": str,
+# "reason": str}
+PUFF_NONE_ELIGIBLE = "PUFF_NONE_ELIGIBLE"
+# Puff was on and at least one shape wanted it, but none was eligible: the
+# design sews exactly as with puff off, with no foam stop. extra: {"count": int}
 APPLIQUE_PRECUT_TOO_NARROW = "APPLIQUE_PRECUT_TOO_NARROW"
 # Pre-cut mode's own scissors/placement floor (§2.12: `min_inscribed_diameter
 # >= 8mm`) — a DIFFERENT gate from `APPLIQUE_CUTTING_LINE_SUPPRESSED`'s 12mm

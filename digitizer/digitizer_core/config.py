@@ -7543,6 +7543,19 @@ class PipelineConfig:
     # sew-out comparison and is still clamped to [2.5, 5.0].
     applique_cover_width_mm: float | None = None
 
+    # Stage 6 — 3D puff (docs/superpowers/specs/2026-11-19-3d-puff-design.md).
+    #
+    # OFF by default, and that default is load-bearing: with `puff` False
+    # nothing puff-related is read, no step metadata is attached, and a design
+    # sews byte-for-byte what it sewed before the tier existed.
+    #
+    # Per-shape intent overrides the mode, as `applique` does, except that the
+    # master switch gates everything: `Region.meta["puff"]` is ignored while
+    # `puff` is False. "all" = every eligible satin shape unless meta says
+    # False; "select" = only shapes whose meta says True.
+    puff: bool = False
+    puff_mode: str = "all"
+
     # --- Review-screen shape edits (the shape-layers contract v1) ----------
     #
     # Both fields are keyed by the content-derived shape_id the review payload

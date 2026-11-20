@@ -418,5 +418,7 @@
  "lettering_columns_a_bar": false,
  "lettering_columns_block_lean": false,
  "lettering_columns_absorb_unsewn": false,
- "seam_hold_skips_outline_bodies": false
+ "seam_hold_skips_outline_bodies": false,
+ "puff": false,
+ "puff_mode": "all"
 }
