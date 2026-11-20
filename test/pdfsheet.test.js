@@ -193,3 +193,32 @@ test("image is square, capped at 5.5 in, drawn with MEDIUM zlib", () => {
   assert.equal(h, 5.5);
   assert.equal(comp, "MEDIUM");
 });
+
+test("steps: a stepped colour row prints its label and action; ordinary rows keep the name", () => {
+  const foam = "Stop: lay 3 mm puff foam over the outline, then continue";
+  const { lines } = build({
+    colors: [color("1801 Red", 255, 0, 0), color("1801 Red", 255, 0, 0), color("0015 White", 250, 250, 250)],
+    steps: [
+      { code: "COLOR", label: "Thread 1801", action: "Change thread to 1801" },
+      { code: "PUFF_TACKDOWN", label: "Puff outline", action: foam },
+      { code: "PUFF", label: "3D puff", action: "Tear away the excess foam. Design complete." },
+    ],
+  });
+  assert.ok(lines.includes("1. 1801 Red"));
+  assert.ok(lines.includes("2. Puff outline \u2014 " + foam));
+  assert.ok(lines.includes("3. 3D puff \u2014 Tear away the excess foam. Design complete."));
+  assert.ok(lines.includes("Keep puff off the cap's front seam."));
+  assert.ok(lines.includes("Puff is for caps and outerwear \u2014 foam breaks down with frequent washing."));
+});
+
+test("steps: no puff notes without a puff step, and no steps key leaves rows unchanged", () => {
+  const plain = build({ colors: [color("Red", 255, 0, 0)] });
+  assert.ok(plain.lines.includes("1. Red"));
+  assert.ok(!plain.lines.some((l) => /puff/i.test(l)));
+  const colorOnly = build({
+    colors: [color("Red", 255, 0, 0)],
+    steps: [{ code: "COLOR", label: "Thread 1", action: "Change thread to 1" }],
+  });
+  assert.ok(colorOnly.lines.includes("1. Red"));
+  assert.ok(!colorOnly.lines.some((l) => /puff/i.test(l)));
+});

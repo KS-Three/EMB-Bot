@@ -161,6 +161,9 @@ export function buildDigitizeConfig(element, project) {
     // "Flatten shading", the same way: sent only when ticked, so a design
     // that never ticked it keeps its cache key (project.js has why it is off).
     ...(p.bevel_ring_fold ? { bevel_ring_fold: true } : {}),
+    // 3D Puff: only when ON, like the two above, so a design that never
+    // turned it on keeps its cache key. The mode rides only with it ON.
+    ...(p.puff ? { puff: true, puff_mode: p.puff_mode === "select" ? "select" : "all" } : {}),
     // Sent both ways since the service's default went ON (2026-10-26, Kent's
     // flip): absent would be True, so an unticked box must say `false`. The
     // two follow-ons ride only with it ON.
@@ -257,7 +260,19 @@ export function buildDigitizeConfig(element, project) {
   // cache hit.
   const edits = canonicalShapeEdits(element || {});
   if (edits.deleted_shape_ids) cfg.deleted_shape_ids = edits.deleted_shape_ids;
-  if (edits.shape_overrides) cfg.shape_overrides = edits.shape_overrides;
+  // With the 3D Puff master switch OFF, stored per-shape puff ticks stay in
+  // the project (turning it back on restores them) but never reach the wire:
+  // the OFF config and cache key must equal a never-puffed design's.
+  let shapeOverrides = edits.shape_overrides;
+  if (shapeOverrides && !p.puff) {
+    const kept = {};
+    for (const [sid, e] of Object.entries(shapeOverrides)) {
+      const { puff: _puff, ...rest } = e;
+      if (Object.keys(rest).length) kept[sid] = rest;
+    }
+    shapeOverrides = Object.keys(kept).length ? kept : null;
+  }
+  if (shapeOverrides) cfg.shape_overrides = shapeOverrides;
   // Shape identity edits (contract v1.5) — same "sticky, ride every future
   // re-digitize" posture as deleted_shape_ids: a merge/split is not a
   // one-shot mutation, it is a standing decision that re-applies to whatever
@@ -274,8 +289,8 @@ export function buildDigitizeConfig(element, project) {
   // index at a different manufacturer's numbers — so a config carrying
   // recolors pins the brand the indexes were computed for.
   if (
-    edits.shape_overrides &&
-    Object.values(edits.shape_overrides).some((e) => e.thread_index != null) &&
+    shapeOverrides &&
+    Object.values(shapeOverrides || {}).some((e) => e.thread_index != null) &&
     element && element.review && element.review.brandId
   ) {
     cfg.thread_brand = element.review.brandId;
@@ -377,6 +392,9 @@ export function canonicalShapeEdits(element) {
     if (SHAPE_UNDERLAYS.has(e.underlay_style)) entry.underlay_style = e.underlay_style;
     if (Number.isInteger(e.layer)) entry.layer = e.layer;
     if (typeof e.stitched === "boolean") entry.stitched = e.stitched;
+    // `puff` (contract v1.11): true/false for one shape; absence is "no
+    // override" (the service's null), so a cleared tick leaves no key.
+    if (typeof e.puff === "boolean") entry.puff = e.puff;
     if (Number.isInteger(e.sew_order) && e.sew_order >= 0) entry.sew_order = e.sew_order;
     if (isValidBoundaryShape(e.boundary_override)) {
       entry.boundary_override = e.boundary_override.map(([x, y]) => [x, y]);
@@ -1244,6 +1262,12 @@ export function reviewFromJob(review, blocks = null) {
       // Additive service flag: this shape sewed through the blend tier.
       blended: s.blended === true,
       stitched: s.stitched !== false,
+      // 3D puff eligibility (contract v1.11, server-computed, read-only): sent
+      // ONLY when the job ran with puff on, so absent reads as null =
+      // unknown until a run with puff on returns. Never false-by-default,
+      // or every shape would look ineligible before the first puff run.
+      puffEligible: typeof s.puff_eligible === "boolean" ? s.puff_eligible : null,
+      puffReason: typeof s.puff_reason === "string" ? s.puff_reason : "",
       // Whether the shape's colour is a flattening artifact rather than a
       // decision (contract v1.7, server-computed, read-only — see app.py's
       // _review_payload comment): an ALPHA-derived enclosed hole inherits
@@ -2122,6 +2146,8 @@ export const ATTENTION_WARNINGS = new Set([
   "CLASSIFICATION_SEED_UNSTABLE", "CONTOUR_RING_UNREACHABLE", "EDGE_CAP_OVER_BUDGET",
   "APPLIQUE_NO_FABRIC_VISIBLE", "APPLIQUE_PRECUT_TOO_NARROW", "APPLIQUE_PIECES_OVERLAP",
   "APPLIQUE_STEP_EMPTY",
+  // 3D puff asked for and not delivered: the customer's own switch is the lever
+  "PUFF_SHAPE_INELIGIBLE", "PUFF_NONE_ELIGIBLE",
 ]);
 
 const WARNING_TEXT = {
@@ -2429,6 +2455,20 @@ const WARNING_TEXT = {
   // defect 29). What the customer needs is the effect on THEIR design.
   PHOTO_BACKGROUND_REMOVAL_UNAVAILABLE: () =>
     "Automatic background removal isn't set up on this machine, so this photo was digitized without it — and the tone and texture passes were skipped with it. Removing or cropping the background yourself before uploading gives a noticeably cleaner result.",
+  // 3D puff (stage 6). `reason` is the engine's own short phrase ("too thin
+  // for foam (2.0 mm)", "not a column shape"); the shape id stays out of the
+  // sentence. A reason that is not an adjective phrase reads wrong after "is",
+  // so those take the "can't be puffed (...)" form. NONE_ELIGIBLE names the
+  // column-width check, not only width (ruling R13).
+  PUFF_SHAPE_INELIGIBLE: (w) => {
+    const r = typeof w.reason === "string" ? w.reason.trim() : "";
+    if (!r) return "A shape can't be puffed, so it sews flat.";
+    return /^(too|not)[ ]/i.test(r)
+      ? `A shape is ${r}, so it sews flat.`
+      : `A shape can't be puffed (${r}), so it sews flat.`;
+  },
+  PUFF_NONE_ELIGIBLE: () =>
+    "No shape in this design can be puffed (puff needs satin columns 3–11 mm wide), so it sews flat.",
   PHOTO_FACE_PRIORS_UNAVAILABLE: () =>
     "Face detection isn't set up on this machine, so faces in this photo get no special protection. Check faces closely in the preview before stitching.",
 };

@@ -2423,6 +2423,44 @@
           </label>
         {/if}
       </div>
+      <!-- 3D Puff (PipelineConfig.puff / puff_mode, built OFF): foam under
+           satin columns. The switch is the customer's and starts off; the two
+           radios pick every eligible shape or only the ones ticked in Edit
+           shapes (the per-shape "Puff" box). Turning it on or changing the
+           mode changes the config, so the run button asks for a re-run. -->
+      <div class="dgp-puff">
+        <label class="dgp-checkline">
+          <input
+            type="checkbox"
+            data-testid="puff-switch"
+            checked={!!element.params.puff}
+            on:change={(e) => setParam("puff", e.currentTarget.checked)}
+          />
+          3D Puff
+        </label>
+        {#if element.params.puff}
+          <label class="dgp-checkline">
+            <input
+              type="radio"
+              name="puff-mode"
+              data-testid="puff-mode-all"
+              checked={element.params.puff_mode !== "select"}
+              on:change={() => setParam("puff_mode", "all")}
+            />
+            Puff all eligible shapes
+          </label>
+          <label class="dgp-checkline">
+            <input
+              type="radio"
+              name="puff-mode"
+              data-testid="puff-mode-select"
+              checked={element.params.puff_mode === "select"}
+              on:change={() => setParam("puff_mode", "select")}
+            />
+            Select puff shapes
+          </label>
+        {/if}
+      </div>
       <label class="dgp-param" use:tip={"fillAngle"}>
         <span>Fill angle<i class="tipmark" aria-hidden="true"></i></span>
         <select
@@ -3075,6 +3113,30 @@
                         <option value="auto">Auto border</option>
                         <option value="bean">Bean border</option>
                       </select>
+                      <!-- Select mode only: which shapes puff. The eligibility
+                           comes back from a run with puff on (absent before
+                           that = unknown, so the box is open); an ineligible
+                           shape is greyed and says why. Unticking clears the
+                           override (null), it does not store false. -->
+                      {#if element.params.puff && element.params.puff_mode === "select"}
+                        {@const puffBlocked = row.puffEligible === false}
+                        <label
+                          class="dgp-checkline dgp-puffrow"
+                          class:dgp-puffrow-off={puffBlocked}
+                          title={puffBlocked ? row.puffReason : ""}
+                        >
+                          <input
+                            type="checkbox"
+                            data-testid="shape-puff"
+                            disabled={puffBlocked}
+                            checked={!puffBlocked && overrides[row.id]?.puff === true}
+                            aria-label={"Puff — " + rowAria}
+                            on:change={(e) => setOverride(row.id, { puff: e.currentTarget.checked || null })}
+                          />
+                          Puff
+                          {#if puffBlocked && row.puffReason}<span class="dgp-puffwhy">{row.puffReason}</span>{/if}
+                        </label>
+                      {/if}
                     </div>
                     <!-- Stitch width (contract v1.8): only where the engine
                          measured a column. A fill region has no column to
@@ -3418,6 +3480,9 @@
   .dgp-unit { color: var(--muted, #667); }
   .dgp-checkline { display: flex; align-items: center; gap: 6px; font-size: var(--fs-xs, 12px); }
   .dgp-sewwhite { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+  .dgp-puff { display: flex; align-items: center; flex-wrap: wrap; gap: 6px 10px; }
+  .dgp-puffrow-off { opacity: 0.6; }
+  .dgp-puffwhy { color: var(--muted, #6b7280); font-size: 11px; }
   .dgp-sewwhite-colour { width: 28px; height: 20px; padding: 0; border: 1px solid var(--line, #ddd); border-radius: 4px; }
   .dgp-run {
     margin-top: 12px;
