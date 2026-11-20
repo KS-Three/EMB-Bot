@@ -425,7 +425,7 @@ def parse_args(argv=None):
                    help="mm from the top-left of each design's stitch extents")
     ap.add_argument("--shapes", default="", help="comma-separated region ids for spines/runs dumps")
     ap.add_argument("--set", action="append", default=[], metavar="KEY=JSON",
-                    help="a config field over the Studio request, e.g. beanie_knockdown=true "
+                    help="a config field over the Studio request, e.g. fill_order_sewn_paths=true "
                          "or garment_rgb=[208,166,96]; repeatable")
     args = ap.parse_args(argv)
     if args.job:

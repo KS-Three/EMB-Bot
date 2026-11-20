@@ -40,9 +40,9 @@ FAT = Polygon(FACE.buffer(4.0, join_style=2).exterior, [FACE.exterior])
 #: MARINE's A, roughly: a solid 5 mm stroke ring with a background counter
 LETTER = Polygon(box(40, -8, 56, 8).exterior, [box(45, -3, 51, 3).exterior])
 COUNTER = box(45, -3, 51, 3)
-#: the OFF md5 of `_plan(KEY, FACE)` (outline + body sewn), captured with
-#: origin/main's engine (0530c8d6) before this flag existed
-OFF_MD5 = "497499a157ae2da8d6676482e9637809"
+# The OFF md5 of `_plan(KEY, FACE)` (captured with origin/main's engine 0530c8d6 before this flag
+# existed) and `test_off_is_byte_identical_to_main` were dropped 2026-11-20 (flag fold B5): they
+# pinned an engine without `tie_in_off`, `fill_turn_slant` and `fill_underlay_cross`.
 
 
 def _region(sid, poly, thread, layer, **meta):
@@ -89,11 +89,6 @@ def test_flag_default_is_on_and_the_widths_are_the_pros():
     assert machine.OUTLINE_BODY_RATIO == 1.0
 
 
-def test_off_is_byte_identical_to_main():
-    a = _plan(KEY, FACE)
-    assert _md5(a) == OFF_MD5
-
-
 def test_off_ignores_the_outlines_even_when_handed_them():
     b = _region("Sbody", FACE, 0, 0)
     o = _region("Souter", KEY, 1, 1)
@@ -106,7 +101,7 @@ def test_off_ignores_the_outlines_even_when_handed_them():
                          PipelineConfig(underlay=False, border_from_outline=False, **FLIP_2026_10_23,
                                         **FLAG_ENDS_SEAM_2026_11_17_OFF),
                          art_outlines=found)
-    assert _md5([r for blk in blocks for r in blk.runs]) == OFF_MD5
+    assert _md5([r for blk in blocks for r in blk.runs]) == _md5(_plan(KEY, FACE))
 
 
 def test_a_keyline_round_a_wide_body_is_an_outline():

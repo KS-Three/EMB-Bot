@@ -74,18 +74,14 @@ def _md5(blocks) -> str:
     return hashlib.md5(json.dumps(rows).encode()).hexdigest()
 
 
-# Captured on origin/main d184fd68 (before this flag) with tools' pin2 script.
-OFF_MD5 = {"mfab": "65da8df6f52b38595bf511d4a3cf5f5c", "becker": "73e9fc7eb9d781b86f2f503f647d366f"}
+# `OFF_MD5` (captured on origin/main d184fd68 before this flag) and `test_off_is_byte_identical_to_main`
+# were dropped 2026-11-20 (flag fold B5): they pinned an engine without `tie_in_off`, `fill_turn_slant`
+# and `fill_underlay_cross`.
 
 
 def test_flag_default_is_on():
     # ON since the recipe went to every job (Kent 2026-10-27, "Every job (Recommended)")
     assert PipelineConfig().silhouette_underfill is True
-
-
-def test_off_is_byte_identical_to_main():
-    assert _md5(_sew(mfab())[1]) == OFF_MD5["mfab"]
-    assert _md5(_sew(becker())[1]) == OFF_MD5["becker"]
 
 
 def test_mfab_the_ring_becomes_the_underfill_and_its_letters_merge():
@@ -130,7 +126,9 @@ def test_becker_the_letter_colour_fills_and_the_ring_sews_on_top_unchanged():
     off_planned, off_blocks = _sew(becker())
     off_ring = next(p for p in off_planned if p.region.shape_id == "Sring")
     assert by["Sring"].polygon.symmetric_difference(off_ring.polygon).area < 1e-6
-    kinds = lambda bs: sorted({r.kind for b in bs for r in b.runs if r.shape_id == "Sring"})  # noqa: E731
+    # (buried travel, `trim_bury_under_later`, may or may not join the ring's runs: not a kind of its own)
+    kinds = lambda bs: sorted({r.kind for b in bs for r in b.runs  # noqa: E731
+                               if r.shape_id == "Sring" and r.kind != "travel"})
     assert kinds(blocks) == kinds(off_blocks)
     order = [b.thread_index for b in blocks]
     assert order.index(1) < order.index(0)

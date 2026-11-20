@@ -59,7 +59,12 @@ def _run(**kw):
     cfg = PipelineConfig(target_width_mm=80.2, garment_id="left_chest", max_colors=6, **kw)
     gen = build_generation(str(FIXTURE), cfg)
     result = finish_generation(gen.fork(), cfg)
-    return result, plan_stitches(result, cfg)
+    # `trim_bury_under_later` is folded into the code (2026-11-20, B5); this file prices the trims
+    # on the engine before it, so its pass is stubbed out
+    from unittest import mock
+    from digitizer_core import stage7_sequence
+    with mock.patch.object(stage7_sequence, "_bury_trims_under_later", return_value=0):
+        return result, plan_stitches(result, cfg)
 
 
 def _points(plan):

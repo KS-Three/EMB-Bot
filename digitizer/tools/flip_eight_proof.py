@@ -35,10 +35,6 @@ from tools import flip_sheet_renders as fsr  # noqa: E402
 #: Mirrors `tests/conftest.py`'s FLIP_2026_10_23 (tests/test_flip_eight_proof.py
 #: holds the pair). The small-text set is the flip sheet's exact arm.
 BEFORE: dict[str, object] = {
-    "fill_turn_slant": False,
-    "trim_bury_under_later": False,
-    "tie_in_off": False,
-    "fill_underlay_cross": False,
     "small_text_cap_mm": None,
     "small_text_cap_max_width_scale": None,
     "small_text_cap_min_stroke_mm": None,

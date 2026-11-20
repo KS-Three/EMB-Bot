@@ -1,4 +1,4 @@
-"""`cfg.fill_bridge_cut` (default ON since Kent's flip, 2026-09-19): a fill bridge
+"""`fill_bridge_cut` (ON since Kent's flip, 2026-09-19, folded into the code): a fill bridge
 dearer than the cut it avoids is lifted instead of sewn.
 
 `_score` already says what a trim is worth (`_TRIM_STITCH_EQUIVALENT`, 25) and
@@ -68,10 +68,12 @@ def _fill_points(runs):
 
 def test_the_flag_is_on_by_default():
     """Kent's flip, 2026-09-19, over the thread renders
-    (`docs/renders/fill-bridge-cut-2026-09-19/`). `stitch_shape`'s own
+    (`docs/renders/fill-bridge-cut-2026-09-19/`); the flag is folded into the code
+    (stage 7 and the blend tier always pass True). `stitch_shape`'s own
     `cut_bridges` keyword still defaults False, the way `under_cover` does, so
     a caller that does not pass it sews as it did before the rule existed."""
-    assert PipelineConfig().fill_bridge_cut is True
+    import inspect
+    assert inspect.signature(stitch_shape).parameters["cut_bridges"].default is False
 
 
 def test_a_long_bridge_on_finished_fill_is_dearer_than_the_cut():
@@ -194,7 +196,6 @@ def _stage7_hands_over(monkeypatch, **cfg_kw) -> list:
 
 def test_the_config_flag_reaches_the_fill_tier(monkeypatch):
     assert _stage7_hands_over(monkeypatch) == [True]
-    assert _stage7_hands_over(monkeypatch, fill_bridge_cut=False) == [False]
 
 
 def test_the_lift_warning_does_not_claim_the_lift_was_forced(monkeypatch):
@@ -255,7 +256,7 @@ def test_every_site_that_passes_covered_routing_passes_the_cut_rule():
             if kw.get("under_cover") != "True":     # `fill_travel_under_cover`, folded 2026-11-19
                 continue
             sites += 1
-            assert "fill_bridge_cut" in kw.get("cut_bridges", ""), f"{f.name}:{node.lineno}"
+            assert kw.get("cut_bridges") == "True", f"{f.name}:{node.lineno}"
     assert sites >= 7
 
 
