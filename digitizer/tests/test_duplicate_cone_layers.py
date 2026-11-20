@@ -156,7 +156,6 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # The engine these claims were measured on has the skeleton tier.
 PRE_FLIP_RC = {"border_by_size": False, "enclosed_alpha_hole_parts": False,
                "lettering_columns_corner_fold": False, "robust_region_colour": False, "keep_thin_strokes": False,
-               "satin_corner_twigs": False, "satin_rail_comp": False,
                "lettering_columns": False}
 
 

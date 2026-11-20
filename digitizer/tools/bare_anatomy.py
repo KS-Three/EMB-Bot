@@ -189,7 +189,7 @@ def measure_path(path, width_mm: float, garment: str, rail_comp: bool,
                  name: str = "", render_to: Path | None = None,
                  only: set | None = None, all_thread: bool = False) -> dict:
     cfg = PipelineConfig(target_width_mm=width_mm, garment_id=garment,
-                         max_colors=STUDIO_MAX_COLORS, satin_rail_comp=rail_comp)
+                         max_colors=STUDIO_MAX_COLORS)   # `rail_comp` is folded into the code (2026-11-19): always on
     gen = build_generation(str(path), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)

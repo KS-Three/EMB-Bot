@@ -140,7 +140,8 @@ def test_off_is_the_default_and_on_routes_the_script_through_the_tier():
     # as a fill block both arms carry, and `dark_len` reads every run; and
     # `fine_bars_satin` (Kent's wave-3 flip, 2026-10-26) takes 27 of this
     # script's thin strokes as satin AHEAD of the hairline tier (its
-    # precedence by design) -- this test is about the tier, so both OFF
+    # precedence by design); folded into the engine 2026-11-19, so the tier
+    # now routes the 3 strokes the satin leaves it (3 shapes, 3 strands)
     cfg = dict(target_width_mm=60.0, forced_class="flat", sew_enclosed_white=False,
                **WAVE3_2026_10_26_OFF)
     result = run_stages(SYN / "thin_script.png", PipelineConfig(**cfg))
@@ -156,8 +157,13 @@ def test_off_is_the_default_and_on_routes_the_script_through_the_tier():
     # One pass where the bean laid six (three round a two-sided ring).
     assert dark_len(on) < dark_len(off) / 3
     # No hairline-tier stitch under the needle floor; the only shorter ones
-    # are the existing lock rule's 0.8 mm legs at trims.
+    # are the existing lock rule's 0.8 mm legs at trims. Satin crosses are
+    # not the tier's: `fine_bars_satin` (folded into the engine 2026-11-19)
+    # sews this script's thin strokes as satin columns whose crosses run
+    # 0.87-1.0 mm.
     for _, r in on.iter_runs():
+        if r.kind == "satin":
+            continue
         for a, b in zip(r.points, r.points[1:]):
             d = math.dist(a, b)
             if 0.01 < d < machine.MIN_STITCH_MM:

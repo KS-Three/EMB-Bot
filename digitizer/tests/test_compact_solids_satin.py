@@ -1,5 +1,5 @@
 """Compact solids sew as one satin column, not a fill with a ring round it
-(`cfg.compact_solids_satin`, 2026-10-22).
+(`compact_solids_satin`, 2026-10-22, folded into the code 2026-11-19).
 
 The defect (Proseal at the pro's 85.9 mm, Hat): the sixteen teal spray
 hexagons at or over the detail floor (2.0-3.7 mm across) fail the ribbon
@@ -10,7 +10,7 @@ as tatami rows; every row end stands in open air, so the bean edge cap
 "satin border" Kent saw. The pro's DST sews every hexagon, 1.6 to 4.8 mm
 across, as ONE satin blob with nothing round it.
 
-ON, a non-lettering solid with no hole that the classifier refused for
+A non-lettering solid with no hole that the classifier refused for
 aspect only sews `stage6_satin.small_solid_satin` -- one column across its
 short side at the block's satin pitch -- the same emitter the rescue's
 `small_solids_satin` uses below the floor. Satin is linear cover, so the
@@ -49,25 +49,9 @@ def _kinds(runs, shape_id="Sblob"):
     return [r.kind for r in runs if r.shape_id == shape_id]
 
 
-def test_flag_default_is_on_since_2026_10_23():
-    assert PipelineConfig().compact_solids_satin is True
-
-
-def test_off_a_3mm_hexagon_fills_and_the_edge_cap_rings_it():
-    """The defect as it ships: tatami rows, then a bean cap round the edge."""
-    # the bean cap the defect ends in is the engine before `bean_only_lines` (ON 2026-10-27)
-    # and before the "none" default (2026-10-29)
-    runs, _w = _plan(_hexagon(3.4), compact_solids_satin=False, bean_only_lines=False,
-                     edge_cap="bean")
-    assert stitches.FILL in _kinds(runs)
-    assert stitches.SATIN not in _kinds(runs)
-    cap = [r for r in runs if r.shape_id == "__edge_cap__"]
-    assert cap and all(r.kind == stitches.RUN for r in cap)
-
-
-def test_on_a_3mm_hexagon_sews_one_satin_and_no_cap():
+def test_a_3mm_hexagon_sews_one_satin_and_no_cap():
     hexa = _hexagon(3.4)
-    runs, _w = _plan(hexa, compact_solids_satin=True)
+    runs, _w = _plan(hexa)
     assert _kinds(runs) == [stitches.SATIN], _kinds(runs)
     assert not [r for r in runs if r.shape_id == "__edge_cap__"]
     pts = [r for r in runs if r.shape_id == "Sblob"][0].points
@@ -82,39 +66,36 @@ def test_on_a_3mm_hexagon_sews_one_satin_and_no_cap():
     assert max(s.length for s in segs) > 0.66 * 3.4
 
 
-def test_on_a_hexagon_over_the_satin_ceiling_still_fills():
+def test_a_hexagon_over_the_satin_ceiling_still_fills():
     """Width over `machine.SATIN_MAX_WIDTH_MM` is the classifier's own
     width-cap refusal, not an aspect one: the fill tier keeps it."""
     across = machine.SATIN_MAX_WIDTH_MM * 1.6
-    runs, _w = _plan(_hexagon(across), compact_solids_satin=True)
+    runs, _w = _plan(_hexagon(across))
     assert stitches.FILL in _kinds(runs)
     assert stitches.SATIN not in _kinds(runs)
 
 
-def test_on_a_ribbon_still_sews_the_satin_tier_not_the_blob_column():
+def test_a_ribbon_still_sews_the_satin_tier_not_the_blob_column():
     """A 2 x 12 mm bar passes the aspect test and takes the ordinary satin
-    tier; the flag must not touch it (its column has pull comp and caps)."""
+    tier; the rule must not touch it (its column has pull comp and caps)."""
     bar = Polygon([(0, 0), (12, 0), (12, 2), (0, 2)])
-    on, _ = _plan(bar, compact_solids_satin=True)
-    off, _ = _plan(bar)
-    assert _kinds(on) == _kinds(off) == [stitches.SATIN]
-    assert [r.points for r in on if r.shape_id == "Sblob"] == \
-        [r.points for r in off if r.shape_id == "Sblob"]
+    runs, _ = _plan(bar)
+    assert _kinds(runs) == [stitches.SATIN]
 
 
-def test_on_a_hexagon_with_a_hole_is_left_to_the_tier_it_had():
+def test_a_hexagon_with_a_hole_is_left_to_the_tier_it_had():
     """A holed shape is not a solid (`is_small_solid`): the rule never
     reads it, whichever tier the classifier gives it."""
     outer = _hexagon(3.4)
     ring = Polygon(outer.exterior.coords, [list(_hexagon(1.0).exterior.coords)])
-    on, _w = _plan(ring, compact_solids_satin=True)
-    off, _w = _plan(ring)
-    assert [r.points for r in on] == [r.points for r in off]
+    runs, _w = _plan(ring)
+    # the satin tier's two rails round the hole, not the blob rule's one column
+    assert _kinds(runs) == [stitches.SATIN, stitches.SATIN], _kinds(runs)
 
 
-def test_on_lettering_is_left_alone():
+def test_lettering_is_left_alone():
     """A text-cluster member is the Column lane's or the fill's, never this
-    rule's: an O-less blob tagged as text keeps today's path."""
+    rule's: an O-less blob tagged as text keeps the fill's path."""
     hexa = _hexagon(3.4)
     reg = Region(shape_id="Sblob", polygon=hexa, thread_index=0,
                  thread_number="4101", area_mm2=hexa.area, source="test",
@@ -122,33 +103,9 @@ def test_on_lettering_is_left_alone():
     planned = [PlannedRegion(region=reg, polygon=hexa, sew_index=0)]
     # `lettering_columns_skip_blobs` (ON) already untags a solid blob as
     # lettering; off, the tag stands and this rule must still step aside
-    cfg_on = PipelineConfig(underlay=False, compact_solids_satin=True,
-                            lettering_columns=False, lettering_columns_skip_blobs=False)
-    cfg_off = PipelineConfig(underlay=False, compact_solids_satin=False,
-                             lettering_columns=False, lettering_columns_skip_blobs=False)
-    on, _ = sequence(planned, fabric_for_garment("hat_front"), cfg_on)
-    off, _ = sequence(planned, fabric_for_garment("hat_front"), cfg_off)
-    on_pts = [r.points for b in on for r in b.runs]
-    off_pts = [r.points for b in off for r in b.runs]
-    assert on_pts == off_pts
-
-
-def test_default_is_on_and_false_is_the_off_arm_on_a_mixed_fixture():
-    """ON is the shipped engine since 2026-10-23: a hexagon and a bar plan
-    the same points with the flag absent and with it explicitly True; the
-    bar (no blob) plans the same under False too."""
-    for poly in (_hexagon(3.4), Polygon([(0, 0), (12, 0), (12, 2), (0, 2)])):
-        a, _ = _plan(poly)
-        b, _ = _plan(poly, compact_solids_satin=True)
-        assert [r.points for r in a] == [r.points for r in b]
-    bar = Polygon([(0, 0), (12, 0), (12, 2), (0, 2)])
-    a, _ = _plan(bar)
-    b, _ = _plan(bar, compact_solids_satin=False)
-    assert [r.points for r in a] == [r.points for r in b]
-
-
-def test_the_flag_is_flipped_so_it_is_in_the_pre_flip_and_flagcost_tables():
-    from tests.conftest import PRE_FLIP
-    from tools.pro_parity.flagcost import FLAGS
-    assert PRE_FLIP["compact_solids_satin"] is False
-    assert FLAGS["compact_solids_satin"] is False
+    cfg = PipelineConfig(underlay=False, lettering_columns=False,
+                         lettering_columns_skip_blobs=False)
+    blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
+    kinds = [r.kind for blk in blocks for r in blk.runs if r.shape_id == "Sblob"]
+    assert stitches.FILL in kinds
+    assert stitches.SATIN not in kinds

@@ -218,7 +218,7 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
     assert cfg.small_text_bay_mouth is True and "small_text_bay_mouth" in fsr.FLAGS
     # ... and the two Kent flipped from this sheet, 2026-10-26, and the two from wave 5,
     # 2026-10-27: off the list, rows kept, ON
-    for f in ("outline_loop_mitre", "fine_bars_satin", "text_cluster_part_touching",
+    for f in ("outline_loop_mitre", "text_cluster_part_touching",
               "lettering_columns_italic_lean"):
         assert f not in fsr.WAVE3 and f in fsr.FLAGS and getattr(cfg, f) is True, f
     # ... and the four the white-keyline recipe took to every job, 2026-10-27
@@ -231,13 +231,13 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
 def test_every_flag_has_a_kind():
     for f in fsr.FLAGS:
         assert fsr.flag_kind(f) in ("LAYOUT", "FABRIC"), f
-    for f in ("fill_turn_slant", "fill_underlay_cross", "tie_in_off", "satin_underlay_short_columns"):
+    for f in ("fill_turn_slant", "fill_underlay_cross", "tie_in_off"):
         assert fsr.flag_kind(f) == "FABRIC"
     assert all(fsr.flag_kind(f) == "LAYOUT" for f in fsr.WAVE3)
 
 
 def test_bridge_is_a_wave_three_fixture():
-    for f in ("outline_loop_mitre", "fine_bars_satin", "silhouette_underfill_rim", "fill_section_travel"):
+    for f in ("outline_loop_mitre", "silhouette_underfill_rim", "fill_section_travel"):
         assert {"bridge_hat", "bridge_lc"} <= set(fsr.flag_fixtures(f, None)), f
 
 
@@ -289,7 +289,7 @@ def test_wave_five_rows_are_layout_flags_each_asked_or_labelled():
     assert asked == ["lettering_columns_italic_lean", "fill_section_travel",
                      "bean_ink_outlined_letters", "text_cluster_part_touching"]
     # ruled ON from renders on 2026-10-26 and flipped by #1121: shown, not asked again
-    for f in ("outline_loop_mitre", "fine_bars_satin"):
+    for f in ("outline_loop_mitre",):
         assert not fsr.W5[f]["ask"] and "ruled ON" in fsr.W5[f]["label"], f
     # the detection pass on fa3150de: the trio's DST is OFF's byte for byte on all ten white jobs
     # off MFab, so the three keyline switches act nowhere a render could show; their one row is

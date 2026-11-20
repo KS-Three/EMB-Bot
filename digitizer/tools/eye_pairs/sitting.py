@@ -217,7 +217,7 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
     fields = {f.name for f in dataclasses.fields(PipelineConfig)}
     defaults = _config_defaults()
     for k in spec["base_flags"]:
-        if k not in fields:
+        if k not in fields and k not in RETIRED_FIELDS:
             problems.append(f"base flag {k!r} is not a PipelineConfig field")
 
     judged_names = set(spec["judged_fixtures"])

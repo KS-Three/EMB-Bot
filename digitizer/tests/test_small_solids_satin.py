@@ -1,5 +1,5 @@
 """Small SOLID shapes sew as one satin dot, not as a hollow ring
-(`cfg.small_solids_satin`, 2026-10-20).
+(`small_solids_satin`, 2026-10-20, folded into the code 2026-11-19).
 
 The defect (Proseal at the pro's 85.9 mm, Hat): the "+" between FOAM and
 COATINGS (1.52 x 1.52 mm, 1.11 mm^2) and the six teal spray hexagons
@@ -12,7 +12,7 @@ monoline glyph"), and that premise is false for a solid: inset by half the
 laid width, the hexagon still has 0.4-0.6 mm^2 of bare inside, so it sews as
 a ring with nothing in it. The pro sews each as one satin blob.
 
-ON, a rescued non-lettering shape with no hole whose inside the ring would
+A rescued non-lettering shape with no hole whose inside the ring would
 leave bare -- `poly.buffer(-laid / 2)` at or over `machine.RUN_MIN_AREA_MM2`,
 the thread's own one-penetration area -- sews as ONE satin column along its
 long axis, each cross the shape's own width (`stage6_satin.small_solid_satin`,
@@ -47,19 +47,9 @@ def _plan(poly: Polygon, **cfg_kw):
     return [r for b in blocks for r in b.runs if r.shape_id == "Sdot"], warnings
 
 
-def test_flag_default_is_on_since_2026_10_23():
-    assert PipelineConfig().small_solids_satin is True
-
-
-def test_off_a_small_hexagon_sews_its_outline_ring():
-    """The defect as it ships: a 1.3 mm hexagon is a bean ring."""
-    runs, _w = _plan(_hexagon(1.3), small_solids_satin=False)
-    assert runs and {r.kind for r in runs} == {"run"}
-
-
-def test_on_a_small_hexagon_sews_one_satin_that_covers_its_middle():
+def test_a_small_hexagon_sews_one_satin_that_covers_its_middle():
     hexa = _hexagon(1.3)
-    runs, _w = _plan(hexa, small_solids_satin=True)
+    runs, _w = _plan(hexa)
     assert [r.kind for r in runs] == ["satin"], [r.kind for r in runs]
     pts = runs[0].points
     assert len(pts) >= 6
@@ -74,25 +64,25 @@ def test_on_a_small_hexagon_sews_one_satin_that_covers_its_middle():
     assert near < 0.2, near
 
 
-def test_on_a_thin_stroke_still_sews_a_run():
+def test_a_thin_stroke_still_sews_a_run():
     """A stroke whose ring already reads solid keeps the run tier: a 0.3 mm
     line, inset by half a laid width, has nothing left inside."""
     line = Polygon([(0, 0), (3.0, 0), (3.0, 0.3), (0, 0.3)])
-    runs, _w = _plan(line, small_solids_satin=True)
+    runs, _w = _plan(line)
     assert runs and {r.kind for r in runs} == {"run"}
 
 
-def test_on_a_shape_with_a_hole_still_sews_a_run():
+def test_a_shape_with_a_hole_still_sews_a_run():
     """A ring is what the run tier is for: a holed shape is not a solid."""
     outer = _hexagon(1.45)
     ring = Polygon(outer.exterior.coords, [list(_hexagon(0.5).exterior.coords)])
-    runs, _w = _plan(ring, small_solids_satin=True)
+    runs, _w = _plan(ring)
     assert runs and {r.kind for r in runs} == {"run"}
 
 
-def test_on_a_small_plus_sews_one_blob_with_every_needle_point_on_the_art():
+def test_a_small_plus_sews_one_blob_with_every_needle_point_on_the_art():
     """Proseal's "+" (1.52 mm across): the ring sewed it as a hollow
-    quadrilateral, the bean's 0.73 mm stations cutting its corners. ON it is
+    quadrilateral, the bean's 0.73 mm stations cutting its corners. it is
     one satin blob, the pro's construction; a cross may bridge a notch, but
     each needle point is on the artwork. Arms 0.6 mm: inset by half a laid
     width there is bare cloth left (the traced Proseal "+" leaves 0.186 mm^2).
@@ -101,7 +91,7 @@ def test_on_a_small_plus_sews_one_blob_with_every_needle_point_on_the_art():
     h, w = 1.52 / 2, 0.6 / 2
     plus = Polygon([(-w, -h), (w, -h), (w, -w), (h, -w), (h, w), (w, w), (w, h),
                     (-w, h), (-w, w), (-h, w), (-h, -w), (-w, -w)])
-    runs, _w = _plan(plus, small_solids_satin=True)
+    runs, _w = _plan(plus)
     assert [r.kind for r in runs] == ["satin"], [r.kind for r in runs]
     pts = runs[0].points
     assert len(pts) >= 4
@@ -111,18 +101,9 @@ def test_on_a_small_plus_sews_one_blob_with_every_needle_point_on_the_art():
     assert min(s.distance(plus.centroid) for s in segs) < 0.2
 
 
-def test_on_a_thin_armed_plus_stays_a_run():
+def test_a_thin_armed_plus_stays_a_run():
     h, w = 1.52 / 2, 0.43 / 2
     plus = Polygon([(-w, -h), (w, -h), (w, -w), (h, -w), (h, w), (w, w), (w, h),
                     (-w, h), (-w, w), (-h, w), (-h, -w), (-w, -w)])
-    runs, _w = _plan(plus, small_solids_satin=True)
+    runs, _w = _plan(plus)
     assert runs and {r.kind for r in runs} == {"run"}
-
-
-def test_the_flag_is_flipped_so_it_is_in_the_pre_flip_and_flagcost_tables():
-    """Flipped 2026-10-23: both tables that list ON flags carry it, pinned
-    to the pre-flip engine's False."""
-    from tests.conftest import PRE_FLIP
-    from tools.pro_parity.flagcost import FLAGS
-    assert PRE_FLIP["small_solids_satin"] is False
-    assert FLAGS["small_solids_satin"] is False

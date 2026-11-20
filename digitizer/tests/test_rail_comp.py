@@ -1,4 +1,4 @@
-"""`cfg.satin_rail_comp` — pull compensation on the rails, not the polygon.
+"""`satin_rail_comp` (folded into the code 2026-11-19) — pull compensation on the rails, not the polygon.
 Built OFF 2026-09-09 (quality review 2026-09-08 item 6); DEFAULT ON since
 2026-09-28, Kent's flip on the labelled sitting (docs/kent-review-2026-09-28.md).
 OFF is the pre-flip path and is passed explicitly wherever a test needs it.
@@ -93,38 +93,31 @@ def _outside(points, poly: Polygon) -> float:
                for p in points)
 
 
-def test_the_flag_is_on_by_default_since_2026_09_28():
-    # Kent flipped it on the labelled sitting (docs/kent-review-2026-09-28.md):
-    # after-better on five logos, before-better on none. OFF is the old path.
-    assert PipelineConfig().satin_rail_comp is True
-    assert PipelineConfig(satin_rail_comp=False).satin_rail_comp is False
+def test_the_fabric_carries_a_pull():
+    # Kent flipped rail comp on the labelled sitting (docs/kent-review-2026-09-28.md):
+    # after-better on five logos, before-better on none; it is the only path now.
     # The amount is gate 1's; where it lands was Kent's on the render.
     assert PULL > 0, "the polo preset stopped carrying a pull, so nothing here is measurable"
 
 
 def test_a_bar_is_sewn_on_its_artwork_with_rails_one_pull_outside_and_caps_not_lengthened(tmp_path):
-    """OFF the bar is sewn on a polygon grown all round — the rails one pull
-    outside AND the caps one pull past the artwork's ends. ON the polygon
-    is the artwork: the rails still sit one pull outside (the widening the
-    fabric's pull earns is untouched) and the caps stop at the artwork."""
+    """The polygon is the artwork: the rails sit one pull outside (the
+    widening the fabric's pull earns) and the caps stop at the artwork. (The
+    pre-flip arm sewed a polygon grown all round, the caps one pull past the
+    artwork's ends; it is gone from the config.)"""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    off_r, off_p, off_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=False)
-    on_r, on_p, on_seen = _sewn(png, target_width_mm=24.0, satin_rail_comp=True)
+    on_r, on_p, on_seen = _sewn(png, target_width_mm=24.0)
     sid = next(iter(on_seen))
     art = next(r.polygon for r in on_r.regions if r.shape_id == sid)
-    assert not off_seen[sid].equals(art), "OFF must still sew the grown polygon"
-    assert on_seen[sid].equals(art), "ON must sew the artwork polygon"
-    off_pts, on_pts = _satin_points(off_p, sid), _satin_points(on_p, sid)
-    assert len(on_pts) > 40 and len(off_pts) > 40
-    # rails: one pull outside the artwork, both ways
+    assert on_seen[sid].equals(art), "the satin tier must sew the artwork polygon"
+    on_pts = _satin_points(on_p, sid)
+    assert len(on_pts) > 40
+    # rails: one pull outside the artwork
     assert abs(_outside(on_pts, art) - PULL) < 0.08, _outside(on_pts, art)
-    assert abs(_outside(off_pts, art) - PULL) < 0.08, _outside(off_pts, art)
-    # caps: OFF reaches a pull past the artwork's ends, ON stops at them
+    # caps: stop at the artwork's ends
     x0, _y0, x1, _y1 = art.bounds
-    off_reach = max(max(p[0] for p in off_pts) - x1, x0 - min(p[0] for p in off_pts))
     on_reach = max(max(p[0] for p in on_pts) - x1, x0 - min(p[0] for p in on_pts))
-    assert off_reach > 0.6 * PULL, off_reach
     assert on_reach < 0.12, on_reach
 
 
@@ -135,7 +128,7 @@ def test_the_hole_guard_keeps_a_small_counter_at_the_detail_floor(tmp_path):
     counter takes the full pull."""
     png = tmp_path / "ring.png"
     _ring_png(png, 9.0, 2.0)
-    r, p, seen = _sewn(png, target_width_mm=9.0, satin_rail_comp=True)
+    r, p, seen = _sewn(png, target_width_mm=9.0)
     sid = next(iter(seen))
     art = next(rg.polygon for rg in r.regions if rg.shape_id == sid)
     assert seen[sid].equals(art) and len(art.interiors) == 1, "the ring must sew as satin on its artwork"
@@ -153,7 +146,7 @@ def test_the_hole_guard_keeps_a_small_counter_at_the_detail_floor(tmp_path):
 
     wide = tmp_path / "wide_ring.png"
     _ring_png(wide, 14.0, 8.0)
-    r2, p2, seen2 = _sewn(wide, target_width_mm=14.0, satin_rail_comp=True)
+    r2, p2, seen2 = _sewn(wide, target_width_mm=14.0)
     sid2 = next(iter(seen2))
     art2 = next(rg.polygon for rg in r2.regions if rg.shape_id == sid2)
     hole2 = Polygon(art2.interiors[0])
@@ -165,19 +158,16 @@ def test_the_hole_guard_keeps_a_small_counter_at_the_detail_floor(tmp_path):
 def test_the_end_cutback_owes_only_the_push_on_rails(tmp_path):
     """Under directional comp the cutback is `pull + PUSH` because the buffer
     lengthened the column; on the artwork nothing did, so it is PUSH alone --
-    and the two land the column's END STATION in the same place, `PUSH` short
-    of the artwork cap. Measured by the last cross's midpoint: the crosses
-    at a bar's ends lean a few degrees on the skeleton both paths share
-    (the skeleton is the grown polygon's under the flag too), so the
-    outermost NEEDLE point sits nearer the cap than the station does --
-    0.16 mm on this bar, the same OFF and ON -- and is not what the cutback
-    positions. The flag moves the column's width, never its length."""
+    and the column's END STATION lands `PUSH` short of the artwork cap.
+    Measured by the last cross's midpoint: the crosses at a bar's ends lean
+    a few degrees on the skeleton, so the outermost NEEDLE point sits nearer
+    the cap than the station does -- 0.16 mm on this bar -- and is not what
+    the cutback positions. Rail comp moves the column's width, never its
+    length (the pre-flip arm landed the same station; it is gone)."""
     png = tmp_path / "bar.png"
     _bar_png(png, 24.0, 3.0)
-    _r, off_p, off_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=False)
-    r, on_p, on_seen = _sewn(png, target_width_mm=24.0, directional_comp=True, satin_rail_comp=True)
+    r, on_p, on_seen = _sewn(png, target_width_mm=24.0, directional_comp=True)
     sid = next(iter(on_seen))
-    assert set(off_seen) == set(on_seen)
     art = next(rg.polygon for rg in r.regions if rg.shape_id == sid)
     x0, _y0, x1, _y1 = art.bounds
 
@@ -187,25 +177,23 @@ def test_the_end_cutback_owes_only_the_push_on_rails(tmp_path):
         return min(x1 - max(mids), min(mids) - x0)
 
     assert abs(short(on_p) - machine.PUSH_CUTBACK_MM) < 0.1, short(on_p)
-    assert abs(short(on_p) - short(off_p)) < 0.05, (short(off_p), short(on_p))
 
 
 def test_on_the_wordmark_every_satin_shape_sews_on_its_artwork():
-    """The drone wordmark: OFF every satin shape sews on a polygon grown all
-    round its artwork; ON the artwork is contained and what lies outside it
+    """The drone wordmark: the artwork is contained and what lies outside it
     is only the underlap tongue under a later colour (and the clip of an
-    earlier one) -- less than half of OFF's growth band on every shape."""
+    earlier one) -- less than half of the growth band the pre-flip arm sewed
+    (the artwork grown by one pull all round, `a.buffer(PULL)`) on every shape."""
     art = TESTDATA / "photo" / "drone_render.png"
-    off_r, _off_p, off_seen = _sewn(art, satin_rail_comp=False)
-    on_r, _on_p, on_seen = _sewn(art, satin_rail_comp=True)
+    on_r, _on_p, on_seen = _sewn(art)
     art_by_id = {rg.shape_id: rg.polygon for rg in on_r.regions}
-    assert len(on_seen) >= 30 and set(on_seen) == set(off_seen)
+    assert len(on_seen) >= 30
     total_off = total_on = 0.0
     for s in on_seen:
         # A piece `clip_keep_pieces` keeps (ON since 2026-10-20) sews as its
         # own region, `<parent>-clipN`, on its parent's artwork.
         a = art_by_id[s.split("-clip")[0]]
-        extra_off = off_seen[s].difference(a).area
+        extra_off = a.buffer(PULL, join_style=2).difference(a).area
         extra_on = on_seen[s].difference(a).area
         # never more outside the artwork than the grown polygon had (a
         # letter on an earlier colour is clipped back to it either way)
@@ -227,7 +215,7 @@ def test_widened_lettering_keeps_its_compensated_column(tmp_path):
         # `small_text_true_size` OFF (ON since #955): the switch re-traces the
         # sub-3 mm bars so none is widened; the widened tier is this test's subject.
         r, _p, seen = _sewn(art, target_width_mm=50.0, lettering_min_column_mm=FLOOR_MM,
-                            satin_rail_comp=True, small_text_true_size=False)
+                            small_text_true_size=False)
     widened = [rg for rg in r.regions if widened_lettering(rg) and rg.shape_id in seen]
     assert len(widened) >= 5, "the fixture stopped widening any glyph"
     for rg in widened:
@@ -291,11 +279,6 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
     from tests.test_stroke_order_euler import FIXTURE
 
     def sewn(**kw):
-        # `satin_crown_cover` held OFF in every arm (Kent's flip, 2026-10-02):
-        # the cover adds thread to both sides of each pair, so the ceilings
-        # below would move for its sake and not rail comp's -- the same thing
-        # tip caps did, told above. Its own price is `tests/test_crown_cover.py`'s.
-        kw.setdefault("satin_crown_cover", False)
         # ...and the six 2026-11-15 text/gap flips, the same way: with them ON
         # MARINE reads 10 trims against the 9 ceiling (CI, 2026-11-15), and
         # their price is their own tests'
@@ -312,20 +295,9 @@ def test_the_flip_costs_trims_on_the_lettering_fixture_and_says_so():
         gen = build_generation(str(FIXTURE), c)
         return plan_stitches(finish_generation(gen.fork(), c), c)
 
-    off, on = sewn(satin_rail_comp=False), sewn()
-    assert off.stats.trims <= 11, off.stats.trims           # the grown polygon: 9 on the 09-19 engine, 11 with tip caps
+    on = sewn()
     assert on.stats.trims <= 22, on.stats.trims             # the rails: 21 before tip caps, 22 with them
-    assert on.stats.stitch_count <= 1.23 * off.stats.stitch_count, (off.stats.stitch_count, on.stats.stitch_count)
-
-    # Rail comp's own price, isolated on the engine the numbers above were
-    # first read on. This is the arm that says whether the ceilings moved
-    # because rail comp got dearer or because another flag joined the ride.
-    off0 = sewn(satin_rail_comp=False, satin_tip_caps=False)
-    on0 = sewn(satin_tip_caps=False)
-    assert off0.stats.trims <= 9, off0.stats.trims
-    assert on0.stats.trims <= 21, on0.stats.trims
-    assert on0.stats.stitch_count <= 1.19 * off0.stats.stitch_count, (
-        off0.stats.stitch_count, on0.stats.stitch_count)
+    assert on.stats.stitch_count <= 2400, on.stats.stitch_count   # 2,354 with tip caps when measured
 
 
 def test_under_rail_comp_a_strokes_first_run_starts_on_the_travel_web():
@@ -635,7 +607,6 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
         r, p = digitize(TESTDATA / "becker_marine_logo.png",
                         PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
                                        max_colors=6, satin_rails_follow_edge=mode,
-                                       satin_tip_caps=False,
                                        # the envelope is the skeleton tier's; the
                                        # Column lane (ON since 2026-10-12) has none
                                        lettering_columns=False,

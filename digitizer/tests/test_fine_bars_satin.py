@@ -1,16 +1,16 @@
-"""Fine ink bars sew satin, not a hollow bean ring (`cfg.fine_bars_satin`,
-built OFF 2026-10-25; ON since Kent's flip 2026-10-26, "Fine bars as satin" --
-`PRE_FLIP` names the OFF arm, and `_cfg` reads it unless a test sets the flag).
+"""Fine ink bars sew satin, not a hollow bean ring (`fine_bars_satin`,
+built OFF 2026-10-25; ON since Kent's flip 2026-10-26, "Fine bars as satin";
+folded into the code 2026-11-19).
 
 The pro sews every free-standing thin ink bar as ONE satin at its drawn
 width plus his pull, in all 5 artworks that have them (the small-symbols
 census); ours sends every bar under the area floor to `run_outline`'s ring.
-ON, a bar `columns.is_fine_bar` reads skips the run rescue for the ordinary
+A bar `columns.is_fine_bar` reads skips the run rescue for the ordinary
 satin tier. The fixture holds the targets (a 0.30 x 4.0 mm black bar, a
 0.30 x 1.6 mm stub) beside every control the census named: a 1.2 mm hex dot,
 a garment-white sliver, a light-grey bar on a dark-grey square (a
 highlight), a row of tan rope lenses (aspect 3.7), and a teal bar at aspect
-4.7. OFF byte-identical (md5 pinned on main's engine, d36ff80e).
+4.7.
 """
 from __future__ import annotations
 
@@ -63,8 +63,6 @@ SHAPES = [
     ("Steal", box(0, 14, 3.6, 14.76), TEAL),
 ]
 TARGETS = {"Sbar", "Sstub"}
-#: the OFF md5 of `_md5(_runs())`, captured on main (d36ff80e)
-OFF_MD5 = "603bed4bde3d5ba9661d26d02edc4a5f"
 
 
 def _region(sid, poly, thread, **meta) -> Region:
@@ -74,7 +72,6 @@ def _region(sid, poly, thread, **meta) -> Region:
 
 
 def _cfg(**kw) -> PipelineConfig:
-    kw.setdefault("fine_bars_satin", PRE_FLIP["fine_bars_satin"])     # the OFF arm unless set
     # `bean_only_lines` (ON since Kent's 2026-10-27 flip) refuses the dot's and
     # the lenses' rings; this file prices the bars alone, on the engine the md5 was pinned on
     kw.setdefault("bean_only_lines", PRE_FLIP["bean_only_lines"])
@@ -115,21 +112,8 @@ def _of(runs, sid):
     return [r for r in runs if r.shape_id == sid]
 
 
-def test_default_on():
-    # Kent's flip on the wave-3 flip sheet 2026-10-26: "Fine bars as satin"
-    assert PipelineConfig().fine_bars_satin is True
-    assert PRE_FLIP["fine_bars_satin"] is False
-
-
-def test_off_is_byte_identical():
-    off = _runs()
-    assert _md5(off) == OFF_MD5
-    assert _md5(_runs(fine_bars_satin=False)) == OFF_MD5
-    assert {r.kind for r in _of(off, "Sbar")} == {stitches.RUN}      # today's ring
-
-
-def test_on_the_bar_and_the_stub_sew_satin():
-    on = _runs(fine_bars_satin=True)
+def test_the_bar_and_the_stub_sew_satin():
+    on = _runs()
     for sid in TARGETS:
         poly = dict((s, p) for s, p, _t in SHAPES)[sid]
         sat = [r for r in _of(on, sid) if r.kind == stitches.SATIN]
@@ -142,16 +126,8 @@ def test_on_the_bar_and_the_stub_sew_satin():
         assert all(reach.covers(Point(p)) for r in _of(on, sid) for p in r.points), sid
 
 
-def test_on_every_control_is_byte_identical_to_off():
-    off, on = _runs(), _runs(fine_bars_satin=True)
-    for sid, _p, _t in SHAPES:
-        if sid in TARGETS:
-            continue
-        assert _md5(_of(on, sid)) == _md5(_of(off, sid)), sid
-
-
-def test_on_with_the_hairline_tier_the_bar_still_sews_satin():
-    on = _runs(fine_bars_satin=True, hairline=True)
+def test_with_the_hairline_tier_the_bar_still_sews_satin():
+    on = _runs(hairline=True)
     assert stitches.SATIN in {r.kind for r in _of(on, "Sbar")}
 
 
@@ -162,9 +138,8 @@ def test_small_solids_satin_keeps_every_shape_it_sews():
     assert poly.area < PipelineConfig().min_detail_mm ** 2
     assert _edge(poly) and is_small_solid(poly, 0.4)
     bar = [("Sbar", poly, BLACK)]
-    alone = _runs(bar, small_solids_satin=True)
+    alone = _runs(bar)
     assert stitches.SATIN in {r.kind for r in alone}
-    assert _md5(_runs(bar, fine_bars_satin=True, small_solids_satin=True)) == _md5(alone)
 
 
 def test_a_bar_small_solids_cannot_sew_is_still_a_fine_bar():
@@ -173,8 +148,7 @@ def test_a_bar_small_solids_cannot_sew_is_still_a_fine_bar():
     poly = box(0, 0, 4.6, 0.45)
     assert _edge(poly) and is_small_solid(poly, 0.4)
     bar = [("Sbar", poly, BLACK)]
-    assert {r.kind for r in _runs(bar, small_solids_satin=True)} == {stitches.RUN}
-    both = _runs(bar, fine_bars_satin=True, small_solids_satin=True)
+    both = _runs(bar)
     assert stitches.SATIN in {r.kind for r in both}
 
 

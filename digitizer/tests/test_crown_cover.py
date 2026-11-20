@@ -1,4 +1,4 @@
-"""`cfg.satin_crown_cover` — sew the wedges no stroke claims.
+"""`satin_crown_cover` (folded into the code 2026-11-19) — sew the wedges no stroke claims.
 
 MASTER_SCOPE defect 50. `satin_lettering_split` leaves 11 holes / 22.9 mm2 at
 the crowns of curved letters on MARINE 127.4 where the fill lane leaves none,
@@ -74,16 +74,6 @@ def _sew(art, width_mm, **kw):
     return cfg, result, plan_stitches(result, cfg)
 
 
-def test_the_flag_is_on_by_default():
-    """Built OFF (Kent's §7.4), flipped ON 2026-10-02 (Kent's call) on the
-    corpus table AND `lost_frac`, never on coverage alone — the 2026-09-30
-    apex widening closed its hole and was retracted the same day for
-    spending 0.0088 of `lost_frac` on overshoot. False is the pre-flip
-    engine, pinned beside it below."""
-    assert PipelineConfig().satin_crown_cover is True
-    assert PipelineConfig(satin_crown_cover=False).satin_crown_cover is False
-
-
 def test_the_two_filters_refuse_a_seam_and_an_outline():
     """`_uncovered_patches`' extra filters, on the two shapes they exist for.
 
@@ -128,7 +118,7 @@ def _found(poly, **kw) -> bool:
     return bool(s6._uncovered_patches(poly, [], **kw))
 
 
-def test_on_the_word_it_closes_the_crowns_and_holds_lost_frac():
+def test_the_word_it_closes_the_crowns_and_holds_lost_frac():
     """Defect 50's own fixture, both halves of the gate.
 
     Pinned as a FLOOR on what it closes and a CEILING on what it costs, so a
@@ -138,24 +128,21 @@ def test_on_the_word_it_closes_the_crowns_and_holds_lost_frac():
     """
     from tools.dropped_elements import analyse_design
 
-    cfg_off, res_off, p_off = _sew(MARINE_127, 127.4, satin_crown_cover=False)
-    cfg_on, res_on, p_on = _sew(MARINE_127, 127.4, satin_crown_cover=True)
-    m_off = run_preflight(res_off, p_off, cfg_off, image=str(MARINE_127))["metrics"]
+    cfg_on, res_on, p_on = _sew(MARINE_127, 127.4)
     m_on = run_preflight(res_on, p_on, cfg_on, image=str(MARINE_127))["metrics"]
 
-    assert m_off["uncovered_holes"] >= 8, \
-        "the fixture stopped exhibiting the defect this flag is about"
     assert m_on["uncovered_holes"] <= 2, m_on["uncovered_holes"]      # 11 -> 1
     assert m_on["uncovered_total_mm2"] <= 5.0, m_on["uncovered_total_mm2"]
 
-    # THE GATE. 0.1800 -> 0.1744 measured; a rise means this is the apex
-    # widening again and is retracted, not loosened.
-    lost_off = analyse_design(MARINE_127, plan_to_design(p_off))["lost_frac"]
+    # THE GATE. 0.1800 -> 0.1744 measured against the cover OFF (the arm the
+    # fold deleted); a rise past it means this is the apex widening again and
+    # is retracted, not loosened.
     lost_on = analyse_design(MARINE_127, plan_to_design(p_on))["lost_frac"]
-    assert lost_on <= lost_off + 0.0005, (lost_off, lost_on)
+    assert lost_on <= 0.1800, lost_on
 
-    # and the thread it costs stays inside the measured price (+3.9%)
-    assert p_on.stats.stitch_count <= p_off.stats.stitch_count * 1.05
+    # and the thread it costs stays inside the measured price (7,661 after the
+    # satin construction folds, 2026-11-19; was 7,446 with the cover alone)
+    assert p_on.stats.stitch_count <= 7661 * 1.01, p_on.stats.stitch_count
 
 
 def test_the_cover_sews_first_in_its_shape_and_only_satin():
@@ -163,7 +150,7 @@ def test_the_cover_sews_first_in_its_shape_and_only_satin():
     on — the arms' crosses land on the cover's margin instead of the cover's
     rows landing on finished satin. And no tatami inside a satin shape: a
     wedge that cannot carry a column is SKIPPED, not filled."""
-    _cfg, result, plan = _sew(MARINE_127, 127.4, satin_crown_cover=True)
+    _cfg, result, plan = _sew(MARINE_127, 127.4)
     kinds: dict[str, set] = {}
     first: dict[str, str] = {}
     for _b, run in plan.iter_runs():

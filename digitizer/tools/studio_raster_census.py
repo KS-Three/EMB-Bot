@@ -74,14 +74,8 @@ NINE = ["tires", "enthusiast", "fremont", "bridge", "golden_tee", "gaulke", "dro
 # Each lettering flip OFF against today's defaults; the bridge cut rides along.
 ARMS: dict[str, dict] = {
     "default": {},
-    "house_line": {"satin_house_from_line": False},
-    "anchor": {"satin_house_anchor": False},
     "euler": {"satin_stroke_order": "nearest"},
-    "twigs": {"satin_corner_twigs": False},
-    "split": {"satin_lettering_split": False},
-    "stack": {"satin_junction_stack": False},
     "cap_skip": {"edge_cap_skip_lettering": False},
-    "exit": {"satin_exit_toward_next": False},
     "bridge_cut": {"fill_bridge_cut": False},
     # Stage 1's alpha edge extension (built OFF 2026-09-20, the gated form
     # flipped ON the same day by Kent). A stage-1 flag changes the

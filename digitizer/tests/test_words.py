@@ -223,8 +223,8 @@ def test_satin_split_ceiling_reads_the_word_under_the_flag():
     from digitizer_core.stage7_sequence import _satin_ceiling_for
     r = _region("a", box(0, 0, 1, 4))
     r.meta["word_id"] = "WDx"
-    off, on = PipelineConfig(satin_lettering_split=True), PipelineConfig(
-        satin_lettering_split=True, lettering_words=True)
+    # `satin_lettering_split` is folded into the code (2026-11-19): always on
+    off, on = PipelineConfig(), PipelineConfig(lettering_words=True)
     assert _satin_ceiling_for(r, on, 5.0)[0] == math.inf
     assert _satin_ceiling_for(r, off, 5.0)[0] == 5.0
     r.meta.update({"text_candidate": True})

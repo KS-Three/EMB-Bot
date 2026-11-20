@@ -349,10 +349,13 @@ def test_no_sewn_hop_lies_on_bare_fabric(layer):
 
 @pytest.fixture(scope="module")
 def roofing_hat():
-    """Gaulke Roofing at the pro's hat width (114.2 mm, `c golke logo
-    hat.DST`) through the Studio's request, planned three ways from one
-    generation: off, this flag, and this flag with `trim_bury_under_later`.
-    Measured 2026-10-21: 23 uncut jumps off; on, 22 cut and 1 sewn down."""
+    """Gaulke Roofing at 127 mm on a hat through the Studio's request, planned
+    three ways from one generation: off, this flag, and this flag with
+    `trim_bury_under_later`. Measured 2026-10-21 at the pro's 114.2 mm: 23
+    uncut jumps off; on, 22 cut and 1 sewn down. The satin construction
+    flags folded into the engine 2026-11-19 (exit toward the next shape,
+    rail comp, ...) left 114.2 mm with nothing sewn down, so the fixture
+    moved to 127.0 mm, which still does: 23 uncut jumps off, 1 sewn down."""
     from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
     from digitizer_service.app import _decode, _parse_config
     from tools.pro_pair import request
@@ -361,7 +364,7 @@ def roofing_hat():
     # Measured on the engine before the 2026-10-23 flips (`trim_bury_under_later` and the
     # rest were OFF): pin them off so "off" below is still the arm this flag is priced against.
     from .conftest import FLIP_2026_10_23
-    conf = PipelineConfig(**{**_parse_config(json.dumps(request(114.2, "hat_front"))), **FLIP_2026_10_23})
+    conf = PipelineConfig(**{**_parse_config(json.dumps(request(127.0, "hat_front"))), **FLIP_2026_10_23})
     gen = build_generation(_decode(data), conf, exif_source=data)
     out = {}
     for name, kw in (("off", {}), ("on", {"cut_every_jump": True}),

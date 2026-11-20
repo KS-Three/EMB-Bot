@@ -132,7 +132,7 @@ def cloth_take_back(planned: list[PlannedRegion], cfg, fabric) -> dict[str, floa
     """
     from digitizer_core.stage5_overlap import widened_lettering
     pull = max(0.0, float(fabric.pull_comp_mm))
-    rails = bool(getattr(cfg, "satin_rail_comp", False))
+    rails = True    # `satin_rail_comp`, folded into the code 2026-11-19
     return {p.shape_id: (0.0 if rails and p.satin_tier and not widened_lettering(p.region)
                          else pull) for p in planned}
 

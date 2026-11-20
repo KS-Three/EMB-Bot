@@ -101,7 +101,9 @@ SITTINGS: dict[str, dict] = {
                               "rails_symmetric": {"satin_rails_follow_edge": False}}},
     # README: main 28c893e3 plus `satin_crown_cover` ON (63c56ffa, then local to its lane)
     "off-flags-1003": {"tree": "82c9838d", "base": {"satin_crown_cover": True},
-                       "arms": {"bean_letters": {"bean_letter_max_stroke_mm": 1.0}}},
+                       "arms": {"cap_recentre": {"satin_cap_recentre": True},
+                                "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
+                                "split_off": {"split_satin": False}}},
     # kent-notes: "rendered on origin/main + PR #660's 1cbef252 cherry-picked (2a87ba89)"
     "density-1007": {"tree": "2a87ba89", "base": {},
                      "arms": {"lettering_columns": {"lettering_columns": True}}},
