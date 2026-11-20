@@ -43,6 +43,7 @@ from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import legibility, machine, stage1_photo_prep, stage2_sam2_segment
 from digitizer_core.adapter import design_size_mm, design_to_pattern, plan_to_design
 from digitizer_core.manual import build_manual_result
+from digitizer_core.stage6_puff import PUFF_MODES
 from digitizer_core import outline_fonts
 from digitizer_core.photo_signals import resolve as resolve_photo_signals
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
@@ -377,9 +378,12 @@ def _require_token(supplied: str | None) -> None:
 # resolves it directly off `cfg.shape_overrides` (see the comment above that
 # resolution) — but it is still validated here, in this same closed set, so a
 # bad value is still a 400 at submit.
+# v1.11 (2026-11-19): `puff` -- a boolean per shape (None = no override),
+# enforced by `regions.apply_shape_edits`; the review rows echo
+# `puff_eligible`/`puff_reason` when `cfg.puff` is on.
 _OVERRIDE_KEYS = {"thread_index", "fill_angle_deg", "tier", "border", "layer",
                   "sew_order", "stitched", "underlay_style", "boundary_override",
-                  "stitch_width_mm", "thread_wt", "holes_override"}
+                  "stitch_width_mm", "thread_wt", "holes_override", "puff"}
 # Kept in lockstep with digitizer_core.regions._TIER_VALUES — see that
 # copy's own comment for what "wave"/"chevron"/"brick" (alongside
 # "crosshatch") each do, and "fur".
@@ -607,6 +611,9 @@ def _canonicalize_shape_edits(data: dict, chart_len: int) -> None:
         st = entry.get("stitched")
         if st is not None and not isinstance(st, bool):
             bad = "stitched must be a boolean"
+        pf = entry.get("puff")
+        if pf is not None and not isinstance(pf, bool):
+            bad = "puff must be a boolean"
         twt = entry.get("thread_wt")
         if twt is not None and (isinstance(twt, bool) or twt not in machine.THREAD_WEIGHTS):
             # 2026-10-12: the colour block's thread weight (see
@@ -775,6 +782,13 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
                 status_code=400,
                 detail=f"thread_wt must be one of {list(machine.THREAD_WEIGHTS)}.",
             )
+    # `puff_mode` (3D puff): `wants_puff` reads anything but "select" as
+    # "all", so a typo would silently puff every shape. A 400 instead.
+    if "puff_mode" in data and data["puff_mode"] not in PUFF_MODES:
+        raise HTTPException(
+            status_code=400,
+            detail=f"puff_mode must be one of {list(PUFF_MODES)}.",
+        )
     # `garment_rgb` reaches `PipelineConfig` as whatever JSON carried, so a
     # malformed one (a hex string, four channels, 300) would surface as a
     # TypeError deep in `stage4_vectorize.garment_sews_enclosed` — a 500.
@@ -962,7 +976,36 @@ def _sew_facts(plan, region_ids: set[str] | None = None) -> dict[str, dict]:
     return facts
 
 
-def _review_payload(result, plan=None) -> dict:
+def _puff_facts(region, cfg, regions=()) -> dict:
+    """`puff_eligible` / `puff_reason` for one shape row (contract v1.11).
+    Only when `cfg.puff` is on: with it off (or no cfg) the keys are absent
+    and the review payload is exactly what it was. R18: a detached letter
+    part (a tittle) beside a shape in `regions` that can puff is eligible
+    when its own size is in the band, so the Studio does not grey it out."""
+    if cfg is None or not getattr(cfg, "puff", False):
+        return {}
+    from digitizer_core.stage6_puff import (letter_part_eligible, letter_part_host,
+                                            puff_column, puff_eligible)
+
+    def column_facts(r):
+        ok, why = puff_eligible(r, cfg)
+        if ok and not puff_column(r, cfg):
+            ok, why = False, "not a column shape"
+        return ok, why
+
+    try:
+        ok, why = column_facts(region)
+        host = letter_part_host(region, regions) if not ok else None
+        if host is not None:
+            host_ok, host_why = column_facts(host)
+            ok, why = (letter_part_eligible(region) if host_ok
+                       else (False, f"its letter can't be puffed: {host_why}"))
+    except Exception:  # a review row must never fail the job
+        return {"puff_eligible": False, "puff_reason": "could not be measured"}
+    return {"puff_eligible": bool(ok), "puff_reason": "" if ok else why}
+
+
+def _review_payload(result, plan=None, cfg=None) -> dict:
     """The half a review screen edits: what shapes are here, in what thread —
     and, when the plan is in hand, when each sews and as what tier."""
     facts = (_sew_facts(plan, {r.shape_id for r in result.regions})
@@ -1031,6 +1074,13 @@ def _review_payload(result, plan=None) -> dict:
                 # can throb it and ask "Keep / Remove" and still offer it
                 # back afterwards. Always present; never a letter.
                 "hairline_outline": bool(r.meta.get("hairline_outline", False)),
+                # Contract v1.11 (2026-11-19; server-computed, read-only):
+                # whether this shape CAN take 3D puff foam, and when not,
+                # why in words -- width band (`puff_eligible`) AND a column
+                # shape (`puff_column`). Present ONLY when `cfg.puff` is on
+                # (absent otherwise: an ordinary job pays nothing).
+                # The writable half is `shape_overrides[sid].puff`.
+                **_puff_facts(r, cfg, result.regions),
                 # Text-cluster detection (server-computed, read-only — no
                 # `_OVERRIDE_KEYS` entry, same category as `layer` and
                 # `enclosed_background`): whether this shape was tagged as a
@@ -1242,7 +1292,7 @@ async def start_digitize(
             # its three invariants: `adapter.plan_to_design`. Additive — a
             # client that ignores it behaves exactly as it did.
             "design": design,
-            "review": _review_payload(result, plan),
+            "review": _review_payload(result, plan, cfg),
             "stats": _stats_payload(plan, design,
                                     {r.shape_id for r in result.regions}),
             "warnings": plan.warnings,
@@ -1530,7 +1580,7 @@ async def start_digitize_manual(
             # its three invariants: `adapter.plan_to_design`. Additive — a
             # client that ignores it behaves exactly as it did.
             "design": design,
-            "review": _review_payload(result, plan),
+            "review": _review_payload(result, plan, cfg),
             "stats": _stats_payload(plan, design,
                                     {r.shape_id for r in result.regions}),
             "warnings": plan.warnings,
@@ -1693,7 +1743,7 @@ async def start_lettering(
         design = plan_to_design(plan, name=f"{outline_fonts.registry()[font].name}: {text.strip()[:32]}")
         return {
             "design": design,
-            "review": _review_payload(result, plan),
+            "review": _review_payload(result, plan, cfg),
             "stats": _stats_payload(plan, design, {r.shape_id for r in result.regions}),
             "warnings": list(result.warnings) + list(plan.warnings),
             "preflight": run_preflight(result, plan, cfg, image=None) if cfg.preflight else None,

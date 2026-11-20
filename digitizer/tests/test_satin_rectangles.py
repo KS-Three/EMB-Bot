@@ -74,7 +74,13 @@ def stripes():
 def _sew(art, on: bool):
     cfg = PipelineConfig(target_width_mm=100, forced_class="flat", edge_cap="none",
                          garment_id="left_chest", garment_rgb=(235, 232, 223),
-                         satin_rectangles=on)
+                         satin_rectangles=on,
+                         # `lettering_columns_top_slab` ON since 2026-11-19 (Kent: "satin_overlap_run
+                         # (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab")
+                         # sews the stripe tops as sheared slabs, so the right ends are no longer
+                         # square (max 1.61 mm, measured flag by flag: the other four leave 0.0). This
+                         # test measures `satin_rectangles`' square ends, so it pins the old engine.
+                         lettering_columns_top_slab=False)
     return digitize(art.copy(), cfg)[1]
 
 

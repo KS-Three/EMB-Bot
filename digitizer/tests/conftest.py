@@ -615,6 +615,11 @@ PRE_FLIP["stage0_scale_relative_grad"] = False
 # plan of one was measured on the pre-flip tree. Tests ABOUT the gate
 # (`tests/test_stage0_grain_needs_texture.py`) name the flag themselves.
 PRE_FLIP["stage0_grain_needs_texture"] = False
+# `rescue_needs_drawn_edge` joined the flipped set 2026-11-19 (Kent's "Flip ON
+# (Recommended)" on the enclosed-speck renders): ON, a contrasting sub-floor
+# speck one shape encloses, with no drawn edge in the art, goes to its host,
+# so an arm measured on a plan that kept one was measured on the pre-flip tree.
+PRE_FLIP["rescue_needs_drawn_edge"] = False
 # `flat_page_fringe_soft_ramp` and `flat_ramp_blend_dissolve` joined with it
 # (Kent 2026-11-06, "Re-open flip + both flags (Recommended)",
 # `docs/flat-fringe-soft-ramp-2026-11-06.md`): both act on the flat lane of an
@@ -1198,6 +1203,18 @@ PRE_FLIP.update(OFF_LINE_SINGLE_2026_11_18_OFF)
 # ON now"): `tests/test_thin_letters_after_ground.py`.
 THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF = {"thin_letters_after_ground": False}
 PRE_FLIP.update(THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF)
+# `lettering_columns_sew_dropped_hairline` (Kent 2026-11-19, shown ART | BEFORE
+# | AFTER for every changed spot on the designs it moves: "Flip ON now"):
+# `tests/test_dropped_branch.py`.
+DROPPED_HAIRLINE_2026_11_19_OFF = {"lettering_columns_sew_dropped_hairline": False}
+PRE_FLIP.update(DROPPED_HAIRLINE_2026_11_19_OFF)
+# `underfill_keeps_thin_letters` and `dark_ink_line_one_lane` (Kent 2026-11-19,
+# shown ART | BEFORE | AFTER for every design each moves: "Flip ON now", both):
+# `tests/test_underfill_keeps_thin_letters.py`, `tests/test_dark_ink_line_one_lane.py`.
+UNDERFILL_THIN_LETTERS_2026_11_19_OFF = {"underfill_keeps_thin_letters": False}
+PRE_FLIP.update(UNDERFILL_THIN_LETTERS_2026_11_19_OFF)
+ONE_LANE_2026_11_19_OFF = {"dark_ink_line_one_lane": False}
+PRE_FLIP.update(ONE_LANE_2026_11_19_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}
@@ -1284,6 +1301,16 @@ PRE_FLIP.update(SATIN_STARS_2026_11_19_OFF)
 # Kent: "We need to make sure we are not going backwards"): `tests/test_seam_hold_bodies.py`.
 SEAM_HOLD_BODIES_2026_11_19_OFF = {"seam_hold_skips_outline_bodies": False}
 PRE_FLIP.update(SEAM_HOLD_BODIES_2026_11_19_OFF)
+# Four flags (Kent 2026-11-19, shown the OFF | ON review pack, 66 design x size cells per flag;
+# Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"):
+# `tests/test_satin_overlap_run.py`, `test_outline_loop_split_shared.py`, `test_through_last.py`, `test_marine_match.py`.
+FLIP_FOUR_2026_11_19_OFF = {"satin_overlap_run": False, "outline_loop_split_shared": False,
+                            "lettering_columns_e_top_arm": False, "lettering_columns_top_slab": False}
+PRE_FLIP.update(FLIP_FOUR_2026_11_19_OFF)
+# `lettering_columns_through_last` (Kent 2026-11-19: "satin_overlap_run (Recommended), outline_loop_split_shared,
+# through_last, e_top_arm + top_slab"; then "Hold OFF, fix the leg (Recommended)"): `tests/test_through_last.py`.
+THROUGH_LAST_2026_11_19_OFF = {"lettering_columns_through_last": False}
+PRE_FLIP.update(THROUGH_LAST_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

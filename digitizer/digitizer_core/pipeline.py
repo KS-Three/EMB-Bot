@@ -88,7 +88,8 @@ from .stage7_sequence import (PHOTO_CLASSES, _cut_or_bury_jumps, borders_last_la
                               depth_sort_layers, sequence, cut_every_jump_step_mm,
                               stamp_ribbon_outliers, tag_border_by_size_groups)
 from .stitches import StitchPlan
-from .thin_ink import (bean_dark_ink, carve_flat_dark_ink, ink_after_ground, settle_dark_ink_bean,
+from .thin_ink import (bean_dark_ink, carve_flat_dark_ink, ink_after_ground, one_lane_per_line,
+                       settle_dark_ink_bean,
                        thin_letters_after_ground)
 from .threads import chart_for, lab_memo_scope, rgb_to_lab
 from .warnings_codes import (
@@ -1099,7 +1100,9 @@ def build_generation(
         if cfg.dark_ink_bean:
             bean_dark_ink(regions, by_width=cfg.dark_ink_bean_by_width,
                           # built OFF 2026-11-17: a stroke's ground is the innermost shape under it
-                          innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
+                          innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")),
+                          # built OFF 2026-11-19: judge by core width (Nevada's serif letters)
+                          by_core=bool((cfg.extra or {}).get("dark_ink_bean_by_core")))
     resnap_warnings = revalidate_threads(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),
@@ -1181,7 +1184,11 @@ def build_generation(
     if cfg.keyline_fragment_drop and classification.class_ not in PHOTO_CLASSES:
         from .keyline_fragment import drop_keyline_fragments
         ipm = float(getattr(p, "input_px_per_mm", 0.0) or 0.0) or float(p.px_per_mm)
-        drop_keyline_fragments(regions, chart_for(cfg), mm_per_src_px=1.0 / ipm if ipm > 0 else None)
+        drop_keyline_fragments(regions, chart_for(cfg), mm_per_src_px=1.0 / ipm if ipm > 0 else None,
+                               # built OFF 2026-11-19: a sub-pixel sliver goes
+                               # even in the design's darkest ink
+                               **({"subpixel_darkest": True}
+                                  if (cfg.extra or {}).get("keyline_fragment_subpixel") else {}))
 
     # `cfg.point_touch_split` (ON since 2026-11-15, Kent 2026-11-15, review
     # pack (review-1115): ticked ON; built OFF 2026-11-14 as
@@ -1600,6 +1607,9 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # lettering. Here, not in `build_generation`, for `tag_bean_letters`'
     # reason: the pinned tier only exists after the edits.
     if cfg.dark_ink_bean:
+        # ON since 2026-11-19 (Kent's flip): one line of lettering, one lane (NSA, GAO)
+        if cfg.dark_ink_line_one_lane:
+            one_lane_per_line(regions)
         settle_dark_ink_bean(regions)
 
     # Resolution of a region's effective "stitched" state: a
@@ -2269,7 +2279,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # `cfg.lettering_columns_stroke_floor` (ON since 2026-11-16, Kent's flip), the same way, as ONE
     # manager (`columns.floor_scopes`); the scopes now enter through one `ExitStack` below
     from .columns import floor_scopes
-    from .columns import through_last_scope   # `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19), the same way
+    from .columns import through_last_scope   # `cfg.lettering_columns_through_last` (ON since 2026-11-19, Kent's flip), the same way
     from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
@@ -2320,8 +2330,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(block_butt_scope(cfg.lettering_columns_block_butt))
         _enter(r_bowl_scope(cfg.lettering_columns_r_bowl))
         _enter(a_bar_scope(cfg.lettering_columns_a_bar))
-        _enter(e_top_scope(bool((cfg.extra or {}).get("lettering_columns_e_top_arm"))))      # built OFF 2026-11-19
-        _enter(top_slab_scope(bool((cfg.extra or {}).get("lettering_columns_top_slab"))))      # built OFF 2026-11-19
+        _enter(e_top_scope(cfg.lettering_columns_e_top_arm))      # ON since 2026-11-19, Kent's flip
+        _enter(top_slab_scope(cfg.lettering_columns_top_slab))      # ON since 2026-11-19, Kent's flip
         _enter(block_small_scope(cfg.lettering_columns_block_butt_small))
         _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
         _enter(absorb_unsewn_scope(cfg.lettering_columns_absorb_unsewn))
@@ -2336,8 +2346,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(patch_merge_scope(bool((cfg.extra or {}).get("script_strokes_patch_merge"))))
         # `cfg.extra["lettering_columns_hairline_leave"]` (built OFF 2026-11-19), the same way
         _enter(hairline_leave_scope(bool((cfg.extra or {}).get("lettering_columns_hairline_leave"))))
-        # `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19), the same way
-        _enter(through_last_scope(bool((cfg.extra or {}).get("lettering_columns_through_last"))))
+        # `cfg.lettering_columns_through_last` (ON since 2026-11-19, Kent's flip), the same way
+        _enter(through_last_scope(cfg.lettering_columns_through_last))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))
@@ -2535,7 +2545,8 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
     # on, or stage 5 buries them under it.
     if cfg.dark_ink_bean:
         stitched_regions = ink_after_ground(
-            stitched_regions, innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")))
+            stitched_regions, innermost=bool((cfg.extra or {}).get("dark_ink_ground_innermost")),
+            other_thread=cfg.underfill_keeps_thin_letters)
     # `cfg.thin_letters_after_ground` (ON since 2026-11-18, Kent's flip): a thin
     # letter sewn before its ground loses most of its stroke to the ground's
     # pull allowance; it sews after the ground instead.
@@ -2728,7 +2739,13 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
             # blocks with no uncut jump; this reaches the knockdown's, with
             # the whole design now sewn after it.
             if cfg.cut_every_jump:
-                _cut_or_bury_jumps(blocks, step=cut_every_jump_step_mm(cfg))
+                # Puff blocks are left out: a jump must never be buried or
+                # walked across laid foam. Appliqué's stepped blocks stay in,
+                # as they were before puff existed (its puff-OFF path is
+                # unchanged); stage 7 already leaves them with no uncut jump.
+                _cut_or_bury_jumps([b for b in blocks if not (
+                                        b.step and str(b.step.get("code", "")).startswith("PUFF"))],
+                                   step=cut_every_jump_step_mm(cfg))
 
     # The plan's palette is the list of cones this plan actually sews, one per
     # BLOCK, in sew order — NOT `result.palette`, which is the per-LAYER list a

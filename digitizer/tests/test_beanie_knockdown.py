@@ -260,3 +260,25 @@ def test_satin_shape_ids_reads_what_stage7_sewed():
         StitchRun(points=[(0, 0)] * 4, kind=stitches.BORDER, shape_id="c"),
     ])
     assert knockdown.satin_shape_ids([blk]) == {"a", "c"}
+
+
+def test_cut_every_jump_rerun_leaves_out_only_puff_blocks(monkeypatch):
+    """R16: the knockdown's `cut_every_jump` re-run skips puff blocks (never
+    bury a jump under foam) and nothing else -- appliqué's stepped blocks
+    stay in, as they were before puff existed."""
+    from digitizer_core import pipeline
+    seen = []
+    real = pipeline._cut_or_bury_jumps
+
+    def spy(blocks, *a, **kw):
+        seen.append(list(blocks))
+        return real(blocks, *a, **kw)
+
+    monkeypatch.setattr(pipeline, "_cut_or_bury_jumps", spy)
+    plan = digitize(TESTDATA / "logo_script_tires.png",
+                    _cfg(target_width_mm=80.0, puff=True, cut_every_jump=True))[1]
+    assert seen, "the knockdown's cut_every_jump re-run did not run"
+    puff = [b for b in plan.blocks if b.step and b.step["code"].startswith("PUFF")]
+    assert puff, "TIRES puffs on a beanie too"
+    rest = [b for b in plan.blocks if not (b.step and b.step["code"].startswith("PUFF"))]
+    assert [id(b) for b in seen[-1]] == [id(b) for b in rest]

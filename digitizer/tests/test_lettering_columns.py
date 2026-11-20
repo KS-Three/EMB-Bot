@@ -616,8 +616,14 @@ def test_on_every_marine_letter_sews_columns_with_fewer_runs_and_trims(becker_of
     # band and sew nothing on either arm) carries satin from this lane
     sewn = {r.shape_id for b in plan.blocks for r in b.runs if r.kind == stitches.SATIN}
     assert len(sewn & ids_on) == 6
-    assert satin_on < satin_off and trims_on < trims_off
-    assert satin_on <= 24 and trims_on <= 24       # 17 / 15 measured 2026-10-07; 34 / 42 off
+    # Re-pinned 2026-11-19 (flip of `lettering_columns_top_slab`, Kent: "satin_overlap_run (Recommended),
+    # outline_loop_split_shared, through_last, e_top_arm + top_slab"): the slab across the top sews as
+    # its own satin band, so the lane's satin count is now 25 (was 18), level with the skeleton's 25
+    # (measured flag by flag: top_slab alone makes it 28, all five ON 25; the other three
+    # leave 18 and e_top_arm 18 with 7 trims); trims stay 8 against 17. The Column lane still sews with no more runs and
+    # strictly fewer trims.
+    assert satin_on <= satin_off and trims_on < trims_off
+    assert satin_on <= 25 and trims_on <= 24       # 25 / 8 measured 2026-11-19 (17 / 15 on 2026-10-07)
 
 
 def test_every_engine_medial_axis_call_is_seeded():

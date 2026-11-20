@@ -172,6 +172,13 @@ export const DEFAULT_DIGITIZE_PARAMS = {
   // unticked keeps it unticked.
   sew_enclosed_white: true,
   sew_enclosed_counters: false,
+  // "3D Puff" (PipelineConfig.puff / puff_mode, built OFF). A new sewing
+  // process with foam under satin, so the switch is the customer's and starts
+  // off. Sent only when on (absent IS false server-side), so existing
+  // designs keep their cache key. "all" = every eligible satin shape; "select"
+  // = only the shapes ticked in Edit shapes (shape_overrides[sid].puff).
+  puff: false,
+  puff_mode: "all",
   sew_enclosed_hex: "#ffffff",
 };
 

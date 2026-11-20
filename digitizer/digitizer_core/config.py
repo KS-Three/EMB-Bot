@@ -1250,11 +1250,14 @@ class PipelineConfig:
     # and the disc sewed as a starburst ring round it. ON, a region is kept
     # for contrast only when the source pixels also step across its boundary
     # by more than `merge_delta_e` (`stage3_segment.drawn_edge`); otherwise
-    # it goes to its host as a sliver does. No new number. Reaches every
-    # class that runs `pipeline`'s own `resolve_small_regions` call (the flag
-    # sweep moved photo fixtures too: 11 of 44, `docs/stage0-grain-needs-
-    # texture-2026-11-19.md` §7).
-    rescue_needs_drawn_edge: bool = False
+    # it goes to its host as a sliver does. No new number. Asked only of a
+    # region ONE neighbour encloses (nine tenths of its ring); Kent held the
+    # unscoped form OFF on its trims and Golden Tee's O. Reaches every class
+    # that runs `pipeline`'s own `resolve_small_regions` call. Enclosed form:
+    # 8 of 44 sweep designs move, sunset 16 fewer trims. FLIPPED ON 2026-11-19
+    # by Kent ("Flip ON (Recommended)") on the renders; OFF arm pinned in
+    # `tests/engine_2026_10_27.json` and `PRE_FLIP`.
+    rescue_needs_drawn_edge: bool = True
     # Dark thin strokes on a SHADED ground, read by lightness
     # (`thin_ink.find_dark_thin_ink`; gradient class only, the gate
     # `keep_thin_strokes` has). `keep_thin_strokes` reads the artwork with the
@@ -1336,6 +1339,39 @@ class PipelineConfig:
     # `tests/engine_2026_10_27.json` pin it False. Tests:
     # `tests/test_thin_letters_after_ground.py`.
     thin_letters_after_ground: bool = True
+    # `underfill_keeps_thin_letters` (built OFF 2026-11-19 as a `cfg.extra`
+    # key; ON the same day, Kent's flip, shown ART | BEFORE | AFTER for the
+    # nine designs it moves of 91: "Flip ON now"). A thin letter
+    # (`thin_ink.THIN_LETTER_PULLS` x pull) in the holes of another colour's
+    # fill inside a silhouette ring never merges into the ring's under-fill
+    # when that ground's holes hold a kept letter of its thread
+    # (`silhouette_underfill._keep_thin`); and a dark-ink stroke's ground is
+    # another thread's when one covers it, else its own
+    # (`thin_ink.ink_after_ground(other_thread=)`). The Merchant Marine seal
+    # at 90 mm: the black keyline ring is its own under-fill, its 0.5-0.7 mm
+    # ring letters merged into it, and the white disc sewn on top closed
+    # them: "UNITED STATES MERCHANT MARINE" was gone (35,449 -> 36,761
+    # stitches, trims 149 -> 139). Marshals' field sews navy without strays;
+    # OPM's star points and eagle head sew white (half white in the art).
+    # Paired corpus not run. False is the engine as it was; PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_underfill_keeps_thin_letters.py`.
+    underfill_keeps_thin_letters: bool = True
+    # `dark_ink_line_one_lane` (built OFF 2026-11-19 as a `cfg.extra` key; ON
+    # the same day, Kent's flip, shown the seven designs it moves of 91: "Flip
+    # ON now"). A line of lettering (text cluster + thread) split between
+    # bean and satin sews in the lane its OWN median width names against
+    # `thin_ink.DARK_INK_BEAN_MAX_WIDTH_MM` (`thin_ink.one_lane_per_line`,
+    # before `settle_dark_ink_bean`); a line goes bean only onto another
+    # thread's ground. NSA at 90 mm: 14 of the bold top line's 22 letters sewed
+    # as beans because the thin bottom line on the same ring pulled the
+    # per-ground median under the gate; ON the line is bold all round (trims
+    # 96 -> 73). GAO one weight; Court of Federal Claims "ERAL" and Public
+    # Health's 7 bold like the art. Paired corpus not run. Read only with
+    # `dark_ink_bean`. False is the engine as it was; PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False. Tests:
+    # `tests/test_dark_ink_line_one_lane.py`.
+    dark_ink_line_one_lane: bool = True
     # `dark_ink_bean_by_width` (built OFF 2026-11-16): which dark-ink strokes
     # sew as a bean is decided by WIDTH, not thread contrast. Contrast stood
     # in for "pen line versus designed lettering" and gets real lettering
@@ -3676,11 +3712,14 @@ class PipelineConfig:
     # dip. The professional's file sews the stem once and butts it to the
     # border. With this on each loop's crosses stop at the line the two holes
     # share (`stage6_border._split_cross`), so the columns butt. A cross the
-    # cut would leave under the satin floor keeps its length. Built OFF: the
-    # flip is Kent's, judged on the before / after pictures
-    # (`docs/renders/outline-loop-split-shared-2026-11-18/`). Off,
-    # byte-identical. Tests: `tests/test_outline_loop_split_shared.py`.
-    outline_loop_split_shared: bool = False
+    # cut would leave under the satin floor keeps its length. **ON since
+    # 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab". Evidence (review pack, 66 cells): 6 moved;
+    # Becker's B-E stem butts to its border on both sizes, the other 4 the same,
+    # +4 trims. False is the engine as it was; `tests/conftest.py` PRE_FLIP and
+    # `tests/engine_2026_10_27.json` pin it False (built OFF, pictures in
+    # `docs/renders/outline-loop-split-shared-2026-11-18/`). Tests:
+    # `tests/test_outline_loop_split_shared.py`.
+    outline_loop_split_shared: bool = True
     # `outline_one_band` (2026-11-18, prime grader / Kent 11-10 "the border around this logo
     # should be smooth"): an outline whose band is shared by two or more bodies and has stems
     # between them (BECKER) is sewn the way the professional's Becker file is -- each stem a
@@ -3978,6 +4017,37 @@ class PipelineConfig:
     # engine as it was; PRE_FLIP (SATIN_STARS_2026_11_19_OFF) pins it False.
     # Tests: `tests/test_satin_stars.py`.
     satin_stars: bool = True
+    # `satin_overlap_run` (built OFF 2026-11-19 as `cfg.extra["satin_overlap_run"]`, MFab top
+    # line, `column_overlap.overlap_run`): a satin stretch lying wholly on its own earlier
+    # satin is sewn as running stitch. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".
+    # Evidence (review pack, 66 cells): 30 moved, all the same to the eye, 1,527 fewer
+    # stitches, -1 trim. Promoted from `cfg.extra` to a field so the default can be ON.
+    # False is the engine as it was; `tests/conftest.py` PRE_FLIP (`FLIP_FOUR_2026_11_19_OFF`)
+    # and `tests/engine_2026_10_27.json` pin it False. Tests: `tests/test_satin_overlap_run.py`.
+    satin_overlap_run: bool = True
+    # `lettering_columns_through_last` (built OFF 2026-11-19 as
+    # `cfg.extra["lettering_columns_through_last"]`, Gaulke vs the pro, `columns._through_last_walk`):
+    # T/E junctions sewn whole. **ON since 2026-11-19, Kent's flip**, in two rulings: Kent, 2026-11-19, shown the OFF | ON review pack and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"; then, shown the chaining culprit render: "Hold OFF, fix the leg (Recommended)" (a worker buries or trims that walk-in leg in through_last's own code until bare thread stays under 4.5, then flips it ON as ruled).
+    # The leg: the first flip left it OFF because Enthusiast's E at 93 mm lifted the chaining
+    # benchmark's bare thread 4.28 -> 4.54 mm. Cause: the through-last walk starts further in,
+    # so the entry walk (`column_runs` 3b) fell under a tiny stitch and was skipped, and the
+    # needle dragged 1.19 mm straight to the start instead of 0.97 mm + a 0.66 mm walk. Fixed in
+    # its own code path: the walk is kept only when its hop in is no longer than the walk it
+    # replaces (`kp[4] <= kb[4]`, beside its trims and hops on finished satin). With it the
+    # benchmark reads 4.28 mm ON and OFF. Promoted from `cfg.extra` to a field so the default
+    # can be ON. False is the engine as it was; `tests/conftest.py` PRE_FLIP
+    # (`THROUGH_LAST_2026_11_19_OFF`) and `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_through_last.py`.
+    lettering_columns_through_last: bool = True
+    # `lettering_columns_e_top_arm` + `lettering_columns_top_slab` (built OFF 2026-11-19 as
+    # `cfg.extra` keys, `outline_cut.e_top_scope` / `top_slab_scope`, #1689): the pro's E top
+    # band and sheared top slab. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".
+    # Evidence (review pack, 66 cells): 10 moved; Becker's E gets the pro's top band.
+    # Catches, shown and ruled ON: a hard seam across `fur_ramp`'s disc, and pizza's trims
+    # go 5 -> 7 and 6 -> 9. Promoted from `cfg.extra` to fields; False is the engine as it
+    # was, pinned in PRE_FLIP (`FLIP_FOUR_2026_11_19_OFF`) and `tests/engine_2026_10_27.json`.
+    lettering_columns_e_top_arm: bool = True
+    lettering_columns_top_slab: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick
@@ -4380,6 +4450,28 @@ class PipelineConfig:
     # as it was; `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json`
     # pin it False. Tests: `tests/test_whole_letter_floor.py`.
     lettering_columns_whole_letter_floor: bool = True
+    # A branch of a letter the cut left inside ONE column, which then takes no
+    # stitch, is cut as a letter of its own and sewn in the lane with every
+    # thin cross at the 0.5 mm floor; kept when it adds no more thread outside
+    # the letter than in (`columns.absorb_gains`) OR the letter is not whole
+    # without it and whole with it (`columns.stroke_floor_restores`)
+    # (`columns.dropped_branches`; built OFF 2026-11-18 as
+    # `cfg.extra["lettering_columns_sew_dropped_hairline"]`, #1685). **ON
+    # since 2026-11-19, Kent's flip**: shown ART | BEFORE | AFTER for every
+    # changed spot, "Flip ON now". On a serif letter the lane stationed the
+    # bold stroke and left the hairline stems bare: the DIA seal's N of
+    # UNITED (diagonal sewn, both 0.3 mm stems unsewn, cover 0.70 -> 1.00),
+    # the NRC logo's N, the Peace Corps R's whole stem. 82 designs (seven
+    # Commons logo batches, 16 repo logos): 17 change, 65 identical, none
+    # reads worse, trims within 2. It INCLUDES the plain dropped-branch pass
+    # (`cfg.extra["lettering_columns_sew_dropped_branch"]`, Kent 11-18 "Add to
+    # paired check"), which this flip therefore turns on as well. Catches: a
+    # restored stem sews 0.5 mm over thinner ink; the `scratch_kent` paired
+    # corpus, the monarch wing and the Gaulke '&' were not run. Promoted from
+    # `cfg.extra` so the default can be ON. False is the engine as it was;
+    # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
+    # False. Tests: `tests/test_dropped_branch.py`.
+    lettering_columns_sew_dropped_hairline: bool = True
     # `lettering_columns_stem_wedge_cap` (built OFF 2026-11-18 as
     # `cfg.extra["lettering_columns_stem_wedge_cap"]`, #1661 and #1664; prime
     # grader: Toat Machine's "h" stem "built from offset segments with visible
@@ -7183,6 +7275,19 @@ class PipelineConfig:
     # stack, which is what you want; a number here is an escape hatch for a
     # sew-out comparison and is still clamped to [2.5, 5.0].
     applique_cover_width_mm: float | None = None
+
+    # Stage 6 — 3D puff (docs/superpowers/specs/2026-11-19-3d-puff-design.md).
+    #
+    # OFF by default, and that default is load-bearing: with `puff` False
+    # nothing puff-related is read, no step metadata is attached, and a design
+    # sews byte-for-byte what it sewed before the tier existed.
+    #
+    # Per-shape intent overrides the mode, as `applique` does, except that the
+    # master switch gates everything: `Region.meta["puff"]` is ignored while
+    # `puff` is False. "all" = every eligible satin shape unless meta says
+    # False; "select" = only shapes whose meta says True.
+    puff: bool = False
+    puff_mode: str = "all"
 
     # --- Review-screen shape edits (the shape-layers contract v1) ----------
     #
