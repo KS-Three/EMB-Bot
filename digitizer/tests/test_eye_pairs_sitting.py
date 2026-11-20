@@ -32,6 +32,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from tools.eye_pairs import __main__ as cli  # noqa: E402
 from tools.eye_pairs import pooled, sitting  # noqa: E402
+from digitizer_core.config import RETIRED_FIELDS  # noqa: E402
 from tools.eye_pairs.pairs import BASE, append_pick  # noqa: E402
 from digitizer_core.config import RETIRED_FIELDS  # noqa: E402
 
@@ -766,6 +767,8 @@ def test_every_pro_sized_arm_turns_one_construction_flag_that_is_on_today_off():
     defaults = sitting._config_defaults()
     for name, arm in spec["arms"].items():
         (flag, value), = arm["flags"].items()
+        if flag in RETIRED_FIELDS:   # folded into the code (flag consolidation): a historical arm
+            continue
         assert value is False and defaults[flag] is True, name
     assert sum(1 for a in spec["arms"].values() if a["stratum"] == "trims") == 1
 

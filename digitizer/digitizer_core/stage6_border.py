@@ -2029,7 +2029,7 @@ def run_outline(poly, shape_id: str, *, entry: tuple[float, float] | None,
     arcs of the SAME ring, walk the covered stretch instead of lifting over
     it — see `_covered_walk`. Counted as `walked`; OFF never consults it.
 
-    `dot_rung` (`cfg.small_dot_rung`, built OFF; stage 7's run routing is
+    `dot_rung` (`small_dot_rung (folded in)`, built OFF; stage 7's run routing is
     its only caller): an OUTER ring under `RUN_MIN_LOOP_MM` but at or over
     `machine.DOT_RUNG_MIN_LOOP_MM` -- the outline of an i dot -- sews as a
     tack ring, `DOT_RUNG_PASSES` passes at `DOT_RUNG_STITCH_MM`, instead of

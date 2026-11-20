@@ -112,7 +112,6 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent)
                        # re-fits the upscaled outline the cap rings
                        outline_redraw_k=PRE_FLIP["outline_redraw_k"],
-                       satin_lettering_split=False,
                        # ...and the Column lane (`lettering_columns`, ON since
                        # Kent's 2026-10-12 flip): it sews becker's MARINE
                        # letters from their outline, so the edge-cap budget
@@ -229,6 +228,14 @@ def test_the_bill_reports_what_the_gate_saved_and_it_collapses_with_size():
     ending, and pinning it keeps the three-width sweep the one measurement
     it was taken as. The 80 and 88 mm arms are unmoved by the flip and stay
     on the shipped engine.
+
+    **Re-pinned 2026-11-19 on the engine with the satin construction flags
+    folded in** (`satin_lettering_split` was held OFF here; it is the code
+    now, and with it the letters take the gate's linear cover): 80 mm reads
+    98.9% saved, 88 mm 30.5% (was 12.0), and 110 mm still bills 41.1% but
+    now with a 29.3% gate saving and 1,439 mm2 of cover instead of none, so
+    "the gate does not exist at 110 mm" no longer holds; the bill's
+    collapse with size does.
     """
     cheap = _bill(_run(BECKER, CHEAP))
     cliff = _bill(_run(BECKER, CLIFF))
@@ -237,12 +244,11 @@ def test_the_bill_reports_what_the_gate_saved_and_it_collapses_with_size():
     assert cheap["gate_saved_pct"] > 50.0, cheap["gate_saved_pct"]
     assert cheap["omit_cover_mm2"] > 1000.0, cheap["omit_cover_mm2"]
 
-    assert cliff["gate_saved_pct"] < 25.0, cliff["gate_saved_pct"]
+    assert cliff["gate_saved_pct"] < 35.0, cliff["gate_saved_pct"]
     assert cliff["gate_saved_pct"] < cheap["gate_saved_pct"] - 50.0
 
-    # The headline: a bigger design, and the gate has nothing to work with.
-    assert none["omit_cover_mm2"] == 0.0
-    assert none["gate_saved_pct"] == 0.0
+    # The headline: a bigger design, and the gate saves less than at 80 mm.
+    assert none["gate_saved_pct"] < cheap["gate_saved_pct"] - 50.0, none["gate_saved_pct"]
     assert none["percent"] > 40.0, (
         "the no-gate width stopped being expensive — re-read the sweep "
         "before relaxing this, the cap reverting to full cost IS the defect")

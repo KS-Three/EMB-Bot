@@ -344,7 +344,7 @@ def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
         use_shapefield=bool(cfg.extra.get("shapefield")),
         patch_junctions=cfg.satin_patch_junctions,
         stroke_order=cfg.satin_stroke_order,
-        corner_twigs=cfg.satin_corner_twigs,
+        corner_twigs=True,
         junction_stack=True,
         # §3.6 "short stitches OFF": at 0.18 mm the guard would retract every
         # other penetration 0.6 mm into the shape, crushing the foam there.

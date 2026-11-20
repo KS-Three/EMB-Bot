@@ -64,13 +64,11 @@ LOGOS = ("becker_marine_logo.png", "photo/logo_bridge_bar.jpg", "photo/enthusias
          "photo/logo_golden_tee.jpg", "photo/drone_render.png")
 
 
-# The three arms: overrides on the shipped config.
-# Every arm explicit: the rung and its scope are ON by default since
-# 2026-10-20 (Kent's flip), so "off" pins the pre-flip engine and "on" is
-# the unscoped rung.
-ARMS = {"off": {"small_dot_rung": False, "small_dot_rung_lettering": False},
-        "on": {"small_dot_rung": True, "small_dot_rung_lettering": False},
-        "scope": {"small_dot_rung": True, "small_dot_rung_lettering": True}}
+# The three arms: overrides on the shipped config. `small_dot_rung` and
+# `small_dot_rung_lettering` were folded into the code 2026-11-19, so the three
+# arms are now the SAME engine (the shipped scoped rung); the names stay so the
+# measurements this tool recorded (OFF / ON / scope) still read.
+ARMS = {"off": {}, "on": {}, "scope": {}}
 
 
 def arm(on) -> tuple[str, dict]:

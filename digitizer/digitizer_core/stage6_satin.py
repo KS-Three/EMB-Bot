@@ -559,7 +559,7 @@ def _classify_ribbon_once(poly: Polygon, max_width_mm: float, *,
     perimeter gate's own refusal, whatever the DT called it ("dt_irregular",
     "dt_p90_cap", "photo_width_floor"). The bool is the same either way; the
     reason is not cosmetic: stage 7's compact-solid satin rescue
-    (`cfg.compact_solids_satin`, default ON) runs on `reason == "aspect"`
+    (`compact_solids_satin (folded in)`, default ON) runs on `reason == "aspect"`
     only, so a renamed refusal sewed tatami where OFF sews one satin blob,
     and the `.satin`-only census tools could not see it (#1311 follow-up).
     The band may only turn a refusal into an ACCEPT; a refusal stands as the
@@ -1334,7 +1334,7 @@ def _skeleton_edges(mask: np.ndarray) -> list[dict]:
     walks ONE way from each unconsumed pixel, so the chain came back as 1-3
     px free/free fragments, each of which `extract_strokes` keeps (both ends
     free) and `satin_stroke` extends to both caps. Measured on
-    `enthusiast_logo`'s H at 93 mm under `cfg.satin_rail_comp`: the left stem
+    `enthusiast_logo`'s H at 93 mm under `satin_rail_comp (folded in)`: the left stem
     as five columns on top of each other, the design's coverage peak 4.7 ->
     9.27 layers. With the flag off the corpus hits both cases too (Becker 4
     shapes, drone 6, enthusiast 5 -- `tools/rail_comp.py`'s scan of the
@@ -1976,7 +1976,7 @@ def _merge_through_junctions(edges: list[dict], dt_mm=None, half_mm: float = 0.0
 #     KEPT so the node stays a junction and `_merge_through_junctions`
 #     decides the weld on its own terms;
 #   * anything else keeps today's rule (a short free arm is a spur).
-# Behind `cfg.satin_corner_twigs`; off, the function is what it was.
+# Behind `satin_corner_twigs (folded in)`; off, the function is what it was.
 _CAP_ARM_MAX_SPURS = 1.5
 # Two short free arms leaving one node at least this far apart are the two
 # halves of a SLAB SERIF's axis (a foot or a T-shaped terminal: the slab
@@ -2409,7 +2409,7 @@ def extract_strokes(poly: Polygon, *,
     Strokes are sorted longest first, so a letter's main stem sews before its
     serifs and the between-stroke hops stay short.
 
-    `half_extra_mm` (`cfg.satin_rail_comp`, 2026-09-09) is added to the mean
+    `half_extra_mm` (`satin_rail_comp (folded in)`, 2026-09-09) is added to the mean
     half-width wherever it sets a LENGTH -- the spur pruning threshold, the
     stub filter, the junction cluster radius -- and nowhere it reads the
     corridor. Under rail-side compensation `poly` is the artwork, whose
@@ -2916,7 +2916,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
     the symmetric width; see the envelope branch. None, the default, tests
     nothing and is byte-identical.
 
-    `rail_comp_mm` (`cfg.satin_rail_comp`, 2026-09-09) is pull compensation
+    `rail_comp_mm` (`satin_rail_comp (folded in)`, 2026-09-09) is pull compensation
     applied HERE instead of by stage 5's polygon buffer: `poly` is the
     ARTWORK, every ray stops at its edge, and once every station is placed
     and refined each rail moves outward along its own cross by that amount
@@ -3545,7 +3545,7 @@ def _rail_points(poly: Polygon, spine: list[tuple[float, float]], closed: bool,
 # sits within this many SEWN half-widths along the end's own tangent. The A's
 # apex reads about one; an arm ending in a letterform's corner ball has to
 # cross the whole ball to reach a boundary and reads several times this.
-# `cfg.satin_tip_caps`, 2026-09-29.
+# `satin_tip_caps (folded in)`, 2026-09-29.
 _TIP_REACH_HALVES = 1.6
 
 
@@ -5438,7 +5438,7 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                 _THIN_ARM_TALLY.get()[1] += int(thin_meet)  # ... and stopped
             if thin_meet:
                 reach_in = 0.0
-            # `tip_caps` (`cfg.satin_tip_caps`, 2026-09-29, defect 49): this
+            # `tip_caps` (`satin_tip_caps (folded in)`, 2026-09-29, defect 49): this
             # end has no single owner and the boundary is one tangent-length
             # away -- a tapered TIP, not a meeting. The artwork beyond it
             # belongs to nobody: the medial axis stops half a width short of
@@ -5830,7 +5830,7 @@ def _stroke_underlay(poly: Polygon, st: Stroke, style: str, shape_id: str,
     will follow, so it always sits under the column.
 
     `min_run_mm`: a spine shorter than this carries no run. The default is
-    one underlay stitch; `cfg.satin_underlay_short_columns` lowers it to
+    one underlay stitch; `satin_underlay_short_columns (folded in)` lowers it to
     `machine.MIN_STITCH_MM`, the shortest stitch the engine lays, because
     the pro runs a centre walk under columns down to two millimetres.
 
@@ -6277,7 +6277,7 @@ def _euler_stroke_order(nodes, edges, adj, n_strokes: int,
 
     Strokes the graph does not reach (no edge) keep their given order, last.
 
-    `end_near` (`cfg.satin_exit_toward_next`, 2026-09-19): where the needle
+    `end_near` (`satin_exit_toward_next (folded in)`, 2026-09-19): where the needle
     goes NEXT. On the component the walk leaves last, the (start, end)
     pair of odd nodes is the one that minimises the entry hop from
     `start_near` plus the exit hop to `end_near`, and the postman pairing
@@ -6467,7 +6467,7 @@ _JUNCTION_PATCH_MIN_MM2 = 5.0
 # either leave findings standing or spend thread on holes nobody grades.
 _JUNCTION_PATCH_CELL_MM = 0.25
 
-# `cfg.satin_crown_cover` (2026-09-30, MASTER_SCOPE defect 50): the same
+# `satin_crown_cover (folded in)` (2026-09-30, MASTER_SCOPE defect 50): the same
 # cover, with the junction gate removed and a floor low enough to reach a
 # crown. `satin_lettering_split` leaves 11 holes / 22.9 mm2 at the crowns of
 # curved letters on MARINE 127.4 where the fill lane leaves none, and five
@@ -6674,7 +6674,7 @@ def _principal_spine(patch: Polygon) -> tuple[list[tuple[float, float]], float] 
 
 
 def is_small_solid(poly: Polygon, laid_mm: float) -> bool:
-    """`cfg.small_solids_satin`'s test: would a bean ring on this outline
+    """`small_solids_satin (folded in)`'s test: would a bean ring on this outline
     leave bare cloth inside? The ring's thread reaches half a laid width in
     from the edge; what is left past that, at or over the run tier's own
     one-penetration area (`machine.RUN_MIN_AREA_MM2`), is a hole the ring
@@ -7429,7 +7429,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     -- is cut at the kink and rebuilt square (`_cut_cap_fork`). Off,
     byte-identical.
 
-    `end_near` (`cfg.satin_exit_toward_next`, 2026-09-19): where the needle
+    `end_near` (`satin_exit_toward_next (folded in)`, 2026-09-19): where the needle
     goes after this shape; under the Euler order the walk is chosen to END
     nearest it (`_euler_stroke_order`). None is the walk as shipped.
 
@@ -7438,11 +7438,11 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     than the raw stroke -- what a mixed stroke's parts already do -- so the
     centre run ends where the column enters. Off, byte-identical.
 
-    `corner_twigs` (`cfg.satin_corner_twigs`, plan step 3, 2026-09-19): the
+    `corner_twigs` (`satin_corner_twigs (folded in)`, plan step 3, 2026-09-19): the
     spur pruner's structure rule -- see `_CAP_ARM_MAX_SPURS`. Off, the
     pruner is what it was.
 
-    `junction_stack` (`cfg.satin_junction_stack`, the junction construction
+    `junction_stack` (`satin_junction_stack (folded in)`, the junction construction
     plan, 2026-09-19): the pro's junction. A weld is refused past
     `_STACK_WELD_TURN_DEG` and the arms end at the node (`extract_strokes`);
     an arm ending at a meeting of several runs into the node by its own
@@ -7471,7 +7471,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
     (`_fold_caps`) that makes a ceiling past 5.0 safe. The defaults are the
     constant and off: byte-identical to before they existed.
 
-    `rail_comp_mm` / `rail_comp_floor_mm` (`cfg.satin_rail_comp`,
+    `rail_comp_mm` / `rail_comp_floor_mm` (`satin_rail_comp (folded in)`,
     2026-09-09): the fabric's pull applied on the rails (`_rail_points`)
     instead of by stage 5's buffer, for a shape stage 5 left on its artwork
     polygon; the floor is `cfg.min_detail_mm`, what a counter keeps. Both
@@ -7691,7 +7691,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                                               rail_comp_mm=rail_comp_mm,
                                               rail_comp_floor_mm=rail_comp_floor_mm,
                                               half_mm=half_mm,
-                                              # `cfg.satin_underlay_short_columns`: a run
+                                              # `satin_underlay_short_columns (folded in)`: a run
                                               # under any spine that holds one stitch.
                                               # The skeleton of a 2 x 1 mm column is
                                               # 0.9999999 mm long (half a width short

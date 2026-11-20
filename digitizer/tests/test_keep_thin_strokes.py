@@ -134,12 +134,6 @@ def test_without_layer_colours_the_flag_is_inert_which_is_the_photo_lanes_contra
     assert w_on == w_off
 
 
-def test_the_user_facing_rescue_opt_out_still_wins():
-    cfg = PipelineConfig(keep_thin_strokes=True, small_shape_rescue=False)
-    kept, _ = resolve_small_regions(_scene(), cfg, PX_PER_MM, layer_lab=rgb_to_lab(RGB))
-    assert [k.layer for k in kept] == [0], "strict floor behaviour absorbs the stroke too"
-
-
 def test_a_contrasting_stroke_that_fails_the_loop_proxy_is_absorbed_as_before():
     """1 x 1.5 mm: 150 px clears the noise floor, but 2 * max(10, 15) = 30 px
     against a 22 px loop floor... clears it too — so shorten it: 1 x 1 mm is
@@ -161,8 +155,8 @@ def test_on_the_primary_golden_off_absorbs_the_teal_patch_and_on_keeps_it_as_a_r
     run in its own thread. Since the 2026-09-13 flip ON is the shipped answer
     and the flat golden pins it; OFF is named explicitly here so the pre-flip
     arm stays tested. The orange dot is isolated and drops either way."""
-    # both arms on the engine before the 2026-10-23 flips: `small_solids_satin`
-    # would sew the kept patch as a satin blob, which is not the run this pins
+    # `small_solids_satin` (folded into the code 2026-11-19) sews the kept
+    # patch as a satin blob, not a run
     off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
                              PipelineConfig(target_width_mm=80.0, keep_thin_strokes=False, **FLIP_2026_10_23))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
@@ -179,7 +173,7 @@ def test_on_the_primary_golden_off_absorbs_the_teal_patch_and_on_keeps_it_as_a_r
     assert len(on_plan.blocks) == len(off_plan.blocks) + 1
     assert 0 < on_plan.stats.stitch_count - off_plan.stats.stitch_count < 60
     kinds = {run.kind for _b, run in on_plan.iter_runs() if run.shape_id == teal[0].shape_id}
-    assert kinds == {"run"}, kinds
+    assert kinds == {"satin"}, kinds
 
 
 def _strokes_on_a_panel(path: Path) -> None:

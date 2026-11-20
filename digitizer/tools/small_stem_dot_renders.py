@@ -57,18 +57,17 @@ WIDTHS = (50.0, 80.0)
 SP_CAPS = (2.5, 3.0, 4.0)
 BECKER = "becker_marine_logo.png"
 
-# Every flag explicit per arm: all three are ON by default since 2026-10-20
-# (Kent's flip), so "off" is the pre-flip engine, and the shipped default is
-# now the "scope" arm.
-_OFF = {"lettering_columns_small_stem": False, "small_dot_rung": False,
-        "small_dot_rung_lettering": False}
+# `small_dot_rung` and `small_dot_rung_lettering` were folded into the code
+# 2026-11-19: the dot rung (scoped to lettering) is always on, so only the
+# small-stem flag still varies by arm and "off" / "stem" differ from "dot" /
+# "both" / "scope" no more than that flag does. The shipped default is "scope".
+_OFF = {"lettering_columns_small_stem": False}
 ARMS = {
     "off": dict(_OFF),
-    "stem": {**_OFF, "lettering_columns_small_stem": True},
-    "dot": {**_OFF, "small_dot_rung": True},
-    "both": {**_OFF, "lettering_columns_small_stem": True, "small_dot_rung": True},
-    "scope": {"lettering_columns_small_stem": True, "small_dot_rung": True,
-              "small_dot_rung_lettering": True},
+    "stem": {"lettering_columns_small_stem": True},
+    "dot": dict(_OFF),
+    "both": {"lettering_columns_small_stem": True},
+    "scope": {"lettering_columns_small_stem": True},
 }
 ARM_LABEL = {"off": "OFF (pre-flip)", "stem": "small_stem ON", "dot": "small_dot_rung ON",
              "both": "both ON", "scope": "both ON + lettering scope (shipped)"}

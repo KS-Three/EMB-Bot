@@ -1,4 +1,4 @@
-"""`cfg.satin_tip_caps` — a tapered TIP is a cap, not a junction.
+"""`satin_tip_caps` (folded into the code 2026-11-19) — a tapered TIP is a cap, not a junction.
 
 Built OFF 2026-09-29 for MASTER_SCOPE defect 49. Under `satin_rail_comp` a
 shape keeps its artwork polygon and the artwork's sharp tips are sharp, so a
@@ -42,14 +42,6 @@ from digitizer_core import stage6_satin as s6
 from digitizer_core.pipeline import (build_generation, finish_generation,
                                      plan_stitches)
 from tests.conftest import TESTDATA
-
-
-def test_the_flag_is_on_by_default_since_2026_09_29():
-    """Kent's flip on the corpus price (scope-history, the nine-logo table):
-    bare artwork falls on all nine logos for a median +3.6% stitches. False
-    stays reachable and is the pre-flip engine, byte-identical."""
-    assert PipelineConfig().satin_tip_caps is True
-    assert PipelineConfig(satin_tip_caps=False).satin_tip_caps is False
 
 
 def test_a_tip_reads_as_a_tip_and_a_corridor_does_not():
@@ -109,7 +101,7 @@ def test_on_the_lettering_fixture_it_buys_end_coverage_for_thread():
     from tools.bare_anatomy import components
 
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         max_colors=6, satin_tip_caps=True)
+                         max_colors=6)
     gen = build_generation(str(TESTDATA / "photo" / "enthusiast_logo.png"), cfg)
     result = finish_generation(gen.fork(), cfg)
     plan = plan_stitches(result, cfg)

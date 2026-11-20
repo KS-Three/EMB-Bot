@@ -930,7 +930,7 @@ RUN_MIN_LOOP_MM = 2.2
 # 0.10 mm² (dies), the thinnest subline letter is 0.50 mm² (survives).
 RUN_MIN_AREA_MM2 = 0.16
 
-# The small-dot rung (`cfg.small_dot_rung`, built OFF 2026-10-14). A closed
+# The small-dot rung (`small_dot_rung (folded in)`, built OFF 2026-10-14). A closed
 # PART whose outline is under RUN_MIN_LOOP_MM -- the dot of a small i or j --
 # sews as a tack ring of DOT_RUNG_PASSES passes at DOT_RUNG_STITCH_MM
 # instead of being dropped (a counter ring that short is not: see the flag). The rung's own floor keeps the

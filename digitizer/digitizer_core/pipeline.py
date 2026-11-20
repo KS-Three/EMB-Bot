@@ -1007,12 +1007,10 @@ def build_generation(
                  if cfg.lone_glyph_keep and classification.class_ in PHOTO_CLASSES else cfg)
     masks, small_warnings = resolve_small_regions(
         masks, small_cfg, p.px_per_mm, p.enclosed_mask,
-        layer_lab=rgb_to_lab(q.cluster_rgb) if (
-            cfg.keep_thin_strokes or counters_on
-            or (cfg.small_dot_rung and cfg.small_dot_rung_lettering)
-            # `cfg.detail_spokes` reads the same colours: a mark is a detail
-            # of ANOTHER colour than its host.
-            or cfg.detail_spokes) else None,
+        # The dot rung's lettering scope (`small_dot_rung_lettering`, folded in)
+        # and `cfg.detail_spokes` read the same colours: a mark is a detail of
+        # ANOTHER colour than its host.
+        layer_lab=rgb_to_lab(q.cluster_rgb),
         keep_counters=counters_on,
         # `cfg.open_cored_counters`: the guarded core (`cored_counter_core`),
         # logos only, the gate `keep_counters` has; None with the flag off.
@@ -1398,8 +1396,8 @@ def build_generation(
         from .words import word_groups
         house_groups = word_groups(regions)
     set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
-                              from_line=cfg.satin_house_from_line,
-                              anchor=cfg.satin_house_anchor, groups=house_groups)
+                              from_line=True,
+                              anchor=True, groups=house_groups)
     # The Column lane's ink link (`cfg.lettering_columns_ink_link`, default
     # ON by Kent's ruling 2026-10-13): a house-group-only shape in a far ink
     # is not a letter of the text. Here, once both old taggers have written

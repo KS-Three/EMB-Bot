@@ -92,7 +92,7 @@ from tools.flip_eight_proof import BEFORE as _FLIP_2026_10_23  # noqa: E402
 # record predates them (THE reads S* S* S* with them ON, R S* S* as recorded)
 _GROUP_2026_11_14 = {"group_consistent_tier": False, "group_consistent_fill_angle": False}
 PRE_TRUE_SIZE = {"small_text_true_size": False, "lettering_columns_small_stem": False,
-                 "small_dot_rung": False, "small_dot_rung_lettering": False, **_FLIP_2026_10_23,
+                 **_FLIP_2026_10_23,
                  **_GROUP_2026_11_14}
 ARMS = {name: (w, {**PRE_TRUE_SIZE, **o}, label) for name, (w, o, label) in ARMS.items()}
 # The four arms Kent named, in his order; the controls and alternatives follow.

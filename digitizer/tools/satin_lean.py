@@ -134,8 +134,6 @@ def main(argv: list[str]) -> None:
     names = [a for a in argv if not a.startswith("--")] or list(CASES)
     for name in names:
         rel, kw = CASES.get(name, (name, dict(target_width_mm=80.0)))
-        if anchor:
-            kw = dict(kw, satin_house_anchor=True)
         result, plan = digitize(ROOT / "testdata" / rel, PipelineConfig(**kw))
         for group in _lettering_groups(result.regions):
             heights = sorted(r.polygon.bounds[3] - r.polygon.bounds[1] for r in group)

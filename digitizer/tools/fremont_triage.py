@@ -110,7 +110,6 @@ ARMS = {
                              "keep_dark_thin_strokes": False,   # ...and the dark-ink read (ON 2026-10-28)
                              "rope_band": False,   # ...and the rope as one band (2026-11-17)
                              "detail_spokes": False, "lettering_columns_small_stem": False,
-                             "small_dot_rung": False, "small_dot_rung_lettering": False,
                              "dissolve_phantom_blends": False, "clip_keep_pieces": False,
                              **{k: False for k in (
                                  "silhouette_underfill", "enclosed_white_keyline",

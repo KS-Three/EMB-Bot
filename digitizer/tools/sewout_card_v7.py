@@ -92,9 +92,6 @@ FABRIC_FLAGS = ("pull_comp_by_stroke", "pro_measured_values")
 BASE = {
     "fill_turn_slant": True,
     "trim_bury_under_later": True,
-    "small_solids_satin": True,
-    "compact_solids_satin": True,
-    "satin_underlay_short_columns": True,
     "fill_underlay_cross": True,
     "small_text_cap_mm": 4.0,
     "small_text_cap_max_width_scale": 1.05,
