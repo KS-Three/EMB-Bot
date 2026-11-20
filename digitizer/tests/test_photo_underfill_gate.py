@@ -67,6 +67,10 @@ def test_gate_only_touches_photo_classes_and_the_flag_restores_them():
 
 def _meadow(monkeypatch, **kw):
     monkeypatch.setattr(s1, "REMBG_VENV_PYTHON", TESTDATA / "no_such_rembg" / "python")
+    # `rescue_needs_drawn_edge` (ON 2026-11-19, Kent) gives the meadow's
+    # enclosed shade specks to their hosts (20,873 -> 20,357 here); these pins
+    # are about the underfill gate, so that flip is held off.
+    kw.setdefault("rescue_needs_drawn_edge", False)
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
     path = TESTDATA / "photo" / "photo_dof_meadow.png"
     res, plan = digitize(path, cfg)

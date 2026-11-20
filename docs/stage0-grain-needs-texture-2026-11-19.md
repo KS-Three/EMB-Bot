@@ -138,3 +138,26 @@ needle-up, +1 trim), measured beside the narrower enclosed-speck form.
 C on Linux against its B floor. The default route is now flat, so the row
 takes the forced-flat row's C floor. On Kent's Windows box it read B. A
 preflight grade, not a quality claim (gate 4).
+
+## 8. The enclosed form — FLIPPED ON 2026-11-19
+
+Built at Kent's request ("Yes, build it"). `drawn_edge` is now asked only of
+a region that ONE neighbour encloses: nine tenths of its ring, the enclosure
+`detail_spokes` and `keep_counters` already read. A stroke or edge region
+that touches two or more shapes keeps today's contrast verdict.
+
+Flag sweep, OFF -> ON: **8 of 44 move.** `goldentee_hat`, `logo_golden_tee`
+and `screenshot_phone_ui_golke` no longer move.
+
+| run | trims | needle-up mm |
+|---|---|---|
+| `precision_drone` | 92 -> 93 | +5.7 |
+| `drone_render` | 102 -> 101 | −4.1 |
+| `photo_sunset_backlit` | 106 -> 90 | −124.5 |
+| `photo_scene_stub` | 81 -> 73 | +198.5 |
+| `photo_dof_meadow` | 47 -> 51 | −3 |
+| `fur_ramp` | 3 -> 2 | −18.5 (the starburst disc sews as a disc) |
+| `photo_chrome_specular`, `region_blobs` | ±1 | under 13 |
+
+The sunset's stray sky specks are gone, as Kent read the unscoped form.
+**Kent: "Flip ON (Recommended)"** on these renders.
