@@ -2369,6 +2369,17 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         if (getattr(result, "design_class", "flat") in PHOTO_CLASSES
                 and getattr(cfg, "outline_inlets_kept", False)):
             cfg = replace(cfg, outline_inlets_kept=False)
+        # `satin_seam_hold`: logos only, never a photo class (Kent's ruling
+        # 2026-11-20, "Keep it off photos (Recommended)": "Hold satin_seam_hold
+        # off for photo-class designs only, as point_touch_split and
+        # outline_inlets already are; logos keep the gains."). Evidence: on
+        # photo/photo_scene_stub.png at 80 mm left_chest the hold cost 11 extra
+        # trims (62 -> 73) and 1.0 mm extra bare thread (1.0 -> 2.0), while its
+        # measured gains (Golden Tee -11% stitches, Gaulke -3%) are logos.
+        # Stages 5-7 all read it inside this function, after this point.
+        if (getattr(result, "design_class", "flat") in PHOTO_CLASSES
+                and getattr(cfg, "satin_seam_hold", False)):
+            cfg = replace(cfg, satin_seam_hold=False)
         # the result the plan in hand is sewn from: the guard below replans
         # THIS one, so a re-tier here survives its replan (review 2026-11-14:
         # it replanned `result`, and a gear the inlet rule had moved to fill
