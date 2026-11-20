@@ -20,7 +20,7 @@ from shapely.geometry import LineString, Point, Polygon, box
 
 from digitizer_core import PipelineConfig, pipeline
 from digitizer_core import outline_cut as oc
-from tests.test_column_apex_cut import LANE
+from tests._apex_letters import LANE
 
 I_LETTERS = Path(__file__).resolve().parent.parent / "testdata" / "becker_I_letters.json"
 

@@ -73,23 +73,6 @@ def test_it_survives_a_pickle_and_a_copy(make, clone):
     assert str(again) == str(original)
 
 
-def test_a_cancel_inside_the_angle_search_is_not_cached_as_an_answer():
-    """`_slant_for` is an `lru_cache` around `except Exception: return None`.
-    Before the signal was a `BaseException` a cancel in the angle search came
-    out as `None`, and that `None` stayed cached for the next job's shape."""
-    shape = box(0, 0, 40.0, 12.0)
-    stage6_fill._slant_for.cache_clear()
-    flag = threading.Event()
-    flag.set()
-    with deadline.scope(None, cancel=flag):
-        with pytest.raises(deadline.Cancelled):
-            stage6_fill.pro_slant_angle(shape, None)
-    assert stage6_fill._slant_for.cache_info().currsize == 0
-    # the next job's answer is the real one
-    assert stage6_fill.pro_slant_angle(shape, None) == 20.0
-    stage6_fill._slant_for.cache_clear()
-
-
 # --- B. every loop that can run long has its checkpoint ------------------------
 # A behavioural cancel on each of these needs a photograph or a pathological
 # design (the review measured 14 s in the streamline ordering at 4,000 lines);

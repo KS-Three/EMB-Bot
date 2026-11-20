@@ -4,7 +4,6 @@ so no hidden module-level tunables anywhere else.
 """
 from __future__ import annotations
 
-import warnings
 from dataclasses import dataclass, field
 from pathlib import Path
 
@@ -212,6 +211,10 @@ def counter_floor_mm(base_mm: float, thread_wt: int) -> float:
 # A name here must not also be a `PipelineConfig` field
 # (`tests/test_retired_fields.py`).
 RETIRED_FIELDS: frozenset[str] = frozenset({
+    "coverage_edges",
+    "lettering_columns_apex_cut",
+    "line_chain_one_thread",
+    "resnap_hairline_never_lightens",
 })
 
 
@@ -1809,25 +1812,6 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_counter_fan.py`.
     counter_fan_satin: bool = True
-    # A drawn outline keeps ONE colour (built OFF 2026-11-11, Kent on
-    # `C_low_poly` pin 2: "the change in bean stitch bordering looks off").
-    # The thread re-check (`stage4_vectorize.revalidate_threads`) re-matches a
-    # shape to the median of the pixels its final polygon covers. For a LINE
-    # (smallest dimension at most `bean_rule.LINE_MAX_MM`, 1.2 mm: the
-    # reference digitizer's own definition of a drawn stroke) those pixels are
-    # mostly the anti-alias halo and the ground beside it, so a black outline
-    # laid against a pale face reads grey and is re-snapped to a grey spool:
-    # the dolphin's fin edge sews 18 mm in Silvery Grey where the art's line
-    # is black on every pixel (darkest 0 of 255), and the ribbon changes colour
-    # at an arbitrary point, not at any seam of the art. ON, a line the
-    # re-check would move to a LIGHTER spool (CIELAB L*) keeps the one stage 2
-    # chose from the whole cluster; a line it would darken, and every shape
-    # wider than a line, re-snaps as before. The 1.2 mm is geometry, not
-    # cloth: gate 1 does not apply. False is the engine before the flag, byte
-    # for byte. Tests: `tests/test_resnap_hairline.py`;
-    # `docs/border-colour-change-2026-11-11.md`. OFF; Kent chose fix B
-    # (`line_chain_one_thread`) over it on 2026-11-11 and ruled that OFF too.
-    resnap_hairline_never_lightens: bool = False
     # The band, in working-grid pixels, `flat_page_fringe_exclude` looks in.
     # 2 = the anti-alias ramp of a source edge once stage 1 has enlarged the
     # raster (one source pixel becomes `upscale` working pixels; Pooh at 80 mm
@@ -2464,53 +2448,6 @@ class PipelineConfig:
     # 100 mm. No physical constant moved with it. False is the pre-flip
     # engine (`PRE_FLIP`).
     subpixel_corner_runs: bool = True
-    # The same upscaled alpha cutout, outlined from the source's alpha
-    # DIRECTLY instead of repaired from the mask. The `alpha < 128` mask and
-    # its NEAREST enlargement throw the ramp away and stage 4 then walks a
-    # staircase of source pixels, moving one vertex at a time back toward
-    # where the ramp says the edge is. ON, a region bounded by transparency
-    # all the way round takes its polygon from the half-coverage contour of
-    # the source's own alpha (marching squares, `skimage.measure.
-    # find_contours` at 127.5) — the line the mask's threshold was a
-    # one-pixel quantisation of — then the same Douglas-Peucker and the same
-    # area floors as any other region (`stage4_vectorize._coverage_parts`).
-    # Measured 2026-10-10 on the busiest single-colour layer of golden_tee
-    # and hotel_fremont at 1.8 px/mm against their own native-resolution
-    # edges (`docs/tracer-head-to-head-2026-10-10.md`, addendum): median
-    # edge error 0.09-0.12 mm for the shipped polygon, 0.04-0.05 for this
-    # one, a third of the turning and a quarter of the vertices; by 5 px/mm
-    # the two agree. On `becker_marine_logo.png` the shipped polygon's
-    # reversals (vertices turning back more than 120 degrees, which the
-    # native read above introduces: 7.1 per 100 mm of outline, 0.0 with it
-    # off) go to none.
-    # It applies to ONE class of source: a single ink with its whole shape
-    # in alpha, enlarged by stage 1 (`stage4_vectorize._one_ink_cutout`).
-    # There every edge is an alpha edge; an enclosed transparent region is
-    # read from the same contour's other side, so ink and hole share a line.
-    # What it does NOT touch: a source at its own resolution, a source with
-    # no alpha, and a cutout with a second ink in it (two colours meet along
-    # an edge alpha says nothing about) — each keeps today's polygon whole.
-    # The costs on the table: half coverage cuts across a sharp corner by a
-    # fraction of a source pixel, where the native read above fits the two
-    # sides and squares it — on a clean synthetic bar that read is the
-    # better polygon (0.03 mm at worst against 0.22), and it is real
-    # artwork, where the fit is refused more often than not, that the
-    # contour wins on; and a stroke under about one source pixel wide never
-    # reaches half coverage, exactly as it never reached the mask. No
-    # physical constant — every number is a raster quantity of the source.
-    # Default OFF and byte-identical off; no sew-out has seen it.
-    # `tests/test_coverage_edges.py`.
-    # DEPRECATED (Kent 2026-10-12: no). Still readable and still behaves as
-    # described above — setting it True changes nothing but emits one
-    # `DeprecationWarning` naming this ruling (`PipelineConfig.__setattr__`).
-    # The trail: PR #818 built it; PR #824 found it helps only under the
-    # Column lane; PR #841 (`tools/counter_slots.py`) found it narrows three
-    # MARINE slots below one thread (0.4 mm) at 80 mm that the lane alone keeps
-    # open. Kent 2026-10-12: no. The research docs
-    # (`docs/coverage-edges-under-columns-2026-10-11.md`,
-    # `docs/coverage-counters-2026-10-11.md`) and `tools/counter_slots.py`
-    # stay as the record; do not flip it, and do not build on it.
-    coverage_edges: bool = False
 
     # Stage 5 — sew order, underlap, pull compensation
     # Which garment/fabric the design is going on. The fabric preset supplies
@@ -3059,8 +2996,7 @@ class PipelineConfig:
     # it reproduces the defect, it sizes nothing. False is the engine before
     # this flag, byte-identical (md5-pinned in
     # `tests/test_small_glyph_keep.py`). Known open: the 8's lower counter
-    # (a 2.05 mm ring) sews no ring, under `RUN_MIN_LOOP_MM` 2.2 (gate 1);
-    # `coverage_edges` ON still hands stage 4 the old 0.5625 mm² hole floor.
+    # (a 2.05 mm ring) sews no ring, under `RUN_MIN_LOOP_MM` 2.2 (gate 1).
     small_glyph_keep: bool = True
     # A rung for closed parts under the run loop floor (2026-10-14, built
     # OFF; MASTER_SCOPE "Waiting on Kent" 52 asks "lower the floor or a dot
@@ -4494,23 +4430,6 @@ class PipelineConfig:
     # 0.22). False is the guard, byte for byte.
     # Tests: `tests/test_column_inside_stagger.py`.
     lettering_columns_inside_stagger: bool = True
-    # Under `lettering_columns`, where two strokes meet at an acute tip --
-    # the M's V, each of a W's three apexes, a pointed A or N -- the tip
-    # sews as ONE column whose crosses span both strokes, cut off them along
-    # that cross (2026-10-25, built OFF; `outline_cut._apex_cuts`). Read
-    # with one rule on the professional's DSTs and ours (Becker MARINE at
-    # four widths, MFab AND WELDING hat and LC, PROSEAL;
-    # `tools/letter_pieces.py`): through every such tip he sews one piece,
-    # crosses within 16 deg of the line of text, 1.0-2.4 stroke widths
-    # across; the lane mitres it into two fanning half-width columns (the
-    # M's V, PROSEAL's A) or pivots one column through it (MFab's W, 30-89
-    # deg). `lettering_columns_corner_fold` does not reach these: it folds
-    # L corners and refuses an acute tip (`long_way`). Layout, judged in
-    # the preview (Kent, 2026-10-22), so ON-eligible from renders. False is
-    # the cut as it is, byte for byte. Set for the whole plan by
-    # `pipeline.plan_stitches` (`outline_cut.apex_cut_scope`).
-    # Tests: `tests/test_column_apex_cut.py`.
-    lettering_columns_apex_cut: bool = False
     # The M's V sewn as the pro sews it (`outline_cut._APEX_PRO`, 2026-11-14,
     # #1526; built OFF as `cfg.extra["lettering_columns_apex_pro"]`). At a
     # down-pointing V the right-hand leg owns the point -- level crosses from
@@ -7274,25 +7193,6 @@ class PipelineConfig:
     # is the pre-flip engine byte for byte.
     revalidate_small_shapes: bool = True
 
-    # One thread per connected drawn line (built OFF 2026-11-11, Kent on
-    # `C_low_poly` pin 2, then "Keep OFF, build fix B"). The art's outline is
-    # one black line; stage 2 and the thread re-check read each piece of it
-    # from its own anti-aliased pixels, so it sews black, Blackberry and
-    # Silvery Grey. ON, after the re-check (`line_chain.apply`): lines no
-    # wider than `bean_rule.LINE_MAX_MM` that touch (within 0.3 mm) form a
-    # chain; when its pieces carry different threads AND every piece's CORE
-    # colour (the pixels farthest from the ground beside it) lies within
-    # `line_chain.UNIFORM_DE00` of the chain's median, the chain takes the
-    # loaded spool nearest that core colour and its pieces move to that cone's
-    # layer. A chain whose core colours really differ is left alone. The cone
-    # set never grows, so the colour cap works from the same palette. False
-    # is the engine before the flag, byte for byte. Tests:
-    # `tests/test_line_chain.py`; `docs/border-colour-change-2026-11-11.md`.
-    # OFF by Kent's ruling 2026-11-11, eye-check of 5 rows: "Keep off, very
-    # little improvements were made, if any." Do not propose the flip from the
-    # dE00 numbers (`docs/line-chain-one-thread-2026-11-11.md`).
-    line_chain_one_thread: bool = False
-
     # Score the thread re-validation on the SAME pixels the grader uses.
     # `stage4_vectorize.revalidate_threads` and
     # `preflight._region_color_errors` claim the same estimator and have it —
@@ -8233,14 +8133,4 @@ class PipelineConfig:
             object.__setattr__(self, name, value)
             self._fill_true_size()
             return
-        # `coverage_edges` is DEPRECATED (Kent 2026-10-12: no; PRs #818, #824,
-        # #841 — see the field's comment). Setting it True, in the constructor
-        # or later, warns once and otherwise behaves exactly as before.
-        if name == "coverage_edges" and value:
-            warnings.warn(
-                "cfg.coverage_edges is deprecated: Kent ruled it a no on "
-                "2026-10-12 (built in PR #818, helps only under the Column "
-                "lane in #824, narrows three MARINE slots below one thread at "
-                "80 mm in #841). Behaviour is unchanged; do not build on it.",
-                DeprecationWarning, stacklevel=2)
         object.__setattr__(self, name, value)

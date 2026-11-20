@@ -32,8 +32,8 @@ letterform-prior fit, the keyline's loops) and `tests/test_cancel_in_fill.py`.
 **`Abandoned` is a `BaseException`** (2026-11-13), like `KeyboardInterrupt`: it
 is a stop signal, not an error. The pipeline is full of fail-open handlers
 (`except Exception: return None` around a geometry call that may fail), and one
-sits under an `lru_cache` (`stage6_fill._slant_for`), where a swallowed cancel
-became a cached `None` for the NEXT job. A `BaseException` passes through all
+sat under an `lru_cache` (`stage6_fill._slant_for`, deleted 2026-11-19), where
+a swallowed cancel became a cached `None` for the NEXT job. A `BaseException` passes through all
 of them with no hand-placed `except Abandoned: raise` beside each. Anything
 that catches `BaseException` or a bare `except:` must re-raise it. The one
 place that handles it by name is `digitizer_service.jobs.JobRegistry`.

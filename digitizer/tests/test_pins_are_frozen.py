@@ -65,7 +65,6 @@ RIDES_DEFAULTS = {
     "test_sewout_card_bayhold_edgecap.py": "pins the card tool's stream; its arms are built in the tool",
     "test_sewout_card_lettering_arms.py": "pins the card tool's stream; its arms are built in the tool",
     # --- owned by a live lane: whichever PR lands second adapts ------------------------
-    "test_column_apex_cut.py": "live lane (apex cut / apex walk)",
     "test_keyline_loop_chain.py": "live lane (keyline_loop_chain)",
     "test_script_strokes.py": "live lane (script_strokes)",
     "test_small_text_grow_away.py": "the grow_away lane's own OFF/ON arms (flipped by #1127)",
