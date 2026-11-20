@@ -53,11 +53,11 @@ def test_the_committed_cuts_carry_each_arms_flag_set_and_halo():
     for job, j in c8.JOBS.items():
         cut = c8.load(COMMITTED / "cuts", job)
         from digitizer_core.config import RETIRED_FIELDS
-        live = {k: v for k, v in cut["pin"].items() if k not in RETIRED_FIELDS}   # the cut records retired flags too
-        assert live == c8.PIN and cut["clear_pin"] == c8.CLEAR_PIN, job
+        assert ({k: v for k, v in cut["pin"].items() if k not in RETIRED_FIELDS} == c8.PIN
+                and cut["clear_pin"] == c8.CLEAR_PIN), job
         assert list(cut["arms"]) == list(j["arms"]), job
         for arm, a in cut["arms"].items():
-            # the committed cut records the flags it was made with, retired ones included
+            # the committed cuts name `tie_in_off` / `trim_bury_under_later`, folded into the code
             from digitizer_core.config import RETIRED_FIELDS
             assert {k: v for k, v in a["overrides"].items() if k not in RETIRED_FIELDS} == c8.overrides(arm), (job, arm)
             assert a["clear_mm"] == c8.clear_mm(arm), (job, arm)

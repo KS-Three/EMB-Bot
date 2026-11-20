@@ -62,10 +62,6 @@ OUT = Path(os.environ.get("PRO_PARITY_OUT", "pro_parity_out"))
 # that turns it off. Dates are the config.py line's, by `git log -S`.
 FLAGS: dict[str, object] = {
     # 2026-10-23, Kent's flip of eight layout flags off the flip sheet (PR #1047)
-    "fill_turn_slant": False,
-    "trim_bury_under_later": False,
-    "tie_in_off": False,
-    "fill_underlay_cross": False,
     "small_text_cap_mm": None,
     "small_text_cap_max_width_scale": None,
     "small_text_cap_min_stroke_mm": None,
@@ -80,12 +76,10 @@ FLAGS: dict[str, object] = {
     "bean_letter_counter_hold_mm": None,    # 2026-10-15, Kent's flip (0.25)
     "bean_letter_bay_hold": None,           # 2026-10-15, Kent's flip (0.2)
     "text_cluster_counters_as_drawn": False, # 2026-10-20, Proseal's two A's
-    "edge_cap_skip_bean_letters": False,     # 2026-10-20, the cap round those A's
     "text_cluster_rescued_ink_link": False,  # 2026-10-15, Fremont's THE at 80 mm
     "small_text_true_size": False,          # 2026-10-14, Kent's flip
     "small_text_true_size_min_counter_mm": None,  # 2026-10-15, its 0.45 mm counter guard
     "small_text_keep_stray_lines": None,    # 2026-10-15, filled True by the switch
-    "fill_bridge_cut": False,           # 2026-09-19
     "enclosed_by_garment": False,       # 2026-09-10
     "subpixel_edges": False,            # 2026-09-09
     "curve_turn_deg": None,             # 2026-09-03

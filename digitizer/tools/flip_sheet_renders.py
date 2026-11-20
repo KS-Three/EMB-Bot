@@ -152,17 +152,6 @@ KEYLINE_OFF_MFAB = ("becker_hat_large", "becker_lc_large", "becker_hat_small", "
                     "proseal_hat", "proseal_beanie")
 
 FLAGS: dict[str, dict] = {
-    "fill_turn_slant": {
-        "kind": "FABRIC",
-        "sets": {"fill_turn_slant": True}, "metric": "sub_half_mm",
-        "about": "stitches under 0.5 mm", "pr": 1036,
-        "note": "PR #1036 was RED on CI when rendered (tests/test_cut_every_jump.py "
-                "test_off_is_byte_identical_to_base[earlier-0], an OFF md5 pin stale after main "
-                "moved); rendered from its branch, diffed against that branch's own OFF."},
-    "fill_underlay_cross": {
-        "kind": "FABRIC",
-        "sets": {"fill_underlay_cross": True}, "metric": "fill_underlay", "xray": True,
-        "about": "underlay read under each fill (verdict: fills)", "pr": 1033},
     "cut_every_jump": {
         "sets": {"cut_every_jump": True}, "metric": "uncut_jumps",
         "about": "uncut jumps", "pr": 1035,
@@ -171,13 +160,6 @@ FLAGS: dict[str, dict] = {
     "sew_enclosed_white": {
         "sets": {"sew_enclosed_white": True}, "metric": "white_stitches",
         "about": "stitches in white thread", "pr": 1031},
-    "trim_bury_under_later": {
-        "sets": {"trim_bury_under_later": True}, "metric": "under_later",
-        "about": "trims whose hop later thread covers", "pr": 1030},
-    "tie_in_off": {
-        "kind": "FABRIC",
-        "sets": {"tie_in_off": True}, "metric": "locks",
-        "about": "run starts that lock", "pr": 1042},
     "lettering_columns_inside_stagger": {
         "sets": {"lettering_columns_inside_stagger": True}, "metric": "stagger",
         "about": "satin inner ends landing in a hole already used (pivot zones found)", "pr": 1058,

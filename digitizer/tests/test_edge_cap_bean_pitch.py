@@ -103,13 +103,11 @@ def test_the_gate_still_cuts_at_the_new_pitch():
 # The flat-lane goldens' stitch streams with the cap off (`test_small_dot_rung.py`).
 GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
-# Default config (the bean cap ON) at 80 mm, measured on origin/main dcc54a11
-# before this change and on this branch with the knob None: equal. Re-captured
-# 2026-11-19 with the satin construction flags folded into the engine.
-CAP_OFF_MD5 = {
-    "logo_alpha.png": "57b55148ef00ff062ae3dbe52f55d585",
-    "logo_whitebg.png": "ea5ef4a28396ade3d29ac97f657aa7b0",
-}
+# `CAP_OFF_MD5` (the knob-None stream at 80 mm on the pre-flip engine, re-captured 2026-11-19) was
+# dropped 2026-11-20 with the fold of `trim_bury_under_later`, `tie_in_off`, `fill_turn_slant` and
+# `fill_underlay_cross`: it pinned an engine without them, which no longer exists. The "on moves only
+# the cap" checks below do not need it.
+CAP_FIXTURES = ("logo_alpha.png", "logo_whitebg.png")
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
@@ -125,7 +123,7 @@ def test_cap_off_goldens_are_byte_identical_either_way(fixture, pitch):
     assert _md5(_coords(plan)) == GOLDEN_MD5[fixture]
 
 
-@pytest.mark.parametrize("fixture", sorted(CAP_OFF_MD5))
+@pytest.mark.parametrize("fixture", CAP_FIXTURES)
 def test_bean_cap_off_is_byte_identical_and_on_moves_only_the_cap(fixture):
     # both arms on the engine the md5s were pinned on: the 2026-10-23 and 2026-10-26 flips off
     # (`bean_only_lines`, ON since Kent's 2026-10-27 flip, rides in FLIP_2026_10_23 off: it sews no bean cap at all)
@@ -135,12 +133,11 @@ def test_bean_cap_off_is_byte_identical_and_on_moves_only_the_cap(fixture):
                                                         **FLIP_2026_10_30, **TEXT_GAPS_2026_11_15_OFF,
                                                         **FLAG_ENDS_SEAM_2026_11_17_OFF,
                                                         **SATIN_RECTANGLES_2026_11_19_OFF, **FLOW_2026_11_19_OFF))
-    assert _md5(_coords(off)) == CAP_OFF_MD5[fixture]
     _r, on = digitize(TESTDATA / fixture,
                       PipelineConfig(target_width_mm=80.0, edge_cap_bean_pitch_mm=1.5, **FLIP_2026_10_23,
                                      **FLIP_2026_10_26, **FLIP_2026_10_30, **TEXT_GAPS_2026_11_15_OFF,
                                      **FLAG_ENDS_SEAM_2026_11_17_OFF, **SATIN_RECTANGLES_2026_11_19_OFF, **FLOW_2026_11_19_OFF))
-    assert _md5(_coords(on)) != CAP_OFF_MD5[fixture]
+    assert _md5(_coords(on)) != _md5(_coords(off))
 
     def split(plan):
         cap = [r for _, r in plan.iter_runs() if r.role == stitches.ROLE_EDGE_CAP]

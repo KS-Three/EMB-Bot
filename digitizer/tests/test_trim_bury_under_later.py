@@ -1,4 +1,5 @@
-"""`cfg.trim_bury_under_later` (built OFF 2026-10-21): a cut hop is sewn
+"""`trim_bury_under_later` (built OFF 2026-10-21, ON since 2026-10-23, folded into the
+code): a cut hop is sewn
 needle-down only where thread sewn LATER covers the travel's whole width.
 
 The trim-economy study (`docs/trim-economy-2026-10-21.md`) read every trim
@@ -6,6 +7,11 @@ in the pro's DST and in ours over ten paired jobs: the pro cut 9 hops that
 later thread covers, we cut 43. This file pins the one habit the flag
 copies, and the two ways it could show a float, which it must never do:
 travel on bare fabric, and travel on top of thread already sewn.
+
+The flag is gone, so the "without the pass" arm these tests compare against is
+the real engine with `stage7_sequence._bury_trims_under_later` patched to a
+no-op (`bury=False` below). The OFF md5 pins and the "OFF never reaches the new
+code" test described an engine that no longer exists and were deleted.
 
 The load-bearing test is `test_no_buried_travel_lies_outside_later_thread`,
 which re-measures every travel run the flag added against the real stitches
@@ -16,7 +22,9 @@ from __future__ import annotations
 import hashlib
 import json
 import math
+from contextlib import nullcontext
 from dataclasses import replace
+from unittest import mock
 
 import pytest
 from shapely.geometry import LineString, Polygon
@@ -46,15 +54,21 @@ def _bar(x0, x1, y0=0.0, y1=10.0):
 
 
 def _plan(regions, **kw):
-    # The synthetic bars are pinned on the engine the OFF md5s were captured
-    # on: the 2026-10-23 flips (this flag among them) off unless a test asks.
+    # The synthetic bars are pinned on the engine before the 2026-10-23 flips that
+    # are still flags (the four folded ones are in the code now).
     conf = PipelineConfig(**{**PLAN_CFG_KW, **FLIP_2026_10_23, **kw})
     planned, _ = resolve_overlaps(regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
     return blocks
 
 
-def _two_bars(bridge_layer=None, **kw):
+def _without_bury(bury):
+    """`bury=False`: the engine with the burying pass patched to a no-op."""
+    return nullcontext() if bury else mock.patch.object(
+        stage7_sequence, "_bury_trims_under_later", return_value=0)
+
+
+def _two_bars(bridge_layer=None, bury=True, **kw):
     """Two same-colour bars 6 mm apart (twice the trim distance), with an
     optional other-colour bridge over the gap, sewn before (layer -1 -> 0
     and the bars move to 1) or after (layer 1) the bars."""
@@ -63,7 +77,14 @@ def _two_bars(bridge_layer=None, **kw):
                _region(_bar(16, 26), bars_layer, "Sright", 0)]
     if bridge_layer is not None:
         regions.append(_region(_bar(10, 16), bridge_layer, "Sbridge", 1))
-    return _plan(regions, **kw)
+    with _without_bury(bury):
+        return _plan(regions, **kw)
+
+
+def _md5(blocks) -> str:
+    rows = [[b.thread_index, [[round(x, 4), round(y, 4), r.kind, bool(r.jump), bool(r.trim)]
+                              for r in b.runs for x, y in r.points]] for b in blocks]
+    return hashlib.md5(json.dumps(rows).encode()).hexdigest()
 
 
 def _crossing(blocks):
@@ -73,12 +94,6 @@ def _crossing(blocks):
             if i and {run.shape_id, runs[i - 1].shape_id} == {"Sleft", "Sright"}:
                 return run
     raise AssertionError("the plan never got from one bar to the other")
-
-
-def _md5(blocks) -> str:
-    rows = [[b.thread_index, [[round(x, 4), round(y, 4), r.kind, bool(r.jump), bool(r.trim)]
-                              for r in b.runs for x, y in r.points]] for b in blocks]
-    return hashlib.md5(json.dumps(rows).encode()).hexdigest()
 
 
 def _thread(seq, ks, near):
@@ -131,51 +146,30 @@ def _new_travel(off_blocks, on_blocks):
                  and tuple(map(tuple, r.points)) not in off_keys]
 
 
-# --- OFF: byte-identical, and the new code is never reached ----------------
-
-# Captured on the base commit (2e873933), before the flag existed.
-OFF_MD5 = {"bars": "2a069a432c3ef7831b575cf0dd74d584",
-           "later": "4c2b546580cbb66c6c60675fd91ec6fd",
-           "earlier": "3f972a1552901bbdc2bf625e8b135d08"}
-
-
-def test_off_never_reaches_the_new_code(monkeypatch):
-    def boom(*_a, **_k):
-        raise AssertionError("trim_bury_under_later code reached with the flag off")
-    monkeypatch.setattr(stage7_sequence, "_bury_trims_under_later", boom)
-    _two_bars(bridge_layer=1)
-    _two_bars()
-
-
-@pytest.mark.parametrize("case,layer", [("bars", None), ("later", 1), ("earlier", 0)])
-def test_off_is_byte_identical_to_base(case, layer):
-    assert _md5(_two_bars(bridge_layer=layer)) == OFF_MD5[case]
-
-
-# --- ON: the one habit -------------------------------------------------------
+# --- the one habit -----------------------------------------------------------
 
 def test_a_hop_later_thread_buries_is_sewn_not_cut():
-    off = _crossing(_two_bars(bridge_layer=1))
-    assert off.trim, "precondition: with the flag off this hop is cut"
-    blocks = _two_bars(bridge_layer=1, trim_bury_under_later=True)
+    off = _crossing(_two_bars(bridge_layer=1, bury=False))
+    assert off.trim, "precondition: without the burying pass this hop is cut"
+    blocks = _two_bars(bridge_layer=1)
     run = _crossing(blocks)
     assert run.kind == stitches.TRAVEL and not run.trim and not run.jump
 
 
 def test_a_hop_over_bare_fabric_is_still_cut():
-    run = _crossing(_two_bars(trim_bury_under_later=True))
+    run = _crossing(_two_bars())
     assert run.trim, "nothing covers the gap: the cut stays"
 
 
 def test_a_hop_over_thread_already_sewn_is_still_cut():
     """The bridge sews FIRST, so travel across it would lie on top of
     finished thread -- what `chain_links` allows and this flag does not."""
-    run = _crossing(_two_bars(bridge_layer=0, trim_bury_under_later=True))
+    run = _crossing(_two_bars(bridge_layer=0))
     assert run.trim
 
 
 def test_a_colour_change_is_never_buried():
-    blocks = _two_bars(bridge_layer=1, trim_bury_under_later=True)
+    blocks = _two_bars(bridge_layer=1)
     assert all(b.runs[0].trim for b in blocks)
 
 
@@ -218,8 +212,8 @@ def test_a_route_bends_under_later_thread_rather_than_cutting():
 
 @pytest.mark.parametrize("layer", [1, None, 0])
 def test_no_buried_travel_lies_outside_later_thread(layer):
-    off = _two_bars(bridge_layer=layer)
-    on = _two_bars(bridge_layer=layer, trim_bury_under_later=True)
+    off = _two_bars(bridge_layer=layer, bury=False)
+    on = _two_bars(bridge_layer=layer)
     seq, new = _new_travel(off, on)
     for k in new:
         r = seq[k]
@@ -246,8 +240,8 @@ def becker_hat():
     gen = build_generation(_decode(data), conf, exif_source=data)
     out = []
     for on in (False, True):
-        c = replace(conf, trim_bury_under_later=on)
-        out.append(plan_stitches(finish_generation(gen.fork(), c), c).blocks)
+        with _without_bury(on):
+            out.append(plan_stitches(finish_generation(gen.fork(), conf), conf).blocks)
     return out
 
 
@@ -267,7 +261,7 @@ def test_no_buried_travel_shows_on_committed_artwork(becker_hat):
 def test_a_buried_hop_drops_its_locks_and_every_left_cut_keeps_them():
     """The ties run after the pass, so a hop made travel carries no lock and
     a hop still cut is locked on both sides, as `apply_ties` always does."""
-    blocks = _two_bars(bridge_layer=1, trim_bury_under_later=True)
+    blocks = _two_bars(bridge_layer=1)
     run = _crossing(blocks)
     assert run.kind == stitches.TRAVEL
     # a lock is a back-and-forth at the run's head: no travel run has one

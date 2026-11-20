@@ -13,7 +13,7 @@ import pytest
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
-from digitizer_core import PipelineConfig, fabrics  # noqa: E402
+from digitizer_core import fabrics  # noqa: E402
 from tools import sewout_card_cross_underlay as cu  # noqa: E402
 
 COMMITTED = cu.DEFAULT_OUT
@@ -26,10 +26,12 @@ def card(tmp_path_factory):
 
 
 def test_the_arms_are_the_flag_off_and_on():
-    # ON by default since 2026-10-23; the card pins BOTH arms explicitly, so
-    # a re-cut keeps its meaning (the preset arm is the pre-flip engine)
-    assert PipelineConfig().fill_underlay_cross is True
-    assert [ov for _l, ov in cu.ARMS] == [{"fill_underlay_cross": False}, {"fill_underlay_cross": True}]
+    # Folded into the code (ON since 2026-10-23): the cross arm is the engine as it is,
+    # the preset arm pins the garment's own fabric underlay by name, so a re-cut
+    # keeps its meaning
+    assert [ov for _l, ov in cu.ARMS] == [{"underlay_style": cu.PRESET_UNDERLAY}, {}]
+    for g in cu.GARMENTS.values():
+        assert cu.arm_config(g, cu.ARMS[0][1]).underlay_style == fabrics.fabric_for_garment(g).fill_underlay
     # each card's garment is one the flag moves
     for g in cu.GARMENTS.values():
         assert fabrics.GARMENT_FABRIC[g] in fabrics.CROSS_UNDERLAY_FABRICS

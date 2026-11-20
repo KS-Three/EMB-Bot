@@ -138,10 +138,11 @@ def _locked_head(run) -> bool:
 
 # --- OFF: byte-identical, and the new code is never reached ----------------
 
-# Captured on the base commit (03ccab4e), before the flag existed.
-OFF_MD5 = {"bare": "46bede5a3d93e11a2a425893b0881e3a",
-           "later": "ecc016d499270d4af4c33694b1afefe6",
-           "earlier": "d9cad9b85d5cd8627a800be40642dd84"}
+# The OFF md5 pins (`bare`, `later`, `earlier`, captured on the base commit 03ccab4e) and
+# `test_off_is_byte_identical_to_base` were deleted 2026-11-20 (flag fold B5): they described the
+# engine before `trim_bury_under_later`, `tie_in_off`, `fill_turn_slant` and `fill_underlay_cross`
+# were folded into the code, which no longer exists. The in-process check below still holds the
+# flag's only effect to be its pass.
 
 
 def test_off_never_reaches_the_new_code(monkeypatch):
@@ -150,11 +151,6 @@ def test_off_never_reaches_the_new_code(monkeypatch):
     monkeypatch.setattr(stage7_sequence, "_cut_or_bury_jumps", boom)
     _near_bars(bridge_layer=1)
     _near_bars()
-
-
-@pytest.mark.parametrize("case,layer", [("bare", None), ("later", 1)])
-def test_off_is_byte_identical_to_base(case, layer):
-    assert _md5(_near_bars(bridge_layer=layer)) == OFF_MD5[case]
 
 
 def test_off_earlier_bridge_is_the_plan_without_the_pass(monkeypatch):
@@ -173,8 +169,6 @@ def test_off_earlier_bridge_is_the_plan_without_the_pass(monkeypatch):
     captured. `bare` and `later` keep pinning the `apply_ties` refactor on
     every platform."""
     off = _md5(_near_bars(bridge_layer=0))
-    if sys.platform == "win32":
-        assert off == OFF_MD5["earlier"]
     monkeypatch.setattr(stage7_sequence, "_cut_or_bury_jumps", lambda *_a, **_k: (0, 0))
     assert _md5(_near_bars(bridge_layer=0, cut_every_jump=True)) == off
 
@@ -194,7 +188,7 @@ def test_a_jump_later_thread_buries_is_sewn_needle_down():
 def test_a_jump_over_bare_fabric_is_cut_and_locked_both_sides():
     runs, i = _crossing(_near_bars(cut_every_jump=True))
     assert runs[i].trim and runs[i].jump
-    assert _locked_head(runs[i]), "the thread starts again here: a tie-in"
+    assert not _locked_head(runs[i]), "the thread starts again here bare: no tie-in (`tie_in_off`, folded)"
     tail = runs[i - 1].points[-5:]
     assert len(set(tail)) < len(tail), "the thread is cut here: a tie-off"
 
@@ -361,8 +355,9 @@ def roofing_hat():
     from tools.pro_pair import request
     from .conftest import TESTDATA
     data = (TESTDATA / "art" / "logo_golke_roofing.png").read_bytes()
-    # Measured on the engine before the 2026-10-23 flips (`trim_bury_under_later` and the
-    # rest were OFF): pin them off so "off" below is still the arm this flag is priced against.
+    # Measured on the engine before the 2026-10-23 flips: the ones that are still flags are
+    # pinned off. (`trim_bury_under_later` and three more are folded into the code, so "off"
+    # below already has them; the "both" arm that added `trim_bury_under_later` is gone.)
     from .conftest import FLIP_2026_10_23, FLOW_2026_11_19_OFF
     # `read_primitives` / `satin_rect_lock_in_column` (ON 2026-11-19) leave 127 mm with nothing
     # sewn down too: held off, so the bury is still exercised.
@@ -370,8 +365,7 @@ def roofing_hat():
                              **FLOW_2026_11_19_OFF})
     gen = build_generation(_decode(data), conf, exif_source=data)
     out = {}
-    for name, kw in (("off", {}), ("on", {"cut_every_jump": True}),
-                     ("both", {"cut_every_jump": True, "trim_bury_under_later": True})):
+    for name, kw in (("off", {}), ("on", {"cut_every_jump": True})):
         c = replace(conf, **kw)
         out[name] = plan_stitches(finish_generation(gen.fork(), c), c).blocks
     return out
@@ -386,16 +380,3 @@ def test_committed_artwork_leaves_no_uncut_jump_and_no_travel_shows(roofing_hat)
     for k, path, direct in hops:
         assert _hop_hidden(seq, k, path, direct) or _hop_on_thread(seq, k, path, direct), \
             f"roofing: hop {k} shows on bare fabric"
-
-
-def test_composes_with_trim_bury_under_later(roofing_hat):
-    """Both ON: still no uncut jump, and no more cuts than this flag alone --
-    the earlier pass only ever turns cuts into hidden travel."""
-    on, both = roofing_hat["on"], roofing_hat["both"]
-    assert _uncut(both) == 0
-    trims = lambda blocks: sum(r.trim for b in blocks for r in b.runs)
-    assert trims(both) <= trims(on)
-    seq, hops = _new_hops(roofing_hat["off"], both)
-    for k, path, direct in hops:
-        assert _hop_hidden(seq, k, path, direct) or _hop_on_thread(seq, k, path, direct), \
-            f"both: hop {k} shows on bare fabric"

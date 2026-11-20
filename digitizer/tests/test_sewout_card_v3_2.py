@@ -206,7 +206,8 @@ def test_regenerated_readback_numbers(card, committed):
     for key in ("extent_mm", "x_range_mm", "y_range_mm"):
         assert new[key] == pytest.approx(old[key], abs=0.5), key
     assert new["stitches_file"] == pytest.approx(old["stitches_file"], rel=0.03)
-    assert new["trims"] == pytest.approx(old["trims"], abs=3)
+    # (`trims` is no longer compared with the committed cut: `trim_bury_under_later` is folded into
+    # the code, 2026-11-20, and buries hops the committed cut cut: 87 against 91 / 144 against 148.)
     assert sorted(new["blocks_mm"]) == sorted(old["blocks_mm"]) == ["B", "E2", "F3", "G", "N", "O", "S", "T", "X"]
     assert set(new["pieces_mm"]) == set(old["pieces_mm"]) == PIECES
 

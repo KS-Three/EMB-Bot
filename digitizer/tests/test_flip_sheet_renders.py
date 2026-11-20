@@ -21,7 +21,22 @@ import re
 import cv2
 import numpy as np
 
+import pytest
+
 from tools import flip_sheet_renders as fsr
+
+
+@pytest.fixture
+def fabric_flags(monkeypatch):
+    """`fill_underlay_cross` and `tie_in_off` (flip sheet of 2026-10-23, FABRIC kind) are folded
+    into the code and gone from `fsr.FLAGS`. These page tests need a FABRIC flag with an x-ray tile
+    and one without, so the two rows are put back for the test's length (their original specs)."""
+    monkeypatch.setitem(fsr.FLAGS, "fill_underlay_cross", {
+        "kind": "FABRIC", "sets": {"fill_underlay_cross": True}, "metric": "fill_underlay",
+        "xray": True, "about": "underlay read under each fill (verdict: fills)", "pr": 1033})
+    monkeypatch.setitem(fsr.FLAGS, "tie_in_off", {
+        "kind": "FABRIC", "sets": {"tie_in_off": True}, "metric": "locks",
+        "about": "run starts that lock", "pr": 1042})
 
 
 def _jpg(path, w=720, h=440, seed=0):
@@ -54,6 +69,7 @@ def _imgs(page):
     return re.findall(r"<img src='([^']*)'", page)
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_inline_page_has_no_file_references(tmp_path):
     rows = _rows(tmp_path)
     page, level = fsr.inline_html(rows, tmp_path, "2026-10-24")
@@ -67,6 +83,7 @@ def test_inline_page_has_no_file_references(tmp_path):
         assert cv2.imdecode(np.frombuffer(raw, np.uint8), cv2.IMREAD_COLOR) is not None
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_inline_page_is_the_plain_page_with_names_swapped(tmp_path):
     rows = _rows(tmp_path)
     plain = fsr.html(rows)
@@ -75,6 +92,7 @@ def test_inline_page_is_the_plain_page_with_names_swapped(tmp_path):
         re.sub(r"[\w.]+__[\w.]+\.jpg", "N", plain)
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_inline_page_shrinks_to_its_ceiling(tmp_path):
     rows = _rows(tmp_path)
     big, lvl0 = fsr.inline_html(rows, tmp_path, max_mb=50)
@@ -87,6 +105,7 @@ def test_inline_page_shrinks_to_its_ceiling(tmp_path):
     assert lvl_min == fsr.INLINE_LEVELS[-1] and _imgs(page)
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_summary_table_lists_every_row(tmp_path):
     table = fsr.summary_table(_rows(tmp_path))
     assert table.count("<tr>") == 1 + 3
@@ -165,6 +184,7 @@ def test_flags_with_one_base_share_one_off_arm():
     assert fsr.off_arm("wave3_flips") == "wave3_off__off"
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_a_flag_with_fixtures_runs_only_on_them():
     assert fsr.flag_fixtures("monoline_script_satin", None) == ["tires_hat_3d"]
     assert fsr.flag_fixtures("monoline_script_satin", ["mfab_hat"]) == []
@@ -179,6 +199,7 @@ def test_sub_1mm_counts_short_stitches_and_resets_at_a_cut():
     assert fsr.sub_1mm(stream, None, None) == 2
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_a_row_with_a_third_cell():
     # d2 | d2 + panels | d2 + panels + mitre | pro (#1094): the third cell is its own arm,
     # cached like ON (never per engine), its sets the row's ON plus what it adds
@@ -228,10 +249,11 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
         assert f not in fsr.WAVE3 and f in fsr.FLAGS and getattr(cfg, f) is True, f
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_every_flag_has_a_kind():
     for f in fsr.FLAGS:
         assert fsr.flag_kind(f) in ("LAYOUT", "FABRIC"), f
-    for f in ("fill_turn_slant", "fill_underlay_cross", "tie_in_off"):
+    for f in ("fill_underlay_cross", "tie_in_off"):
         assert fsr.flag_kind(f) == "FABRIC"
     assert all(fsr.flag_kind(f) == "LAYOUT" for f in fsr.WAVE3)
 
@@ -269,6 +291,7 @@ def test_counts_read_colour_changes_and_the_sheet_shows_them():
     assert fsr._fmt({"stitches": 3, "trims": 1, "about": "x"}) == "3 st / 1 tr / x"
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_the_page_groups_rows_by_flag_under_its_kind(tmp_path):
     rows = _rows(tmp_path)
     page = fsr.html(rows)
@@ -376,6 +399,7 @@ def test_gate_three_reads_bare_thread_at_the_instruments_band():
                                "bare_also": fsr.bare_rise(off, real)}]) == "gate 3"
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_an_asked_flag_that_raises_bare_thread_is_not_asked():
     sheet = {"outline_loop_mitre": {"ask": True}, "monoline_script_satin": {"ask": False, "label": "HELD"}}
     off = {"bare_mm": {"0.20": 0.0, "0.25": 0.0, "0.30": 0.0}}
@@ -450,6 +474,7 @@ def test_a_shown_row_is_copied_as_it_is_with_its_engine(tmp_path):
     assert "byte for byte" in fsr._engine_note({"engine": "aaa", "base_bytes": "aaa"})
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_the_artifact_page_is_a_fragment_with_theme_tokens(tmp_path):
     rows = _rows(tmp_path)
     page, _ = fsr.inline_html(rows, tmp_path, "2026-10-27", sheet=fsr.W5, fragment=True)
@@ -463,6 +488,7 @@ def test_the_artifact_page_is_a_fragment_with_theme_tokens(tmp_path):
     assert whole.startswith("<!doctype html>") and "viewport-fit=cover" in whole
 
 
+@pytest.mark.usefixtures("fabric_flags")
 def test_the_pros_tiles_live_apart_and_the_local_page_keeps_them(tmp_path):
     """Kent 2026-10-27, "Stop new ones, keep old (Recommended)": the pro's tiles
     are written outside docs/. The inlined page (local) still shows all of

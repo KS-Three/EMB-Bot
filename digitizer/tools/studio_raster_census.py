@@ -22,8 +22,8 @@ pixel given the RGB of its nearest opaque pixel — the cure for the
 under-alpha rewrite), `studio_high` / `studio_high_bleed` (the candidate
 Studio fix), `native_black` (the file with RGB zeroed under alpha == 0 — the
 hostile exporter, what a canvas does minus its partial-alpha noise). Arms:
-today's defaults, then each lettering flip OFF against them (plus
-`fill_bridge_cut`, whose trade was read on the file too), and the three
+today's defaults, then each remaining lettering flip OFF against them (the
+`edge_cap_skip_lettering` and `fill_bridge_cut` arms are gone: folded), and the three
 `extend*` forms of stage 1's `alpha_edge_extend` — measured against the
 pre-flip defaults; Kent flipped the gated form ON on 2026-09-20, so on
 today's engine `default` is `extend_upscaled` and `extend_off` is the
@@ -71,12 +71,10 @@ FIXTURES = [
 ]
 NINE = ["tires", "enthusiast", "fremont", "bridge", "golden_tee", "gaulke", "drone", "screenshot", "becker"]
 
-# Each lettering flip OFF against today's defaults; the bridge cut rides along.
+# Each remaining lettering flip OFF against today's defaults.
 ARMS: dict[str, dict] = {
     "default": {},
     "euler": {"satin_stroke_order": "nearest"},
-    "cap_skip": {"edge_cap_skip_lettering": False},
-    "bridge_cut": {"fill_bridge_cut": False},
     # Stage 1's alpha edge extension (built OFF 2026-09-20, the gated form
     # flipped ON the same day by Kent). A stage-1 flag changes the
     # generation, so these arms rebuild. Whole image: every non-opaque pixel.
