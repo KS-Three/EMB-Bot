@@ -1311,11 +1311,13 @@ PRE_FLIP.update(FLOW_2026_11_19_OFF)
 # Four flags (Kent 2026-11-19, shown the OFF | ON review pack, 66 design x size cells per flag;
 # Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"):
 # `tests/test_satin_overlap_run.py`, `test_outline_loop_split_shared.py`, `test_through_last.py`, `test_marine_match.py`.
-# (`lettering_columns_through_last` was ruled ON too but is left OFF by default: it raises the
-# chaining benchmark's bare thread 4.28 -> 4.54 mm, see its `config.py` comment.)
 FLIP_FOUR_2026_11_19_OFF = {"satin_overlap_run": False, "outline_loop_split_shared": False,
                             "lettering_columns_e_top_arm": False, "lettering_columns_top_slab": False}
 PRE_FLIP.update(FLIP_FOUR_2026_11_19_OFF)
+# `lettering_columns_through_last` (Kent 2026-11-19: "satin_overlap_run (Recommended), outline_loop_split_shared,
+# through_last, e_top_arm + top_slab"; then "Hold OFF, fix the leg (Recommended)"): `tests/test_through_last.py`.
+THROUGH_LAST_2026_11_19_OFF = {"lettering_columns_through_last": False}
+PRE_FLIP.update(THROUGH_LAST_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

@@ -4220,15 +4220,18 @@ class PipelineConfig:
     satin_overlap_run: bool = True
     # `lettering_columns_through_last` (built OFF 2026-11-19 as
     # `cfg.extra["lettering_columns_through_last"]`, Gaulke vs the pro, `columns._through_last_walk`):
-    # T/E junctions sewn whole. Promoted from `cfg.extra` to a field but **left OFF**
-    # (default False) in the 2026-11-19 four-flag flip: Kent ruled it ON ("satin_overlap_run
-    # (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"), but it is
-    # the one flag of the four that raises `test_chaining`'s benchmark bare-thread floor
-    # (enthusiast_logo 93 mm left chest, chain off: 4.28 -> 4.54 mm; the other four leave
-    # 4.28), one walk-in leg of the reordered letter S6ac679b7 lying 0.26 mm further on bare
-    # cloth (ROADMAP gate 3's instrument; "we are not going backwards"). Flip it once its walk
-    # buries that leg. Tests: `tests/test_through_last.py`.
-    lettering_columns_through_last: bool = False
+    # T/E junctions sewn whole. **ON since 2026-11-19, Kent's flip**, in two rulings: Kent, 2026-11-19, shown the OFF | ON review pack and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"; then, shown the chaining culprit render: "Hold OFF, fix the leg (Recommended)" (a worker buries or trims that walk-in leg in through_last's own code until bare thread stays under 4.5, then flips it ON as ruled).
+    # The leg: the first flip left it OFF because Enthusiast's E at 93 mm lifted the chaining
+    # benchmark's bare thread 4.28 -> 4.54 mm. Cause: the through-last walk starts further in,
+    # so the entry walk (`column_runs` 3b) fell under a tiny stitch and was skipped, and the
+    # needle dragged 1.19 mm straight to the start instead of 0.97 mm + a 0.66 mm walk. Fixed in
+    # its own code path: the walk is kept only when its hop in is no longer than the walk it
+    # replaces (`kp[4] <= kb[4]`, beside its trims and hops on finished satin). With it the
+    # benchmark reads 4.28 mm ON and OFF. Promoted from `cfg.extra` to a field so the default
+    # can be ON. False is the engine as it was; `tests/conftest.py` PRE_FLIP
+    # (`THROUGH_LAST_2026_11_19_OFF`) and `tests/engine_2026_10_27.json` pin it False.
+    # Tests: `tests/test_through_last.py`.
+    lettering_columns_through_last: bool = True
     # `lettering_columns_e_top_arm` + `lettering_columns_top_slab` (built OFF 2026-11-19 as
     # `cfg.extra` keys, `outline_cut.e_top_scope` / `top_slab_scope`, #1689): the pro's E top
     # band and sheared top slab. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".
