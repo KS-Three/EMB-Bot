@@ -1164,8 +1164,15 @@ def resolve_small_regions(
             # and are absorbed as before; a stroke drawn across it is not,
             # and is kept for the run tier as an isolated one would be.
             de = float(np.linalg.norm(layer_lab[regions[i].layer] - layer_lab[regions[best].layer]))
+            # `cfg.rescue_needs_drawn_edge` asks only of a region ONE
+            # neighbour encloses (nine tenths of its ring, the enclosure
+            # `detail_spokes` and `keep_counters` read): a speck in a shape's
+            # interior. A stroke or edge region touching two or more shapes is
+            # kept on contrast alone, as before (Kent held the unscoped form
+            # OFF 2026-11-19 on its trims and Golden Tee's O).
             if de > cfg.merge_delta_e and (
                     src_rgb is None
+                    or best_share * 10 < int(halo.sum()) * 9
                     or drawn_edge(i, (wy0, wx0, wy1, wx1), sub, halo, best)):
                 rescued.append(i)
                 continue

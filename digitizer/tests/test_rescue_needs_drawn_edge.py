@@ -54,8 +54,9 @@ def _kept(cfg, src) -> int:
     return len(kept)
 
 
-def test_the_flag_defaults_off():
-    assert PipelineConfig().rescue_needs_drawn_edge is False
+def test_the_flag_defaults_on():
+    """Kent's flip 2026-11-19."""
+    assert PipelineConfig().rescue_needs_drawn_edge is True
 
 
 def test_the_frozen_snapshot_holds_the_off_value():
@@ -63,7 +64,7 @@ def test_the_frozen_snapshot_holds_the_off_value():
 
 
 def test_the_layers_contrast_so_today_keeps_both():
-    cfg = PipelineConfig()
+    cfg = PipelineConfig(rescue_needs_drawn_edge=False)
     lab = rgb_to_lab(LAYER_RGB)
     assert np.linalg.norm(lab[1] - lab[0]) > cfg.merge_delta_e
     assert _kept(cfg, None) == 2
@@ -75,6 +76,25 @@ def test_a_drawn_blob_is_kept():
 
 def test_a_shaded_centre_goes_to_its_host():
     assert _kept(PipelineConfig(rescue_needs_drawn_edge=True), _shade()) == 1
+
+
+def test_a_shaded_region_two_shapes_share_is_kept():
+    """Only a speck ONE shape encloses is asked: the same shaded blob sitting
+    on the seam between the disc and a second shape keeps today's verdict."""
+    left = np.zeros(FRAME, bool)
+    left[10:110, 10:60] = True
+    right = np.zeros(FRAME, bool)
+    right[10:110, 60:110] = True
+    blob = np.zeros(FRAME, bool)
+    blob[BLOB] = True
+    left &= ~blob
+    right &= ~blob
+    lab = rgb_to_lab(np.array([*LAYER_RGB, (60, 48, 46)], float))
+    masks = [RegionMask.from_full(left, 0), RegionMask.from_full(blob, 1),
+             RegionMask.from_full(right, 2)]
+    kept, _ = resolve_small_regions(masks, PipelineConfig(rescue_needs_drawn_edge=True),
+                                    PX_PER_MM, None, layer_lab=lab, src_rgb=_shade())
+    assert len(kept) == 3
 
 
 def test_without_the_source_nothing_changes():
