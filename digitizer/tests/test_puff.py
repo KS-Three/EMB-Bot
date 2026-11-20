@@ -780,3 +780,27 @@ def test_tires_i_dot_puffs_with_its_letter():
     assert sid in puff
     assert not [w for w in plan.warnings
                 if w["code"] == PUFF_SHAPE_INELIGIBLE and w.get("shape_id") == sid]
+
+
+def test_ticking_only_the_dot_puffs_its_letter():
+    """R18 is symmetric: in select, ticking the tittle alone puffs its host
+    letter shape and the tittle with it -- over the host's own
+    `puff: False`, since the letter is one decision."""
+    for stem_meta in ({}, {"puff": False}):
+        planned = [_PPlanned(STEM, 20, 0, "STEM", **stem_meta),
+                   _PPlanned(DOT, 20, 1, "DOT", puff=True)]
+        blocks, warnings, remaining = _run_puff_pass(planned, puff_mode="select")
+        assert _puff_ids(blocks) == {"STEM", "DOT"}
+        assert remaining == [] and warnings == []
+
+
+def test_ticking_the_dot_of_an_unpuffable_letter_leaves_both_flat():
+    thin = box(1, 0, 3, 20)               # a 2 mm stem: too thin for foam
+    dot = Point(2, 22.5).buffer(2.0, 64)
+    planned = [_PPlanned(thin, 20, 0, "STEM"), _PPlanned(dot, 20, 1, "DOT", puff=True)]
+    blocks, warnings, remaining = _run_puff_pass(planned, puff_mode="select")
+    assert blocks == []
+    assert {p.shape_id for p in remaining} == {"STEM", "DOT"}
+    hits = [w for w in warnings if w["code"] == PUFF_SHAPE_INELIGIBLE]
+    assert len(hits) == 1 and hits[0]["shape_id"] == "DOT"
+    assert hits[0]["reason"].startswith("its letter can't be puffed: too thin for foam")

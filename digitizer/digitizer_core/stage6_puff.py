@@ -90,11 +90,17 @@ def is_letter_part(region) -> bool:
 
 
 def letter_part_anchor(region, others, puffs):
+    """The letter `region` is a detached part of, if `puffs(it)`, else None
+    (`letter_part_host`)."""
+    host = letter_part_host(region, others)
+    return host if host is not None and puffs(host) else None
+
+
+def letter_part_host(region, others):
     """The letter `region` is a detached part of, or None: the nearest
-    non-ground stitched shape in `others`, if `puffs(it)` says it puffs, it
-    is on the same thread, and the gap is within PUFF_LETTER_PART_GAP_FACTOR
-    of the part's widest diameter. The ground is never a neighbour (it
-    surrounds everything) and never an anchor."""
+    non-ground stitched shape in `others`, on the same thread, the gap
+    within PUFF_LETTER_PART_GAP_FACTOR of the part's widest diameter. The
+    ground is never a neighbour (it surrounds everything) and never a host."""
     if not is_letter_part(region):
         return None
     near, gap = None, math.inf
@@ -105,7 +111,7 @@ def letter_part_anchor(region, others, puffs):
         d = region.polygon.distance(o.polygon)
         if d < gap:
             near, gap = o, d
-    if near is None or near.thread_index != region.thread_index or not puffs(near):
+    if near is None or near.thread_index != region.thread_index:
         return None
     limit = machine.PUFF_LETTER_PART_GAP_FACTOR * _max_inscribed_diameter_mm(region.polygon)
     return near if gap <= limit else None
@@ -608,13 +614,33 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
             pending[id(p)] = (p, reason)
 
     # R18 (Kent 2026-11-19): "If you 3D one part of the letter, the entire
-    # letter should be 3D." In either mode, a detached part of a puffed
-    # letter (`letter_part_anchor`) puffs with it -- in "select" whether or
-    # not it was ticked, and over a per-shape `puff: False` too, since the
-    # letter is one decision. Only ever adds puff; the ground never joins.
-    # Repeated so a part can join through a part that joined (an umlaut).
+    # letter should be 3D." The rule is symmetric and the letter is ONE
+    # decision, so it deliberately overrides a member's own `puff: False`
+    # in either direction. Only ever adds puff; the ground never joins.
     by_region = {id(p.region): p for p in planned}
     regions = [p.region for p in planned]
+
+    # Part -> letter: a wanted detached part (the dot ticked alone) puffs its
+    # host letter shape, when the host can itself puff. If it can't, the
+    # part stays flat, warned with the host's reason; the host, unticked,
+    # is not warned.
+    for p in wanted:
+        if id(p) in satins:
+            continue
+        host_r = letter_part_host(p.region, regions)
+        host = by_region.get(id(host_r)) if host_r is not None else None
+        if host is None or id(host) in satins:
+            continue
+        runs, reason = column_puff(host)
+        if runs:
+            satins[id(host)] = runs
+            pending.pop(id(host), None)
+        elif id(host) not in pending:
+            pending[id(p)] = (p, f"its letter can't be puffed: {reason}")
+
+    # Letter -> part: in either mode, a detached part of a puffed letter
+    # (`letter_part_anchor`) puffs with it. Repeated so a part can join
+    # through a part that joined (an umlaut).
     tried: set[int] = set()
     grew = True
     while grew:
