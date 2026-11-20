@@ -29,6 +29,11 @@ CELLS = json.loads((Path(__file__).resolve().parent.parent / "testdata"
                     / "handback_monarch_cells.json").read_text(encoding="utf-8"))["cells"]
 
 
+#: the engine the cells and the hand-back's numbers were measured on: before
+#: the lane sewed a dropped branch itself (2026-11-19)
+_PRE_BRANCH = {"lettering_columns_sew_dropped_hairline": False}
+
+
 def _sew(cell, **cfg_kw):
     poly = wkt.loads(cell["wkt"])
     cfg = PipelineConfig(**cfg_kw)
@@ -53,14 +58,26 @@ def test_flag_is_built_off_and_the_floor_is_the_lanes_own():
 
 @pytest.mark.parametrize("cell", CELLS, ids=[f"{c['target_mm']}mm" for c in CELLS])
 def test_off_the_lane_sews_one_arm(cell):
-    poly, runs = _sew(cell)
+    # the cell as the lane sewed it before `lettering_columns_sew_dropped_hairline`
+    # went ON (2026-11-19): that flag sews the dropped arm in the lane
+    poly, runs = _sew(cell, **_PRE_BRANCH)
     assert satin_cover(runs, poly) < HANDBACK_COVER_MIN
 
 
 @pytest.mark.parametrize("cell", CELLS, ids=[f"{c['target_mm']}mm" for c in CELLS])
+def test_the_lane_now_sews_both_arms_itself(cell):
+    """Kent's ruling 2026-11-14 on this flag ("Keep OFF, record") named the
+    real fix: the Column lane drops a branch, so sew that branch in the lane.
+    `lettering_columns_sew_dropped_hairline` (ON since 2026-11-19) does: the
+    wing cell's cover goes 0.653 -> 0.968 with no hand-back."""
+    poly, runs = _sew(cell)
+    assert satin_cover(runs, poly) >= 0.95
+
+
+@pytest.mark.parametrize("cell", CELLS, ids=[f"{c['target_mm']}mm" for c in CELLS])
 def test_on_the_cell_is_handed_back_and_sews_both_arms(cell):
-    poly, off = _sew(cell)
-    _, on = _sew(cell, lettering_columns_cover_handback=True)
+    poly, off = _sew(cell, **_PRE_BRANCH)
+    _, on = _sew(cell, lettering_columns_cover_handback=True, **_PRE_BRANCH)
     assert satin_cover(on, poly) >= 0.95 > satin_cover(off, poly) + 0.25
     assert _md5(on) != _md5(off)
 

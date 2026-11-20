@@ -86,6 +86,10 @@ def test_the_hairline_judge_is_the_whole_letter_rule():
     assert not stroke_floor_restores(whole, whole, letter)
 
 
-def test_the_hairline_flag_is_off_by_default():
+def test_the_hairline_flag_is_on_since_kent_2026_11_19_and_pre_flip_pins_it_off():
     from digitizer_core import PipelineConfig
-    assert not (PipelineConfig().extra or {}).get("lettering_columns_sew_dropped_hairline")
+    from tests.conftest import DROPPED_HAIRLINE_2026_11_19_OFF, PRE_FLIP
+    assert PipelineConfig().lettering_columns_sew_dropped_hairline is True
+    assert PRE_FLIP["lettering_columns_sew_dropped_hairline"] is False
+    off = PipelineConfig(**DROPPED_HAIRLINE_2026_11_19_OFF)
+    assert off.lettering_columns_sew_dropped_hairline is False
