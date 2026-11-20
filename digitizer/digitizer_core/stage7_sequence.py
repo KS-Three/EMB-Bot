@@ -4690,6 +4690,15 @@ def sequence(
                          and is_rectangle_bar(p.polygon, shape_max))
                 if ((_slot or _rect) and tier == "auto"
                         and not is_lettering(p.region, cfg) and satin_angle_deg is None):
+                    # Not a letter: the letter-only cuts stay off for it.
+                    # `lettering_columns_top_slab` (ON since 2026-11-19) cut a
+                    # flag stripe as a block letter's top slab, the bar was no
+                    # longer one column, and `satin_rect_lock_in_column`'s lock
+                    # fell back to the 0.8 mm bounce -- the red dot again.
+                    # (Reset right after the call; an exception unwinds the
+                    # plan's own scopes, whose resets restore their values.)
+                    from . import outline_cut as _oc
+                    _letter_only = (_oc._TOP_SLAB.set(False), _oc._E_TOP.set(False))
                     s_runs, s_report = lettering_columns_shape(
                         p.polygon, p.shape_id, trim_at_mm=trim_at,
                         spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
@@ -4703,6 +4712,8 @@ def sequence(
                         **({"rail_held": (stripe_ground(p) if p.region.meta.get(STRIPE_ON_KEY)
                                           else seam_ground(p) if cfg.satin_seam_hold else None)}
                            if _rect else {}))
+                    _oc._E_TOP.reset(_letter_only[1])
+                    _oc._TOP_SLAB.reset(_letter_only[0])
                     if (not s_report["empty"] and s_report.get("columns") == 1
                             and not s_report.get("columns_unsewn") and not s_report.get("cuts")):
                         s_report["rectangle_bar" if _rect else "straight_slot"] = 1
