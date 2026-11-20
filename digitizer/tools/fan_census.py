@@ -71,9 +71,7 @@ PULL = 0.3
 WINDOW = 5
 ARMS: dict[str, dict] = {
     "shipped": {},
-    "join_square": {"satin_join_square": True},
     "columns": {"lettering_columns": True},
-    "both": {"satin_join_square": True, "lettering_columns": True},
     # defect 59's cure (2026-10-08): a tip must land on a convex corner
     "corner_gate": {"satin_tip_corner_gate": True},
 }

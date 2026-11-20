@@ -252,7 +252,7 @@ def test_every_site_that_passes_covered_routing_passes_the_cut_rule():
             if not isinstance(node, ast.Call):
                 continue
             kw = {k.arg: ast.unparse(k.value) for k in node.keywords if k.arg}
-            if "fill_travel_under_cover" not in kw.get("under_cover", ""):
+            if kw.get("under_cover") != "True":     # `fill_travel_under_cover`, folded 2026-11-19
                 continue
             sites += 1
             assert "fill_bridge_cut" in kw.get("cut_bridges", ""), f"{f.name}:{node.lineno}"

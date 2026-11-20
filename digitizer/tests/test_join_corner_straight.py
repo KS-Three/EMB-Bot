@@ -71,7 +71,6 @@ def test_the_fixture_fans_off_and_the_flag_is_on():
     # the FUNCTION default stays False (every direct caller keeps the
     # pre-flip joiner), whatever the config default is
     assert [r.points for r in dflt] == [r.points for r in off]
-    assert PipelineConfig().satin_join_square is True
     events, columns = fan_ends([r.points for r in off if r.kind == "satin"])
     assert columns >= 4
     assert events >= 2, f"the E no longer fans OFF ({events} fan ends over {columns} columns)"
