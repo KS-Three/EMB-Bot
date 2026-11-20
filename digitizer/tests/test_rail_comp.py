@@ -631,7 +631,9 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     off_bare, off_std, off_st = arm(False)
     env_bare, env_std, env_st = arm("envelope")
     on_bare, on_std, on_st = arm(True)
-    assert env_bare < off_bare - 0.005, (off_bare, env_bare)          # it reaches: 10.2 -> 9.5%
+    # it reaches: 10.2 -> 9.5%; 6.06 -> 5.78% since the corner-run read and the
+    # outline rule joined the engine (folded 2026-11-20), so the margin is 0.002
+    assert env_bare < off_bare - 0.002, (off_bare, env_bare)
     assert env_std <= off_std * 1.15, (off_std, env_std)             # at a tenth more roughness (True: +40%)
     assert on_std > env_std, (on_std, env_std)
     # ... and none of True's thread. Within 2% of symmetric until

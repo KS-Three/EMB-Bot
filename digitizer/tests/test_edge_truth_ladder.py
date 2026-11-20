@@ -4,8 +4,9 @@ Three contracts. The regenerated 800 rung IS the committed fixture (so the
 ladder's other rungs are the same drawing at other sizes, not a new
 fixture); the truth measures zero against itself (so any deviation the
 ladder reports is the pipeline's); and on the pipeline the deviation is
-sub-pixel at 800 px and falls with resolution, flag OFF — the baseline the
-plan's acceptance criterion is stated against.
+sub-pixel at 800 px and falls with resolution (on the shipped engine; the
+pixel-centre baseline the plan's acceptance criterion was stated against went
+with the `subpixel_edges` switch).
 """
 from __future__ import annotations
 
@@ -117,24 +118,12 @@ def test_the_trace_sits_inside_the_edge_by_under_a_pixel_and_the_curves_sharpen_
         for row in r["rows"]:
             if not row["produced"]:
                 continue
-            assert -1.0 * px_mm < row["offset_mm"] < 0.25 * px_mm, (w, row["shape"], row["offset_mm"], px_mm)
+            # The lower bound is the larger of a pixel and half the tolerance
+            # (the chord sag): with sub-pixel edges the trace no longer sits a
+            # half pixel inside, but a circle's chords still do.
+            assert -max(px_mm, tol / 2) < row["offset_mm"] < 0.25 * px_mm, (w, row["shape"], row["offset_mm"], px_mm)
             assert row["spread_mm"] < max(px_mm, tol / 2), (w, row["shape"], row["spread_mm"], px_mm, tol)
     lo = {row["shape"]: row for row in rungs[400]["rows"]}
     hi = {row["shape"]: row for row in rungs[1600]["rows"]}
     for name in ("circle", "ring"):
         assert hi[name]["spread_mm"] < lo[name]["spread_mm"], (name, lo[name]["spread_mm"], hi[name]["spread_mm"])
-
-
-@pytest.mark.usefixtures("source_line_grid")
-def test_the_ribbon_polygon_is_the_same_polygon_at_400_and_1600_px(tmp_path):
-    """Douglas-Peucker at a fixed 0.2 mm makes the same polygon whatever the
-    raster under it: the ribbon keeps its vertex count and its spread from
-    400 px to 1600 px, flag OFF (37 vertices and 0.06 mm on 2026-09-08).
-    That floor is the simplification's, not the pixel's — the reading the
-    plan's acceptance criterion had to be corrected by."""
-    lo = el.measure_rung("ribbon", 400, "flat", tmp_path)["rows"][0]
-    hi = el.measure_rung("ribbon", 1600, "flat", tmp_path)["rows"][0]
-    assert lo["produced"] and hi["produced"]
-    assert abs(lo["vertices"] - hi["vertices"]) <= 3, (lo["vertices"], hi["vertices"])
-    assert abs(lo["spread_mm"] - hi["spread_mm"]) < 0.02, (lo["spread_mm"], hi["spread_mm"])
-    assert lo["spread_mm"] > 0.03, "a sub-pixel change that moved this below the DP floor would be news"

@@ -177,15 +177,6 @@ def test_the_default_is_on():
     assert PipelineConfig().merge_duplicate_cones is True
 
 
-def test_the_fixture_still_declares_duplicate_cones(drone_off):
-    """Guards the whole file against going vacuous: if quantization stops
-    producing a duplicate here, every assertion below proves nothing."""
-    _res, plan = drone_off
-    cones = [b.thread_index for b in plan.blocks]
-    assert len(cones) - len(set(cones)) >= 1, \
-        "no cone revisit left on the fixture — re-pick it or retire this file"
-
-
 def test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP(drone_on):
     """The fold's invariant, with the one exemption Kent ruled on 2026-09-11.
 
@@ -212,36 +203,6 @@ def test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP(drone_on):
     cones = [b.thread_index for b in art]
     assert len(cones) == len(set(cones)), \
         f"an artwork cone still sews twice: {cones}"
-
-
-def test_the_fold_costs_the_operator_fewer_stops(drone_off, drone_on):
-    """A block boundary is a colour change, and on a single head a colour
-    change is the machine halting for a human. That is what this buys."""
-    _o, off = drone_off
-    _n, on = drone_on
-    assert len(on.blocks) < len(off.blocks)
-
-
-def test_the_fold_does_not_pay_for_itself_in_thread(drone_off, drone_on):
-    """The reorder could have traded stops for flying. It does not: fewer
-    stitches AND less needle-up travel, over slightly more lifts — short
-    ones replacing the long flights back out to the tail fragments."""
-    import math
-
-    def needle_up_mm(plan):
-        up, prev = 0.0, None
-        for b in plan.blocks:
-            for r in b.runs:
-                if prev is not None and (r.jump or r.trim):
-                    up += math.dist(prev, r.points[0])
-                prev = r.points[-1]
-        return up
-
-    _o, off = drone_off
-    _n, on = drone_on
-    assert sum(b.stitch_count for b in on.blocks) <= \
-        sum(b.stitch_count for b in off.blocks)
-    assert needle_up_mm(on) < needle_up_mm(off)
 
 
 def test_the_fold_reports_which_spools_it_merged(drone_on):

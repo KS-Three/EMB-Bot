@@ -1,4 +1,5 @@
-"""`cfg.subpixel_edges` — sub-pixel, anti-alias-aware contour vertices
+"""Sub-pixel edges (the `subpixel_edges` and `subpixel_edges_upscaled` switches,
+folded into the engine) — sub-pixel, anti-alias-aware contour vertices
 (`digitizer_core/subpixel.py`, plan `2026-09-08-subpixel-edges.md` §3, PR 2)
 and the curve refinement keyed to their acceptance (`stage4_vectorize.
 _refine_curves`, §3 step 5, PR 3).
@@ -7,9 +8,8 @@ The contracts. On an anti-aliased disc the moved vertices sit on the
 circle to a fraction of a pixel where the pixel-centre trace carried the
 staircase and the half-pixel inward bias; on a hard edge the vertex lands
 on the pixel boundary; a two-pixel stroke (no plateau) and a ringing edge
-(no monotonic profile) keep every pixel centre; OFF, the step never runs
-(the goldens pin the bytes); ON, the near-floor lettering exemption holds
-per ring; and on the ladder's 400 px rung the circle and ring sharpen and
+(no monotonic profile) keep every pixel centre; the near-floor lettering
+exemption holds per ring; and on the ladder's 400 px rung the circle and ring sharpen and
 lose their inward bias — the plan's §5 criterion for PR 2 alone, which
 predicts the 200/400 rungs move and the ribbon does not.
 """
@@ -231,23 +231,19 @@ def test_near_floor_lettering_keeps_the_pixel_centre_polygon_per_ring(tmp_path):
 
 @pytest.fixture(scope="module")
 def rung_400(tmp_path_factory):
-    # Both arms also hold `keep_thin_strokes` at its PRE-FLIP `False` (it
+    # The arm holds `keep_thin_strokes` at its PRE-FLIP `False` (it
     # went ON by default 2026-09-13, Kent's ruling). The ladder is the
     # INSTRUMENT the sub-pixel acceptance criterion was set with, and that
     # flag changes which regions the ladder's own synthetic shapes resolve
-    # into: with it on, the 400 px circle reads 0.179 mm of vertex spread
-    # OFF and 0.188 ON — both an order of magnitude off the 0.048 -> 0.013
-    # this rung was measured at, in BOTH arms, so the reading stops being
-    # about sub-pixel edges at all.
+    # into: with it on, the 400 px circle reads 0.188 mm of vertex spread
+    # — an order of magnitude off the 0.013 this rung was measured at, so the
+    # reading stops being about sub-pixel edges at all.
     # And the tracing grid at its pre-flip source line (`work_px_per_mm` went
     # ON 2026-10-01): the 400 px rung is 4.2 px/mm, and enlarged to 8 it is
     # not the raster these numbers were read on.
     work = tmp_path_factory.mktemp("subpixel_ladder")
     with held_on_source_line():
-        return {"off": el.measure_rung("whitebg", 400, "flat", work,
-                                       flag=["subpixel_edges=false", "keep_thin_strokes=false"]),
-                "on": el.measure_rung("whitebg", 400, "flat", work,
-                                      flag=["subpixel_edges", "keep_thin_strokes=false"])}
+        return {"on": el.measure_rung("whitebg", 400, "flat", work, flag=["keep_thin_strokes=false"])}
 
 
 def _dp(points: np.ndarray, eps: float) -> np.ndarray:
@@ -296,31 +292,29 @@ def test_the_refinement_floor_is_a_quarter_pixel_where_the_edge_was_read():
     assert inserted and all(any(np.array_equal(v, q) for q in pts) for v in inserted)
 
 
-def test_the_resolution_gate_lifts_only_with_the_flag_on(tmp_path):
-    """Today's refinement refuses everything under 20 px/mm, and its
-    one-pixel floor refuses any chord shorter than ~30 px whatever the
-    resolution — so a small disc (r = 40 px, 4 px/mm) keeps its coarse
-    Douglas-Peucker polygon. Keyed to acceptance the floor is a quarter
-    pixel and the polygon reaches the 15 deg turn rule."""
+def test_the_resolution_gate_lifts_where_the_edge_was_read(tmp_path):
+    """The refinement refuses everything under 20 px/mm, and its one-pixel
+    floor refuses any chord shorter than ~30 px whatever the resolution — so
+    a small disc (r = 40 px, 4 px/mm) would keep its coarse Douglas-Peucker
+    polygon. Keyed to acceptance the floor is a quarter pixel and the polygon
+    reaches the 15 deg turn rule."""
     img, _c, _r = _disc(w=100, h=100, c=50, r=40)            # the disc IS the art: 80 px at 20 mm = 4 px/mm
     art = tmp_path / "disc.png"
     cv2.imwrite(str(art), img)
     # The flat soft-edge cure (ON since Kent's 2026-11-06 flip) reads this x2
     # enlarged disc: its page boundary follows stage 1's page mask, so the
-    # subpixel-OFF baseline gains vertices (22 -> 30, area 316.2 -> 315.8 mm2,
-    # true 314.2) while the shipped subpixel-ON polygon is unchanged (33,
-    # 312.6). This test measures `subpixel_edges`' lift over the old baseline,
-    # so it holds the cure OFF.
+    # pixel-centre baseline gained vertices (22 -> 30, area 316.2 -> 315.8 mm2,
+    # true 314.2) while the shipped sub-pixel polygon is unchanged (33,
+    # 312.6). This test measures the lift of the curve refinement under
+    # sub-pixel edges, so it holds the cure OFF.
     # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline (x2 here),
     # the baseline included.
     old = dict(flat_page_fringe_soft_ramp=False, flat_ramp_blend_dissolve=False,
                outline_redraw_k=PRE_FLIP["outline_redraw_k"], **FLOW_2026_11_19_OFF)
-    no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0, subpixel_edges=False, **old))
-    off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=False, **old))
-    on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=True, **old))
+    no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0, **old))
+    on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, **old))
     n = lambda res: len(max(res.regions, key=lambda r: r.polygon.area).polygon.exterior.coords) - 1  # noqa: E731
-    assert n(off) == n(no_turn), "under 20 px/mm the gate keeps the refinement off, flag off"
-    assert n(on) >= 22 and n(on) > n(off) + 4, (n(off), n(on))
+    assert n(on) >= 22 and n(on) > n(no_turn) + 4, (n(no_turn), n(on))
 
 
 def test_on_the_400_rung_the_vertices_move_onto_the_edges(rung_400):
@@ -331,26 +325,18 @@ def test_on_the_400_rung_the_vertices_move_onto_the_edges(rung_400):
     0.013 mm, the ring's 0.03 -> 0.006; the three rectangles land on their
     true edges (Hausdorff 0.12-0.18 -> 0.01-0.02 mm) once corners are read
     along each side. The dot (1 mm, near-floor) is exempt and unmoved."""
-    off = {row["shape"]: row for row in rung_400["off"]["rows"]}
     on = {row["shape"]: row for row in rung_400["on"]["rows"]}
     for name in ("circle", "ring"):
-        assert on[name]["produced"] and off[name]["produced"]
-        assert on[name]["vertex_spread_mm"] < off[name]["vertex_spread_mm"] / 2, (
-            name, off[name]["vertex_spread_mm"], on[name]["vertex_spread_mm"])
-        assert abs(on[name]["vertex_offset_mm"]) < abs(off[name]["vertex_offset_mm"]), (
-            name, off[name]["vertex_offset_mm"], on[name]["vertex_offset_mm"])
-    # With the refinement keyed to acceptance (PR 3) the boundary follows the
-    # vertices: the curves' spread and Hausdorff fall too.
-    for name in ("circle", "ring"):
-        assert on[name]["spread_mm"] < off[name]["spread_mm"], (name, off[name]["spread_mm"], on[name]["spread_mm"])
-        assert on[name]["hausdorff_mm"] < off[name]["hausdorff_mm"], (name, off[name]["hausdorff_mm"], on[name]["hausdorff_mm"])
-        assert on[name]["vertices"] > off[name]["vertices"]
+        assert on[name]["produced"]
+        # Absolute, where the pixel-centre baseline (0.048 / 0.03 mm spread,
+        # a half-pixel inward offset) was once the yardstick: 0.017 / 0.020 here.
+        assert on[name]["vertex_spread_mm"] < 0.025, (name, on[name]["vertex_spread_mm"])
+        assert abs(on[name]["vertex_offset_mm"]) < 0.02, (name, on[name]["vertex_offset_mm"])
     for name in ("bar", "purple", "orange"):
-        assert on[name]["hausdorff_mm"] < off[name]["hausdorff_mm"] / 3, (
-            name, off[name]["hausdorff_mm"], on[name]["hausdorff_mm"])
+        # Hausdorff 0.12-0.18 mm on the pixel-centre trace, 0.01-0.02 here.
+        assert on[name]["hausdorff_mm"] < 0.03, (name, on[name]["hausdorff_mm"])
         assert abs(on[name]["offset_mm"]) < 0.02, (name, on[name]["offset_mm"])
         assert on[name]["vertices"] == 4, (name, on[name]["vertices"])
-    assert on["dot"] == off["dot"]
 
 
 # --- `cfg.subpixel_edges_upscaled`: the declined regime read at the source's
@@ -437,32 +423,21 @@ def test_prep_keeps_the_native_raster_only_when_it_upscales(tmp_path):
 @pytest.mark.parametrize("which", ["opaque", "cutout"])
 @pytest.mark.usefixtures("source_line_grid")
 def test_an_upscaled_low_res_disc_is_read_onto_its_edge_from_the_source(tmp_path, which):
-    """OFF, the polygon is the nearest-upscaled mask's staircase: 0.2 mm of
+    """The polygon of a nearest-upscaled mask is a staircase (0.2 mm of
     radial scatter, 0.4 mm at worst, and on the cutout a tenth of a
-    millimetre inside the edge (the alpha >= 128 mask, traced at pixel
-    centres). ON, the vertices sit on the circle to a few hundredths of a
-    millimetre — a fraction of a SOURCE pixel (0.625 mm) — the radius is
-    the true one, and the staircase's vertices are gone."""
+    millimetre inside the edge: the alpha >= 128 mask, traced at pixel
+    centres). Read from the source the vertices sit on the circle to a few
+    hundredths of a millimetre — a fraction of a SOURCE pixel (0.625 mm) —
+    and the radius is the true one."""
     opaque, cutout, true_r = _low_res_discs(tmp_path)
     art = opaque if which == "opaque" else cutout
-    p_off, off = _disc_region(art, subpixel_edges_upscaled=False)
-    p_on, on = _disc_region(art, subpixel_edges_upscaled=True)
+    p_on, on = _disc_region(art)
     assert p_on.upscale[0] > 1.0                       # the regime under test
-    assert "subpixel_accepted" not in off.meta
     assert on.meta["subpixel_accepted"] >= 0.9
-    r_off, rms_off, max_off, n_off = _radial(off)
     r_on, rms_on, max_on, n_on = _radial(on)
-    assert rms_off > 0.15 and max_off > 0.3, (rms_off, max_off)        # the staircase, OFF
-    assert rms_on < rms_off / 5, (rms_off, rms_on)
-    assert max_on < 0.06, max_on
+    assert rms_on < 0.03, rms_on                       # the staircase's was over 0.15
+    assert max_on < 0.06, max_on                       # ... and over 0.3
     assert abs(r_on - true_r) < 0.05, (r_on, true_r)
-    if which == "cutout":
-        # The alpha >= 128 mask traced at pixel centres sits a tenth of a
-        # millimetre inside the edge; the opaque disc's k-means mask has no
-        # such bias to lose, so only the cutout pins the radius against OFF.
-        assert abs(r_off - true_r) > 0.08, (r_off, true_r)
-        assert abs(r_on - true_r) < abs(r_off - true_r), (r_off, r_on, true_r)
-    assert n_on < n_off / 2, (n_off, n_on)
 
 
 def test_subpixel_contour_reads_a_fourth_channel_like_the_three_of_lab():
@@ -564,8 +539,8 @@ def test_the_native_read_squares_the_corners_of_an_upscaled_rectangle(tmp_path):
     """A 20 x 12 px rectangle whose edges sit mid-pixel — so every corner
     column is the other edge's ramp, the case the profile read either
     refuses or places short — in a 120 px frame at 50 mm, upscaled x2.5.
-    ON, the polygon is the four corners and each lands on the truth within
-    a tenth of a source pixel; OFF, the corners sit on the staircase."""
+    The polygon is the four corners and each lands on the truth within a
+    tenth of a source pixel (on the staircase they sat further off)."""
     s = 16
     canvas = np.full((120 * s, 120 * s, 3), BG, np.uint8)
     # Pixel-boundary coordinates 40.5..60.5 x 50.5..62.5 at 16x; in
@@ -590,8 +565,7 @@ def test_the_native_read_squares_the_corners_of_an_upscaled_rectangle(tmp_path):
         # region nearest the truth's area.
         return gen.p, min(result.regions, key=lambda r: abs(r.polygon.area - truth_mm2))
 
-    p, off = rect_region(subpixel_edges_upscaled=False)
-    _p, on = rect_region(subpixel_edges_upscaled=True)
+    p, on = rect_region()
     assert p.upscale[0] > 1.0
     sx, sy = p.upscale
     ax0, ay0, ax1, ay1 = p.art_bbox
@@ -604,10 +578,7 @@ def test_the_native_read_squares_the_corners_of_an_upscaled_rectangle(tmp_path):
 
     truth = [(x, y) for x in (40.0, 60.0) for y in (50.0, 62.0)]
     on_px = to_native(np.asarray(on.polygon.exterior.coords)[:-1])
-    off_px = to_native(np.asarray(off.polygon.exterior.coords)[:-1])
     assert len(on_px) == 4, on_px.tolist()
     for tx, ty in truth:
         d_on = float(np.min(np.hypot(on_px[:, 0] - tx, on_px[:, 1] - ty)))
-        d_off = float(np.min(np.hypot(off_px[:, 0] - tx, off_px[:, 1] - ty)))
         assert d_on < 0.1, (tx, ty, d_on, on_px.tolist())
-        assert d_off > 0.1, (tx, ty, d_off)

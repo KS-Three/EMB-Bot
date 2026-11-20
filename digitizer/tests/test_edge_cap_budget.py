@@ -9,8 +9,12 @@ artwork, and never sweeps size, so it cannot see a bill whose value depends on
 how the artwork TIERED. This file is the missing half: one real fixture, three
 widths, and the two fields that read the situation wrong.
 
-**The measurement this file pins** (`docs/edge-cap-cliff-2026-09-12.md`,
-reproduced on this tree 2026-09-12):
+**The measurement behind it** (`docs/edge-cap-cliff-2026-09-12.md`,
+reproduced on a tree 2026-09-12 that traced becker's staircase polygons and
+sewed its outline as a band; **that cliff is gone from today's engine** — the
+sub-pixel read of becker's own pixels and `border_from_outline` (both folded
+2026-11-20) put the cap's bill at 1.1 / 1.7 / 4.1% at 80 / 88 / 110 mm, so the
+ceiling tests below force it over with a patched ceiling):
 
 | becker @ | cap st | cap % | gate saved | omit cover | `edges` old / new |
 |---|---|---|---|---|---|
@@ -72,26 +76,16 @@ def _run(fixture: str, width: float, cap: str = "bean",
 
     `keep_thin_strokes=None` means the shipped default (ON since 2026-09-13),
     so every caller that compares against a plain `PipelineConfig` keeps
-    comparing against the same engine. Pass `False` for an arm whose number
-    was measured before that flip — only the 110 mm no-gate reading needs it.
+    comparing against the same engine.
     """
+    return _digitize(fixture, width, cap, over_budget, keep_thin_strokes)
+
+
+def _digitize(fixture: str, width: float, cap: str = "bean",
+              over_budget: str = "warn", keep_thin_strokes: bool | None = None):
+    """The uncached run behind `_run`: a test that patches the ceiling calls
+    this, so its plan never lands in `_run`'s cache."""
     extra = {} if keep_thin_strokes is None else {"keep_thin_strokes": keep_thin_strokes}
-    # `subpixel_edges_upscaled` is held OFF: every number in this file was
-    # measured on becker's staircase polygons (1.46-1.8 px/mm, upscaled), and
-    # Kent's 2026-09-18 flip reads that source from its own pixels instead.
-    # Under the flip the bill sweep across CHEAP/CLIFF/NO_GATE reads
-    # [19.7, 25.1, 25.1] — it no longer swings, the ceiling never fires at
-    # 88 or 110 mm, and the dropped-cap block differs — because the outline
-    # band is a different tier on the accurate polygon. What this file pins
-    # is the edge-cap budget MECHANISM, measured on those polygons, so it
-    # reads them (scope-history 2026-09-18, the flip's addendum).
-    # `satin_lettering_split` is held OFF for the same reason (flipped ON
-    # 2026-09-19, Kent's call): every number here was measured with becker's
-    # MARINE band FILLING at 80-110 mm. Under the flip the band sews as split
-    # satin, the lettering cover (step 5) then omits it from the cap, and the
-    # sweep reads gate_saved_pct 31.9 at 88 mm against the 12.0 the cliff doc
-    # measured, with run counts [9, 8, 9] flat across it -- the gate saving
-    # more because the letters stopped being fill, not the mechanism moving.
     _result, plan = digitize(
         TESTDATA / fixture,
         PipelineConfig(target_width_mm=width, edge_cap=cap, border_by_size=False,
@@ -179,73 +173,25 @@ def test_the_bill_splits_whole_rings_from_arcs_and_both_add_up(width):
     assert bill["stitches"] == sum(len(r.points) for r in cap_runs)
 
 
-def test_the_ring_count_no_longer_falls_as_the_cap_gets_more_expensive():
-    """The specific defect: `edges` FELL precisely because the cap got dearer.
+def test_the_bill_reports_what_the_gate_saved():
+    """`1 - gated/ungated`, the one number that would have made the cliff
+    visible at a glance (cliff doc §8 item 3).
 
-    becker's silhouette is the same shape at every width in this sweep — the
-    cliff doc measured `sil_parts = 10` and `interiors_pre = 7` at all of
-    80-110 mm, and ring length scaling smoothly +41%. A fragmentation field
-    that swings while the silhouette does not is not reporting fragmentation.
+    82.5% at 80 mm, 12.0% at 88 mm, and at 110 mm the design had no linear
+    stitching on its own edge at all in the cliff doc's engine.
+
+    **Re-pinned 2026-11-20 on the engine with the sub-pixel read of becker's
+    own pixels and `border_from_outline` folded in**: the cliff is gone. The
+    gate saves 98.7 / 97.7 / 93.6% at 80 / 88 / 110 mm (cover omitted 1,753 /
+    2,087 / 3,020 mm2) and the bill reads 1.1 / 1.7 / 4.1%, so the pin is
+    that the gate keeps saving nearly everything at every width and the bill
+    stays small.
     """
-    bills = {w: _bill(_run(BECKER, w)) for w in (CHEAP, CLIFF, NO_GATE)}
-    pcts = [b["percent"] for b in bills.values()]
-    edges = [b["edges"] for b in bills.values()]
-
-    assert max(pcts) - min(pcts) > 30.0, (
-        f"the sweep no longer swings the bill ({pcts}) — this test is not "
-        "watching the situation it was written for")
-    assert max(edges) - min(edges) <= 1, (
-        f"`edges` moved {edges} across a sweep whose silhouette does not "
-        "change: it is counting runs again, not rings")
-    # ...and the runs DO swing, which is what the old field was reading.
-    runs = [b["whole_loops"] + b["arcs"] for b in bills.values()]
-    assert max(runs) - min(runs) >= 2, (
-        f"run counts {runs} are flat too — then `edges` being flat proves "
-        "nothing and this test is vacuous")
-
-
-def test_the_bill_reports_what_the_gate_saved_and_it_collapses_with_size():
-    """`1 - gated/ungated`, the one number that would have made this visible
-    at a glance (cliff doc §8 item 3).
-
-    82.5% at 80 mm, 12.0% at 88 mm, and at 110 mm the design has no linear
-    stitching on its own edge at all — `_sewn_linear_cover` returns `None`,
-    the gate does not exist, and the cap is back in the pre-gate regime.
-
-    The 110 mm arm holds `keep_thin_strokes` at its PRE-FLIP `False`
-    (flipped ON by default 2026-09-13, Kent's ruling), because that flip is
-    what "no linear stitching at all" stops being true of: ON, becker keeps
-    one contrasting sub-floor region here and the bill reads
-    `omit_cover_mm2` 1.5 and `gate_saved_pct` 0.3 (measured 2026-09-13,
-    against 0.0 and 0.0 OFF; `percent` 53.4 -> 53.2). That is a third of a
-    percent of saving on a region the flag added, not the no-gate regime
-    ending, and pinning it keeps the three-width sweep the one measurement
-    it was taken as. The 80 and 88 mm arms are unmoved by the flip and stay
-    on the shipped engine.
-
-    **Re-pinned 2026-11-19 on the engine with the satin construction flags
-    folded in** (`satin_lettering_split` was held OFF here; it is the code
-    now, and with it the letters take the gate's linear cover): 80 mm reads
-    98.9% saved, 88 mm 30.5% (was 12.0), and 110 mm still bills 41.1% but
-    now with a 29.3% gate saving and 1,439 mm2 of cover instead of none, so
-    "the gate does not exist at 110 mm" no longer holds; the bill's
-    collapse with size does.
-    """
-    cheap = _bill(_run(BECKER, CHEAP))
-    cliff = _bill(_run(BECKER, CLIFF))
-    none = _bill(_run(BECKER, NO_GATE, keep_thin_strokes=False))
-
-    assert cheap["gate_saved_pct"] > 50.0, cheap["gate_saved_pct"]
-    assert cheap["omit_cover_mm2"] > 1000.0, cheap["omit_cover_mm2"]
-
-    assert cliff["gate_saved_pct"] < 35.0, cliff["gate_saved_pct"]
-    assert cliff["gate_saved_pct"] < cheap["gate_saved_pct"] - 50.0
-
-    # The headline: a bigger design, and the gate saves less than at 80 mm.
-    assert none["gate_saved_pct"] < cheap["gate_saved_pct"] - 50.0, none["gate_saved_pct"]
-    assert none["percent"] > 40.0, (
-        "the no-gate width stopped being expensive — re-read the sweep "
-        "before relaxing this, the cap reverting to full cost IS the defect")
+    for width in (CHEAP, CLIFF, NO_GATE):
+        bill = _bill(_run(BECKER, width))
+        assert bill["gate_saved_pct"] > 90.0, (width, bill["gate_saved_pct"])
+        assert bill["omit_cover_mm2"] > 1000.0, (width, bill["omit_cover_mm2"])
+        assert bill["percent"] < 10.0, (width, bill["percent"])
 
 
 # --- the ceiling ---------------------------------------------------------------
@@ -265,18 +211,24 @@ def test_the_ceiling_sits_in_the_gap_between_the_two_measured_regimes():
 
 
 @pytest.mark.parametrize("width", [CLIFF, NO_GATE])
-def test_a_cap_over_the_ceiling_says_so_out_loud(width):
+def test_a_cap_over_the_ceiling_says_so_out_loud(width, monkeypatch):
     """`EDGE_CAP_APPLIED` fires on every run, so the one design where the cap
     costs half the artwork again read exactly like the ninety that cost a
     tenth. This is the code that only fires when it matters, and it carries
-    the diagnosis with it."""
-    plan = _run(BECKER, width)
+    the diagnosis with it. Becker no longer bills over the real ceiling (it
+    bills 1.7 / 4.1% here), so the ceiling is patched to 1.0 as the
+    off-by-default tests below patch it."""
+    import digitizer_core.stage7_sequence as S
+
+    monkeypatch.setattr(S, "EDGE_CAP_BUDGET_PCT", 1.0)
+    plan = _digitize(BECKER, width)
+    monkeypatch.undo()
     bill, loud = _bill(plan), _over(plan)
 
     assert bill["over_budget"] is True
     assert loud is not None, f"{width} mm bills +{bill['percent']}% in silence"
     assert loud["percent"] == bill["percent"]
-    assert loud["budget_pct"] == EDGE_CAP_BUDGET_PCT
+    assert loud["budget_pct"] == 1.0
     assert loud["gate_saved_pct"] == bill["gate_saved_pct"]
     assert loud["omit_cover_mm2"] == bill["omit_cover_mm2"]
     assert loud["dropped"] is False        # warn is the default: nothing moved
@@ -384,14 +336,20 @@ def test_the_warning_moves_no_stitch(monkeypatch):
     assert _coords(forced) == _coords(_run(WHITEBG, CHEAP))
 
 
-def test_a_dropped_cap_is_exactly_the_cap_off_engine():
+def test_a_dropped_cap_is_exactly_the_cap_off_engine(monkeypatch):
     """What "drop" means, at the only resolution that settles it: byte for
     byte, a dropped cap is `edge_cap="none"` — not merely a smaller plan.
 
-    becker at 88 mm: 13,386 stitches with the cap, 8,437 without, and the
-    8,437 the refusal leaves are the SAME 8,437.
+    The cliff doc's becker at 88 mm: 13,386 stitches with the cap, 8,437
+    without, and the 8,437 the refusal leaves are the SAME 8,437. On today's
+    engine the cap is 133 stitches there (the ceiling is patched to 1.0 to
+    reach the refusal at all) and the property is the same.
     """
-    dropped = _run(BECKER, CLIFF, "bean", "drop")
+    import digitizer_core.stage7_sequence as S
+
+    monkeypatch.setattr(S, "EDGE_CAP_BUDGET_PCT", 1.0)
+    dropped = _digitize(BECKER, CLIFF, "bean", "drop")
+    monkeypatch.undo()
     off = _run(BECKER, CLIFF, "none")
 
     assert _cap_block(dropped) is None
