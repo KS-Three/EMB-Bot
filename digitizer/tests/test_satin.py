@@ -1134,9 +1134,9 @@ def test_a_column_that_straddles_the_threshold_splits_as_one_comb(monkeypatch):
     assert rails_a == rails_b                                         # the comb moves no rail
 
 
-def test_split_satin_off_is_a_config_choice():
-    from digitizer_core import PipelineConfig
-    assert PipelineConfig().split_satin is True
+def test_split_satin_off_is_a_per_call_choice():
+    # `split_satin` (the switch) was folded into the code 2026-11-19; the emitter
+    # still takes `split_above_mm=math.inf` for a raw cross.
     raw, _ = satin_shape(WIDE_BAR, "S1", underlay_style="none",
                          trim_at_mm=3.0, split_above_mm=math.inf)
     steps = [math.dist(a, b)

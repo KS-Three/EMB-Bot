@@ -3355,10 +3355,9 @@ def sequence(
     # would otherwise fall through to the classifier with no outline run.
     small_stem = bool(cfg.lettering_columns_small_stem and cfg.lettering_columns
                       and cfg.satin)
-    # The config-to-emitter mapping the split-satin knobs document: False
-    # sews raw crosses however long (a real house style — jolly-af ships
-    # 7 mm stitches), None defers to the corpus-median machine default.
-    split_above = math.inf if not cfg.split_satin else cfg.split_satin_above_mm
+    # The config-to-emitter mapping the split-satin knobs document: None
+    # defers to the corpus-median machine default.
+    split_above = cfg.split_satin_above_mm
     # Push comp (Law 24), the half of directional compensation stage 5 cannot
     # express because it has no spine to shorten. Two terms, and both are owed:
     # PUSH_CUTBACK_MM is the physical effect, and `pull_comp_mm` gives back
@@ -4296,7 +4295,7 @@ def sequence(
                     small_print_cut(p, body, bar_mm=row_mm), p.shape_id,
                     angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                     stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
-                    trim_at_mm=trim_at, under_cover=cfg.fill_travel_under_cover,
+                    trim_at_mm=trim_at, under_cover=True,
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
@@ -4726,12 +4725,12 @@ def sequence(
                     spacing_mm=satin_spacing_for(p),
                     angle_deg=satin_angle_deg,
                     rails_follow_edge=cfg.satin_rails_follow_edge,
-                    outer_rail_pitch=cfg.satin_outer_rail_pitch,
-                    join_square=cfg.satin_join_square,
-                    free_end_square=cfg.satin_free_end_square,
+                    outer_rail_pitch=True,
+                    join_square=True,
+                    free_end_square=True,
                     junction_square=(cfg.satin_junction_square
                                      and bool(p.region.meta.get("text_candidate")) and not handed_back),
-                    slab_serifs=cfg.satin_slab_serifs,
+                    slab_serifs=True,
                     patch_junctions=cfg.satin_patch_junctions,
                     crown_cover=cfg.satin_crown_cover,
                     polygon_axis=cfg.satin_polygon_axis,
@@ -4743,7 +4742,7 @@ def sequence(
                     short_column_underlay=cfg.satin_underlay_short_columns,
                     walk_cursor_reach_mm=cfg.satin_walk_cursor_reach_mm,
                     hop_under_column=cfg.satin_hop_under_column,
-                    cap_recentre=cfg.satin_cap_recentre,
+                    cap_recentre=True,
                     tip_caps=cfg.satin_tip_caps,
                     tip_corner_gate=cfg.satin_tip_corner_gate,
                     thin_arm_stop=cfg.satin_thin_arm_stop,
@@ -4938,7 +4937,7 @@ def sequence(
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
-                    under_cover=cfg.fill_travel_under_cover,
+                    under_cover=True,
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
@@ -4972,7 +4971,7 @@ def sequence(
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
-                    under_cover=cfg.fill_travel_under_cover,
+                    under_cover=True,
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
@@ -4999,7 +4998,7 @@ def sequence(
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
-                    under_cover=cfg.fill_travel_under_cover,
+                    under_cover=True,
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
@@ -5024,7 +5023,7 @@ def sequence(
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
-                    under_cover=cfg.fill_travel_under_cover,
+                    under_cover=True,
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
@@ -5047,7 +5046,7 @@ def sequence(
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
-                    under_cover=cfg.fill_travel_under_cover,
+                    under_cover=True,
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
@@ -5161,7 +5160,7 @@ def sequence(
                     stitch_mm=stitch_mm,
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
-                    under_cover=cfg.fill_travel_under_cover,
+                    under_cover=True,
                     cut_bridges=cfg.fill_bridge_cut,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,

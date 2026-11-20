@@ -1390,7 +1390,7 @@ def build_generation(
     if cfg.lettering_words:
         from .words import word_groups
         house_groups = word_groups(regions)
-    set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
+    set_lettering_house_angle(regions, p, fourfold=True,
                               from_line=cfg.satin_house_from_line,
                               anchor=cfg.satin_house_anchor, groups=house_groups)
     # The Column lane's ink link (`cfg.lettering_columns_ink_link`, default
@@ -1998,16 +1998,12 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         return out
 
     chart = chart_for(cfg)
-    # `thread_indices` is stage 2's memory of what each layer WAS. With
-    # `cfg.layer_palette_from_regions` ON each layer's cone is elected from
-    # its own regions instead, which is the only way `palette[i]` can be
-    # true about layer i after a pass moves a region's thread without
-    # moving the region — see `stage3_segment.layer_palette_threads`.
-    # OFF is stage 2's list, byte for byte, and the election never runs.
-    palette_threads = (
-        layer_palette_threads(regions, thread_indices, shape_overrides)
-        if cfg.layer_palette_from_regions else thread_indices
-    )
+    # `thread_indices` is stage 2's memory of what each layer WAS. Each
+    # layer's cone is elected from its own regions instead, which is the only
+    # way `palette[i]` can be true about layer i after a pass moves a
+    # region's thread without moving the region — see
+    # `stage3_segment.layer_palette_threads`.
+    palette_threads = layer_palette_threads(regions, thread_indices, shape_overrides)
     palette = [_cone(chart, t) for t in palette_threads]
 
     # The palette is per LAYER; a region's thread is per REGION, and

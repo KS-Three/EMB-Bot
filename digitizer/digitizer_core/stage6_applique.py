@@ -1114,7 +1114,7 @@ def _fall_through_flat(poly: Polygon, shape_id: str, cfg: PipelineConfig,
     this function existed too.
     """
     underlay = "center_run" if cfg.underlay else "none"
-    split_above = math.inf if not cfg.split_satin else cfg.split_satin_above_mm
+    split_above = cfg.split_satin_above_mm
     runs, _report = satin_shape(poly, shape_id, underlay_style=underlay,
                                 trim_at_mm=machine.TRIM_AT_MM, start_near=entry,
                                 split_above_mm=split_above,

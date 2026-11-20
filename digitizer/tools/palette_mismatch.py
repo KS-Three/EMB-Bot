@@ -155,9 +155,6 @@ def main(argv: list[str]) -> int:
     # taken at the engine default of 12 while the Studio's slider ships 6,
     # and the cap is the producer: 76 diverged regions on two real-customer
     # fixtures at 6 against 24 on the whole corpus at 12 (2026-09-12).
-    # `--on` runs the fix (`cfg.layer_palette_from_regions`, default OFF) so
-    # a corpus read before and after is one flag apart.
-    on = "--on" in argv
     max_colors = 12
     if "--max-colors" in argv:
         max_colors = int(argv[argv.index("--max-colors") + 1])
@@ -167,8 +164,7 @@ def main(argv: list[str]) -> int:
     rows: list[tuple] = []
     for fx in FIXTURES:
         cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                             max_colors=max_colors,
-                             layer_palette_from_regions=on)
+                             max_colors=max_colors)
         try:
             result, plan = digitize(TESTDATA / fx, cfg)
         except Exception as exc:                          # pragma: no cover
@@ -206,7 +202,7 @@ def main(argv: list[str]) -> int:
     n_phantom = sum(1 for r in rows if r[8])
     n_cones = sum(len(r[8]) for r in rows)
     silent = sum(1 for r in rows if r[8] and not r[1])
-    print(f"max_colors={max_colors}  layer_palette_from_regions={on}")
+    print(f"max_colors={max_colors}")
     print(f"{'fixture':40} {'shapes':>6}  layers")
     print("-" * 88)
     for fx, n, layers, listed, actual, off_list, mis, uns, ph in rows:

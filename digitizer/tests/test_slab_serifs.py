@@ -87,7 +87,6 @@ def test_defaults_are_off():
     """The function default stays OFF (the config is the switch); the config
     default is ON since Kent's flip 2026-10-08, together with
     `satin_free_end_square`, on the four-arm render."""
-    assert PipelineConfig().satin_slab_serifs is True
     poly, art, kw = _fixture(T_FIXTURE)
     dflt, _ = satin_shape(poly, "S1", art_poly=art, join_square=True, **kw)
     off, _ = satin_shape(poly, "S1", art_poly=art, join_square=True, slab_serifs=False, **kw)

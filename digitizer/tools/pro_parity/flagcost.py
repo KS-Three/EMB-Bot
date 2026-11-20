@@ -103,9 +103,7 @@ FLAGS: dict[str, object] = {
     "enclosed_by_garment": False,       # 2026-09-10
     "subpixel_edges": False,            # 2026-09-09
     "design_ramp": False,               # 2026-09-04
-    "fill_travel_under_cover": False,   # 2026-09-03
     "curve_turn_deg": None,             # 2026-09-03
-    "satin_house_fourfold": False,      # 2026-09-02
     "merge_duplicate_cones": False,     # 2026-09-02
     "rehome_resnapped": False,          # 2026-09-01
     "edge_cap": "off",                  # 2026-09-01, flipped to "bean" 09-11

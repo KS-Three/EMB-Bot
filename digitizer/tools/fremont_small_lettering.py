@@ -438,7 +438,7 @@ def pull_sweep(run: dict, glyph_rows: list, glyphs: list) -> list:
     cfg, result = run["cfg"], run["result"]
     fabric = fabrics.fabric_for_garment(cfg.garment_id)
     prof = machine.thread_profile(cfg.thread_wt)
-    split = float("inf") if not cfg.split_satin else cfg.split_satin_above_mm
+    split = cfg.split_satin_above_mm
     by_id = {r.shape_id: r for r in result.regions}
     out = []
     for row, g in zip(glyph_rows, glyphs):
@@ -570,7 +570,7 @@ def sweep_sheet(out: Path, renders: Path, sweep: list, ppm: int = SHEET_PPM) -> 
     cfg, result = run["cfg"], run["result"]
     fabric = fabrics.fabric_for_garment(cfg.garment_id)
     prof = machine.thread_profile(cfg.thread_wt)
-    split = float("inf") if not cfg.split_satin else cfg.split_satin_above_mm
+    split = cfg.split_satin_above_mm
     by_id = {r.shape_id: r for r in result.regions}
     sids = sorted({e["shape_id"] for e in sweep if not e["lane_empty"]},
                   key=lambda s: by_id[s].polygon.centroid.x)

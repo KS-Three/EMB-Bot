@@ -66,12 +66,9 @@ from tools.thin_strokes import corpus_cases                    # noqa: E402
 SHORT_CROSS_MM = 0.6
 CORNER_R_MM = 0.8
 CORNER_TURN_DEG = 45.0
-# Every arm sets both flags explicitly: since Kent's flip (2026-10-08) the
-# config default is "both", and an arm that only ADDS a flag reads the same.
-ARMS = {"base": {"satin_free_end_square": False, "satin_slab_serifs": False},
-        "free_end": {"satin_free_end_square": True, "satin_slab_serifs": False},
-        "slab": {"satin_free_end_square": False, "satin_slab_serifs": True},
-        "both": {"satin_free_end_square": True, "satin_slab_serifs": True}}
+# One arm: both flags were folded into the code (docs/flag-history/tier-a.md),
+# so the engine's own default is the old "both" arm.
+ARMS = {"both": {}}
 # The corpus logos that carry text-tagged letters (fan_census.ORDER less
 # bridge, whose eight tagged shapes are segmentation blobs, not letters).
 DEFAULT = ["fremont", "becker", "gaulke", "enthusiast", "tires", "drone"]

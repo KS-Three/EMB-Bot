@@ -1,4 +1,5 @@
-"""`cfg.layer_palette_from_regions` — the review screen's per-layer cone list,
+"""`layer_palette_from_regions` (folded into the code 2026-11-19; the election now always
+runs) — the review screen's per-layer cone list,
 elected from each layer's OWN regions. Defect 30. DEFAULT OFF.
 
 `PipelineResult.palette[i]` is `thread_indices[i]`: what stage 2 CALLED layer
@@ -32,6 +33,7 @@ layers, it does not delete rows.
 """
 from __future__ import annotations
 
+import contextlib
 from functools import lru_cache
 
 import pytest
@@ -69,6 +71,23 @@ def _cfg(**kw) -> PipelineConfig:
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest", **kw)
 
 
+@contextlib.contextmanager
+def _election(on: bool):
+    """The pipeline's election as it ran with the switch OFF: stage 2's own
+    thread list, the election never called. The switch is gone (folded
+    2026-11-19), so the OFF arm is this one patch on the one call site."""
+    import digitizer_core.pipeline as P
+    if on:
+        yield
+        return
+    real = P.layer_palette_threads
+    P.layer_palette_threads = own_thread_only(lambda _regions, thread_indices, _overrides: thread_indices, real)
+    try:
+        yield
+    finally:
+        P.layer_palette_threads = real
+
+
 @lru_cache(maxsize=None)
 def _run(fixture: str, on: bool):
     """One pipeline run per (fixture, flag). Cached for the reason
@@ -83,9 +102,9 @@ def _run(fixture: str, on: bool):
     fires_it` fails on its own premise guard rather than on its claim. The
     divergence this file prices is the CAP's, measured on the engine
     `docs/palette-mismatch-2026-09-12.md` §1 measured it on."""
-    result, plan = digitize(TESTDATA / fixture,
-                            _cfg(layer_palette_from_regions=on,
-                                 keep_thin_strokes=False,
+    with _election(on):
+        result, plan = digitize(TESTDATA / fixture,
+                            _cfg(keep_thin_strokes=False,
                                  # `region_blobs` is a steep synthetic ramp
                                  # and reads `photo_scene` on the 2026-10-28
                                  # texture gate; this file prices the BLEND
@@ -131,22 +150,6 @@ def _region(sid: str, thread: int, area: float, layer: int,
     return Region(shape_id=sid, polygon=_sq(max(area, 0.01) ** 0.5),
                   thread_index=thread, thread_number=CHART[thread].number,
                   area_mm2=area, meta={"layer": layer, "stitched": stitched})
-
-
-def test_flag_defaults_on():
-    """FLIPPED 2026-09-12 (Kent's ruling, on the corpus pass he asked for
-    first). This asserted False until then.
-
-    False is still the pre-flip engine byte for byte and stays reachable and
-    tested rather than dead-by-default — `test_off_the_election_never_runs`
-    proves the off path by call count, not by output comparison. What the
-    pass bought: mislabelled layers 7 -> 0 at `max_colors=12` and 13 -> 0 at
-    the Studio's shipped 6, with the plan digest identical off vs on across
-    26/26 at both settings. What it cost, and Kent took it knowingly:
-    duplicate review rows, because `merge_duplicate_cone_layers` folds on the
-    DECLARED cone upstream of this election
-    (`docs/palette-flip-corpus-2026-09-12.md`)."""
-    assert PipelineConfig().layer_palette_from_regions is True
 
 
 def test_a_capped_region_does_not_leave_its_layer_naming_a_dropped_cone():
@@ -237,44 +240,6 @@ def test_a_shape_parked_past_the_end_of_the_list_elects_nothing():
     assert layer_palette_threads(regions, [5], {}) == [5]
 
 
-# --- the off path, proved by EXECUTION --------------------------------------
-
-def test_off_the_election_never_runs(monkeypatch):
-    """The off-path claim as an execution fact, not an output comparison.
-
-    Two runs that happen to agree are weak evidence — a fixture can simply
-    have no layer the election would move (`logo_whitebg` is exactly that,
-    §3 of the doc). Zero calls is proof, on any fixture, that OFF runs the
-    pre-flag instruction stream.
-
-    Patched on `pipeline`'s own module attribute, so this scopes to the one
-    call site and cannot be satisfied by some other importer.
-    """
-    import digitizer_core.pipeline as P
-
-    real = P.layer_palette_threads
-    seen = {}
-    for on in (False, True):
-        calls = []
-
-        def shim(*a, _c=calls, **kw):
-            _c.append(1)
-            return real(*a, **kw)
-
-        monkeypatch.setattr(P, "layer_palette_threads", own_thread_only(shim, real))
-        run_stages(TESTDATA / "logo_whitebg.png",
-                   cfg(layer_palette_from_regions=on))
-        monkeypatch.undo()
-        seen[on] = len(calls)
-
-    assert seen[False] == 0, (
-        f"the election ran {seen[False]}x with the flag OFF — the guard "
-        "leaks, so 'off is the pre-flag engine' is no longer true")
-    assert seen[True] == 1, (
-        f"the flag is ON and the election ran {seen[True]}x, so this test is "
-        "not watching the guarded call site (or it moved)")
-
-
 # --- real fixtures ----------------------------------------------------------
 
 def test_the_election_closes_the_divergence_on_the_fixture_that_fires_it():
@@ -324,11 +289,11 @@ def test_a_layer_that_sews_nothing_names_its_own_shapes_cone():
     # arithmetic, pinned in `tests/test_keep_thin_strokes.py`, not this
     # election's. `sew_enclosed_white=False` the same way (ON by default since
     # 2026-10-26): ON, the ring hole sews and no layer sews nothing.
-    off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
-                             cfg(keep_thin_strokes=False, sew_enclosed_white=False))
+    with _election(False):
+        off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
+                                 cfg(keep_thin_strokes=False, sew_enclosed_white=False))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
-                           cfg(layer_palette_from_regions=True, keep_thin_strokes=False,
-                               sew_enclosed_white=False))
+                           cfg(keep_thin_strokes=False, sew_enclosed_white=False))
 
     assert _layer_cones(off) == _layer_cones(on), (
         "an unstitched layer's cone was already its own regions' cone; the "

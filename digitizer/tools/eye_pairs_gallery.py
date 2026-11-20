@@ -180,18 +180,6 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
         "same renderer; the needle-holes toggle works on both. Nothing to flip: "
         "say which lettering flows, and what the difference is -- the note is the "
         "point."),
-    "split_off": (
-        "split_satin=False",
-        "No comb at all: every satin cross sews rail to rail in one stitch, "
-        "however long -- the pro's own style on these letters (his Becker file "
-        "sews a quarter of its legs over 5 mm and caps near 7). On Becker every "
-        "MARINE stem is 5.5-6.9 mm wide, over the 5.0 mm split threshold, so "
-        "today's comb puts a staggered hole in the middle of every cross there: "
-        "1,413 holes inside the stems against the pro's 304, and 246 with the "
-        "comb off. The needle-holes toggle is where this lives; the thread "
-        "render barely moves. The price is the float: legs to 12 mm where a "
-        "stroke is that wide (3.4% over 7 mm). A physical constant under gate 1: "
-        "the page says which reads right, only cloth says which sews right."),
     "rails_symmetric": (
         "satin_rails_follow_edge=False",
         "Both rails at the nearer edge's distance, as shipped before the envelope: "
@@ -230,6 +218,18 @@ ARM_INTENT: dict[str, tuple[str, str]] = {
 # Arms that left the pending table because they SHIPPED. A sitting rendered
 # before the flip still carries their rows, and the page still names them.
 RETIRED_ARM_INTENT: dict[str, tuple[str, str]] = {
+    "split_off": (
+        "split_satin=False (retired 2026-11-19: the switch was folded into the code)",
+        "No comb at all: every satin cross sews rail to rail in one stitch, "
+        "however long -- the pro's own style on these letters (his Becker file "
+        "sews a quarter of its legs over 5 mm and caps near 7). On Becker every "
+        "MARINE stem is 5.5-6.9 mm wide, over the 5.0 mm split threshold, so "
+        "today's comb puts a staggered hole in the middle of every cross there: "
+        "1,413 holes inside the stems against the pro's 304, and 246 with the "
+        "comb off. The needle-holes toggle is where this lives; the thread "
+        "render barely moves. The price is the float: legs to 12 mm where a "
+        "stroke is that wide (3.4% over 7 mm). A physical constant under gate 1: "
+        "the page says which reads right, only cloth says which sews right."),
     "phantom_dissolve": (
         "dissolve_phantom_blends=True (shipped ON 2026-10-20)",
         "Dissolve JPEG ringing colours on the photo/gradient lane, so a logo's "
