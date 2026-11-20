@@ -320,6 +320,8 @@ def test_page_side_halo_is_returned_to_the_background():
 
 @pytest.fixture(scope="module")
 def bridge_pair():
+    from tests.conftest import PRE_FLIP_FOLDED, legacy_engine
+
     def run(on: bool):
         # PRE_FLIP: the dissolve flag alone, over the engine it was measured
         # on (the colour flags Kent flipped ON on 2026-09-10 -- the bundle's
@@ -331,16 +333,18 @@ def bridge_pair():
         # Kent's flip): bridge is 3.5 px/mm, and traced at 8 the halo is
         # segmented differently in BOTH arms — 62 regions against 59, where
         # this fixture's bar is "much less".
-        return digitize(BRIDGE, PipelineConfig(
+        # Both arms are the engine before the colour switches were folded
+        # into the code (2026-11-20): `legacy_engine` patches back what their
+        # False paths did. The OFF arm also hands the merged labels back (the
+        # dissolve switch's False path; ON since Kent's flip 2026-10-20,
+        # MASTER_SCOPE item 46, PR #1003's pricing).
+        cfg = PipelineConfig(
             target_width_mm=80.0, max_colors=6, satin=True,
-            garment_id="left_chest", work_px_per_mm=None,
-            **{**PRE_FLIP, "dissolve_phantom_blends": on}))
+            garment_id="left_chest", work_px_per_mm=None, **PRE_FLIP)
+        with pytest.MonkeyPatch.context() as mp:
+            legacy_engine(mp, **{**PRE_FLIP_FOLDED, "dissolve": not on})
+            return digitize(BRIDGE, cfg)
     return run(False), run(True)
-
-
-def test_default_is_on():
-    # Kent's flip 2026-10-20 (MASTER_SCOPE item 46, PR #1003's pricing).
-    assert PipelineConfig().dissolve_phantom_blends is True
 
 
 def test_bridge_bar_loses_its_grey_cones(bridge_pair):

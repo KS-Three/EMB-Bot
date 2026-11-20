@@ -1464,7 +1464,7 @@ def _percentile_extremes_deltae(lab: np.ndarray) -> float:
         lo.mean(axis=0).reshape(1, 3), hi.mean(axis=0).reshape(1, 3))[0])
 
 
-# The statistic `cfg.robust_region_colour` hands the palette for a region:
+# The statistic the palette takes for a region:
 # "median" — the per-channel median of its Lab pixels; "modal_mean" — the
 # mean over the pixels within ROBUST_REGION_RADIUS_DE00 of that median (the
 # median's robustness with the mean's smoothness on a gradient region).
@@ -1514,12 +1514,9 @@ def region_colour_candidates(pixels_rgb: np.ndarray) -> dict[str, np.ndarray]:
 
 
 def _region_lab(pixels_rgb: np.ndarray, cfg: PipelineConfig) -> np.ndarray:
-    """The colour a region hands `select_palette`. OFF (the shipped
-    engine): `rgb_to_lab(pixels.mean())`, the expression this seam replaced,
-    byte for byte. ON: `ROBUST_REGION_STAT` of `region_colour_candidates`."""
+    """The colour a region hands `select_palette`: `ROBUST_REGION_STAT` of
+    `region_colour_candidates`."""
     px = np.asarray(pixels_rgb)
-    if not cfg.robust_region_colour:
-        return rgb_to_lab(px.reshape(-1, 3).mean(axis=0, keepdims=True))[0]
     return region_colour_candidates(px)[ROBUST_REGION_STAT]
 
 
@@ -3011,9 +3008,8 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     # (`stage2_quantize._quantize_population`, "anti-alias: majority filter,
     # then phantom-blend dissolve"). This lane never got it, and Bridge Bar
     # is the bill: four grey cones -- Skylight, Saturn Grey, Silver, Umber --
-    # sewing the JPEG's ringing around the black spokes. Off by default; see
-    # `PipelineConfig.dissolve_phantom_blends`.
-    if cfg.dissolve_phantom_blends and merged_count:
+    # sewing the JPEG's ringing around the black spokes.
+    if merged_count:
         merged, blend_drop, blend_warnings = dissolve_phantom_blends(
             merged, base_valid, true_lab, cfg,
             None if p.bg_from_alpha else p.bg_edge_rgb, p.px_per_mm,
@@ -3030,7 +3026,7 @@ def segment(p: Prep, cfg: PipelineConfig, face_regions=None, bg_mask=None,
     else:
         blend_warnings = []
 
-    # --- 3.75 Edges follow pixels (`cfg.snap_region_edges`) -----------------
+    # --- 3.75 Edges follow pixels (`snap_edges`) -----------------
     # After the dissolve, so it snaps the labels that will actually be cut,
     # and on `lab_img` — the merge's own colour space, sweep subtracted when
     # the design ramp fits — so a seam inside the sweep stays put while a

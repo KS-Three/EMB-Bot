@@ -124,14 +124,6 @@ def accepted_word(tmp_path_factory) -> Path:
 
 
 def _run(art: Path, width_mm: float, **kw):
-    # Without the photo lane's phantom-blend dissolve
-    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
-    # this file (and `tests/test_house_anchor.py`, which runs through
-    # it) reads the gradient lane, and with the dissolve ON the letters' house
-    # angles move (KAYAK's cross 1.5 deg off its line, CI 2026-10-20).
-    # The numbers here were read without it; the dissolve's own price is
-    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
-    kw.setdefault("dissolve_phantom_blends", False)
     # ...and without the scale-relative flat/gradient read (ON 2026-11-06): the
     # word rasters read flat ON, and this file prices the gradient lane's votes.
     kw.setdefault("stage0_scale_relative_grad", False)
@@ -181,3 +173,16 @@ def test_a_group_with_no_line_of_text_still_fails_open(refused_run):
     # they do not spread; a single member never does.
     assert tc._line_of_text_deg(group[:1]) is None
     assert tc._cluster_house_angle_deg(group[:1], fourfold=True, from_line=True) is None
+
+
+@pytest.fixture(autouse=True)
+def _without_the_phantom_blend_dissolve(monkeypatch):
+    """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
+    item 46; folded into the code 2026-11-20): this file (and `tests/test_house_anchor.py`, which runs through
+    it) reads the gradient lane, and with the dissolve ON the letters' house
+    angles move (KAYAK's cross 1.5 deg off its line, CI 2026-10-20).
+    The numbers here were read without it; the dissolve's own price is
+    `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
+    what the switch's False path did."""
+    from tests.conftest import legacy_engine
+    legacy_engine(monkeypatch, dissolve=True)

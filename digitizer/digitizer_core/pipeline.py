@@ -285,10 +285,10 @@ class PipelineResult:
     # The gate's whole read, per region (`fur_regions.read_regions`): the
     # census a tool reports. None when the gate did not run.
     hair_fur_read: dict | None = None
-    # `cfg.white_keyline_art_recipe` (built OFF): `finish_generation` read this
+    # `finish_generation` read this
     # art as white-keyline art (`white_keyline_art.detect`), so `plan_stitches`
     # folds the recipe into its caller's config the way it folds the photo
-    # verdict. False on a hand-built result and whenever the flag was off.
+    # verdict. False on a hand-built result.
     white_keyline_art: bool = False
     # The raster stage 1.5's photo prep handed to segmentation and stage 4's
     # thread revalidation (`p.rgb` after `photo_prep`): a REFERENCE to the
@@ -683,7 +683,7 @@ def build_generation(
             )
         )
 
-    # Stage 1.3 — two-tone snap (`cfg.two_tone_snap`, defect 58). Before any
+    # Stage 1.3 — two-tone snap (defect 58). Before any
     # region former, so every lane reads two inks. Never on a photograph,
     # declared or detected (`cfg.is_photographic` carries both by now), whose
     # greys are its picture; a logo stage 0 merely CLASSES photo_scene
@@ -698,7 +698,7 @@ def build_generation(
     # The whole of it lives in `two_tone.apply`, which preflight's thread
     # grader replays on its own stage-1 re-read so it judges the raster the
     # pipeline sewed.
-    if cfg.two_tone_snap and cfg.is_photographic is not True:
+    if cfg.is_photographic is not True:
         two_tone.apply(p)
 
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
@@ -912,10 +912,9 @@ def build_generation(
     # and None whenever the fit's gate refuses (`design_ramp.py` names the
     # three numbers and the fixtures each one turns away), so every other
     # class — and a gradient design with no fitting ramp — is byte-identical
-    # to before by construction. `cfg.design_ramp=False` is the pre-2026-09-04
-    # lane, kept reachable (see the flag's own comment).
+    # to before by construction.
     design_ramp = (fit_design_ramp(p)
-                   if classification.class_ == "gradient" and cfg.design_ramp else None)
+                   if classification.class_ == "gradient" else None)
 
     # `cfg.open_cored_counters` (2026-10-19): the core mask both stage-3
     # calls below read, kept to the cores a glyph holds (`cored_counter_core`
@@ -967,7 +966,7 @@ def build_generation(
                 # measurement behind it is a white icon on a sweep (Kent's
                 # Instagram file, 2026-09-30), and the photo classes keep
                 # today's path until a photograph has been looked at.
-                snap_edges=bool(cfg.snap_region_edges and classification.class_ == "gradient"),
+                snap_edges=bool(classification.class_ == "gradient"),
                 # Logos only, the same gate again: a photograph's fragments
                 # enclose each other everywhere.
                 keep_counters=bool(cfg.keep_counters and classification.class_ == "gradient"),
@@ -1119,8 +1118,7 @@ def build_generation(
     # stage-5 coverage plan sees the order actually sewn. Runs here — same
     # generation step as the re-snap it corrects, before anything reads
     # layers — and never touches user recolors (see its docstring).
-    if cfg.rehome_resnapped:
-        rehome_resnapped_regions(regions, list(q.thread_indices))
+    rehome_resnapped_regions(regions, list(q.thread_indices))
 
     # "Colors (max N)" is a promise about what the machine will be threaded
     # with, and until now the SLIC+RAG lane did not keep it — see
@@ -1635,7 +1633,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # a review `stitched` still wins over it, exactly as over the default.
     sews_by_garment, garment_de00 = garment_sews_enclosed(p, cfg)
     shape_overrides = cfg.shape_overrides or {}
-    # `cfg.white_keyline_art_recipe` (built OFF, Kent 2026-10-26: "Gate to
+    # White-keyline art recipe (Kent 2026-10-26: "Gate to
     # MFab art first"): white-keyline art -- a dark host round a white field
     # outlining letters -- turns its recipe on here, before the first of its
     # switches (`sew_enclosed_white`, just below) acts; the verdict rides the
@@ -1750,8 +1748,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             for w in prep_own_warnings]
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
-    # One cone, one layer (cfg.merge_duplicate_cones, default OFF — defect
-    # 18). Two quantized COLOURS can snap to one physical thread, and
+    # One cone, one layer (defect 18). Two quantized COLOURS can snap to one physical thread, and
     # nothing downstream deduped them: the palette declared the spool
     # twice and its second, smaller layer sewed a fragment late over
     # finished work. Folded HERE, immediately after compaction and before
@@ -1760,10 +1757,9 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # still beats it, and stage 5 plans coverage against the order
     # actually sewn — see the function's own docstring for why the
     # equivalent downstream repair (`_hoist_same_thread`) cannot do this.
-    if cfg.merge_duplicate_cones:
-        thread_indices, dup_warnings = merge_duplicate_cone_layers(
-            regions, thread_indices)
-        layer_warnings = layer_warnings + dup_warnings
+    thread_indices, dup_warnings = merge_duplicate_cone_layers(
+        regions, thread_indices)
+    layer_warnings = layer_warnings + dup_warnings
     # Photo depth sequencing (plan §2 row 14): photo-classified designs (or
     # an explicit cfg.extra["photo_sequencing"] opt-in) replace stage 2's
     # largest-area-first layer order with background→foreground, dark→light,
@@ -2269,7 +2265,7 @@ def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
-    # `cfg.white_keyline_art_recipe` (built OFF): the verdict `finish_generation`
+    # The verdict `finish_generation`
     # read, folded in before anything below reads the recipe's switches (the
     # loop mitre's scope is the first). Read with getattr: the scope tests
     # hand this a stand-in result (None, a bare object).

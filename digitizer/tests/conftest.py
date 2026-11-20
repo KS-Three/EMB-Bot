@@ -527,20 +527,19 @@ def segments(stitch_plan):
             yield b, run, a, c
 
 
-# The colour bundle (quality review 2026-09-08 item 8): four flags Kent
-# flipped ON by default as one set on 2026-09-10 (`docs/colour-bundle-
-# decision-2026-09-10.md`), and a fifth later the same day --
-# `robust_region_colour`, the stage-2 repair for the loss that flip's own
-# test run found (PR #445 built it OFF; the PR after flipped it on his
-# ruling). Each flag's own test file still prices the flag ALONE, so its
-# baseline is the PRE-FLIP engine -- the five False -- and "on" is that
-# baseline plus the one flag; otherwise "off" would mean "this flag off,
-# the others on", which is not the engine any measurement was made on. The
-# shipped engine is BUNDLE_ON (the fifth flag is the default there), and
-# each file pins that once.
+# The colour bundle (quality review 2026-09-08 item 8): flags Kent flipped
+# ON by default as one set on 2026-09-10 (`docs/colour-bundle-
+# decision-2026-09-10.md`). Two of its five (`bind_resnap_all_classes`,
+# `robust_region_colour`) were folded into the code 2026-11-20
+# (`docs/flag-history/tier-b3-colour.md`); three remain. Each flag's own
+# test file still prices the flag ALONE, so its baseline is the PRE-FLIP
+# engine -- the three False -- and "on" is that baseline plus the one flag;
+# otherwise "off" would mean "this flag off, the others on", which is not
+# the engine any measurement was made on. The shipped engine is BUNDLE_ON,
+# and each file pins that once.
 COLOUR_BUNDLE = ("enforce_color_cap", "resnap_mask_matches_grader",
-                 "revalidate_small_shapes", "bind_resnap_all_classes")
-PRE_FLIP = {name: False for name in COLOUR_BUNDLE + ("robust_region_colour",)}
+                 "revalidate_small_shapes")
+PRE_FLIP = {name: False for name in COLOUR_BUNDLE}
 # `edge_cap` joined the flipped set 2026-09-11 ("bean", Kent's ruling after
 # item 14). It is a STRING, not a bool, so it cannot ride the dict
 # comprehension above -- and it is in PRE_FLIP for the same reason the five
@@ -557,31 +556,6 @@ PRE_FLIP["edge_cap"] = "none"
 # it left ON, twelve such arms across seven files moved (the owl, Bridge Bar,
 # gaulke, the screenshot, drone).
 PRE_FLIP["keep_thin_strokes"] = False
-# `strip_letterbox` joined the flipped set 2026-09-14, and is in PRE_FLIP for
-# exactly the reason stated above: a test pricing one flag alone must measure
-# against the engine its measurement was made on. Every arm in the resnap and
-# thread-match files was measured on `photo/logo_gaulke_roofing.png` WITH its
-# letterbox bars — 16.1 px/mm, the 247-vs-54 px footprint, the 63.6 dE00
-# Silver — and cropping the bars changes the raster those numbers describe.
-#
-# This is NOT a way of dodging the re-point work. The distinction that
-# settles it: those tests are about the COLOUR flags, and `strip_letterbox`
-# is orthogonal to every one of them, so pinning it here keeps each test
-# measuring the thing it is named for, on the pixels it measured. The tests
-# that are genuinely ABOUT the crop (`test_letterbox`, the full-bleed guard,
-# `test_enclosed_by_garment`) do not use PRE_FLIP and were re-pointed
-# properly instead.
-#
-# Measured before choosing this: no single fixture in the corpus reproduces
-# gaulke's uncropped severity on BOTH axes the resnap premise asserts.
-# `photo/logo_bridge_bar.jpg` has the footprint inflation (raw 229 px vs
-# grader 39, ratio 5.87 against the test's `> 3`) but not the bimodality
-# (26 dark pixels against `> 50`, because it decodes at 4.0 px/mm);
-# `photo/screenshot_phone_ui_golke.jpg` has the bimodality (92 dark / 102
-# light at 12.75 px/mm) but not the ratio (2.20). Splitting one premise
-# across two fixtures to keep a number green would have been the
-# fit-to-output move this repo's doctrine warns about.
-PRE_FLIP["strip_letterbox"] = False
 # `stage0_texture_gate` joined the flipped set 2026-10-28 (built ON, Kent's
 # "ON by default (Recommended)"), for the reason every entry above gives: ON,
 # an opaque photograph or steep-ramp raster that read `gradient` on the grain
@@ -738,26 +712,6 @@ PRE_FLIP["thread_match_grade_traced_letter"] = False
 # leaves transparent is no longer an `ARTWORK_ELEMENT_DROPPED`.
 # `tests/engine_2026_10_27.json` carries it False.
 PRE_FLIP["dropped_element_v2"] = False
-# `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
-# renders of his Instagram icon, drone, Bridge Bar and the repro), for the
-# reason every entry above gives. ON, a gradient-lane region's edge follows
-# the pixels instead of the SEEDS superpixels, which removes exactly the
-# slivers and halo fragments the colour files use as their PREMISE -- the
-# resnap's Silver-on-near-black shape, the drifted sliver, the repeated cone
-# -- so an arm measured before that day was measured with them present.
-# Measured at the flip: left ON, 26 tests across 13 files moved, and in the
-# files that read this dict every one was a premise assert ("fixture drift",
-# "should be there to lose"), not the flag under test getting worse. The
-# test that is ABOUT the snap is `tests/test_snap_region_edges.py`.
-PRE_FLIP["snap_region_edges"] = False
-# `two_tone_snap` joined the flipped set 2026-10-11 (defect 58, Kent's
-# approval 2026-10-08), for the reason every entry above gives. ON, a
-# black-and-white raster is thresholded to its two inks before any region
-# exists, so gaulke's grey halo -- the Silver `3971` escape, the 0.58 mm²
-# shard, the enclosed `4174` that the resnap and thread-match files take as
-# their PREMISE -- is never segmented at all. The test that is ABOUT the snap
-# is `tests/test_two_tone.py`.
-PRE_FLIP["two_tone_snap"] = False
 # `lettering_columns_square_ends` and `lettering_columns_inside_connectors`
 # joined the flipped set 2026-10-13 (Kent's ruling), for the reason every
 # entry above gives. ON, the Column lane ends every column on the letter's
@@ -886,14 +840,6 @@ PRE_FLIP["lettering_columns_small_stem"] = False
 # its rails, not its spine's chord, so an italic wordmark's arms move. False
 # is the pre-flip lane. The tests ABOUT it are `tests/test_column_rail_axis.py`.
 PRE_FLIP["lettering_columns_rail_axis"] = False
-# The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF
-# 2026-09-04 and flipped it ON 2026-10-20, MASTER_SCOPE item 46, on PR
-# #1003's pricing): a merged label that is mostly boundary and a blend of its
-# two sides folds into the nearer side, so a JPEG's halo cones are never
-# planned. False is the pre-flip engine, with every halo shard the colour
-# files take as their premise. The tests ABOUT it are
-# `tests/test_phantom_blend_photo.py`.
-PRE_FLIP["dissolve_phantom_blends"] = False
 # Stage 5's cut-off pieces (defect 61's second half; Kent flipped it ON
 # 2026-10-20, item 46, after the halo lever above): every piece of a split
 # shape whose artwork clears the stage-4 floor sews as a region of its own,
@@ -1305,6 +1251,71 @@ PRE_FLIP.update(THROUGH_LAST_2026_11_19_OFF)
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
     "lettering_columns_text_lean", "lettering_columns_inside_stagger", "text_cluster_wide_letters")}
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
+
+
+def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=False,
+                  bind=False, two_tone=False, strip=False):
+    """The engine as it was before seven colour switches were folded into the
+    code (2026-11-20, `docs/flag-history/tier-b3-colour.md`), for a test whose
+    PREMISE is the engine one of their False paths made. Each patch is exactly
+    what that switch's False branch did, so a test that held the switch False
+    holds the same pixels now. `mp` is a `pytest.MonkeyPatch`; pass True for
+    each one to switch OFF:
+      design_ramp  stage 1's ramp fit (flattens a sweep before the merge)
+      robust       `robust_region_colour`: a region's palette colour is the RGB mean
+      snap         `snap_region_edges`: superpixel-edged labels
+      dissolve     `dissolve_phantom_blends`: the photo lane keeps JPEG halo labels
+      bind         `bind_resnap_all_classes`: only photo classes bind the re-snap
+      two_tone     `two_tone_snap`: no black-and-white snap
+      strip        `strip_letterbox`: letterbox bars stay in the raster
+    """
+    import numpy as np
+
+    import digitizer_core.pipeline as pl
+    import digitizer_core.stage0_classify as s0
+    import digitizer_core.stage1_prep as s1
+    import digitizer_core.stage2_photo_segment as ps
+    from digitizer_core import two_tone as tt
+    from digitizer_core.config import is_photographic
+    from digitizer_core.threads import rgb_to_lab
+
+    def patch(mod, name, fake):
+        mp.setattr(mod, name, own_thread_only(fake, getattr(mod, name)))
+
+    if design_ramp:
+        patch(pl, "fit_design_ramp", lambda p, *a, **kw: None)
+    if robust:
+        patch(ps, "_region_lab", lambda px, cfg: rgb_to_lab(
+            np.asarray(px).reshape(-1, 3).mean(axis=0, keepdims=True))[0])
+    if snap:
+        patch(ps, "snap_region_edges", lambda labels, valid, lab, **kw: labels)
+    if dissolve:
+        patch(ps, "dissolve_phantom_blends", lambda merged, valid, *a, **kw: (merged, None, []))
+    if bind:
+        real = pl.revalidate_threads
+
+        def unbound(regions, p, cfg, **kw):
+            if not is_photographic(cfg, kw.get("design_class", "flat")):
+                kw["palette_indices"] = None
+            return real(regions, p, cfg, **kw)
+        patch(pl, "revalidate_threads", unbound)
+    if two_tone:
+        patch(tt, "apply", lambda p: False)
+    if strip:
+        for mod in (s0, s1):
+            patch(mod, "strip_letterbox", lambda rgb, alpha=None: (rgb, alpha))
+
+
+#: The six the old `PRE_FLIP` held False (everything but `design_ramp`, which it never pinned).
+PRE_FLIP_FOLDED = dict(robust=True, snap=True, dissolve=True, bind=True, two_tone=True, strip=True)
+
+
+@pytest.fixture
+def pre_flip_engine(monkeypatch):
+    """`legacy_engine(**PRE_FLIP_FOLDED)`: for a module whose numbers were read
+    with the six folded colour switches False (they were in `PRE_FLIP` until
+    2026-11-20). Opt in with `pytestmark = pytest.mark.usefixtures("pre_flip_engine")`."""
+    legacy_engine(monkeypatch, **PRE_FLIP_FOLDED)
 
 
 @pytest.fixture

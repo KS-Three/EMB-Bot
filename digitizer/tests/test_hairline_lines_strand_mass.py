@@ -44,10 +44,10 @@ PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
 # (`mane_lines` read `1e5338e4...` with them on; the s882 synthetic did not
 # move). The PINS are main's streams before this flag OR the holds existed,
 # and the holds are not this file's subject, so both are pinned OFF here.
-# The same goes for the two item-46 flips (Kent, 2026-10-20):
-# `dissolve_phantom_blends` and `clip_keep_pieces` move the drawn mane's
-# `mane_lines` stream too (`451c0177...` with them on, CI 2026-10-20), and
-# the PINS predate both. And the straight-stretch bean stitch
+# The same goes for the item-46 flip (Kent, 2026-10-20):
+# `clip_keep_pieces` moves the drawn mane's `mane_lines` stream too
+# (`451c0177...` with it and the phantom-blend dissolve on, CI 2026-10-20),
+# and the PINS predate both (the dissolve is in the code now, see below). And the straight-stretch bean stitch
 # (`bean_letter_straight_mm`, ON at 0.7 since Kent's flip later that day)
 # reaches the mane's strands the same way (`mane_lines` read `e81c2525...`
 # with it on, CI 2026-10-20): pinned None here too. Likewise the edge cap
@@ -56,7 +56,7 @@ PINS = {"s882_lines": "37789a45fa1dac14c3ce6d824dc2ad9c",
 # (`mane_lines` read `d402f568...` with it on, Windows 2026-10-20): pinned
 # False here.
 HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
-                 dissolve_phantom_blends=False, clip_keep_pieces=False,
+                 clip_keep_pieces=False,
                  bean_letter_straight_mm=None, edge_cap_skip_bean_letters=False,
                  # the 2026-10-23 flips and the 2026-10-24 lettering flips: the md5s predate both
                  **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,

@@ -114,11 +114,6 @@ def test_the_margin_is_the_documented_value():
     assert SNAP_MARGIN_LAB == 10.0
 
 
-def test_the_flag_is_on_by_default():
-    """Kent's flip, 2026-09-30, on renders (see `config.snap_region_edges`)."""
-    assert PipelineConfig().snap_region_edges is True
-
-
 def _wrong_side_px(snap: bool) -> tuple[int, int]:
     """Segment the committed gradient repro and count pixels on the wrong
     side of its white icon: white pixels in a mostly-colour label plus

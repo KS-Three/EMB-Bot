@@ -1,5 +1,5 @@
-"""`blend_fallback_underlay` (2026-10-05, built OFF; ON by default since
-2026-10-07, Kent's ruling): a gradient-class design's
+"""Blend fallback underlay (2026-10-05, built OFF; ON by default since
+2026-10-07, Kent's ruling; the switch folded into the code 2026-11-20): a gradient-class design's
 fills that sew as ordinary full-density tatami — `blend_fill`'s fallback, the
 path nearly every real region takes — get the underlay style stage 7 resolved
 for every other fill tier, instead of the hardcoded "none". True ramp bands
@@ -53,24 +53,10 @@ def _kinds(runs) -> list[str]:
     return [r.kind for r in runs]
 
 
-def test_the_flag_is_on_by_default():
-    assert PipelineConfig().blend_fallback_underlay is True
-
-
-def test_off_the_fallback_sews_bare_whatever_style_it_is_handed():
-    region, source = _noise_fallback()
-    runs, _ = blend_fill(region, source,
-                         PipelineConfig(blend_fallback_underlay=False),
-                         underlay_style="edge_run")
-    assert stitches.UNDERLAY not in _kinds(runs)
-    assert ([r.points for r in runs]
-            == [r.points for r in _plain(region.polygon, region.shape_id, "none")])
-
-
 @pytest.mark.parametrize("style", ["edge_run", "edge_lattice", "double_lattice"])
 def test_on_the_fallback_sews_the_style_it_is_handed(style):
     region, source = _noise_fallback()
-    cfg = PipelineConfig(blend_fallback_underlay=True)
+    cfg = PipelineConfig()
     runs, report = blend_fill(region, source, cfg, underlay_style=style)
 
     expected = _plain(region.polygon, region.shape_id, style)
@@ -82,30 +68,25 @@ def test_on_the_fallback_sews_the_style_it_is_handed(style):
     assert report["blend_shades"] == 0
 
 
-def test_on_with_no_style_handed_the_fallback_is_still_bare():
+def test_with_no_style_handed_the_fallback_is_still_bare():
     """Every caller that does not pass a style — and stage 7 with
     `cfg.underlay` off, which resolves to "none" — keeps a bare fill."""
     region, source = _noise_fallback()
-    cfg = PipelineConfig(blend_fallback_underlay=True)
+    cfg = PipelineConfig()
     runs, _ = blend_fill(region, source, cfg)
     assert stitches.UNDERLAY not in _kinds(runs)
     runs, _ = blend_fill(region, source, cfg, underlay_style="none")
     assert stitches.UNDERLAY not in _kinds(runs)
 
 
-def test_on_true_ramp_bands_stay_bare():
+def test_true_ramp_bands_stay_bare():
     """Wilcom and mySewnet both say no underlay under a variable-density
     blend; the band path is not touched."""
     region, source = _linear_region(), _linear_source()
-    off, off_report = blend_fill(region, source,
-                                 PipelineConfig(blend_fallback_underlay=False),
-                                 underlay_style="edge_lattice")
-    on, on_report = blend_fill(region, source,
-                               PipelineConfig(blend_fallback_underlay=True),
+    on, on_report = blend_fill(region, source, PipelineConfig(),
                                underlay_style="edge_lattice")
     assert on_report["blend_shades"] >= 2, "fixture must take the band path"
     assert stitches.UNDERLAY not in _kinds(on)
-    assert [(r.kind, r.points) for r in on] == [(r.kind, r.points) for r in off]
 
 
 def _blend_calls(monkeypatch, cfg):
@@ -140,9 +121,9 @@ def _underlay_stitches(plan, shape_ids) -> int:
 def test_stage7_hands_the_blend_tier_the_fabrics_fill_underlay(monkeypatch):
     from digitizer_core.pipeline import fabric_for
 
-    # stage0_scale_relative_grad=False (here and in the two tests below): the repro must route through the blend tier
+    # stage0_scale_relative_grad=False (here and in the test below): the repro must route through the blend tier
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         blend_fallback_underlay=True, stage0_scale_relative_grad=False)
+                         stage0_scale_relative_grad=False)
     plan, handed, fallback_ids = _blend_calls(monkeypatch, cfg)
     from digitizer_core.fabrics import fill_underlay_for
     # the preset's own underlay, or the cross pass under `fill_underlay_cross` (ON since 2026-10-23)
@@ -151,17 +132,9 @@ def test_stage7_hands_the_blend_tier_the_fabrics_fill_underlay(monkeypatch):
     assert _underlay_stitches(plan, fallback_ids) > 0
 
 
-def test_off_end_to_end_the_gradient_lane_has_no_fill_underlay(monkeypatch):
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         blend_fallback_underlay=False, stage0_scale_relative_grad=False)
-    plan, _handed, fallback_ids = _blend_calls(monkeypatch, cfg)
-    assert fallback_ids
-    assert _underlay_stitches(plan, fallback_ids) == 0
-
-
 def test_the_underlay_switch_still_wins_end_to_end(monkeypatch):
     cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                         blend_fallback_underlay=True, underlay=False, stage0_scale_relative_grad=False)
+                         underlay=False, stage0_scale_relative_grad=False)
     plan, handed, fallback_ids = _blend_calls(monkeypatch, cfg)
     assert set(handed) == {"none"}
     assert _underlay_stitches(plan, fallback_ids) == 0

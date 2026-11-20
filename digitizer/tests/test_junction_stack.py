@@ -58,13 +58,6 @@ def _run(fixture, width_mm: float, **kw):
     # ON by default since Kent's 2026-10-12 flip) cuts MARINE's letters from
     # their outline and never reaches the junction stack this file prices.
     kw.setdefault("lettering_columns", False)
-    # ... and without the photo lane's phantom-blend dissolve
-    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
-    # this fixture reads the gradient lane, and with the dissolve ON MARINE at 80 mm folds one
-    # letter (6 crossing pairs against 0, measured 2026-10-20).
-    # The numbers here were read without it; the dissolve's own price is
-    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
-    kw.setdefault("dissolve_phantom_blends", False)
     cfg =PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                          max_colors=6, **kw)
     gen = build_generation(str(fixture), cfg)
@@ -223,3 +216,15 @@ def test_asking_for_the_satin_cover_is_the_engine_as_shipped(monkeypatch):
     assert unasked, "part C no longer reaches the cover on this fixture"
     assert asked == unasked
     assert plan_asked == plan_unasked
+
+
+@pytest.fixture(autouse=True)
+def _without_the_phantom_blend_dissolve(monkeypatch):
+    """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
+    item 46; folded into the code 2026-11-20): this fixture reads the gradient lane, and with the dissolve ON MARINE at 80 mm folds one
+    letter (6 crossing pairs against 0, measured 2026-10-20).
+    The numbers here were read without it; the dissolve's own price is
+    `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
+    what the switch's False path did."""
+    from tests.conftest import legacy_engine
+    legacy_engine(monkeypatch, dissolve=True)
