@@ -45,6 +45,7 @@ const deps =
     const stitchCount = (design && design.stitchCount) || 0;
     const colors = (design && design.colors) || [];
     const colorCount = (design && design.colorCount) || colors.length;
+    const steps = (design && Array.isArray(design.steps)) ? design.steps : [];
 
     let cursorY = MARGIN_IN;
 
@@ -346,9 +347,29 @@ const deps =
       const [r, g, b] = rgbCss(color);
       doc.setFillColor(r, g, b);
       doc.rect(MARGIN_IN, cursorY - swatchSize + 0.03, swatchSize, swatchSize, "F");
-      const label = (i + 1) + ". " + (color.name || "Color " + (i + 1));
+      // An operator step (foam stop, tear-away) replaces the thread name: the
+      // person at the machine needs the action, not "Color N".
+      const step = steps[i];
+      const label = (step && step.code && step.code !== "COLOR")
+        ? (i + 1) + ". " + step.label + " — " + step.action
+        : (i + 1) + ". " + (color.name || "Color " + (i + 1));
       doc.text(label, MARGIN_IN + swatchSize + 0.12, cursorY);
       cursorY += ROW_H;
+    }
+
+    if (steps.some((s) => s && typeof s.code === "string" && s.code.startsWith("PUFF"))) {
+      const notes = [
+        "Keep puff off the cap's front seam.",
+        "Puff is for caps and outerwear — foam breaks down with frequent washing.",
+      ];
+      for (const note of notes) {
+        if (cursorY + ROW_H > PAGE_H_IN - MARGIN_IN) {
+          doc.addPage();
+          cursorY = MARGIN_IN;
+        }
+        doc.text(note, MARGIN_IN, cursorY);
+        cursorY += ROW_H;
+      }
     }
 
     // `save: false` leaves the document unsaved so a caller can take its bytes

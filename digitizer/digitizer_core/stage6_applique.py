@@ -830,6 +830,7 @@ def plan_steps(plan) -> list[dict]:
     out: list[dict] = []
     last = len(plan.blocks) - 1
     for i, block in enumerate(plan.blocks):
+        real_action = (block.step or {}).get("action", "")
         meta = dict(block.step) if block.step else {
             "code": "COLOR",
             "label": f"Thread {block.thread_number}",
@@ -851,7 +852,15 @@ def plan_steps(plan) -> list[dict]:
             # wait for is exactly the kind of wrong-thing-at-the-right-time
             # §6.5 is about.
             meta["function"] = END
-            meta["action"] = "Design complete"
+            # A real step's instruction (a puff's tear-away) still applies
+            # before the file is over, so it is kept ahead of "Design complete".
+            if real_action:
+                kept = real_action.strip()
+                if kept.endswith(", then continue"):
+                    kept = kept[: -len(", then continue")]
+                meta["action"] = kept.rstrip(".") + ". Design complete."
+            else:
+                meta["action"] = "Design complete"
             meta["flags"] = []
         out.append(meta)
     return out

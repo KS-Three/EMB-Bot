@@ -219,6 +219,18 @@ const KIND_STYLES = {
 const ROLE_STYLES = {
   border:   { sheen: 1.12, rim: 0.9, shadow: 1.7, z: 2, raised: true },
   edge_cap: { sheen: 1.12, rim: 0.9, shadow: 1.7, z: 2, raised: true },
+  // 3D puff (Kent 2026-11-19): foam under the satin stands further proud than
+  // a border, so the same cue, stronger. Thread colour and width untouched.
+  // An artist's impression until a sew-out photo calibrates it. The puff grip
+  // and inset walk are role "puff_under" on the underlay KIND, which is
+  // exempt below, so they draw subdued without an entry here.
+  // Kent 2026-11-19, after seeing 2.6 / 1.25 read only slightly raised: a
+  // domed column. `dome` widens and brightens the two specular layers (a lit
+  // band down the crown, visible on black thread: lightening black by the
+  // 0.72 sheen ceiling is a mid grey), `shadow` 3.6 pushes the drop shadow
+  // out about 3.3x a satin's offset. Its alpha is still capped at 0.42 in
+  // strokeShadow, so on white cloth it stays a shadow, not an outline.
+  puff:     { sheen: 1.6, rim: 0.8, shadow: 3.6, z: 3, raised: true, dome: 1 },
 };
 
 // ...but a role does NOT raise a run that is underneath by nature. The border
@@ -255,6 +267,7 @@ export function kindStyle(kind, role) {
     z: base.z + (mod ? mod.z : 0),
     crown: base.crown != null ? base.crown : 1,
     raised: !!(mod && mod.raised),
+    dome: mod && mod.dome ? mod.dome : 0,
   });
   STYLE_CACHE.set(key, st);
   return st;
@@ -319,7 +332,10 @@ export function threadLayers(rgb, angle, lw, style) {
     { width: lw, offset: 0, color: shade(rgb, 0.66 * st.tone * st.rim), dash: null, inset: 0 },
     { width: lw * 0.78, offset: hi * 0.4, color: shade(rgb, 0.85 * st.tone), dash: null, inset: CROWN_INSET[1] * c },
     { width: lw * 0.5, offset: hi * 0.75, color: shade(rgb, st.tone), dash: null, inset: CROWN_INSET[2] * c },
-    { width: lw * 0.28, offset: hi, color: lighten(rgb, sheen * 0.55), dash: null, inset: CROWN_INSET[3] * c },
+    st.dome
+      // A domed (puff) crown: a wider, brighter lit band than satin's.
+      ? { width: lw * (0.28 + 0.2 * st.dome), offset: hi, color: lighten(rgb, Math.min(0.85, sheen * (0.55 + 0.45 * st.dome))), dash: null, inset: CROWN_INSET[3] * c }
+      : { width: lw * 0.28, offset: hi, color: lighten(rgb, sheen * 0.55), dash: null, inset: CROWN_INSET[3] * c },
     // The narrowest specular is DASHED, phase-free: embroidery thread is
     // plied, so its sheen beads along the length instead of running as one
     // unbroken line. Cheap, and it is what stops a satin column from reading
@@ -335,7 +351,7 @@ export function threadLayers(rgb, angle, lw, style) {
     // often the sheen breaks. It is the cheapest honest difference between a
     // satin column (long unbroken beads) and a tatami row (short ones, because
     // every row end is a penetration that interrupts the light).
-    { width: Math.max(0.5, lw * 0.13), offset: hi * 1.12, color: lighten(rgb, sheen), dash: [lw * 1.7 * st.bead, lw * 0.55 * st.bead], inset: CROWN_INSET[4] * c },
+    { width: Math.max(0.5, lw * (st.dome ? 0.13 + 0.07 * st.dome : 0.13)), offset: hi * 1.12, color: lighten(rgb, st.dome ? Math.min(0.9, sheen * (1 + 0.3 * st.dome)) : sheen), dash: [lw * 1.7 * st.bead, lw * 0.55 * st.bead], inset: CROWN_INSET[4] * c },
   ];
 }
 

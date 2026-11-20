@@ -60,7 +60,9 @@ HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
                  bean_letter_straight_mm=None, edge_cap_skip_bean_letters=False,
                  # the 2026-10-23 flips and the 2026-10-24 lettering flips: the md5s predate both
                  **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,
-                 **TEXT_GAPS_2026_11_15_OFF)   # the six 2026-11-15 text/gap flips: these pins predate them
+                 **TEXT_GAPS_2026_11_15_OFF,   # the six 2026-11-15 text/gap flips: these pins predate them
+                 # 2026-11-19: the lane sews a dropped branch itself; the md5s predate it
+                 lettering_columns_sew_dropped_hairline=False)
 
 
 def _syn_cfg(arm: str, width_mm: float) -> PipelineConfig:
