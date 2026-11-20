@@ -2094,10 +2094,6 @@ every run (golden_tee gave 8,312 / 8,318 / 8,319 / 8,315 stitches).
 caller must. Spot-check a new call site by running the same input twice in
 separate processes and diffing the stitch streams.
 
-### 3D puff (2026-11-19) — default OFF, unmeasured constants
-
-Spec: `docs/superpowers/specs/2026-11-19-3d-puff-design.md`. Turn it on with `PipelineConfig(puff=True)` (`puff_mode="all"` puffs every eligible satin shape, `"select"` only shapes with `shape_overrides[sid].puff`); in the Studio, the 3D Puff switch in the Digitize panel plus the per-shape Puff box. Logic lives in `digitizer_core/stage6_puff.py`; with `puff` False nothing puff-related runs and output is byte-identical. Every `PUFF_*` constant in `machine.py` is marked unmeasured (ROADMAP gate 1). To measure a pro puff file: `cd digitizer && python -m tools.puff_reference "<path to .PES or .DST>"` (prints satin spacing, underlay, ties, cap rows, column width; do not commit the file, the repo is public). TIRES HAT 3D is not yet measured: `docs/puff-reference-tires-2026-11-19.md`.
-
 ### New `tools/` scripts (engine, run from repo root)
 
 - `node tools/file-cut-census.mjs [srcDir] [--set shapes|lettering|image|<set-file>] [--on flag[=value]] [--every K] [--jobs N] [--json out] [--keep dir] [--against otherSrc]`
