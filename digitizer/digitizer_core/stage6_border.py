@@ -146,15 +146,43 @@ def _tangents(pts: list[tuple[float, float]], k: int) -> list[tuple[float, float
     return out
 
 
+def _roll0(a: np.ndarray, s: int) -> np.ndarray:
+    """`np.roll(a, s, axis=0)`, the same values: two slices joined.
+
+    Speed only (2026-11-19). `np.roll` costs ~10 us of Python per call, and
+    `_relax_corners` made 0.8-1.6 M of them on the four slow hat jobs (13-15
+    profiled seconds on Hotel Fremont). It moves values and computes none, so
+    the slices are the same array element for element."""
+    n = len(a)
+    s %= n
+    if s == 0:
+        return a.copy()
+    return np.concatenate((a[n - s:], a[:n - s]))
+
+
+def _window_any(flag: np.ndarray, k: int) -> np.ndarray:
+    """`any(np.roll(flag, s) for s in -k..k)`: each sample's ring window of
+    +-k, by a running count instead of 2k + 1 rolls (speed only, 2026-11-19).
+    A boolean either way; `tests/test_speed_exact_1119.py` holds it to the
+    roll loop."""
+    n = len(flag)
+    if 2 * k + 1 >= n:
+        return np.full(n, bool(flag.any()))
+    ext = np.concatenate((flag[n - k:], flag, flag[:k])) if k else flag
+    c = np.concatenate(([0], np.cumsum(ext, dtype=np.int64)))
+    w = 2 * k + 1
+    return (c[w:] - c[:-w]) > 0
+
+
 def _turn_radius(pts: np.ndarray, k: int) -> np.ndarray:
     """Local turn radius at every sample, from the circumcircle of (i-k, i, i+k).
 
     Straight stretches come back as `inf`, which is what the corner detector
     wants: a threshold on radius flags corners and never flags a straight.
     """
-    a = np.roll(pts, k, axis=0)
+    a = _roll0(pts, k)
     b = pts
-    c = np.roll(pts, -k, axis=0)
+    c = _roll0(pts, -k)
     ab = np.hypot(*(b - a).T)
     bc = np.hypot(*(c - b).T)
     ca = np.hypot(*(a - c).T)
@@ -193,11 +221,9 @@ def _relax_corners(pts: list[tuple[float, float]], r_corner: float, k: int
             break
         # Widen the flag to the window so the fix is spread over the corner
         # rather than pinned to its apex.
-        mask = np.zeros(n, dtype=bool)
-        for s in range(-k, k + 1):
-            mask |= np.roll(sharp, s)
-        prev = np.roll(p, 1, axis=0)
-        nxt = np.roll(p, -1, axis=0)
+        mask = _window_any(sharp, k)
+        prev = _roll0(p, 1)
+        nxt = _roll0(p, -1)
         moved = 0.25 * prev + 0.5 * p + 0.25 * nxt
         new = np.where(mask[:, None], moved, p)
         # Cap how far any sample may retreat from the true edge. Uncapped, the
