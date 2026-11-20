@@ -87,6 +87,17 @@ def _digest(fixture: str, **kw) -> tuple:
 
 @lru_cache(maxsize=None)
 def _case(fixture: str, small: bool) -> _Case:
+    """`_case_run` on the engine its numbers were read on: the colour switches
+    folded into the code 2026-11-20 (`docs/flag-history/tier-b3-colour.md`) were
+    False in `PRE_FLIP`, and gaulke's grey halo this file takes as its premise is
+    what they removed, so `legacy_engine` patches their False paths back."""
+    from tests.conftest import PRE_FLIP_FOLDED, legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, **PRE_FLIP_FOLDED)
+        return _case_run(fixture, small)
+
+
+def _case_run(fixture: str, small: bool) -> _Case:
     """One pipeline run per (fixture, flag), reused by every test.
 
     WHY THE CACHE. Written straight through, this file ran `run_stages` about

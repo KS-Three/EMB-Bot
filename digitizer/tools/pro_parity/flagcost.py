@@ -74,7 +74,6 @@ FLAGS: dict[str, object] = {
     "subpixel_corner_runs": False,          # 2026-10-20, Kent's flip (item 41)
     "lettering_columns_small_stem": False,  # 2026-10-20, Kent's flip (item 52)
     "clip_keep_pieces": False,              # 2026-10-20, Kent's flip (item 46, after the halo lever)
-    "dissolve_phantom_blends": False,       # 2026-10-20, Kent's flip (item 46, PR #1003)
     "detail_spokes": False,                 # 2026-10-16, Kent's flip ("ON, tightened")
     "bean_letter_counter_hold_mm": None,    # 2026-10-15, Kent's flip (0.25)
     "bean_letter_bay_hold": None,           # 2026-10-15, Kent's flip (0.2)
@@ -91,10 +90,7 @@ FLAGS: dict[str, object] = {
     "lettering_columns_skip_blobs": False,  # 2026-10-13, Kent's flip
     "enclosed_by_garment": False,       # 2026-09-10
     "subpixel_edges": False,            # 2026-09-09
-    "design_ramp": False,               # 2026-09-04
     "curve_turn_deg": None,             # 2026-09-03
-    "merge_duplicate_cones": False,     # 2026-09-02
-    "rehome_resnapped": False,          # 2026-09-01
     "edge_cap": "off",                  # 2026-09-01, flipped to "bean" 09-11
     "borders_last": False,              # 2026-08-31, just outside but cheap
 }

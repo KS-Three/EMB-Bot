@@ -40,25 +40,27 @@ CFG = dict(
     garment_id="left_chest",
     bg_border_agreement_min=0.0,
     bg_border_rival_min=0.0,
-    # The Azalea Pink sliver these tests trace is the RAG merge cutting the
-    # repro's sweep and leaving a drifted fragment behind. Since 2026-09-04
-    # (Kent's gradient ruling, `design_ramp.py`) the sweep is flattened
-    # before the merge and the sliver no longer exists on the default lane;
-    # the pre-ruling lane is kept reachable for exactly this kind of pin.
-    design_ramp=False,
-    # And since the 2026-09-10 flip of `robust_region_colour` the sliver's
-    # stage-2 colour is its modal pixels', not the pinkish-white MEAN blend
-    # Azalea Pink was matched to, so the drift never forms either; the
-    # mean-point engine (False, byte for byte) is the state this pin traces.
-    robust_region_colour=False,
-    # And since the 2026-09-30 flip of `snap_region_edges` the sliver's
-    # pixels are handed back to the regions whose colour they carry, so it
-    # is gone a third way; the superpixel-edged engine is the state traced.
-    snap_region_edges=False,
     # And since 2026-11-06 (`stage0_scale_relative_grad` ON) the repro reads
     # flat (tonal_frac 0.063) and never reaches the gradient lane's merge.
     stage0_scale_relative_grad=False,
 )
+
+
+@pytest.fixture(autouse=True)
+def _pre_ruling_engine(monkeypatch):
+    """The Azalea Pink sliver these tests trace is the RAG merge cutting the
+    repro's sweep and leaving a drifted fragment behind. Since 2026-09-04
+    (Kent's gradient ruling, `design_ramp.py`) the sweep is flattened
+    before the merge and the sliver no longer exists on the default lane.
+    And since the 2026-09-10 flip of `robust_region_colour` the sliver's
+    stage-2 colour is its modal pixels', not the pinkish-white MEAN blend
+    Azalea Pink was matched to, so the drift never forms either. And since
+    the 2026-09-30 flip of `snap_region_edges` the sliver's pixels are handed
+    back to the regions whose colour they carry, so it is gone a third way.
+    The three switches are in the code now (2026-11-20), so the engine this
+    pin traces is rebuilt by patching what each False branch did."""
+    from tests.conftest import legacy_engine
+    legacy_engine(monkeypatch, design_ramp=True, robust=True, snap=True)
 
 
 def _footprints(result, p):

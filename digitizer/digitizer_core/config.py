@@ -212,8 +212,12 @@ def counter_floor_mm(base_mm: float, thread_wt: int) -> float:
 # (`tests/test_retired_fields.py`).
 RETIRED_FIELDS: frozenset[str] = frozenset({
     "beanie_knockdown",
+    "bind_resnap_all_classes",
+    "blend_fallback_underlay",
     "compact_solids_satin",
     "coverage_edges",
+    "design_ramp",
+    "dissolve_phantom_blends",
     "edge_cap_follow_adjacent",
     "edge_cap_skip_bean_letters",
     "edge_cap_skip_lettering",
@@ -225,7 +229,11 @@ RETIRED_FIELDS: frozenset[str] = frozenset({
     "layer_palette_from_regions",
     "lettering_columns_apex_cut",
     "line_chain_one_thread",
+    "merge_adjacent_same_thread",
+    "merge_duplicate_cones",
+    "rehome_resnapped",
     "resnap_hairline_never_lightens",
+    "robust_region_colour",
     "satin_cap_recentre",
     "satin_corner_twigs",
     "satin_crown_cover",
@@ -246,9 +254,13 @@ RETIRED_FIELDS: frozenset[str] = frozenset({
     "small_dot_rung_lettering",
     "small_shape_rescue",
     "small_solids_satin",
+    "snap_region_edges",
     "split_satin",
+    "strip_letterbox",
     "tie_in_off",
     "trim_bury_under_later",
+    "two_tone_snap",
+    "white_keyline_art_recipe",
 })
 
 
@@ -619,36 +631,6 @@ class PipelineConfig:
     merge_delta_e: float = 6.0
     aa_iterations: int = 2             # AA-halo majority-filter passes
     aa_phantom_edge_frac: float = 0.9  # cluster >90% edge pixels = phantom blend color
-    # Run that same phantom-blend dissolve on the PHOTO/GRADIENT lane's
-    # merged labels (`stage2_photo_segment.dissolve_phantom_blends`). The
-    # flat lane above has always done it; this lane never has, and a JPEG
-    # logo pays for the gap in cones — `logo_bridge_bar.jpg` sews the
-    # ringing around its black spokes as four grey threads
-    # (`docs/kent-review-2026-09-03.md`). Built and banked OFF by Kent
-    # on 2026-09-04 (two mild negatives, Whale's leftover shards). ON since 2026-10-20, by
-    # Kent's ruling 2026-10-20 on MASTER_SCOPE item 46, read off PR #1003's
-    # pricing (80 mm, left chest): bridge 17,653 -> 15,196 stitches and
-    # 89 -> 66 trims, and it cuts the thin grey halo `clip_keep_pieces`
-    # would sew from 19.06 to 3.06 mm²; golden_tee +25 stitches, +3 trims;
-    # drone, chrome, sunset and gaulke identical. The residual is defect
-    # 27's own (`0111` Whale shards, cause not established). False is the
-    # pre-flip engine (`tests/conftest.py`'s PRE_FLIP).
-    dissolve_phantom_blends: bool = True
-    # Defect 58: a black-and-white logo sews four to six cones, because thin
-    # strokes on a low-resolution source are mostly anti-alias grey. ON, a
-    # raster `two_tone.detect` reads as two inks (achromatic, two modes, no
-    # grey plateau) is thresholded to those two inks right after stage 1, so
-    # no region ever sees the grey. Per IMAGE, which is why it leaves
-    # `logo_bridge_bar.jpg`'s ringing alone where the per-region stroke rule
-    # did not (DOCTRINE 2026-10-05). ON by default since 2026-10-11, on Kent's
-    # approval of 2026-10-08 ("Fix the roof-line bug, then flip"):
-    # `two_tone.keep_lines` keeps golke's white roof lines (they sewed as one
-    # black mass) and preflight's thread grader reads the snapped raster
-    # (`preflight._two_tone_view`; unsnapped, it blocked White under those
-    # lines). The thread-match/resnap tests whose premise is gaulke's grey
-    # halo, which the snap removes, measure the pre-flip engine through
-    # `tests/conftest.py`'s PRE_FLIP. False is the pre-flip engine.
-    two_tone_snap: bool = True
     # Sew the art's thin white lines (`two_tone.keep_lines`) BEFORE the ink
     # either side of them (`page_line.py`, built OFF 2026-11-17, prime
     # grader's gaulke_roofing_hat: the hairline gap under the inner roof sews
@@ -672,37 +654,6 @@ class PipelineConfig:
     # sew-out: "Flip ON (Recommended)"). `page_line_front` stays OFF. False is
     # the engine as it was; PRE_FLIP (PAGE_LINE_OPEN_2026_11_17_OFF) pins it.
     page_line_open: bool = True
-    # Make the gradient lane's region edges follow the PIXELS rather than the
-    # SEEDS superpixels they are built from
-    # (`stage2_photo_segment.snap_region_edges`). Measured 2026-09-30 on
-    # Kent's real Instagram file: 148 superpixels straddle the white icon's
-    # edge and 7.6% of the white sews on the wrong side — the jagged ring
-    # and bitten dot — while forced flat sews the same shapes clean. Gradient
-    # class only. Built OFF; ON since 2026-09-30, Kent's flip on renders of his
-    # Instagram file at 80 and 188 mm, `drone_render`, Bridge Bar and the
-    # repro (it moves the region set on every gradient-class design, which
-    # is why it waited on his eye and not on a green suite).
-    snap_region_edges: bool = True
-    # The colour each SLIC+RAG region hands the palette. False: the plain
-    # mean of its pixels, which a big flat region full of drawn-on inclusions
-    # turns into a colour no pixel carries — Bridge Bar's yellow disc
-    # reads (223, 220, 77) for pixels at (251, 235, 65), 12 ΔE00 towards
-    # lime, because the black lettering, bird and rope inside it pull the
-    # mean through their anti-aliased edges; the palette then rightly
-    # picks Limelight for that point and the bound re-snap holds it
-    # (found by #442's test run; DOCTRINE 2026-09-10). True: a robust centre
-    # of the region's Lab pixels (`stage2_photo_segment.ROBUST_REGION_STAT`
-    # names the statistic — the modal mean, the mean over the pixels within
-    # DELTA_E_VISIBLE of the per-channel median, chosen over the median by
-    # `tools/region_colour.py`'s census). Only that one point moves: the
-    # shade-demand buckets and the tonal split keep their means. DEFAULT ON
-    # since 2026-09-10 — built OFF that day (PR #445) and flipped in the PR
-    # after on Kent's ruling over the flip sheet and the Bridge Bar render
-    # (the disc `6031` Limelight → `0501` Sun; the price a synthetic stub's
-    # +3,382 stitches / +29 trims at 12 and drone's 211 mm² orange one
-    # spool step at the Studio's 6). False is the pre-flip engine byte for
-    # byte. Plan: `docs/superpowers/plans/2026-09-10-region-colour.md`.
-    robust_region_colour: bool = True
 
     # Stage 1
     bg_tolerance_lab: float = 6.0      # Delta-E-ish flood tolerance
@@ -2927,22 +2878,6 @@ class PipelineConfig:
     # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     keyline_fold_slivers: bool = True
-    # `white_keyline_art_recipe` (BUILT OFF 2026-10-26, `white_keyline_art`):
-    # the white-keyline recipe -- `silhouette_underfill`, `sew_enclosed_white`,
-    # `enclosed_white_keyline`, `silhouette_underfill_panels`,
-    # `outline_loop_mitre`, `silhouette_underfill_rim` -- turns ON by itself,
-    # but only on white-keyline art: a dark host round a white field that
-    # outlines letters (MFab's keyline round M-FAB). Kent, 2026-10-26: "Gate to
-    # MFab art first (Recommended)" -- as a default for all art the recipe
-    # damaged four of 20 other paired jobs (Gaulke, Tires, ProSeal, Becker).
-    # Read on the stage-4 regions in `finish_generation`, before the recipe's
-    # first switch acts; it holds on MFab hat and LC and on none of the other
-    # 20. ON by default since 2026-10-26, Kent's ruling, verbatim: "Gate to
-    # MFab art first (Recommended)" -- "The recipe turns on by default only
-    # where a dark shape carries white outlines round letters (the panels lane
-    # already detects this). Only MFab changes now." False is the off arm.
-    # Tests: `tests/test_white_keyline_art.py`.
-    white_keyline_art_recipe: bool = True
     # `absorb_fragments` (2026-10-27): `fragment_absorb` -- a fragment sewn as
     # part of the body of its own thread it lies against. Built OFF as
     # `cfg.extra["absorb_fragments"]` (2026-10-25), which still wins when set;
@@ -5517,30 +5452,6 @@ class PipelineConfig:
     fill_order_sewn_paths: bool = False
 
 
-    # Underlay under a gradient-class design's ordinary fills. Built OFF
-    # 2026-10-05; ON since 2026-10-07 by Kent's ruling, because OFF a
-    # gradient-class design sewed every fill with no underlay at all. Measured
-    # when built (six real gradient logos, 80 mm): bare fills 33/33 -> 5/33
-    # for +1.7% stitches, trims 423 -> 421 (Fremont pays +6). On the knit
-    # presets the style is `edge_run`, so a fill gains only its perimeter
-    # walk; the interior pass is a separate gate-1 item (corpus law 26) and
-    # is not changed here. `docs/renders/blend-fallback-underlay-2026-10-05/`.
-    # Stage 7 routes every auto-tier fill of a
-    # design classed "gradient" through `stage6_blend.blend_fill`, which
-    # sewed `underlay_style="none"` on both of its paths and was never handed
-    # the style stage 7 resolves for every other fill tier (the fabric
-    # preset's `fill_underlay`, `underlay_style`, the per-shape override). So
-    # on such a design no fill had any underlay, not even the edge run, and
-    # the three controls did nothing: 10 of 14 real-art fixtures, 100% of
-    # their fill area (`docs/underlay-research-2026-10-05.md` §2).
-    # True: the FALLBACK path — a region that is not a ramp and sews as
-    # full-density tatami, which is nearly every real region — sews the
-    # resolved style. The ramp-band path stays bare on purpose: Wilcom and
-    # mySewnet both say no underlay under a variable-density blend (§4).
-    # No constant is added; the style and its spacings are the ones the flat
-    # lane already sews. False is byte-identical to the engine before it.
-    # `tests/test_blend_fallback_underlay.py`.
-    blend_fallback_underlay: bool = True
 
     # Built OFF 2026-10-08. The fill underlay's 1.0 mm inset
     # (`machine.UNDERLAY_INSET_MM`) splits a shape at any neck under 2 mm, and
@@ -5726,29 +5637,6 @@ class PipelineConfig:
     # explicitly by tests/test_shade_palette_bind.py, so the old path stays
     # reachable and tested rather than becoming dead-by-default.
     shade_palette_bind: bool = True
-    # Fold CONSECUTIVE same-thread colour blocks into one (2026-08-28, from
-    # Kent's own owl and his "quality first, then efficiency" ordering).
-    # A stop between two blocks sewing the identical cone makes the operator
-    # cut and re-thread the spool already on the machine. Measured on
-    # testdata/photo/owl_kent.jpg at 100 mm, is_photographic=True: 17 blocks
-    # over 12 spools, and two of the sixteen stops (t46 at blocks 3-4, t12 at
-    # 14-15) separate blocks in the SAME thread.
-    # Strictly a bookkeeping merge: nothing is reordered and no stitch moves,
-    # so stage 5's coverage/underlap plan is untouched -- which is what makes
-    # this safe where the NON-adjacent merge (the same cone revisited with
-    # other colours in between, t4 at blocks 0/2/7 on the same run) is not.
-    # That one needs stage 5's `covered_by` to prove no seam moves, and is
-    # deliberately NOT attempted here.
-    # Default ON: the merge is a no-op wherever no two adjacent blocks share a
-    # thread, which is every flat design measured here, so the byte-identical
-    # goldens are unaffected by construction. False keeps the pre-2026-08-28
-    # path reachable and tested rather than dead-by-default, the same posture
-    # `shade_palette_bind` keeps for its own off-path.
-    # Since 2026-10-20 it also covers the seam into the edge cap: a cap block
-    # in the last artwork block's cone sews at the end of that block
-    # (`stage7_sequence._cap_seam_joins`, defect 18's edge_cap route). Same
-    # stitches, same cuts, one stop fewer; False restores the separate block.
-    merge_adjacent_same_thread: bool = True
     # The NON-adjacent half of the same revisit defect (2026-08-28): a cone
     # sewn, left for other colours, and returned to. Unlike the adjacent merge
     # this genuinely reorders stitches, so it is gated on geometry rather than
@@ -5770,27 +5658,6 @@ class PipelineConfig:
     # behaves on cloth. Kept conservative for that reason: too large only
     # declines merges, which costs stops rather than quality.
     hoist_same_thread_margin_mm: float = 0.5
-    # The UPSTREAM half of the same revisit defect (2026-08-31): a region the
-    # pipeline itself re-snapped (`revalidate_threads`) joins the layer that
-    # DECLARES its new cone, before stage 5 plans coverage, so one spool sews
-    # at one position and no after-the-fact disjointness proof is needed —
-    # see `stage4_vectorize.rehome_resnapped_regions` for the three refusals
-    # (stamped re-snaps only, declared cones only, never a step region).
-    # Default ON: a no-op on any design with no re-snap (all four flat-lane
-    # golden fixtures, measured 2026-08-31), so the byte-identical goldens
-    # are unaffected. False keeps the pre-2026-08-31 split reachable and is
-    # the lever the sequencing A/B used — same posture as the two passes
-    # above, which remain downstream as the net for other split sources.
-    rehome_resnapped: bool = True
-    # The design ramp (2026-09-04, Kent's gradient ruling: one region when
-    # the design ramp fits — `design_ramp.py`). ON: a gradient-class design
-    # whose whole-design ramp passes the fit's gate is segmented with the
-    # sweep subtracted and sewn as one set of shade bands. False keeps the
-    # pre-2026-09-04 gradient lane reachable and tested — the same posture
-    # as `rehome_resnapped` above: the repro's drifted-sliver fixture that
-    # `test_thread_revalidate` traces exists only on that lane, because the
-    # sliver is the merge cutting the sweep. Never read on any other class.
-    design_ramp: bool = True
     # Width of the feathered seam between two shade bands of a blend
     # (2026-09-04, Kent's call: "feather the band seams"). None takes
     # `machine.BLEND_FEATHER_MM`; 0 is the hard seam with the 0.25 mm
@@ -5873,41 +5740,6 @@ class PipelineConfig:
     # tests/test_cap_center_out.py pins the default, the two keys, the
     # precedence against `sew_order` and `borders_last`, and the off-lane no-op.
     cap_center_out: bool = False
-    # One cone, one layer (defect 18, the SECOND spool-revisit mechanism).
-    # Stage 2 quantizes to COLOURS, and two quantized colours can snap to one
-    # physical cone: `drone_render` @ 80 mm declares 21 palette slots holding
-    # only 17 distinct threads, with t16, t308, t119 and t101 each declared
-    # TWICE. Nothing deduped them, so the operator was sent to the rack twice
-    # for one spool and the second visit sewed a fragment late over finished
-    # work — t16 at 46.1% then 40 st at 98.9%, t119 at 77.1% then 60 st at
-    # 99.4%. That is the sew-out's own tail pattern by another route.
-    #
-    # ON folds each duplicate into the FIRST layer declaring its cone
-    # (`stage3_segment.merge_duplicate_cone_layers`), upstream of stage 5 so
-    # coverage, underlap and every seam derive from the merged order — the
-    # same one-consistent-story argument `rehome_resnapped` and
-    # `borders_last` both make. Downstream repair is NOT equivalent and is
-    # why this exists: `_hoist_same_thread` attempts it after the fact and
-    # correctly declines wherever the moved thread touches what it jumps
-    # over, which on this fixture is most of them.
-    #
-    # Pure sequencing — no physical constant enters, gate 1 untouched.
-    # Default ON since Kent's 2026-09-01 ruling, taken with the measured
-    # pass in hand (the same posture and the same call he made for
-    # `borders_last`): on `drone_render` the fold buys two fewer operator
-    # stops, removes both cone revisits, and costs LESS thread —
-    # 9486 -> 9321 stitches and 1295 -> 1237 mm of needle-up travel, over
-    # two more but far shorter lifts. It moves whole clusters (a
-    # duplicate's regions sew at its cone's FIRST position instead of
-    # their own), which is why it was measured before being flipped; the
-    # direction itself is forced, since stage 2 orders the palette
-    # largest-area-first and a duplicate's second slot is by construction
-    # the smaller one. Golden blast radius MEASURED at the flip: none —
-    # every non-duplicating fixture is byte-identical and no committed
-    # golden moves. False keeps the pre-fold order reachable and tested
-    # rather than dead-by-default.
-    # tests/test_duplicate_cone_layers.py pins the default and both paths.
-    merge_duplicate_cones: bool = True
     # Design-silhouette edge cap (2026-09-01, the sew-out's OTHER edge
     # finding). `borders_last` above fixed the ORDER the design's borders
     # sew in; this is about the edge that has no border at all. On Kent's
@@ -6304,67 +6136,6 @@ class PipelineConfig:
     # move with it.
     classify_area_weighted: bool = False
 
-    # Strip letterbox/pillarbox bars from the upload before any ink rule
-    # reads them. See digitizer_core/letterbox.py for the defect: a PHONE
-    # SCREENSHOT of a logo arrives with pure-black bars filling most of the
-    # frame, every ink rule here reads darkness as ink, and the result is a
-    # POLARITY INVERSION -- the engine sews the GROUND in near-white thread
-    # and leaves the logo as negative space. White thread on white cloth, an
-    # unusable file. `photo/logo_gaulke_roofing.png` is exactly that input and
-    # was ranked worst of fourteen by eye
-    # (docs/artfid-eye-agreement-2026-09-11.md).
-    #
-    # ON, verified by render 2026-09-11: both text lines legible in black,
-    # mark solid and correctly polarised. Blast radius is one fixture -- the
-    # other 13 tracked fixtures are byte-identical on (route, stitch count).
-    #
-    # **DEFAULT ON since 2026-09-14** (Kent: "proceed with all of the
-    # suggestions"). It shipped OFF on 2026-09-11, and the reason was never
-    # caution about the fix: turning it on changes
-    # `photo/logo_gaulke_roofing.png`, and that fixture's PATHOLOGY was
-    # LOAD-BEARING for 13 tests (the entry said 11; the suite had grown).
-    # Flipping it was therefore not a one-line change but a fixture job, and
-    # the rule for that job is DOCTRINE's: re-point each test at something
-    # that still carries the property it is testing, NEVER at whatever the
-    # engine now happens to emit.
-    #
-    # What that came to, test by test:
-    #
-    #  * `test_preflight.test_a_full_bleed_design_does_not_report_its_own_
-    #    border` KEPT this fixture, and now for a better reason. It used to
-    #    be the corpus's only full-bleed design by ACCIDENT of the bars being
-    #    read as ink; cropped, the white band runs edge to edge on its own
-    #    (`bg_mask` 0.000%, BACKGROUND_ABSENT), which the test now asserts
-    #    rather than assumes. Its bound also moved off a single drifting
-    #    number onto the defect's own signature -- a permanent rim strip
-    #    means non-zero TOTAL uncovered area, and that reads 0.0.
-    #  * `test_enclosed_by_garment` moved to `testdata/black_ground_holes.png`
-    #    (`tools/make_black_ground_fixture.py`), which is letterbox-PROOF by
-    #    construction: its ground is black on all four sides, and a uniform
-    #    border on both axes is a margin this module never strips.
-    #  * The `test_resnap_mask_matches_grader` group moved to
-    #    `photo/logo_bridge_bar.jpg`, and the reason is the one thing a
-    #    spool-ID re-pin would have HIDDEN. On the cropped gaulke the
-    #    phenomenon does not move, it INVERTS: the shipped engine used to
-    #    pick `3971 Silver` here and the flag declined it; after the crop the
-    #    flag CAUSES a Silver pick. Renaming the pinned shape id would have
-    #    made CI green while asserting the opposite of what the guard
-    #    protects. bridge_bar still shows the real thing (OFF picks Silver on
-    #    `S60139fba`, ON moves it to `0108`) and carries no bars, so it
-    #    cannot lose the property to this change.
-    #
-    # KNOWN, and NOT fixed by this flip: with the bars gone the band's own
-    # soft shadow edges (a ~12 px 235->216 gradient down each side, measured)
-    # drop border agreement to 0.693, so background detection reports
-    # BACKGROUND_ABSENT and the white ground is still sewn. That is stage 1's
-    # border flood, not letterboxing -- and `preflight.GROUND_SEWN` now
-    # REPORTS it at block severity (79.9% of the stitched area here), which
-    # is what stops the file at the Studio's download confirm.
-    #
-    # `strip_letterbox=False` remains the pre-2026-09-14 engine, byte for
-    # byte, and every byte-identical claim in this repo's history was
-    # measured there.
-    strip_letterbox: bool = True
 
     # Normalized crop rectangle (x0, y0, x1, y1) as fractions 0..1 of the
     # SUBMITTED raster, applied at decode time in stage 0 AND stage 1 before
@@ -6561,25 +6332,6 @@ class PipelineConfig:
     # `tests/test_element_dropped.py`.
     dropped_element_v2: bool = True
 
-    # Bind stage 4's thread re-snap to the selected palette on EVERY class,
-    # not only the photo ones. `revalidate_threads`' argmin runs over the whole
-    # chart off the photo route, so a re-snapped shape can pull in a spool the
-    # palette never chose and the operator loads a cone the plan does not name.
-    #
-    # Counted 2026-09-06 (`tools/resnap_escape.py`, MASTER_SCOPE 15): across
-    # the corpus the pass adds **34 cones, 25 of them outside the selected
-    # palette, and every escape is on the GRADIENT lane** — screenshot 7,
-    # drone_render 5, bridge_bar 5, golden_tee 4, gaulke 3. All nine
-    # photo-class fixtures add none: the 2026-08-23 binding does its job, and
-    # the lane real customer logo art routes to never got it.
-    #
-    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle): the
-    # escape is on the FLAT lane too once real logos are forced there
-    # (Golden Tee sews 24 cones under a budget of 12; the bind takes 13 off),
-    # so "gradient only" was a count over routed fixtures. At the Studio's 6
-    # it takes 34 cones and 34 stops off six corpus designs. False is the
-    # pre-flip engine byte for byte.
-    bind_resnap_all_classes: bool = True
 
     split_satin_above_mm: float | None = None
 
