@@ -412,5 +412,7 @@
  "lettering_columns_r_bowl": false,
  "lettering_columns_block_butt_small": false,
  "lettering_columns_a_bar": false,
- "lettering_columns_block_lean": false
+ "lettering_columns_block_lean": false,
+ "puff": false,
+ "puff_mode": "all"
 }

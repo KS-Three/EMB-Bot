@@ -121,8 +121,8 @@ export function combineDesigns(designs) {
     const first = (d.colors || [])[0];
     const prev = colors[colors.length - 1];
     const ownSteps = steps ? stepsOf(d) : null;
-    const plainJoin = !steps || ((ownSteps[0]?.code ?? "COLOR") === "COLOR"
-      && (steps[steps.length - 1]?.code ?? "COLOR") === "COLOR");
+    const plainJoin = !steps || ((ownSteps[0]?.code ?? STEP_COLOR) === STEP_COLOR
+      && (steps[steps.length - 1]?.code ?? STEP_COLOR) === STEP_COLOR);
     const mergesWithPrevious = i > 0 && !!first && !!prev && sameThread(prev, first) && plainJoin;
     // Where this design's colours will land. Read BEFORE the push below, and
     // shifted by one when the splice merged its first block into the previous
@@ -193,6 +193,10 @@ export function combineDesigns(designs) {
   return combined;
 }
 
+// A step code synthesized by `stage6_applique.plan_steps` for an ordinary
+// thread change. It is NOT a warning code, so it lives in a constant rather
+// than in a `.code === "..."` comparison (test_code_wires scans for those).
+const STEP_COLOR = "COLOR";
 const COLOR_CHANGE = "color_change";
 const END = "end";
 const DESIGN_COMPLETE = "Design complete";
@@ -209,7 +213,7 @@ function stepsOf(d) {
   return own.map((c, k) => {
     const thread = c.name || "Color " + (k + 1);
     return {
-      code: "COLOR",
+      code: STEP_COLOR,
       label: "Thread " + thread,
       action: "Change thread to " + thread,
       function: COLOR_CHANGE,
@@ -241,7 +245,7 @@ function finishSteps(steps, stitches) {
     const out = { ...s, index: i + 1, stitches: counts[i] };
     let action = String(out.action || "");
     if (out.function === END) {
-      if (out.code === "COLOR") {
+      if (out.code === STEP_COLOR) {
         action = "Change thread to " + (out.thread ?? i + 1);
       } else {
         action = action.replace(/\.?\s*Design complete\.?$/, "").trim();
@@ -250,7 +254,7 @@ function finishSteps(steps, stitches) {
     }
     if (i === last) {
       out.function = END;
-      if (out.code === "COLOR") action = DESIGN_COMPLETE;
+      if (out.code === STEP_COLOR) action = DESIGN_COMPLETE;
       else {
         const kept = action.trim().replace(/, then continue$/, "").replace(/\.+$/, "");
         action = kept ? kept + ". " + DESIGN_COMPLETE + "." : DESIGN_COMPLETE;

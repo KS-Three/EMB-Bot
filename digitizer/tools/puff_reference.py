@@ -139,11 +139,12 @@ def measure_puff_reference(path: Path) -> dict:
 
 
 def main(argv=None) -> int:
-    argv = sys.argv[1:] if argv is None else argv
-    if len(argv) != 1:
-        print(__doc__)
-        return 2
-    print(json.dumps(measure_puff_reference(Path(argv[0])), indent=2))
+    import argparse
+    ap = argparse.ArgumentParser(
+        prog="puff_reference", description=(__doc__ or "").split("\n\n")[0])
+    ap.add_argument("path", help="a professionally digitized puff .PES or .DST")
+    args = ap.parse_args(argv)
+    print(json.dumps(measure_puff_reference(Path(args.path)), indent=2))
     return 0
 
 

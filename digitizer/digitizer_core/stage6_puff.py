@@ -624,7 +624,7 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
     def ineligible(p, reason):
         warnings.append(warn(
             PUFF_SHAPE_INELIGIBLE,
-            f"Shape {p.shape_id} can't be puffed ({reason}), so it sews flat.",
+            f"Shape {p.shape_id} can't be puffed, so it sews flat.",
             shape_id=p.shape_id, reason=reason))
 
     # Held until the letter rule below has run: a tittle refused here as no
