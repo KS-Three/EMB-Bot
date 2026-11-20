@@ -454,6 +454,25 @@ PUFF_TACKDOWN_STITCH_MM = 2.0  # unmeasured — §3; replace from TIRES HAT 3D
 # holding the foam's position. The §3.7 walk above sews after the stop, as
 # the start of each shape's puff satin.
 PUFF_GRIP_STITCH_MM = 4.0  # unmeasured — §3; replace from TIRES HAT 3D
+# R18 (Kent 2026-11-19: "If you 3D one part of the letter, the entire letter
+# should be 3D"): a detached letter part -- an i/j tittle, an accent -- joins
+# its letter's puff. The pipeline's letter grouping (`text_cluster_id`) is per
+# WORD, so the part is found by geometry instead. These are GEOMETRY
+# TOLERANCES that recognise a part, not gate-1 physical constants: nothing
+# here changes how a stitch sews.
+# A part is compact: its area at most this many times its widest inscribed
+# circle's (a disc 1.0, a square 1.27, a 3:1 oval 3.0; the TIRES i-dot reads
+# 1.10, its letter strokes 11-29), so a letter stroke never qualifies.
+PUFF_LETTER_PART_MAX_ELONGATION = 3.0
+# ...and small: a 14 mm disc is 154 mm². Past the 11 mm puff ceiling on
+# purpose, so a slightly oversize dot is still recognised and sews flat with
+# "too wide to puff" named rather than an unexplained "not a column".
+PUFF_LETTER_PART_MAX_AREA_MM2 = 160.0
+# It sits beside its letter: the nearest non-ground shape is a puffed shape
+# of the same thread, within this many of the part's own widest diameters
+# (TIRES: the 5.3 mm dot 3.2 mm off its stroke, 0.6x; a typeface tittle
+# gap runs well under one dot diameter).
+PUFF_LETTER_PART_GAP_FACTOR = 1.5
 # The wide-column ceiling (quality review 2026-09-08 item 4; plan
 # 2026-09-09-wide-column-policy.md), live only under `cfg.wide_columns`,
 # DEFAULT OFF. Read off five commissioned Becker files sewn on garments —

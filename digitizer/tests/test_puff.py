@@ -295,8 +295,8 @@ def tires_puff():
     """The puff-on end-to-end fixture. logo_whitebg.png has no shape stage 7
     sews as a satin column in the puff band (its one in-band candidate is
     pinned `tier: "fill"` by `columns.py`), so it puffs nothing;
-    logo_script_tires.png puffs one thread and sews a flat block of that
-    same thread straight before the puff blocks."""
+    logo_script_tires.png puffs one thread: since R18 every stitched shape of
+    it, the i's tittle included (before, the tittle sewed flat)."""
     return digitize(TESTDATA / "logo_script_tires.png", cfg(garment_id="hat_front", puff=True))
 
 
@@ -481,12 +481,17 @@ def test_puff_not_merged_with_flat(tmp_path):
 
 def test_puff_not_merged_with_flat_tires(tires_puff):
     _result, plan = tires_puff
+    # Before R18 the flat block of the puff thread straight before the puff
+    # blocks was the i's tittle; it now puffs with its letter, so TIRES has
+    # no flat block left and the design opens on the foam stop.
+    # `test_puff_not_merged_with_flat` keeps the same-thread adjacency.
     puff = [b for b in plan.blocks if _is_puff(b)]
     k = plan.blocks.index(puff[0])
-    assert plan.blocks[k - 1].step is None
-    assert plan.blocks[k - 1].thread_index == puff[0].thread_index
+    assert all(_is_puff(b) for b in plan.blocks[k:])
     puff_ids = {r.shape_id for b in puff for r in b.runs}
-    assert not puff_ids & {r.shape_id for r in plan.blocks[k - 1].runs}
+    flat = plan.blocks[:k]
+    assert all(b.step is None for b in flat)
+    assert not puff_ids & {r.shape_id for b in flat for r in b.runs}
 
 
 def test_puff_not_merged_stub():
@@ -671,3 +676,107 @@ def test_puff_grip_is_a_grip_not_a_walk_tires_114():
     assert tack
     n = sum(len(r.points) for b in tack for r in b.runs)
     assert n < 600, f"PUFF_TACKDOWN sews {n} stitches (the pro's grip is 279)"
+
+
+# --- R18: the whole letter puffs (a tittle joins its letter's puff) ----------
+
+STEM = box(0, 0, 4, 20)                 # the i's stem: a 4 mm column
+DOT = Point(2, 24.5).buffer(2.0, 64)    # its tittle: a 4 mm disc 2.5 mm above
+
+
+def _puff_ids(blocks):
+    return {r.shape_id for b in blocks for r in b.runs}
+
+
+@pytest.mark.parametrize("mode", ["all", "select"])
+def test_letter_dot_joins_its_puffed_letter(mode):
+    """Kent 2026-11-19: "If you 3D one part of the letter, the entire letter
+    should be 3D." All: the dot is wanted but is no column; select: only the
+    stem is ticked. Either way the dot puffs with it, unwarned."""
+    planned = [_PPlanned(STEM, 20, 0, "STEM", puff=True), _PPlanned(DOT, 20, 1, "DOT")]
+    blocks, warnings, remaining = _run_puff_pass(planned, puff_mode=mode)
+    assert _puff_ids(blocks) == {"STEM", "DOT"}
+    assert remaining == []
+    assert not [w for w in warnings if w.get("shape_id") == "DOT"]
+
+
+def test_letter_dot_never_spreads_without_a_puffed_letter():
+    # Select with nothing ticked: the dot does not puff on its own.
+    planned = [_PPlanned(STEM, 20, 0, "STEM"), _PPlanned(DOT, 20, 1, "DOT")]
+    blocks, _w, remaining = _run_puff_pass(planned, puff_mode="select")
+    assert blocks == [] and len(remaining) == 2
+
+
+def test_letter_dot_other_thread_or_far_stays_flat():
+    far = Point(2, 40).buffer(2.0, 64)   # 18 mm away: some other mark
+    planned = [_PPlanned(STEM, 20, 0, "STEM", puff=True),
+               _PPlanned(DOT, 21, 1, "DOT"),        # another thread
+               _PPlanned(far, 20, 2, "FAR")]
+    blocks, _w, remaining = _run_puff_pass(planned, puff_mode="select")
+    assert _puff_ids(blocks) == {"STEM"}
+    assert {p.shape_id for p in remaining} == {"DOT", "FAR"}
+
+
+def test_letter_spread_never_pulls_in_the_background():
+    """A compact ground piece beside the letter (stage 4's
+    `enclosed_background`) never joins, and a ground nearer the dot than
+    its letter is not taken for the dot's neighbour."""
+    ground_dot = Point(-4, 10).buffer(2.0, 64)
+    ground = box(-30, -30, 30, 50).difference(STEM.buffer(0.5)).difference(DOT.buffer(0.5))
+    planned = [_PPlanned(STEM, 20, 0, "STEM", puff=True),
+               _PPlanned(DOT, 20, 1, "DOT"),
+               _PPlanned(ground_dot, 20, 2, "GDOT", enclosed_background=True),
+               _PPlanned(ground, 20, 3, "G", enclosed_background=True)]
+    for mode in ("all", "select"):
+        blocks, _w, _rem = _run_puff_pass(planned, puff_mode=mode)
+        assert _puff_ids(blocks) == {"STEM", "DOT"}
+
+
+def test_letter_dot_out_of_band_stays_flat_with_reason():
+    tiny = Point(2, 22).buffer(1.0, 64)   # a 2 mm dot: too thin for foam
+    planned = [_PPlanned(STEM, 20, 0, "STEM", puff=True), _PPlanned(tiny, 20, 1, "TINY")]
+    blocks, warnings, remaining = _run_puff_pass(planned, puff_mode="select")
+    assert _puff_ids(blocks) == {"STEM"}
+    assert [p.shape_id for p in remaining] == ["TINY"]
+    hit = [w for w in warnings if w["code"] == PUFF_SHAPE_INELIGIBLE]
+    assert [w["shape_id"] for w in hit] == ["TINY"]
+    assert hit[0]["reason"].startswith("too thin for foam (2.0")
+
+
+DISC = Point(0, 0).buffer(2.0, 128)   # a 4 mm round dot
+
+
+def test_puff_compact_shape_closes_the_disc():
+    from digitizer_core.stage6_puff import puff_compact_shape
+    runs = puff_compact_shape(DISC, "d", PipelineConfig(puff=True))
+    assert runs
+    # Coverage from the raised runs alone: the walk is inset, so it can't
+    # be what closes the edge.
+    top = [p for r in runs if r.role == "puff" for p in r.points]
+    assert _covered(DISC.exterior, top) >= 0.8
+    assert all((r.kind == stitches.UNDERLAY) == (r.role == "puff_under") for r in runs)
+    assert any(r.kind == stitches.SATIN for r in runs)
+    n = machine.PUFF_TIE_STITCHES
+    assert runs[0].tie_in_pts == n
+    assert _bounce(runs[0].points[:n + 1]) and _bounce(runs[-1].points[-(n + 1):])
+    # Every penetration lands inside the dot (no foam cut outside the art).
+    grown = DISC.buffer(0.01)
+    assert all(grown.contains(Point(p)) for r in runs for p in r.points)
+
+
+def test_tires_i_dot_puffs_with_its_letter():
+    """End to end at the pro's 114 mm: the i's tittle (the small round
+    shape) sews inside a PUFF block and no PUFF_SHAPE_INELIGIBLE names it."""
+    from digitizer_core.stage6_puff import _max_inscribed_diameter_mm
+    result, plan = digitize(TESTDATA / "logo_script_tires.png",
+                            cfg(garment_id="hat_front", puff=True, puff_mode="all",
+                                target_width_mm=114.0))
+    dots = [r for r in result.regions if not r.meta.get("enclosed_background")
+            and r.polygon.area < 40
+            and r.polygon.area < 1.5 * math.pi * (_max_inscribed_diameter_mm(r.polygon) / 2) ** 2]
+    assert len(dots) == 1, [r.shape_id for r in dots]
+    sid = dots[0].shape_id
+    puff = {r.shape_id for b in plan.blocks if b.step and b.step["code"] == "PUFF" for r in b.runs}
+    assert sid in puff
+    assert not [w for w in plan.warnings
+                if w["code"] == PUFF_SHAPE_INELIGIBLE and w.get("shape_id") == sid]

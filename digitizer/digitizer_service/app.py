@@ -968,17 +968,27 @@ def _sew_facts(plan, region_ids: set[str] | None = None) -> dict[str, dict]:
     return facts
 
 
-def _puff_facts(region, cfg) -> dict:
+def _puff_facts(region, cfg, regions=()) -> dict:
     """`puff_eligible` / `puff_reason` for one shape row (contract v1.11).
     Only when `cfg.puff` is on: with it off (or no cfg) the keys are absent
-    and the review payload is exactly what it was."""
+    and the review payload is exactly what it was. R18: a detached letter
+    part (a tittle) beside a shape in `regions` that can puff is eligible
+    when its own size is in the band, so the Studio does not grey it out."""
     if cfg is None or not getattr(cfg, "puff", False):
         return {}
-    from digitizer_core.stage6_puff import puff_column, puff_eligible
+    from digitizer_core.stage6_puff import (letter_part_anchor, letter_part_eligible,
+                                            puff_column, puff_eligible)
+
+    def can_puff(r):
+        ok, _why = puff_eligible(r, cfg)
+        return ok and puff_column(r, cfg)
+
     try:
         ok, why = puff_eligible(region, cfg)
         if ok and not puff_column(region, cfg):
             ok, why = False, "not a column shape"
+        if not ok and letter_part_anchor(region, regions, can_puff) is not None:
+            ok, why = letter_part_eligible(region)
     except Exception:  # a review row must never fail the job
         return {"puff_eligible": False, "puff_reason": "could not be measured"}
     return {"puff_eligible": bool(ok), "puff_reason": "" if ok else why}
@@ -1059,7 +1069,7 @@ def _review_payload(result, plan=None, cfg=None) -> dict:
                 # shape (`puff_column`). Present ONLY when `cfg.puff` is on
                 # (absent otherwise: an ordinary job pays nothing).
                 # The writable half is `shape_overrides[sid].puff`.
-                **_puff_facts(r, cfg),
+                **_puff_facts(r, cfg, result.regions),
                 # Text-cluster detection (server-computed, read-only — no
                 # `_OVERRIDE_KEYS` entry, same category as `layer` and
                 # `enclosed_background`): whether this shape was tagged as a

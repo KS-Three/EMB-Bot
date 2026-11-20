@@ -72,6 +72,56 @@ def puff_eligible(region, cfg) -> tuple[bool, str]:
     return True, ""
 
 
+# --- R18: a detached letter part joins its letter's puff --------------------
+
+def is_letter_part(region) -> bool:
+    """A small compact shape that could be a detached piece of a letter (an
+    i/j tittle, an accent): never the ground, area and elongation under
+    machine.PUFF_LETTER_PART_*. A letter stroke is far too elongated."""
+    if region.meta.get("enclosed_background"):
+        return False
+    geom = region.polygon
+    if geom.is_empty or geom.area > machine.PUFF_LETTER_PART_MAX_AREA_MM2:
+        return False
+    d = _max_inscribed_diameter_mm(geom)
+    if d <= 0:
+        return False
+    return geom.area <= machine.PUFF_LETTER_PART_MAX_ELONGATION * math.pi * (d / 2) ** 2
+
+
+def letter_part_anchor(region, others, puffs):
+    """The letter `region` is a detached part of, or None: the nearest
+    non-ground stitched shape in `others`, if `puffs(it)` says it puffs, it
+    is on the same thread, and the gap is within PUFF_LETTER_PART_GAP_FACTOR
+    of the part's widest diameter. The ground is never a neighbour (it
+    surrounds everything) and never an anchor."""
+    if not is_letter_part(region):
+        return None
+    near, gap = None, math.inf
+    for o in others:
+        if o is region or o.meta.get("enclosed_background") \
+                or o.meta.get("stitched", True) is False:
+            continue
+        d = region.polygon.distance(o.polygon)
+        if d < gap:
+            near, gap = o, d
+    if near is None or near.thread_index != region.thread_index or not puffs(near):
+        return None
+    limit = machine.PUFF_LETTER_PART_GAP_FACTOR * _max_inscribed_diameter_mm(region.polygon)
+    return near if gap <= limit else None
+
+
+def letter_part_eligible(region) -> tuple[bool, str]:
+    """A joined part's puff band, read on its widest inscribed circle: a
+    round dot has no skeleton width to measure."""
+    d = _max_inscribed_diameter_mm(region.polygon)
+    if d < machine.PUFF_MIN_WIDTH_MM:
+        return False, f"too thin for foam ({d:.1f} mm)"
+    if d > machine.PUFF_MAX_WIDTH_MM:
+        return False, f"too wide to puff ({d:.1f} mm)"
+    return True, ""
+
+
 # --- Ties (§3.9: 5 in, 5 off, for the foam's thickness) ----------------------
 
 def _puff_tie(at, toward) -> list[tuple[float, float]]:
@@ -307,6 +357,74 @@ def puff_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
     return runs
 
 
+# A chord shorter than this is skipped: near a round part's poles it would be
+# the needle hammering one spot. The closed perimeter cuts the foam there. A
+# geometry tolerance, not a physical constant.
+_MIN_CHORD_MM = 0.5
+
+
+def puff_compact_shape(poly, shape_id: str, cfg) -> list[StitchRun]:
+    """A compact non-column part (R18: a tittle, an accent) as puff, which
+    `satin_shape` has no column for. In sew order: §3.7's inset walk, a
+    closed perimeter ON the art edge at PUFF_CAP_SPACING_MM (the cap's
+    perforation, all the way round: a dot has no column ends to cap), then
+    one satin across the short axis at PUFF_SATIN_SPACING_MM, its rails on
+    the edge. No underlay, short stitches off, tied at PUFF_TIE_STITCHES."""
+    del cfg  # same signature as puff_shape; nothing here is configurable
+    rect = poly.minimum_rotated_rectangle
+    c = list(rect.exterior.coords)
+    e1 = (c[1][0] - c[0][0], c[1][1] - c[0][1])
+    e2 = (c[2][0] - c[1][0], c[2][1] - c[1][1])
+    long_e = e1 if math.hypot(*e1) >= math.hypot(*e2) else e2
+    u = _unit(long_e) or (1.0, 0.0)          # stations step along the long axis
+    v = (-u[1], u[0])                         # stitches run across the short one
+    ctr = poly.centroid
+    proj = [(x - ctr.x) * u[0] + (y - ctr.y) * u[1] for x, y in poly.exterior.coords]
+    lo, hi = min(proj), max(proj)
+    reach = 2.0 * math.hypot(*e1) + 2.0 * math.hypot(*e2) + 1.0
+    sp = machine.PUFF_SATIN_SPACING_MM
+    pts: list[tuple[float, float]] = []
+    for k in range(1, max(1, math.floor((hi - lo) / sp)) + 1):
+        s = lo + k * sp
+        if s >= hi:
+            break
+        base = (ctr.x + u[0] * s, ctr.y + u[1] * s)
+        line = LineString([(base[0] - v[0] * reach, base[1] - v[1] * reach),
+                           (base[0] + v[0] * reach, base[1] + v[1] * reach)])
+        piece = line.intersection(poly)
+        parts = [g for g in getattr(piece, "geoms", [piece])
+                 if g.geom_type == "LineString" and not g.is_empty]
+        if not parts:
+            continue
+        seg = max(parts, key=lambda g: g.length)
+        if seg.length < _MIN_CHORD_MM:
+            continue
+        a, b = seg.coords[0], seg.coords[-1]
+        pts += [(float(a[0]), float(a[1])), (float(b[0]), float(b[1]))]
+    if len(pts) < 4:
+        return []
+    top = StitchRun(points=pts, kind=SATIN, shape_id=shape_id, role=ROLE_PUFF)
+    runs: list[StitchRun] = []
+    rings = [poly.exterior, *poly.interiors] if poly.geom_type == "Polygon" else []
+    edges = []
+    cursor = pts[0]
+    for ring in rings:
+        edge = _walk_ring(list(ring.coords)[:-1], cursor,
+                          stitch_mm=machine.PUFF_CAP_SPACING_MM, passes=1)
+        if len(edge) >= 4:
+            edges.append(edge)
+            cursor = edge[-1]
+    walk_from = edges[0][0] if edges else pts[0]
+    for walk in _inset_walk(poly, shape_id, walk_from):
+        _join(runs, walk, poly, shape_id)
+    for edge in edges:
+        _join(runs, StitchRun(points=edge, kind=SATIN, shape_id=shape_id,
+                              role=ROLE_PUFF), poly, shape_id)
+    _join(runs, top, poly, shape_id)
+    _apply_puff_ties(runs)
+    return runs
+
+
 # --- Foam tack-down ----------------------------------------------------------
 
 # How far a thinned walk/grip ring may stray from the traced one: a
@@ -468,19 +586,62 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
             f"Shape {p.shape_id} can't be puffed ({reason}), so it sews flat.",
             shape_id=p.shape_id, reason=reason))
 
-    for p in wanted:
+    # Held until the letter rule below has run: a tittle refused here as no
+    # column may yet join its letter, and then it is not warned at all.
+    pending: dict[int, tuple] = {}
+
+    def column_puff(p):
+        """-> (runs, reason): the ordinary satin-column path."""
         if not puff_column(p.region, cfg, design_class):
-            ineligible(p, NOT_A_COLUMN)
-            continue
+            return None, NOT_A_COLUMN
         ok, reason = puff_eligible(p.region, cfg)
         if not ok:
-            ineligible(p, reason)
-            continue
+            return None, reason
         runs = puff_shape(p.region.polygon, p.shape_id, cfg)
-        if not runs:
-            ineligible(p, "no satin column")
-            continue
-        satins[id(p)] = runs
+        return (runs, "") if runs else (None, "no satin column")
+
+    for p in wanted:
+        runs, reason = column_puff(p)
+        if runs:
+            satins[id(p)] = runs
+        else:
+            pending[id(p)] = (p, reason)
+
+    # R18 (Kent 2026-11-19): "If you 3D one part of the letter, the entire
+    # letter should be 3D." In either mode, a detached part of a puffed
+    # letter (`letter_part_anchor`) puffs with it -- in "select" whether or
+    # not it was ticked, and over a per-shape `puff: False` too, since the
+    # letter is one decision. Only ever adds puff; the ground never joins.
+    # Repeated so a part can join through a part that joined (an umlaut).
+    by_region = {id(p.region): p for p in planned}
+    regions = [p.region for p in planned]
+    tried: set[int] = set()
+    grew = True
+    while grew:
+        grew = False
+        for p in planned:
+            if id(p) in satins or id(p) in tried:
+                continue
+            if letter_part_anchor(
+                    p.region, regions,
+                    lambda r: id(by_region.get(id(r))) in satins) is None:
+                continue
+            tried.add(id(p))
+            ok, reason = letter_part_eligible(p.region)
+            runs = None
+            if ok:
+                runs, _why = column_puff(p)
+                runs = runs or puff_compact_shape(p.region.polygon, p.shape_id, cfg)
+                if not runs:
+                    ok, reason = False, "no satin column"
+            if not ok:
+                pending[id(p)] = (p, reason)
+                continue
+            satins[id(p)] = runs
+            pending.pop(id(p), None)
+            grew = True
+    for p, reason in pending.values():
+        ineligible(p, reason)
 
     picked = [p for p in planned if id(p) in satins]
     # Bottom-to-top, as appliqué orders its pieces: stage 5 settled the layers.

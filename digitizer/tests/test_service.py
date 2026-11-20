@@ -2148,3 +2148,22 @@ def test_puff_mode_400_over_http(client):
                         data={"config": json.dumps({"puff": True, "puff_mode": "every"})})
     assert r.status_code == 400, r.text
     assert "puff_mode" in r.text
+
+
+def test_puff_facts_dot_eligible_when_its_letter_can_puff():
+    """R18: a tittle beside a puff-eligible letter of its own thread is
+    reported eligible, so the Studio does not grey it out; alone, it is
+    no column."""
+    from types import SimpleNamespace
+
+    from shapely.geometry import Point, box
+
+    from digitizer_core import PipelineConfig
+    from digitizer_service.app import _puff_facts
+    c = PipelineConfig(puff=True)
+    stem = SimpleNamespace(shape_id="STEM", polygon=box(0, 0, 4, 20), thread_index=20, meta={})
+    dot = SimpleNamespace(shape_id="DOT", polygon=Point(2, 24.5).buffer(2.0, 64),
+                          thread_index=20, meta={})
+    assert _puff_facts(dot, c, [stem, dot]) == {"puff_eligible": True, "puff_reason": ""}
+    assert _puff_facts(dot, c, [dot])["puff_eligible"] is False
+    assert _puff_facts(dot, PipelineConfig(), [stem, dot]) == {}
