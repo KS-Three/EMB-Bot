@@ -1,16 +1,22 @@
 {
   "flags": {
     "dark_ink_bean_by_core": {
-      "status": "pictured",
+      "status": "decided",
       "date": "2026-11-20",
+      "decision": "Leave OFF",
+      "decided_by": "Kent",
+      "decided_date": "2026-11-20",
       "dir": "docs/renders/flip-queue-2026-11-20/dark_ink_bean_by_core",
       "moved": 0,
       "runs": 44,
       "note": "cfg.extra key. No visible change: byte-identical on all 44 runs, so no pair to show. Its movers (seal ring text, logo batch 9) are not in the sweep population; that art is not committed."
     },
     "photo_enclosed_rim": {
-      "status": "pictured",
+      "status": "decided",
       "date": "2026-11-20",
+      "decision": "Leave OFF",
+      "decided_by": "Kent",
+      "decided_date": "2026-11-20",
       "dir": "docs/renders/flip-queue-2026-11-20/photo_enclosed_rim",
       "moved": 1,
       "runs": 44,
