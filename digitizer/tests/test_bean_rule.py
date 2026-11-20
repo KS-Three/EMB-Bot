@@ -120,16 +120,16 @@ def test_the_line_threshold_is_the_measured_one():
 
 # --- the sources, through stage 7 ----------------------------------------------
 
-#: `_md5(_runs())` on the frozen engine (tests/engine_2026_10_27.json), OFF
-OFF_MD5 = "24c068ad1eda533deae5635598222986"
+#: `_md5(_runs())` with `bean_only_lines` OFF, re-captured 2026-11-19 on the engine with small/compact solids as satin (folded in; was 24c068ad... with them off)
+OFF_MD5 = "3f42a531b2d1662d57993f15c01aab19"
 
 
 def test_off_is_byte_identical():
     off = _runs()
     assert _md5(off) == OFF_MD5
     assert _md5(_runs(bean_only_lines=False)) == OFF_MD5
-    # today: the dot and the letter ring as beans, the fill's silhouette is capped
-    assert {"Sdot", "Sletter", "Sline"} <= _bean_kinds(off)
+    # the letter and the line ring as beans (the dot is a satin blob now: `small_solids_satin`), the fill's silhouette is capped
+    assert {"Sletter", "Sline"} <= _bean_kinds(off)
     assert any(r.role == stitches.ROLE_EDGE_CAP for r in off)
 
 

@@ -7,6 +7,7 @@ reads back. Gate 1: the cloth is Kent's.
 """
 from __future__ import annotations
 
+from digitizer_core.config import RETIRED_FIELDS  # noqa: E402
 import dataclasses
 import json
 import sys
@@ -51,10 +52,13 @@ def test_base_carries_the_ruled_flips_never_the_fabric_flags():
 def test_the_committed_cuts_carry_each_arms_flag_set():
     for job in c7.JOBS:
         cut = c7.load(COMMITTED / "cuts", job)
-        assert cut["base"] == c7.BASE
+        # the committed cuts are a dated record: they still name flags that flag
+        # consolidation has since folded into the code (RETIRED_FIELDS)
+        live = lambda d: {k: v for k, v in d.items() if k not in RETIRED_FIELDS}  # noqa: E731
+        assert live(cut["base"]) == c7.BASE
         assert set(cut["arms"]) == set(c7.ARMS)
         for arm, a in cut["arms"].items():
-            assert a["overrides"] == c7.overrides(arm), (job, arm)
+            assert live(a["overrides"]) == c7.overrides(arm), (job, arm)
 
 
 def test_fremont_and_plate_b_and_d_are_a_and_c_so_they_sew_two_arms():

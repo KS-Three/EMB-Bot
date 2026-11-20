@@ -129,11 +129,14 @@ def test_the_emitter_sews_a_satin_word_satin_and_a_run_word_run():
                          bean_only_lines=False)
     small = cfg.min_detail_mm ** 2
     assert 0.6 * 1.2 < small, "the fixture must sit under the area rescue"
-    off = _sewn_kinds([_tiny_stem("a", 0, None)], cfg)
-    assert stitches.RUN in off["a"] and stitches.SATIN not in off["a"]
+    # (an untiered tiny stem used to sew a run here; `small_solids_satin`, folded
+    # into the code 2026-11-19, sews it as a satin blob, so only the tiered
+    # words below are pinned)
     on = _sewn_kinds([_tiny_stem("a", 0, "satin")], cfg)
     assert stitches.SATIN in on["a"]
-    ribbon = _region("r", box(0, 10, 30, 12), {"layer": 0, WORD_TIER_KEY: "run"})
+    # a 0.3 mm line: a wider run-tier word is a small solid now that
+    # `small_solids_satin` is folded in, and sews as a satin blob
+    ribbon = _region("r", box(0, 10, 30, 10.3), {"layer": 0, WORD_TIER_KEY: "run"})
     ran = _sewn_kinds([ribbon], cfg)
     assert stitches.RUN in ran["r"] and stitches.SATIN not in ran["r"]
 

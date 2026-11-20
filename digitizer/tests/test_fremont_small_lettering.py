@@ -189,12 +189,13 @@ def _same(live, committed):
         assert got["n"] == want["n"], box
 
 
-def test_live_main_reproduces_its_record(live_main, record):
-    _same(live_main, record["main_81"])
-
-
-def test_live_floor_and_stem_reproduces_its_record(live_floor_stem, live_main, record):
-    _same(live_floor_stem, record["floor_stem_81"])
-    # and moves no tier against main: the finding, live
+# The two tests that re-ran the `main_81` / `floor_stem_81` arms LIVE and compared
+# them to the committed record went with the B1 fold (2026-11-19): the record was
+# measured on the engine before the small-solid / short-column-underlay / rescue
+# constructions that are always on now (the live tagline reads `R R R S R R R R S
+# R R R R` where the record has `R` x 13), so it is history, read above, not
+# reproducible. The finding itself is still checked live, below.
+def test_live_floor_and_stem_moves_no_tier_against_main(live_floor_stem, live_main):
+    # the finding, live
     for box in fsl.BOXES:
         assert live_floor_stem["boxes"][box]["tiers"] == live_main["boxes"][box]["tiers"]

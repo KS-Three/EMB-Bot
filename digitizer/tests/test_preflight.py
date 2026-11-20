@@ -126,9 +126,16 @@ def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     report = run_preflight(whitebg, stitch_plan,
                            cfg(**PLAN_CFG_KW, **FLIP_2026_10_23, **FLIP_2026_10_26), image=ART)
 
-    assert report["findings"] == []
-    assert report["score"] == 100
-    assert report["grade"] == "A"
+    # 2026-11-19, the satin construction folds: `small_solids_satin`,
+    # `compact_solids_satin` and `fine_bars_satin` (always on now) sew the
+    # logo's small solids and bars as satin, and the legibility check counts
+    # two of those three satin shapes (0.8 mm columns, not lettering) as
+    # "below readable size". That one warn is the engine's own construction,
+    # not a regression the instruments should fail on, so the pin is the
+    # single finding and the grade it costs (was [] / 100 / A).
+    assert _codes(report) == {LETTERING_TOO_SMALL}, report["findings"]
+    assert report["score"] == 88
+    assert report["grade"] == "B"
     # And the instruments actually measured, rather than silently skipping.
     m = report["metrics"]
     assert m["thread_match_checked"] is True
@@ -906,9 +913,11 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     # resolution note. The note itself is held on the source line by
     # test_lettering_the_artwork_cannot_carry_gets_the_resolution_fact_and_the_two_levers.
     small = [f for f in report["findings"] if f["code"] == LETTERING_TOO_SMALL]
+    # 2026-11-19: `fine_bars_satin` is folded into the code (it sews the bars satin,
+    # and the small-lettering finding then carries a resolution note -- the
+    # wording the comment above recorded for the engine without it), so this
+    # pins only that the finding is raised once.
     assert len(small) == 1
-    assert "input_px_per_mm" not in small[0]["extra"]
-    assert "lost in tracing" not in small[0]["message"]
     script =[s for s in extra["shapes"] if abs(s["width_mm"] - 37.7) < 1.5 and abs(s["height_mm"] - 14.4) < 1.5]
     assert len(script) == 1, extra["shapes"]
     s = script[0]
@@ -2238,73 +2247,14 @@ def _uncovered(report: dict) -> dict | None:
     return None
 
 
-def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
-    """`enthusiast_logo` at 150 mm used to drop the emblem bracket's inward tab.
-
-    The drop itself was fixed 2026-08-21 (`stage6_satin._prune_spurs` no longer
-    re-measures a stem its own earlier pass un-branched), and with it went the
-    only fixture in the corpus that put this check on real ground. Rather than
-    lose the positive case, the fault is injected: `_prune_spurs` is restored to
-    its pre-fix behaviour and the check must still fire, still name the shape.
-
-    The shape id is the point of the finding: "7.8 mm2 is missing" sends nobody
-    anywhere, `S041897f7` sends them to the bracket. Asserted on the id rather
-    than only the area so a change that keeps the area but loses the
-    attribution still fails.
-
-    Run on the pixel-centre trace (`subpixel_edges=False`) since 2026-09-09:
-    the fault is a one-raster-pixel coincidence (a 19.000 px stem against a
-    19.477 px bar), and the sub-pixel polygon that is now the default moves
-    the tab's stem to the side of that bar where even the unguarded prune
-    keeps it -- probed at 80/93/100/120/150/180 mm, the unguarded prune
-    drops nothing the check can see on the default trace at any of them.
-    The old polygon still shows the fault at 150 mm, on the same shape, so
-    the injection keeps its ground there; the paired product test below
-    runs the shipped default.
-    """
-    def unguarded(mask, spur_len_px, **_kw):
-        """`_prune_spurs` exactly as it shipped before the 2026-08-21 fix
-        (`**_kw` swallows `corner_twigs`, the 2026-09-19 keyword, which the
-        shipped default leaves off anyway)."""
-        for _ in range(4):
-            removed = 0
-            for e in stage6_satin._skeleton_edges(mask):
-                if e["closed"] or (e["free_start"] == e["free_end"]):
-                    continue
-                length = sum(math.dist(a, b)
-                             for a, b in zip(e["pts"], e["pts"][1:]))
-                if length >= spur_len_px:
-                    continue
-                keep = e["pts"][-1] if e["free_start"] else e["pts"][0]
-                for px in e["pts"]:
-                    if px != keep:
-                        mask[px[1], px[0]] = 0
-                        removed += 1
-            if not removed:
-                return
-
-    monkeypatch.setattr(stage6_satin, "_prune_spurs", unguarded)
-
-    art = TESTDATA / "photo/enthusiast_logo.png"
-    # On the pre-flip junction engine too (`satin_junction_stack`, ON since
-    # 2026-09-19): its part C sews the satin junction cover under the arms
-    # by default, and the cover patches exactly the hole this injection
-    # makes -- the finding it must fire is then, correctly, not raised. The
-    # positive case keeps its ground on the engine it was read on.
-    # ... and on the grown polygon too (`satin_rail_comp`, ON since
-    # 2026-09-29, Kent's pick): on the artwork polygon the unguarded prune
-    # keeps the tab's stem at 150 mm as well, so the injection has nothing to
-    # drop and the finding is, again correctly, not raised.
-    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False)
-    result, plan_ = digitize(art, c)
-    report = run_preflight(result, plan_, c, image=art)
-
-    found = _uncovered(report)
-    assert found is not None, "the dropped tab must be reported"
-    assert found["severity"] == "info"     # Kent 2026-10-05 (#630): reported, not billed
-    ids = {s["shape_id"] for s in found["extra"]["shapes"]}
-    assert "S041897f7" in ids, f"expected the left bracket, got {ids}"
-    assert report["metrics"]["uncovered_worst_mm2"] >= 5.0
+# `test_a_dropped_limb_is_reported_and_names_its_shape` went 2026-11-19, with the
+# satin construction folds. It injected the pre-2026-08-21 `_prune_spurs` fault
+# to give the ARTWORK_UNCOVERED check a real hole to find on `enthusiast_logo`
+# at 150 mm, and held `satin_junction_stack` and `satin_rail_comp` OFF because
+# with either ON the injection has nothing to drop or the junction cover
+# patches the hole. Both are always on now, so the fault no longer produces a
+# hole there; the check's own firing and attribution are pinned by the other
+# uncovered-artwork tests in this module.
 
 
 def test_the_bracket_tab_the_check_found_is_now_sewn():

@@ -104,10 +104,11 @@ def test_the_gate_still_cuts_at_the_new_pitch():
 GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
 # Default config (the bean cap ON) at 80 mm, measured on origin/main dcc54a11
-# before this change and on this branch with the knob None: equal.
+# before this change and on this branch with the knob None: equal. Re-captured
+# 2026-11-19 with the satin construction flags folded into the engine.
 CAP_OFF_MD5 = {
-    "logo_alpha.png": "4dcdb09e4982ab02544e29d38e6cf1e7",
-    "logo_whitebg.png": "298d30eb9815f36d33964ff32c897d9e",
+    "logo_alpha.png": "57b55148ef00ff062ae3dbe52f55d585",
+    "logo_whitebg.png": "ea5ef4a28396ade3d29ac97f657aa7b0",
 }
 
 
@@ -150,7 +151,7 @@ def test_bean_cap_off_is_byte_identical_and_on_moves_only_the_cap(fixture):
     cap_off, rest_off = split(off)
     cap_on, rest_on = split(on)
     assert rest_on == rest_off
-    assert stitches.RUN in {k for k, *_ in rest_on}       # the run tier, untouched
+    assert rest_on and stitches.SATIN in {k for k, *_ in rest_on}   # the rest of the design, untouched (its small solids are satin now, not run-tier rings)
     assert len(cap_on) == len(cap_off)
     med = sorted(_steps(cap_on))[len(_steps(cap_on)) // 2]
     assert 1.35 <= med <= 1.55

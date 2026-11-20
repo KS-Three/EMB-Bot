@@ -234,9 +234,13 @@ def test_euler_explicitly_is_the_default(marine, euler):
 def test_the_walk_trims_less_and_sews_no_more_on_the_fixture(nearest, euler):
     st_n, trims_n, travel_n = _counts(nearest[2])
     st_e, trims_e, travel_e = _counts(euler[2])
-    assert trims_e <= trims_n - 12, (trims_n, trims_e)                      # measured 46 -> 28 (stats.trims)
+    # measured 46 -> 28 (stats.trims) when the walk landed; 22 -> 18 on the folded
+    # engine (rail comp, tip caps, the crown cover ride along, 2026-11-19)
+    assert trims_e <= trims_n - 4, (trims_n, trims_e)
     assert st_e <= st_n, (st_n, st_e)                                       # 2,564 -> 2,480
-    assert travel_e > travel_n                                              # 3 -> 17 legs
+    # travel legs: 3 -> 17 when the walk landed; 16 -> 15 on the folded engine
+    # (2026-11-19), where the nearest walk already travels -- the trims are the pin
+    assert travel_e >= 10, (travel_n, travel_e)
 
 
 def test_the_walk_does_not_grow_the_uncovered_artwork(nearest, euler, marine):

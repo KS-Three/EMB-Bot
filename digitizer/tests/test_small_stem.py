@@ -43,9 +43,11 @@ from tests.conftest import TEXT_GAPS_2026_11_15_OFF
 LOWER = ("tsivyl", 15.9)
 CAPS = ("HILTIL", 20.7)
 
-#: md5 of the OFF plan, computed on main's digitizer_core at the merge base
-#: (the same hash `plan_md5` takes) and on this branch: equal.
-OFF_MD5 = {"tsivyl": "d94c1b95f29bb045bb003b08e95c36c2", "HILTIL": "9eb5d7bd7c751b8b3afb6a9fae1f7d23"}
+#: md5 of the OFF plan (small stem OFF), re-pinned 2026-11-19 on the engine with
+#: the B1 satin flags folded in (the short-column underlay, `small_solids_satin`
+#: and the rest are always on now; the earlier pins, d94c1b95... and
+#: 9eb5d7bd..., were taken on the engine before them).
+OFF_MD5 = {"tsivyl": "725708345eb87c864448e8ae916f268b", "HILTIL": "49cd42ab688bb2936761d8d1670d36c6"}
 
 
 def plan_md5(plan, skip=()):
@@ -192,7 +194,9 @@ def test_on_the_stem_sews_satin_and_no_run(lower_off, lower_on):
     (res_on, plan_on), cfg_on = lower_on
     sid = i_stem(res_off, cfg_off).shape_id
     assert sid == i_stem(res_on, cfg_on).shape_id
-    assert kinds_of(plan_on)[sid] == {"satin"}
+    kinds = kinds_of(plan_on)[sid]
+    # satin, with the short-column underlay's centre run (folded in 2026-11-19)
+    assert "satin" in kinds and "run" not in kinds, kinds
 
 
 def test_on_every_other_shape_sews_the_same_tier_and_the_ones_before_it_the_same_thread(
@@ -253,4 +257,4 @@ def test_a_capital_i_under_the_floor_takes_the_same_road(tmp_path_factory):
         assert len(stems) == 2 and all(is_thin_stem(r.polygon, cfg.min_detail_mm) for r in stems)
         got[on] = {kind for r in stems for kind in kinds_of(plan)[r.shape_id]}
     assert got[False] == {"run"}
-    assert got[True] == {"satin"}
+    assert "satin" in got[True] and "run" not in got[True], got[True]

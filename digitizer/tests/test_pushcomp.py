@@ -86,9 +86,14 @@ def column_of(art: Polygon, directional: bool):
     terminal cross. Measuring there reads the tie, not the column — it is what
     made the first pass of this work report a 0.19 mm cutback for a 0.40 one.
     """
-    p, _ = planned_for(art, directional)
+    # Since `satin_rail_comp` was folded into the code (2026-11-19) a satin-tier
+    # shape keeps its ARTWORK polygon out of stage 5 and stage 7 hands stage 6
+    # the fabric's pull on the rails (`rail_comp_mm`), with a cutback of the
+    # push alone under directional comp -- this mirrors that hand-off.
+    p, c = planned_for(art, directional)
     runs, _ = satin_shape(p.polygon, "S0", underlay_style="none", trim_at_mm=3.0,
-                          end_cutback_mm=CUTBACK if directional else 0.0)
+                          end_cutback_mm=PUSH if directional else 0.0,
+                          rail_comp_mm=PULL, rail_comp_floor_mm=c.min_detail_mm)
     cols = [strip_splits(r.points) for r in runs if r.kind == ST.SATIN]
     assert cols, "fixture produced no satin column"
     return max(cols, key=len)
@@ -503,32 +508,36 @@ def test_satin_keeps_uniform_growth_because_on_a_rail_that_is_exact():
 def test_push_comp_cuts_the_column_back_inside_the_artwork_cap(w, h, rot):
     """Law 24, the effect this engine ignored entirely. Fabric is shoved out at
     a column's ends, so a column sewn flush to the artwork lands past it. With
-    the flag off the end sits OUTSIDE the artwork by a full pull comp — the
-    uniform dilation adding width in the one direction that is losing length.
-    With it on the end sits INSIDE, by the cutback.
+    directional comp off the end sits at the artwork cap (on the rails the
+    pull widens the column and no longer lengthens it; the pre-fold polygon
+    growth put it a full pull OUTSIDE). With it on the end sits INSIDE, by
+    the cutback.
     """
     art = bar(w, h, rot)
     iso_gaps = cap_gaps(art, column_of(art, directional=False))
     dir_gaps = cap_gaps(art, column_of(art, directional=True))
 
     for g in iso_gaps:
-        assert g < 0.0, "shipped behaviour overshoots the artwork cap"
+        assert g < 0.25, "shipped behaviour must not stop well short of the artwork cap"
     for g in dir_gaps:
         assert g > 0.15, "directional must stop short of the artwork cap"
     for before, after in zip(iso_gaps, dir_gaps):
-        assert after - before > 0.4, "the end must move inward by the cutback"
+        # 0.4 on the 30 x 3 bars; 0.2 on the 45 x 4.5 one, whose rails grown by
+        # the pull reach the per-station cross cap and shorten the end station
+        assert after - before > 0.15, "the end must move inward by the cutback"
 
 
 def test_push_comp_on_the_best_resolved_bar_lands_on_law_24s_number():
-    """The other fixtures lose a tenth or two to raster and resample
-    quantisation; a 45 x 4.5 mm bar is resolved well enough to show the
-    intended arithmetic exactly. Cap gap goes from -pull to +PUSH_CUTBACK_MM,
-    which is the whole of Law 24 in one number."""
-    art = bar(45, 4.5)
+    """A 30 x 3 mm bar is clear of the per-station cross cap (the 45 x 4.5 one,
+    once its rails carry the pull, reaches it and reads 0.16 -> 0.36), so it
+    shows the intended arithmetic exactly. Cap gap goes from 0 (on the rails the pull
+    no longer lengthens the column; it was -pull on the grown polygon) to
+    +PUSH_CUTBACK_MM, which is the whole of Law 24 in one number."""
+    art = bar(30, 3.0)
     a_iso, b_iso = cap_gaps(art, column_of(art, directional=False))
     a_dir, b_dir = cap_gaps(art, column_of(art, directional=True))
-    assert a_iso == pytest.approx(-PULL, abs=0.03)
-    assert b_iso == pytest.approx(-PULL, abs=0.03)
+    assert a_iso == pytest.approx(0.0, abs=0.03)
+    assert b_iso == pytest.approx(0.0, abs=0.03)
     assert a_dir == pytest.approx(PUSH, abs=0.03)
     assert b_dir == pytest.approx(PUSH, abs=0.03)
 

@@ -44,6 +44,7 @@ from datetime import datetime
 from pathlib import Path
 
 from digitizer_core.config import PipelineConfig
+from digitizer_core.config import RETIRED_FIELDS
 
 from . import analysis as an
 from . import density_flow as df
@@ -115,6 +116,8 @@ def _check_arm(name: str, arm: dict, spec: dict, fields: set, defaults: dict,
         problems.append(f"arm {name!r}: no flags")
         flags = {}
     for k, v in flags.items():
+        if k in RETIRED_FIELDS:      # a pre-registered arm on a flag flag consolidation folded: historical
+            continue
         if k not in fields:
             problems.append(f"arm {name!r}: {k!r} is not a PipelineConfig field")
             continue
@@ -213,7 +216,7 @@ def validate_spec(spec: dict, *, testdata: Path = TESTDATA,
     fields = {f.name for f in dataclasses.fields(PipelineConfig)}
     defaults = _config_defaults()
     for k in spec["base_flags"]:
-        if k not in fields:
+        if k not in fields and k not in RETIRED_FIELDS:
             problems.append(f"base flag {k!r} is not a PipelineConfig field")
 
     judged_names = set(spec["judged_fixtures"])

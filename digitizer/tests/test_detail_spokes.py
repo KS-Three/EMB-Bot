@@ -421,8 +421,8 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 # capped. A red names the host, its SIMD and IPP's path, and junit.xml records
 # them on every run; `test_test_environment_caps_ipp_at_avx2` is the tripwire
 # that separates "the cap did not take" from "the engine changed".
-FREMONT_80_OFF_COUNTS = (14824, 43)
-FREMONT_80_OFF_MD5 = "75f44f905f946705695cf6365f2a8d5f"         # IPP l9 (AVX2), every host
+FREMONT_80_OFF_COUNTS = (14786, 44)     # re-captured 2026-11-19 with the satin construction flags folded in (was (14824, 43))
+FREMONT_80_OFF_MD5 = "a302cd07b7e645995f25f013cf49a837"         # IPP l9 (AVX2), every host
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
 
 
