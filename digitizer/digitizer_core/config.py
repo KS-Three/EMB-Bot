@@ -590,8 +590,8 @@ class PipelineConfig:
     # flat lane above has always done it; this lane never has, and a JPEG
     # logo pays for the gap in cones — `logo_bridge_bar.jpg` sews the
     # ringing around its black spokes as four grey threads
-    # (`docs/kent-review-2026-09-03.md`). Built OFF and banked OFF by Kent
-    # on 2026-09-04 (two mild negatives, Whale's leftover shards). ON by
+    # (`docs/kent-review-2026-09-03.md`). Built and banked OFF by Kent
+    # on 2026-09-04 (two mild negatives, Whale's leftover shards). ON since 2026-10-20, by
     # Kent's ruling 2026-10-20 on MASTER_SCOPE item 46, read off PR #1003's
     # pricing (80 mm, left chest): bridge 17,653 -> 15,196 stitches and
     # 89 -> 66 trims, and it cuts the thin grey halo `clip_keep_pieces`
@@ -644,7 +644,7 @@ class PipelineConfig:
     # Kent's real Instagram file: 148 superpixels straddle the white icon's
     # edge and 7.6% of the white sews on the wrong side — the jagged ring
     # and bitten dot — while forced flat sews the same shapes clean. Gradient
-    # class only. Built OFF; ON by Kent's flip 2026-09-30 on renders of his
+    # class only. Built OFF; ON since 2026-09-30, Kent's flip on renders of his
     # Instagram file at 80 and 188 mm, `drone_render`, Bridge Bar and the
     # repro (it moves the region set on every gradient-class design, which
     # is why it waited on his eye and not on a green suite).
@@ -2597,7 +2597,7 @@ class PipelineConfig:
     # satin tier's skeleton, which broke MFab's band into 253 columns. Layout
     # (ruling 2026-10-22: judged in the preview). OFF is the engine as it
     # was, byte for byte.
-    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     enclosed_white_keyline: bool = True
     # Border from the art's outline (`digitizer_core/art_outline.py`, built
@@ -2783,7 +2783,7 @@ class PipelineConfig:
     # shape width rule exists for this (`tools/tier_census.py`, kappa 0.170
     # today vs 0.198 for the best). Layout (ruling 2026-10-22: judged in the
     # preview). OFF is the engine as it was, byte for byte.
-    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill: bool = True
     # Kent 2026-11-05 ("Gate under-fill off for photo classes"): the under-fill
@@ -2809,7 +2809,7 @@ class PipelineConfig:
     # white, black), and the field fills its rider holes as one closed panel
     # under it that the black under-fill gives up. Layout, judged in the
     # preview. OFF: nothing is read, byte for byte.
-    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill_panels: bool = True
     # `underfill_untagged_riders` (2026-11-05, BUILT OFF; Kent's ruling that day
@@ -2862,7 +2862,7 @@ class PipelineConfig:
     # hole sits on the letter and its loop crosses the sliver and the
     # hairline. Layout: Kent's call from the renders. Off, byte-identical.
     # Tests: `tests/test_keyline_fold_slivers.py`.
-    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     keyline_fold_slivers: bool = True
     # `white_keyline_art_recipe` (BUILT OFF 2026-10-26, `white_keyline_art`):
@@ -2884,7 +2884,7 @@ class PipelineConfig:
     # `absorb_fragments` (2026-10-27): `fragment_absorb` -- a fragment sewn as
     # part of the body of its own thread it lies against. Built OFF as
     # `cfg.extra["absorb_fragments"]` (2026-10-25), which still wins when set;
-    # this field is its default. ON for every job with the rest of
+    # this field is its default. ON since 2026-10-27, for every job with the rest of
     # `white_keyline_art.RECIPE` (Kent 2026-10-27, verbatim: "Every job
     # (Recommended)"). False is the pre-flip default.
     absorb_fragments: bool = True
@@ -4240,7 +4240,7 @@ class PipelineConfig:
     # a corner (the M's V) is held at the corner; a side keeps its own push
     # (a cross under 0.44 mm reaches past `pull - 0.11`, and cut back there
     # golden_tee's thin bars fell under the cross floor). Fremont 81 mm: 0
-    # ends past their face (#907: 1). ON by Kent's ruling 2026-10-13; False
+    # ends past their face (#907: 1). ON since 2026-10-13 (Kent's ruling); False
     # is the pre-flip lane.
     lettering_columns_square_ends: bool = True
     # Under `lettering_columns`, a short straight bar takes its RAILS'
@@ -4374,7 +4374,7 @@ class PipelineConfig:
     # The legs' own crosses, and so the sewn width, are untouched; the
     # engine's short-stitch guard thins the pile on the inside corner as it
     # does on an S's curl. Layout, judged in the preview (Kent, 2026-10-22),
-    # so ON-eligible from renders. False is the pre-flag cut, byte for byte.
+    # so ON-eligible from renders. ON since 2026-10-26 (Kent 2026-10-23, #1057). False is the pre-flag cut, byte for byte.
     # Tests: `tests/test_column_corner_fold.py`.
     lettering_columns_corner_fold: bool = True
     # Under `lettering_columns_corner_fold`, a corner's fold counts only the
@@ -7281,7 +7281,7 @@ class PipelineConfig:
     # Per-region gradient bands read each shade's colour as the MEDIAN of the
     # ramp samples nearest its canonical position, not their mean
     # (`stage6_blend._shade_lab_colors`; MASTER_SCOPE defect 28, summit's
-    # `0111`). The design-ramp path is not touched. Built OFF 2026-11-09, ON (Kent 2026-11-09): it
+    # `0111`). The design-ramp path is not touched. Built OFF 2026-11-09, ON since 2026-11-09 (Kent): it
     # moves stitches on any per-region ramp whose bucket holds an outlier.
     blend_shade_median: bool = True
     # Grade an enlarged small-text letter's thread on the polygon it was
@@ -7927,7 +7927,7 @@ class PipelineConfig:
     # fill) already covers 62% / 95% of their area. Same colour, so nothing
     # changes what shows; it removes a second layer and its cuts. Off,
     # byte-identical. Tests: `tests/test_skip_covered_shapes.py`.
-    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     skip_covered_shapes: bool = True
     # `cut_every_jump` (BUILT OFF 2026-10-21, `docs/settings-vs-pro-2026-10-21.md`
@@ -7985,7 +7985,7 @@ class PipelineConfig:
     # `stage6_border.loop_chain_scope`. Tests: `tests/test_keyline_loop_chain.py`.
     # ON for MFab-type art through `white_keyline_art.RECIPE` (Kent
     # 2026-10-27: "MFab gate only (Recommended)"), then on every job (below).
-    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     keyline_loop_chain: bool = True
     # With `silhouette_underfill`, a ring that hosts its own under-fill gets
@@ -8001,7 +8001,7 @@ class PipelineConfig:
     # corners pivot as `outline_loop_mitre`'s do. Layout, judged in the preview
     # (Kent, 2026-10-22). False is the plan as it was, byte for byte.
     # Tests: `tests/test_underfill_rim.py`.
-    # ON for every job since 2026-10-27, one of `white_keyline_art.RECIPE`
+    # ON since 2026-10-27, for every job, one of `white_keyline_art.RECIPE`
     # (Kent, verbatim: "Every job (Recommended)"). False is the pre-flip default.
     silhouette_underfill_rim: bool = True
     # `silhouette_underfill_rim_fabric_edges` (built OFF 2026-11-16): the rim
