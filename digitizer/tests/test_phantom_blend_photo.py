@@ -372,8 +372,12 @@ def test_bridge_bar_keeps_its_artwork(bridge_pair):
     worthless."""
     (_off_r, _off_p), (on_r, on_p) = bridge_pair
     cones = {c.get("number") for c in on_p.palette}
-    for kept in ("0501", "0020", "1720", "4531"):
+    for kept in ("0020", "1720", "4531"):
         assert kept in cones, f"{kept} — real artwork — was dissolved"
+    # The yellow is spool 0501 (Sun) on the engine this was written on and 0713
+    # (Lemon, 255/243/84 against 255/237/56) since the corner-run read and the
+    # outline rule joined the engine (folded 2026-11-20): either way it sews.
+    assert cones & {"0501", "0713"}, "the yellow — real artwork — was dissolved"
 
 
 def test_bridge_bar_palette_fits_the_design_better(bridge_pair):
