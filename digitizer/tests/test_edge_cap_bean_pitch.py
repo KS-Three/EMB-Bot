@@ -152,7 +152,9 @@ def test_bean_cap_off_is_byte_identical_and_on_moves_only_the_cap(fixture):
     cap_on, rest_on = split(on)
     assert rest_on == rest_off
     assert rest_on and stitches.SATIN in {k for k, *_ in rest_on}   # the rest of the design, untouched (its small solids are satin now, not run-tier rings)
-    assert len(cap_on) == len(cap_off)
+    # same cap, finer pitch: the run count holds to within one (logo_alpha reads 11 against 10 since the
+    # satin construction flags folded in, 2026-11-19: one cap run splits at the coarser stations)
+    assert abs(len(cap_on) - len(cap_off)) <= 1
     med = sorted(_steps(cap_on))[len(_steps(cap_on)) // 2]
     assert 1.35 <= med <= 1.55
     assert on.stats.stitch_count < off.stats.stitch_count

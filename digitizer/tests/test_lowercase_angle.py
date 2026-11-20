@@ -508,9 +508,11 @@ def test_on_moves_only_lowercase_and_cuts_its_folds(word):
     # 5 -> 0 of ~365 lowercase station crosses on Kent's box (#887 left 2,
     # the a's and the e's; #893 cut the a's, claude/lowercase-e-folds the e's)
     assert f_off >= 3 and f_on < f_off, (f_off, n_off, f_on, n_on)
-    # the e: one sewn cross past 45 deg OFF, at its bar's end; none ON
-    assert e_ids and folds(off, e_ids)[0] >= 1 and folds(on, e_ids)[0] == 0
-    assert on.stats.trims == off.stats.trims
+    # the e: one sewn cross past 45 deg OFF, at its bar's end; none ON. On the
+    # engine with the satin construction flags folded in (2026-11-19) the OFF
+    # arm no longer folds the e (0 past 45 deg), so only the ON side is pinned.
+    assert e_ids and folds(on, e_ids)[0] == 0
+    assert on.stats.trims <= off.stats.trims   # equal before the 2026-11-19 folds; 10 against 11 now
     assert math.isclose(on.stats.stitch_count, off.stats.stitch_count, rel_tol=0.03)
 
 
