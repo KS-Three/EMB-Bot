@@ -5451,9 +5451,10 @@ def sequence(
                     report["overlap_run_dropped"] = _n_ov
             # `cfg.extra["satin_junction_block"]` (built OFF 2026-11-20, MFab top line): two bars
             # of one shape that stack across a junction are sewn as one wide column
-            if runs and (getattr(cfg, "extra", None) or {}).get("satin_junction_block"):
+            _jb = (getattr(cfg, "extra", None) or {}).get("satin_junction_block")
+            if runs and _jb:
                 from .column_junction import junction_block
-                runs, _n_jb = junction_block(runs)
+                runs, _n_jb = junction_block(runs, p.polygon, short_ramp=(_jb == "short"))
                 if _n_jb:
                     report["junction_block_stitches"] = _n_jb
             # A stripe field's fill gets no rim: its bands cover the long

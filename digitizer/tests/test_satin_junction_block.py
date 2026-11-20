@@ -70,6 +70,24 @@ def test_too_wide_a_union_stays():
     assert n == 0
 
 
+def test_a_partner_is_not_removed_under_a_stitch_that_falls_short():
+    # 10 stitches: the 16-stitch ramp never reaches the union, so the earlier bar stays whole
+    a = _run(_zig(0.0, 1.8, 0.0, 10))
+    b = _run(_zig(1.2, 3.0, 0.0, 10))
+    out, _ = junction_block([a, b])
+    assert out[0].points == a.points
+    out2, n2 = junction_block([a, b], short_ramp=True)
+    assert n2 >= MIN_STITCHES and len(out2[0].points) < len(a.points)
+
+
+def test_widened_ends_stay_inside_the_shape():
+    from shapely.geometry import box
+    a = _run(_zig(0.0, 1.8, 0.0, 40))
+    b = _run(_zig(1.2, 3.0, 0.0, 40))
+    out, _ = junction_block([a, b], box(0.0, -1.0, 1.9, 20.0))   # polygon ends at x 1.9
+    assert max(p[0] for p in out[1].points) <= 1.9 + 0.35 + 1e-9 or out[1].points == b.points
+
+
 def test_flag_is_off_by_default_and_read_from_extra():
     from digitizer_core import PipelineConfig
     assert not (PipelineConfig().extra or {}).get("satin_junction_block")

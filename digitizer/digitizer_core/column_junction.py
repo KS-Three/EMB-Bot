@@ -21,6 +21,7 @@ import dataclasses
 import math
 
 import numpy as np
+from shapely.geometry import Point
 
 from . import deadline, stitches
 
@@ -31,8 +32,10 @@ STATION_MM = 0.3        # |offset along the stroke| of two stitches at one stati
 MIN_SHIFT_MM = 0.3      # nearer than this the two are one bar (`column_overlap`'s case)
 MIN_LAP_MM = 0.2        # the two stitches' extents overlap at least this much, or they only butt
 MIN_GAIN_MM = 0.3       # the union is at least this much longer than the longer stitch
-RAMP = 16               # stitches over which each end of a block grows to full width (pile: 4 piled F4b 0.51 -> 0.71 3-deep)
-STEP_MM = 2.0           # `column_overlap.OVERLAP_RUN_STEP_MM`
+RAMP = 16               # stitches over which each end of a block grows to full width
+MISS_MM = 0.35          # a partner may go where its widened stitch falls at most this short of the union
+CLIP_MM = 0.35         # a widened end may sit this far past the shape's polygon (pull slack)
+STEP_MM = 2.0          # `column_overlap.OVERLAP_RUN_STEP_MM`
 
 
 def _mid_dir(P: np.ndarray):
@@ -105,11 +108,12 @@ def _stretches(js: list[int], gap: int = 1) -> list[tuple[int, int]]:
     return out
 
 
-def junction_block(runs: list) -> tuple[list, int]:
+def junction_block(runs: list, poly=None, short_ramp: bool = False) -> tuple[list, int]:
     """`runs` with each later satin stretch that stacks on an earlier one sewn as one wide
     column. -> (runs, stitches merged). A run with no stretch is the same object."""
     out = list(runs)
     n_merged = 0
+    reach = None if poly is None else poly.buffer(CLIP_MM)
     satin = [i for i, r in enumerate(runs) if r.kind == stitches.SATIN and len(r.points) >= 3]
     for bi in satin:
         deadline.check("stage 7 junction block")
@@ -141,10 +145,14 @@ def junction_block(runs: list) -> tuple[list, int]:
             for (j0, j1) in _stretches(list(found)):
                 if j1 - j0 + 1 < MIN_STITCHES:
                     continue
-                ids = sorted({found[j][0] for j in range(j0, j1 + 1) if j in found})
                 if new_pts is None:
                     new_pts = PB.copy()
                 _, uB, _ = _mid_dir(PB)
+                # `short_ramp` (`cfg.extra["satin_junction_block"] == "short"`): a short stretch ramps
+                # over a third of its length, so MFab's F4 block (about 20 stitches) merges. It
+                # piles 3-deep thread +0.08 at F4 (0.51 against OFF 0.43), so it is not the default.
+                ramp = min(RAMP, max(2, (j1 - j0 + 1) // 3)) if short_ramp else RAMP
+                full_pts: set[int] = set()
                 for k in range(j0, j1 + 2):
                     j = min(k, j1)
                     if j not in found:
@@ -154,9 +162,20 @@ def junction_block(runs: list) -> tuple[list, int]:
                     mid_b = (PB[j] + PB[j + 1]) / 2.0
                     t_k = float((PB[k] - mid_b) @ u)
                     target = lo if k == j else hi
-                    w = min(1.0, (k - j0 + 1) / RAMP, (j1 + 2 - k) / RAMP)
-                    new_pts[k] = PB[k] + u * (target - t_k) * w
-                # only the earlier bar's own partner stitches (runs of consecutive ones) go
+                    w = min(1.0, (k - j0 + 1) / ramp, (j1 + 2 - k) / ramp)
+                    cand = PB[k] + u * (target - t_k) * w
+                    if reach is not None and not reach.covers(Point(float(cand[0]), float(cand[1]))):
+                        continue            # past the artwork's edge: the stitch stays as it was
+                    new_pts[k] = cand
+                    if abs(target - t_k) * (1.0 - w) <= MISS_MM:
+                        full_pts.add(k)
+                # only the earlier bar's partners of stitches that reach (nearly) the whole union
+                # go: a partner removed under a half-widened stitch would leave the thread bare
+                ids = sorted({found[j][0] for j in range(j0, j1 + 1)
+                              if j in found and j in full_pts and j + 1 in full_pts})
+                if not ids:
+                    new_pts[j0:j1 + 2] = PB[j0:j1 + 2]
+                    continue
                 g0 = prev = ids[0]
                 for i in ids[1:] + [None]:
                     if i is None or i - prev > 1:
