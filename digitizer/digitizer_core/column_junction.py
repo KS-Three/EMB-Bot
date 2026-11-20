@@ -10,7 +10,7 @@ column, as wide as the two bars together (3.8 mm, one run of ~40 stitches), and 
 satin run's stitches (same station along the stroke, a nearly equal cross direction, extents that
 overlap but are not the same) is stretched across the union of the two. A stretch of at least
 `MIN_STITCHES` such stitches is sewn as one wide column in the later run (its two ends ramp in over
-`RAMP` stitches, so the block does not step), and the earlier run's stitches under it become a
+`BLOCK_RAMP` stitches, so the block does not step), and the earlier run's stitches under it become a
 running path through their midpoints (`column_overlap`'s construction), so the needle path stays
 unbroken and nothing the earlier bar covered is bare: the wide column spans both bars.
 No satin floor, pull or cover figure is read or changed.
@@ -24,6 +24,7 @@ import numpy as np
 from shapely.geometry import Point
 
 from . import deadline, stitches
+from .column_overlap import OVERLAP_RUN_STEP_MM
 
 MIN_STITCHES = 8        # ~3 mm of 0.4 mm pitch: a short lap stays as it was
 MAX_UNION_MM = 4.4      # the wide column's longest stitch (the satin ceiling is 5.0)
@@ -32,10 +33,9 @@ STATION_MM = 0.3        # |offset along the stroke| of two stitches at one stati
 MIN_SHIFT_MM = 0.3      # nearer than this the two are one bar (`column_overlap`'s case)
 MIN_LAP_MM = 0.2        # the two stitches' extents overlap at least this much, or they only butt
 MIN_GAIN_MM = 0.3       # the union is at least this much longer than the longer stitch
-RAMP = 16               # stitches over which each end of a block grows to full width
+BLOCK_RAMP = 16         # stitches over which each end of a block grows to full width
 MISS_MM = 0.35          # a partner may go where its widened stitch falls at most this short of the union
 CLIP_MM = 0.35         # a widened end may sit this far past the shape's polygon (pull slack)
-STEP_MM = 2.0          # `column_overlap.OVERLAP_RUN_STEP_MM`
 
 
 def _mid_dir(P: np.ndarray):
@@ -151,7 +151,7 @@ def junction_block(runs: list, poly=None, short_ramp: bool = False) -> tuple[lis
                 # `short_ramp` (`cfg.extra["satin_junction_block"] == "short"`): a short stretch ramps
                 # over a third of its length, so MFab's F4 block (about 20 stitches) merges. It
                 # piles 3-deep thread +0.08 at F4 (0.51 against OFF 0.43), so it is not the default.
-                ramp = min(RAMP, max(2, (j1 - j0 + 1) // 3)) if short_ramp else RAMP
+                ramp = min(BLOCK_RAMP, max(2, (j1 - j0 + 1) // 3)) if short_ramp else BLOCK_RAMP
                 full_pts: set[int] = set()
                 for k in range(j0, j1 + 2):
                     j = min(k, j1)
@@ -193,7 +193,7 @@ def junction_block(runs: list, poly=None, short_ramp: bool = False) -> tuple[lis
                         continue
                     mids = [((P[m][0] + P[m + 1][0]) / 2.0, (P[m][1] + P[m + 1][1]) / 2.0)
                             for m in range(i0, i1 + 1)]
-                    P = P[:i0 + 1] + _thin(mids, STEP_MM) + P[i1 + 1:]
+                    P = P[:i0 + 1] + _thin(mids, OVERLAP_RUN_STEP_MM) + P[i1 + 1:]
                 out[ai] = dataclasses.replace(out[ai], points=P)
         if new_pts is not None:
             out[bi] = dataclasses.replace(rb, points=[tuple(map(float, q)) for q in new_pts])
