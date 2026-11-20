@@ -601,8 +601,8 @@ def decide_photo(ucm: float, texture: float, two_tone: float, cutout: bool,
     weakest non-firing route's, or the veto's when the veto decided.
     `tools/classify_lens.py` re-derives this and self-checks against it.
 
-    `grain_needs_texture` (`cfg.stage0_grain_needs_texture`, built OFF
-    2026-11-19): on an opaque file the grain gate alone no longer decides
+    `grain_needs_texture` (`cfg.stage0_grain_needs_texture`, ON since Kent's
+    flip 2026-11-19): on an opaque file the grain gate alone no longer decides
     photo; texture has to agree. Route `grain_held` names a verdict the grain
     gate alone would have called photo. Every real opaque photograph read
     here clears the texture gate at every export width (Commons corpus and

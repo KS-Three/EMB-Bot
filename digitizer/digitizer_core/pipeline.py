@@ -1013,7 +1013,10 @@ def build_generation(
             and (classification.class_ == "gradient" or flat_dark_carve)) else None),
         # `cfg.flat_page_fringe_exclude`: stage 2's page-edge blend pixels
         # (None with the flag off and on every other lane).
-        page_fringe=getattr(q, "page_fringe", None))
+        page_fringe=getattr(q, "page_fringe", None),
+        # `cfg.rescue_needs_drawn_edge`: the artwork's own pixels, so the
+        # contrast rescue can ask whether a drawn edge bounds the region.
+        src_rgb=p.rgb if getattr(cfg, "rescue_needs_drawn_edge", False) else None)
     # `cfg.sliver_prune` (built OFF 2026-11-10, Kent on Pooh at 54 mm): masks
     # narrower than the source's own pixels that are not a shape -- the
     # page's halo along the silhouette is dropped, an off-colour tendril

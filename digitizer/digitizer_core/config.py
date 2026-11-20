@@ -540,8 +540,10 @@ class PipelineConfig:
     # count as grain and it routes `photo_scene` (MFab hat at native, TOAT
     # machine, Gaulke, Fremont at 146-250 px). ON, an OPAQUE file enters
     # photo territory only when `texture_frac` agrees; a cut-out keeps the
-    # grain gate alone (`legacy`). Needs `stage0_texture_gate`. Kent's flip.
-    stage0_grain_needs_texture: bool = False
+    # grain gate alone (`legacy`). Needs `stage0_texture_gate`. FLIPPED ON
+    # 2026-11-19 by Kent ("Flip ON (Recommended)") on the before/after renders;
+    # the OFF arm is pinned in `tests/engine_2026_10_27.json`.
+    stage0_grain_needs_texture: bool = True
     # Stage 0's flat/gradient gate on a scale-relative read (built OFF
     # 2026-11-06, ROADMAP phase 2; `docs/stage0-scale-relative-grad-2026-11-06.md`).
     # FLIPPED ON 2026-11-06 by Kent, together with the flat lane's soft-edge
@@ -1217,6 +1219,19 @@ class PipelineConfig:
     # holding OFF beside the teal patch being kept ON, and
     # `test_flag_defaults_on` there pins this default itself.
     keep_thin_strokes: bool = True
+    # The contrast rescue above, asked of the ARTWORK too (built OFF
+    # 2026-11-19; `docs/stage0-grain-needs-texture-2026-11-19.md` §7). A
+    # quantiser cuts a smooth shade into thread bands, so the darkest centre
+    # of a shaded disc can come out as a sub-floor region whose LAYER colour
+    # is another thread: kept, it punched a 1.3 mm2 hole in `fur_ramp`'s disc
+    # and the disc sewed as a starburst ring round it. ON, a region is kept
+    # for contrast only when the source pixels also step across its boundary
+    # by more than `merge_delta_e` (`stage3_segment.drawn_edge`); otherwise
+    # it goes to its host as a sliver does. No new number. Reaches every
+    # class that runs `pipeline`'s own `resolve_small_regions` call (the flag
+    # sweep moved photo fixtures too: 11 of 44, `docs/stage0-grain-needs-
+    # texture-2026-11-19.md` §7).
+    rescue_needs_drawn_edge: bool = False
     # Dark thin strokes on a SHADED ground, read by lightness
     # (`thin_ink.find_dark_thin_ink`; gradient class only, the gate
     # `keep_thin_strokes` has). `keep_thin_strokes` reads the artwork with the

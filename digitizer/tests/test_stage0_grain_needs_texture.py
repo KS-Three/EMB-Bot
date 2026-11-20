@@ -20,11 +20,12 @@ from .conftest import ENGINE_2026_10_27
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 ON = PipelineConfig(stage0_grain_needs_texture=True)
-OFF = PipelineConfig()
+OFF = PipelineConfig(stage0_grain_needs_texture=False)
 
 
-def test_the_flag_defaults_off():
-    assert PipelineConfig().stage0_grain_needs_texture is False
+def test_the_flag_defaults_on():
+    """Kent's flip 2026-11-19."""
+    assert PipelineConfig().stage0_grain_needs_texture is True
 
 
 def test_the_frozen_snapshot_holds_the_off_value():

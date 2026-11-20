@@ -44,7 +44,10 @@ BLACK_WHITE_BLACK = ["0020 Black", "0015 White", "0020 Black"]
 #: Source: the Studio hat_front config on `logo_mfab_hat.png`, one run per row.
 SWEEP = [
     (30.0, "flat", "B"), (30.0, None, "B"),
-    (36.7, "flat", "C"), (36.7, None, "B"),
+    # 36.7 default: B -> C 2026-11-19. `stage0_grain_needs_texture` (ON, Kent)
+    # routes the hat flat by default, so this row now IS the forced-flat row
+    # beside it, floor C. CI read C (Linux); the Windows box read B.
+    (36.7, "flat", "C"), (36.7, None, "C"),
     (60.0, "flat", "C"), (60.0, None, "C"),
     (80.0, "flat", "B"), (80.0, None, "C"),
     (100.8, "flat", "B"), (100.8, None, "B"),
@@ -55,7 +58,11 @@ SWEEP = [
 #: (rendered 2026-11-04). The same family as the 100.8 mm WELDING merge another
 #: session is diagnosing; expected to fail until that lands. strict: when it
 #: starts passing, this mark must go.
-KNOWN_WRONG_ORDER = {(60.0, None)}
+#: EMPTIED 2026-11-19: `stage0_grain_needs_texture` (ON, Kent) routes MFab hat
+#: flat by default, so the default row at 60 mm sews as the forced-flat row
+#: does, black, white, black, and the strict xfail XPASSED. The photo-route
+#: wrong order it recorded is still reachable with that flag False.
+KNOWN_WRONG_ORDER: set = set()
 #: 30 and 36.7 mm since 2026-11-13 (`border_from_outline_hairline_run` ON, Kent:
 #: "sewn thin, but do not include letters for this"): at these widths the white
 #: keyline is 0.16-0.45 mm, a hairline, so it sews as one bean line and sews
