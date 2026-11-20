@@ -47,8 +47,11 @@ def _stem_reach(runs, x_lo: float, x_hi: float):
     return out
 
 
-def test_field_defaults_off():
-    assert cfgmod.PipelineConfig().outline_loop_split_shared is False
+def test_field_default_is_on_and_pre_flip_is_off():
+    # ON since 2026-11-19 (Kent 2026-11-19, shown the OFF | ON review pack: "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab")
+    from tests.conftest import PRE_FLIP
+    assert cfgmod.PipelineConfig().outline_loop_split_shared is True
+    assert PRE_FLIP["outline_loop_split_shared"] is False
 
 
 def test_off_is_byte_identical_to_the_kwarg_left_out():

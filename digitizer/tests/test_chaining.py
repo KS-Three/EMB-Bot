@@ -803,7 +803,10 @@ def test_chaining_adds_zero_bare_thread_on_every_acceptance_fixture(
     ribbon 0.00 -> 0.00. Chaining still adds nothing (on == off); it no
     longer removes any either. Ceilings: the measurement + 0.5 mm, as before.
     """
-    CEILING_MM = {("benchmark", False): 4.5, ("benchmark", True): 4.5,
+    # RE-PINNED 2026-11-19 for the four flips (Kent: "satin_overlap_run (Recommended),
+    # outline_loop_split_shared, through_last, e_top_arm + top_slab"): benchmark's chain-off floor
+    # measures 4.54 mm (was 3.97), over the old 4.5 by 0.04; ceiling = measurement + 0.5 again.
+    CEILING_MM = {("benchmark", False): 5.05, ("benchmark", True): 5.05,
                   ("full_back", False): 5.4, ("full_back", True): 5.4,
                   ("left_chest", False): 0.5, ("left_chest", True): 0.5,
                   ("ribbon", False): 0.5, ("ribbon", True): 0.5}

@@ -50,6 +50,14 @@ def sewn():
     return {(k, on): _sew(k, on) for k in ("T", "E1", "E2", "L") for on in (False, True)}
 
 
+def test_config_default_is_on_and_pre_flip_is_off():
+    # ON since 2026-11-19 (Kent 2026-11-19, shown the OFF | ON review pack: "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab")
+    from digitizer_core import PipelineConfig
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().lettering_columns_through_last is True
+    assert PRE_FLIP["lettering_columns_through_last"] is False
+
+
 def test_off_sets_nothing():
     with through_last_scope(False):
         assert _THROUGH_LAST.get() is False

@@ -115,8 +115,12 @@ OFF_MD5 = {"mfab": "a429f57a0a79155e7d63ffea56fdabc6", "becker": "cd652df0ebca32
 
 
 def test_off_is_the_plan_as_it_was():
-    assert _md5(_sew(mfab(), silhouette_underfill=True)[1]) == OFF_MD5["mfab"]
-    assert _md5(_sew(becker(), silhouette_underfill=True)[1]) == OFF_MD5["becker"]
+    # OFF_MD5 predates the 2026-11-19 four (Kent: "satin_overlap_run (Recommended),
+    # outline_loop_split_shared, through_last, e_top_arm + top_slab"); Becker's bytes move with
+    # them, so pin them off (conftest), as `_sew` does for the earlier flips
+    from tests.conftest import FLIP_FOUR_2026_11_19_OFF
+    assert _md5(_sew(mfab(), silhouette_underfill=True, **FLIP_FOUR_2026_11_19_OFF)[1]) == OFF_MD5["mfab"]
+    assert _md5(_sew(becker(), silhouette_underfill=True, **FLIP_FOUR_2026_11_19_OFF)[1]) == OFF_MD5["becker"]
 
 
 def test_off_never_reaches_the_rim(monkeypatch):
