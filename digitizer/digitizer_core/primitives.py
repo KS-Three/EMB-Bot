@@ -72,10 +72,13 @@ def read_primitive(poly: Polygon) -> tuple[str, Polygon] | None:
     if _fits(poly, rect, tol):
         found = ("rect", rect)
     else:
-        # circle: the area's own radius about the centroid
-        ctr = poly.centroid
-        r = math.sqrt(poly.area / math.pi)
-        circ = Point(ctr.x, ctr.y).buffer(r, CIRCLE_SEGMENTS // 4)
+        # circle: the least-squares circle through the VERTICES (Kasa fit).
+        # The traced vertices lie on the art's edge and the chords between
+        # them sag inside it, so the area's own radius (sqrt(area / pi))
+        # about the centroid came out short: a low-res cutout disc sat
+        # 0.07 mm inside its circle (`test_coverage_edges`, 0.02 allowed).
+        cx, cy, r = _circle_fit(list(poly.exterior.coords)[:-1])
+        circ = Point(cx, cy).buffer(r, CIRCLE_SEGMENTS // 4)
         if long_side / short_side < 1.15 and _fits(poly, circ, tol):
             found = ("circle", circ)
         else:
@@ -89,6 +92,17 @@ def read_primitive(poly: Polygon) -> tuple[str, Polygon] | None:
     if poly.hausdorff_distance(found[1]) <= ALREADY_MM:
         return None
     return found
+
+
+def _circle_fit(pts: list) -> tuple[float, float, float]:
+    """Least-squares (Kasa) circle through `pts` -> (cx, cy, r)."""
+    import numpy as np
+    a = np.asarray(pts, dtype=float)
+    m = np.column_stack([a[:, 0], a[:, 1], np.ones(len(a))])
+    b = -(a[:, 0] ** 2 + a[:, 1] ** 2)
+    d, e, f = np.linalg.lstsq(m, b, rcond=None)[0]
+    cx, cy = -d / 2.0, -e / 2.0
+    return float(cx), float(cy), float(math.sqrt(max(cx * cx + cy * cy - f, 0.0)))
 
 
 def _triangle(poly: Polygon) -> Polygon | None:

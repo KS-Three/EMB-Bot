@@ -47,7 +47,10 @@ stays the platform red.
 entries were re-captured (`tools/recapture_flat_lane_key.py`, `ribbon_curve.png` unmoved as the control):
 the green bar's tail lock now retraces its last cross (whitebg 5427 -> 5425, alpha 6104 -> 6101) and
 the discs and bars read as ideal shapes. Their arithmetic: `tests/test_flow_followups.py`.
-`enthusiast_logo` stays the platform red.
+`enthusiast_logo` stays the platform red. Re-captured again the same day (same control): the
+ideal circle is now the least-squares circle through the traced vertices, not the area's radius
+about the centroid, which sat a traced disc 0.07 mm inside its art (`primitives._circle_fit`); one
+disc's area moves (alpha 160.46 -> 161.23 mm2).
 
 **Exception TAKEN 2026-11-19, `satin_rectangles` ON (Kent 2026-11-19, "Flip ON
 (Recommended)", shown his flag and the 9 of 44 sweep runs it moves):** the

@@ -64,6 +64,9 @@ def _ink(art: Path, **cfg_kw):
     # `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline;
     # this file prices `coverage_edges` against the engine it was measured on.
     cfg_kw.setdefault("outline_redraw_k", PRE_FLIP["outline_redraw_k"])
+    # `read_primitives` (ON since 2026-11-19) snaps a clear circle to an ideal one
+    # after this read; these tests price the contour itself, so it is held off.
+    cfg_kw.setdefault("read_primitives", PRE_FLIP["read_primitives"])
     gen = build_generation(str(art), PipelineConfig(target_width_mm=WIDTH_MM, **cfg_kw))
     return gen.p, [r for r in gen.regions if not r.meta.get("enclosed_background")]
 
