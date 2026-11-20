@@ -59,7 +59,7 @@ LETTERS = DIGITIZER / "testdata" / "fremont92_reset_letters.json"
 PPM = 40            # px/mm on the word sheets
 FLAGS = {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
          "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
-         "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True}
+         "small_text_cap_bold_scale": 1.45}
 #: word -> the letter's bounds (design mm, y down) that put it in the word
 WORDS = {
     "EST": lambda b: b[1] < -11 and b[0] < 0,
@@ -551,7 +551,7 @@ def parse_args(argv=None):
                          "from that job's file, the pro's hat DST beside it")
     ap.add_argument("--fold", action="store_true",
                     help="arms off | fold: every call also with corner_fold=True "
-                         "(`cfg.lettering_columns_corner_fold`)")
+                         "(`lettering_columns_corner_fold`)")
     return ap.parse_args(argv)
 
 

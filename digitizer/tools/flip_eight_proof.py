@@ -40,12 +40,10 @@ BEFORE: dict[str, object] = {
     "small_text_cap_min_stroke_mm": None,
     "small_text_cap_letter_gap_mm": None,
     "small_text_cap_bold_scale": None,
-    "lettering_columns_small_bold": False,
     # PR #1057 (Kent 2026-10-23, same day, by the pro's numbers): the two layout
     # flags and the corner fold, so every site that pins "before the 10-23 flips"
     # pins them too.
     "border_by_size": False,
-    "lettering_columns_corner_fold": False,
     # The bean rule (`bean_only_lines`, built OFF and flipped ON by Kent the
     # same day, 2026-10-27, #1165): every site that pins "before the 10-23
     # flips" was measured on an engine that beaned letters, sub-floor solids

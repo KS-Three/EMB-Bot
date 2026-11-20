@@ -224,11 +224,11 @@ def lane_verdict(region, cfg) -> tuple[bool, str | None]:
         tagged = bool(m.get("text_candidate") or m.get("lettering_group"))
     if not tagged:
         return False, None
-    if getattr(cfg, "lettering_columns_skip_blobs", False) and is_solid_blob(region.polygon):
+    if is_solid_blob(region.polygon):
         return False, "skip_blobs"
-    if getattr(cfg, "lettering_columns_ink_link", False) and m.get("lettering_ink_stray"):
+    if m.get("lettering_ink_stray"):
         return False, "ink_stray"
-    if (getattr(cfg, "lettering_columns_icon_guard", False) and m.get("lettering_group")
+    if (m.get("lettering_group")
             and not m.get("text_candidate") and is_drawing_fragment(region.polygon)):
         return False, "icon_guard"
     return True, None

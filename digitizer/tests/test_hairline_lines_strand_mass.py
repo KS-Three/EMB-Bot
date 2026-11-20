@@ -22,10 +22,13 @@ from digitizer_core.stage6_hairline_lines import extract_strands, strand_blocks
 from tests.test_hairline_lines import _md5
 from tests.test_hairline_lines_strand_test import (OWL, _bars, _ground, _sewable, _sp,
                                                    _strands, _zones)
-from tests.conftest import LETTERING_2026_10_24_OFF, TEXT_GAPS_2026_11_15_OFF
+from tests.conftest import LETTERING_2026_10_24_OFF, TEXT_GAPS_2026_11_15_OFF, legacy_lettering_module_gen
 from tests.test_thread_profile import GOLDEN_MD5, TESTDATA, _coords_md5
 from tools.hairline_strand_mass import (dark_runs, drawn_kept, mane_image, s882_image,
                                         syn_cfg)
+
+# the md5s predate small_bold, corner_fold and text_lean (folded into the code 2026-11-20)
+legacy_lettering_module = pytest.fixture(autouse=True, scope="module")(legacy_lettering_module_gen)
 
 LINES = dict(hairline=True, hairline_from_lines=True)
 TEST = dict(LINES, hairline_lines_strand_test=True)

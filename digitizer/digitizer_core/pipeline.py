@@ -951,14 +951,14 @@ def build_generation(
                 split_tonal=effective_split_tonal(cfg, classification.class_),
                 shade_demand=shade_demand,
                 design_ramp=design_ramp,
-                # The thin population (`cfg.keep_thin_strokes`, `thin_ink.py`)
+                # The thin population (`keep_thin_strokes`, folded in; `thin_ink.py`)
                 # is for LOGOS the classifier sent down this lane. Measured
                 # 2026-09-08 over the committed photo fixtures: on a
                 # photograph it is not empty at any ring share that keeps
                 # Fremont's lettering whole (owl 199 mm, chrome 230 mm of
                 # "strokes" at 0.75), so the photo classes keep today's path
                 # until that residue is understood — byte-identical ON.
-                thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient"),
+                thin_population=bool(classification.class_ == "gradient"),
                 # Dark thin strokes read by lightness (`cfg.keep_dark_thin_
                 # strokes`): the same gate, for the same reason.
                 dark_population=bool(cfg.keep_dark_thin_strokes and classification.class_ == "gradient"),
@@ -992,7 +992,7 @@ def build_generation(
     deadline.check("stage 2")
     masks = seg.segment(q, p, cfg)
     deadline.check("stage 3")
-    # `layer_lab` arms `cfg.keep_thin_strokes` (see `resolve_small_regions`):
+    # `layer_lab` arms `keep_thin_strokes` (folded in; see `resolve_small_regions`):
     # the quantiser's own cluster colours, one per layer, so a contrasting
     # sub-floor stroke is kept rather than absorbed into what it touches. The
     # photo segmenters make their own call without it, on purpose.
@@ -1277,9 +1277,9 @@ def build_generation(
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
                            bold_scale=cfg.small_text_cap_bold_scale,
                            **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}),
-                           # each bay's mouth kept open (W3-02, ON since 2026-10-26):
-                           # False, the call as it was word for word
-                           **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
+                           # each bay's mouth kept open (W3-02; `small_text_bay_mouth`,
+                           # folded in)
+                           bay_mouth=True,
                            # the height classes of a lowercase line re-set on one
                            # baseline (2026-11-13, ON since 2026-11-14, Kent's flip):
                            # False, the call as it was
@@ -1403,11 +1403,11 @@ def build_generation(
     set_lettering_house_angle(regions, p, fourfold=True,
                               from_line=True,
                               anchor=True, groups=house_groups)
-    # The Column lane's ink link (`cfg.lettering_columns_ink_link`, default
-    # ON by Kent's ruling 2026-10-13): a house-group-only shape in a far ink
+    # The Column lane's ink link (`lettering_columns_ink_link`, folded in; Kent's
+    # ruling 2026-10-13): a house-group-only shape in a far ink
     # is not a letter of the text. Here, once both old taggers have written
-    # their keys. Off, it is never called and no key is written.
-    if cfg.lettering_columns_ink_link and not cfg.lettering_words:
+    # their keys.
+    if not cfg.lettering_words:
         from .columns import tag_ink_strays
         tag_ink_strays(regions, chart_for(cfg))
     # A text-cluster member off its cluster's line is not a letter

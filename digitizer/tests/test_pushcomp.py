@@ -263,7 +263,7 @@ def rail_overhang(art: Polygon, pts) -> float:
 # tuples on the same tree. `towel` is left as it was: its tuple is the
 # original machine's, the platform red CI deselects, and nothing reproduces
 # it anywhere (this tree prints 6168 stitches for it on both machines).
-# RE-PINNED 2026-09-13, `left_chest` ONLY, for `cfg.keep_thin_strokes` ON by
+# RE-PINNED 2026-09-13, `left_chest` ONLY, for `keep_thin_strokes` ON by
 # default (Kent's ruling on `docs/thin-strokes-flip-2026-09-13.md`: "Flip it —
 # take gaulke and becker as the price"). One entry moves, for the one
 # mechanism `tests/test_keep_thin_strokes.py` documents: whitebg's ~1.2 mm²

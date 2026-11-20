@@ -9,17 +9,17 @@ width is 2.771 mm^2 and sews satin. Not dropped, not merged with its dot (the
 dot is a separate 0.446 mm^2 region that stage 3's run-tier loop floor drops
 at 80 mm).
 
-`cfg.lettering_columns_small_stem` (default ON since 2026-10-20, Kent's flip) lets a lettering stem under
-the floor into the lane. These tests pin:
+`lettering_columns_small_stem` (ON since 2026-10-20, Kent's flip; folded into
+the code 2026-11-20) lets a lettering stem under the floor into the lane. The
+"off" arm below is stage 7's `is_thin_stem` hook patched to answer no. These
+tests pin:
 
 - the trace: the stem is a lettering region under the floor, sewn as run
   only, with the capital stem satin beside it (measured negative on the rule:
   the rescue itself is right for a dot, so it stays);
 - ON, the stem sews satin and no run, and every other shape in the design
   sews the same thread (run for run);
-- capitals are identical ON and OFF;
-- OFF is byte-identical: the hook is never entered, and the OFF plan's md5
-  equals the one computed on main's `digitizer_core`.
+- capitals are identical with the hook on and off.
 
 The word is drawn at test time in Pillow's bundled CC0 face (no image is
 added to testdata) at the fixture's 28.1 px/mm, so the stem is the 80 mm one.
@@ -42,13 +42,6 @@ from tests.conftest import TEXT_GAPS_2026_11_15_OFF
 #: 28.1 px per mm, where the i stem is 0.57 x 3.73 mm.
 LOWER = ("tsivyl", 15.9)
 CAPS = ("HILTIL", 20.7)
-
-#: md5 of the OFF plan (small stem OFF), re-pinned 2026-11-19 on the engine with
-#: the B1 satin flags folded in (the short-column underlay, `small_solids_satin`
-#: and the rest are always on now; the earlier pins, d94c1b95... and
-#: 9eb5d7bd..., were taken on the engine before them).
-OFF_MD5 = {"tsivyl": "725708345eb87c864448e8ae916f268b", "HILTIL": "49cd42ab688bb2936761d8d1670d36c6"}
-
 
 def plan_md5(plan, skip=()):
     h = hashlib.md5()
@@ -78,14 +71,14 @@ def draw(text, path):
     return path
 
 
-def run(tmp_path_factory, word, small_stem, guard=False):
+def run(tmp_path_factory, word, small_stem):
     text, width = word
     path = draw(text, tmp_path_factory.mktemp(f"w{text}{int(small_stem)}") / "w.png")
-    # The column-end flags flipped ON 2026-10-13 (Kent); the OFF pins below
-    # were taken without them, so this file keeps them False (conftest.PRE_FLIP).
-    # So is the dot rung (ON 2026-10-20), which sews the i dot beside the
-    # stem; the stem flag itself is ON by default since then, so every arm
-    # sets it explicitly.
+    # The column-end flags (ON 2026-10-13) and the stem flag itself (ON
+    # 2026-10-20) were folded into the code 2026-11-20, so the "off" arm
+    # below is stage 7's thin-stem hook answering no (patched), not a config
+    # switch. The dot rung (ON 2026-10-20), which sews the i dot beside the
+    # stem, is still a flag.
     # ...and the 2026-10-23 flips (short-column underlay under the stem, the
     # small-text set and small_bold): every arm here was priced without them.
     # ...and `group_consistent_tier`/`_fill_angle` (ON 2026-11-14, Kent): with them ON
@@ -93,20 +86,15 @@ def run(tmp_path_factory, word, small_stem, guard=False):
     # ...and edge-walk (ON 2026-11-14, Kent): it re-orders the letters' walk.
     cfg = PipelineConfig(target_width_mm=width, forced_class="flat",
                          **FLIP_2026_10_23, **EDGE_WALK_2026_11_14_OFF,
-                         lettering_columns_square_ends=False,
-                         lettering_columns_inside_connectors=False,
-                         lettering_columns_small_stem=small_stem,
                          **LETTERING_2026_10_24_OFF,        # the 2026-10-24 flips, as pinned
                          **GROUP_2026_11_14_OFF,
                          **TEXT_GAPS_2026_11_15_OFF)   # the six 2026-11-15 text/gap flips: these pins predate them
-    if not guard:
+    if small_stem:
         return digitize(path, cfg), cfg
 
-    def boom(*_a, **_k):
-        raise AssertionError("is_thin_stem reached with the flag OFF")
     mp = pytest.MonkeyPatch()
     mp.setattr(stage7_sequence, "is_thin_stem",
-               own_thread_only(boom, stage7_sequence.is_thin_stem))
+               own_thread_only(lambda *_a, **_k: False, stage7_sequence.is_thin_stem))
     try:
         return digitize(path, cfg), cfg
     finally:
@@ -115,7 +103,7 @@ def run(tmp_path_factory, word, small_stem, guard=False):
 
 @pytest.fixture(scope="module")
 def lower_off(tmp_path_factory):
-    return run(tmp_path_factory, LOWER, False, guard=True)
+    return run(tmp_path_factory, LOWER, False)
 
 
 @pytest.fixture(scope="module")
@@ -125,7 +113,7 @@ def lower_on(tmp_path_factory):
 
 @pytest.fixture(scope="module")
 def caps_off(tmp_path_factory):
-    return run(tmp_path_factory, CAPS, False, guard=True)
+    return run(tmp_path_factory, CAPS, False)
 
 
 @pytest.fixture(scope="module")
@@ -158,15 +146,6 @@ def test_a_stem_is_thin_and_long_a_dot_or_blob_is_not():
     assert not is_thin_stem(box(0, 0, 0.63, 1.96), 1.5)       # 3.1
     assert not is_thin_stem(box(0, 0, 0.90, 3.70), 1.5)       # 4.1
     assert columns.STEM_MIN_ASPECT == 6.0
-
-
-def test_the_flag_is_on_by_default():
-    """ON since 2026-10-20 (Kent, MASTER_SCOPE item 52; PR #991: one shape
-    moved, Fremont, the tagline cells and Becker byte-identical), so
-    `PRE_FLIP` pins it False."""
-    from tests.conftest import PRE_FLIP
-    assert PipelineConfig().lettering_columns_small_stem is True
-    assert PRE_FLIP["lettering_columns_small_stem"] is False
 
 
 # --- the trace (measured, no flag) ----------------------------------------
@@ -230,16 +209,6 @@ def test_capitals_are_identical_on_and_off(caps_off, caps_on):
     (_r1, p1), _c1 = caps_off
     (_r2, p2), _c2 = caps_on
     assert plan_md5(p1) == plan_md5(p2)
-
-
-# --- OFF is byte-identical ------------------------------------------------
-
-def test_off_never_enters_the_hook(lower_off, caps_off):
-    # `lower_off` / `caps_off` were digitized with `is_thin_stem` patched to
-    # raise: reaching them at all proves the OFF path never enters the hook.
-    # (The OFF md5 pins `OFF_MD5` were dropped 2026-11-20, flag fold B5: they pinned an engine
-    # without `tie_in_off`, `fill_turn_slant` and `fill_underlay_cross`.)
-    assert lower_off and caps_off
 
 
 # --- the rule is the area floor, not the letter case -----------------------

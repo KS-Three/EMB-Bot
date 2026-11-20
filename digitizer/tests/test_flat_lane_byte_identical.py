@@ -256,7 +256,7 @@ holds the log). `photo/enthusiast_logo.png` was REFUSED by that guard — the
 runner does not reproduce its pre-change entry, the platform red CI
 deselects — and stays exactly as it was.
 
-**Sixth exception, TAKEN 2026-09-13 — `cfg.keep_thin_strokes` ON by default
+**Sixth exception, TAKEN 2026-09-13 — `keep_thin_strokes` ON by default
 (Kent's ruling on `docs/thin-strokes-flip-2026-09-13.md`: "Flip it — take
 gaulke and becker as the price"):** the `logo_whitebg.png` and
 `logo_alpha.png` entries were re-captured. Both move for the ONE mechanism

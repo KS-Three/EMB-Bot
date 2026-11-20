@@ -11,7 +11,7 @@ size through the Studio's request:
    old smoothness read over its own.
 2. Golden Tee on the flat lane: global k-means leaves stage 3 thousands of
    masks, and the two sub-floor rescues (the chain rescue and the
-   `keep_thin_strokes` contrast rescue) keep about twice the masks the plain
+   `keep_thin_strokes` contrast rescue, folded in 2026-11-20) keep about twice the masks the plain
    absorb would. Those kept specks are the per-region table's largest row
    (+37 shapes, +951 stitches, +12 of the plan's +12 trims).
 3. Fremont on the flat lane: stage 2 returns no dark-ink labels. On the
@@ -92,11 +92,10 @@ def goldentee_flat():
     return _flat_stage3("goldentee_hat")
 
 
-def _resolve(cfg, p, q, *, chain: bool, contrast: bool) -> int:
+def _resolve(cfg, p, q, *, chain: bool) -> int:
     masks = ClassicalSegmenter().segment(q, p, cfg)
-    c = cfg if contrast else dataclasses.replace(cfg, keep_thin_strokes=False)
     kept, _w = resolve_small_regions(
-        masks, c, p.px_per_mm, p.enclosed_mask, chain_rescue=chain,
+        masks, cfg, p.px_per_mm, p.enclosed_mask, chain_rescue=chain,
         layer_lab=rgb_to_lab(q.cluster_rgb), page_fringe=getattr(q, "page_fringe", None))
     return len(kept)
 
@@ -107,20 +106,18 @@ def test_golden_tee_flat_lane_shatters_into_thousands_of_stage3_masks(goldentee_
     assert len(ClassicalSegmenter().segment(q, p, cfg)) >= 1000
 
 
-def test_golden_tee_specks_are_kept_by_the_two_rescues(goldentee_flat):
-    """Default 167 masks out of stage 3; chain rescue off 129, contrast rescue
-    off 144, both off 84. Every one of those 83 is a sub-floor speck (a bevel
-    or sweep step, 0.04-0.4 mm wide) that the plain absorb would fold into its
-    neighbour; on the gradient lane stage 3 keeps 65 of 66."""
+def test_golden_tee_specks_are_kept_by_the_chain_rescue(goldentee_flat):
+    """Default 167 masks out of stage 3; chain rescue off 129. (Measured with
+    the contrast rescue, `keep_thin_strokes`, still switchable: contrast
+    rescue off 144, both off 84; it is folded into the code since 2026-11-20,
+    so only the chain arm can be read now.) Every one of those specks is
+    sub-floor (a bevel or sweep step, 0.04-0.4 mm wide) that the plain absorb
+    would fold into its neighbour; on the gradient lane stage 3 keeps 65 of
+    66."""
     cfg, p, q = goldentee_flat
-    default = _resolve(cfg, p, q, chain=True, contrast=True)
-    no_chain = _resolve(cfg, p, q, chain=False, contrast=True)
-    no_contrast = _resolve(cfg, p, q, chain=True, contrast=False)
-    neither = _resolve(cfg, p, q, chain=False, contrast=False)
-    assert neither < no_chain < default
-    assert neither < no_contrast < default
-    assert default - neither >= 60
-    assert default >= 1.5 * neither
+    default = _resolve(cfg, p, q, chain=True)
+    no_chain = _resolve(cfg, p, q, chain=False)
+    assert no_chain < default
 
 
 def test_fremont_flat_lane_has_no_dark_ink_read():

@@ -67,25 +67,23 @@ NO_GATE = 110.0     # `_sewn_linear_cover` returns None: no gate at all
 
 @lru_cache(maxsize=None)
 def _run(fixture: str, width: float, cap: str = "bean",
-         over_budget: str = "warn", keep_thin_strokes: bool | None = None):
+         over_budget: str = "warn"):
     """One `digitize` per (fixture, width, knobs), cached.
 
     Cached for the reason `test_resnap_mask_matches_grader` records: CI
     runners are 2-core and becker at 88 mm is a 17-second design. Every test
     below reuses these.
 
-    `keep_thin_strokes=None` means the shipped default (ON since 2026-09-13),
-    so every caller that compares against a plain `PipelineConfig` keeps
-    comparing against the same engine.
+    (`keep_thin_strokes`, ON since 2026-09-13, was a parameter here for the
+    110 mm no-gate arm; folded into the code 2026-11-20.)
     """
-    return _digitize(fixture, width, cap, over_budget, keep_thin_strokes)
+    return _digitize(fixture, width, cap, over_budget)
 
 
 def _digitize(fixture: str, width: float, cap: str = "bean",
-              over_budget: str = "warn", keep_thin_strokes: bool | None = None):
+              over_budget: str = "warn"):
     """The uncached run behind `_run`: a test that patches the ceiling calls
     this, so its plan never lands in `_run`'s cache."""
-    extra = {} if keep_thin_strokes is None else {"keep_thin_strokes": keep_thin_strokes}
     _result, plan = digitize(
         TESTDATA / fixture,
         PipelineConfig(target_width_mm=width, edge_cap=cap, border_by_size=False,
@@ -109,7 +107,7 @@ def _digitize(fixture: str, width: float, cap: str = "bean",
                        # (`work_px_per_mm`, ON since 2026-10-01): becker
                        # traced at 5.8-7.2 px/mm is a third set of polygons,
                        # and the sweep reads [54.1, 57.6, 54.5] flat.
-                       work_px_per_mm=None, **extra))
+                       work_px_per_mm=None))
     return plan
 
 

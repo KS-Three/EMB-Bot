@@ -82,5 +82,4 @@ def test_tick_census_names_runs_records_and_the_furthest_point():
 def test_ticks_and_arms_are_what_the_pr_reports():
     assert list(wt.TICKS) == ["e_top", "r_foot", "m_v", "n_foot"]
     assert wt.ARMS["main"] == {}
-    assert wt.ARMS["ends_off"] == {"lettering_columns_square_ends": False,
-                                   "lettering_columns_inside_connectors": False}
+    assert list(wt.ARMS) == ["main"]

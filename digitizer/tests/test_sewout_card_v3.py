@@ -31,6 +31,13 @@ from tools import sewout_card_v3 as v3  # noqa: E402
 
 COMMITTED = v3.REPO / "docs" / "sewout" / "card-v3-2026-10-13"
 
+def _live(overrides):
+    """A committed cut records the flags it was made with, retired ones included
+    (`small_glyph_keep`, folded into the code 2026-11-20): compare the live ones."""
+    from digitizer_core.config import RETIRED_FIELDS
+    return {k: v for k, v in overrides.items() if k not in RETIRED_FIELDS}
+
+
 PIECES = {
     "F3:today", "F3:floor", "F3:keep",
     "T:today", "T:wordtier",
@@ -81,18 +88,18 @@ def test_the_block_list_and_arms_are_pinned():
     assert {f"{b}:{a}" for b, arms in v3.BLOCKS.items() for a in arms} == PIECES
     # F3: three arms on the Hat profile, 2.2 mm cap, 40 wt.
     assert dict(v3.F3_ARMS) == {
-        "today": {"small_print_floor": False, "small_glyph_keep": False},
-        "floor": {"small_print_floor": True, "small_glyph_keep": False},
-        "keep": {"small_print_floor": False, "small_glyph_keep": True},
+        "today": {"small_print_floor": False},
+        "floor": {"small_print_floor": True},
+        "keep": {"small_print_floor": False},      # `small_glyph_keep` folded in 2026-11-20
     }
     assert (v3.F3_WORD, v3.F3_CAP_MM, v3.WT, v3.GARMENT) == ("APA", 2.2, 40, "hat_front")
-    # T and N are cut from the Studio-request replay; `small_glyph_keep` is pinned
-    # in every arm so a default flip cannot move the card. The skeleton-run arm
+    # T and N are cut from the Studio-request replay (`small_glyph_keep`, once pinned
+    # per arm, was folded into the code 2026-11-20). The skeleton-run arm
     # (`small_lettering_skeleton`) is NOT on the card: that branch has not merged.
     assert v3.CUT_ARMS == {
-        "today": {"small_glyph_keep": False},
-        "wordtier": {"small_glyph_keep": False, "lettering_words": True, "lettering_word_tiers": True},
-        "keep": {"small_glyph_keep": True},
+        "today": {},
+        "wordtier": {"lettering_words": True, "lettering_word_tiers": True},
+        "keep": {},
     }
     assert v3.CUT_BOXES == {"T": ("the", ("today", "wordtier")), "N": ("1895", ("today", "keep"))}
     assert "small_lettering_skeleton" not in json.dumps(v3.CUT_ARMS)
@@ -105,7 +112,7 @@ def test_the_committed_cuts_are_the_replay_that_905_measured():
     want = {"today": (15306, 44), "wordtier": (15375, 48), "keep": (15611, 46)}
     for arm, (stitches, trims) in want.items():
         d = json.loads((COMMITTED / "cuts" / f"cut_{arm}.json").read_text(encoding="utf-8"))
-        assert d["overrides"] == v3.CUT_ARMS[arm]
+        assert _live(d["overrides"]) == v3.CUT_ARMS[arm]
         assert d["width_mm"] == 81.0
         assert d["stitches_whole"] == pytest.approx(stitches, rel=0.01), arm
         assert d["trims_whole"] == pytest.approx(trims, abs=3), arm
@@ -176,12 +183,10 @@ def test_every_arm_differs_from_the_first_in_its_block(card):
     _out, rb = card
     n = rb["stitches_by_piece"]
     assert n["T:today"] != n["T:wordtier"]
-    assert n["N:keep-off"] != n["N:keep-on"]
     assert n["G:gap-off"] != n["G:gap-0.8"]
     assert n["F3:today"] != n["F3:floor"] or n["F3:today"] != n["F3:keep"]
     pieces = {(p["block"], p["arm"]): p for p in rb["pieces"]}
     assert pieces[("F3", "floor")]["small_print_floor"] and not pieces[("F3", "today")]["small_print_floor"]
-    assert pieces[("F3", "keep")]["small_glyph_keep"] and not pieces[("F3", "today")]["small_glyph_keep"]
     assert pieces[("G", "gap-0.8")]["forbid_gap_mm"] == 0.8 and pieces[("G", "gap-off")]["forbid_gap_mm"] is None
 
 

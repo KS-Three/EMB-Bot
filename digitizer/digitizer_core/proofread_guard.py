@@ -24,7 +24,7 @@ The rule, per shape stage 5 dropped or cut (`SHAPE_NOT_STITCHED` /
      design is re-planned with those shapes' artwork sewn over the earlier
      colours (`stage5_overlap.keep_art_scope`: the clip keeps the art
      polygon, growth only where the cloth is bare -- the same remedy
-     `cfg.small_glyph_keep` gives a rescued small glyph). The re-plan is
+     `small_glyph_keep` gives a rescued small glyph). The re-plan is
      KEPT only when the proof-read's error and misfire area of kinds
      MISSING / SHAPE / EXTRA / MERGED / CLOSED (`worse_mm2`) falls by more
      than `GUARD_MIN_MM2`; otherwise the first plan is returned.

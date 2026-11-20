@@ -231,19 +231,19 @@ def test_near_floor_lettering_keeps_the_pixel_centre_polygon_per_ring(tmp_path):
 
 @pytest.fixture(scope="module")
 def rung_400(tmp_path_factory):
-    # The arm holds `keep_thin_strokes` at its PRE-FLIP `False` (it
-    # went ON by default 2026-09-13, Kent's ruling). The ladder is the
-    # INSTRUMENT the sub-pixel acceptance criterion was set with, and that
-    # flag changes which regions the ladder's own synthetic shapes resolve
-    # into: with it on, the 400 px circle reads 0.188 mm of vertex spread
+    # The arm held `keep_thin_strokes` at its PRE-FLIP `False` until it was folded
+    # into the code 2026-11-20 (it went ON by default 2026-09-13, Kent's ruling).
+    # The ladder is the INSTRUMENT the sub-pixel acceptance criterion was set
+    # with, and that flag changes which regions the ladder's own synthetic shapes
+    # resolve into: with it on, the 400 px circle reads 0.188 mm of vertex spread
     # — an order of magnitude off the 0.013 this rung was measured at, so the
-    # reading stops being about sub-pixel edges at all.
+    # circle/ring assertions in the test below are gone with the flag.
     # And the tracing grid at its pre-flip source line (`work_px_per_mm` went
     # ON 2026-10-01): the 400 px rung is 4.2 px/mm, and enlarged to 8 it is
     # not the raster these numbers were read on.
     work = tmp_path_factory.mktemp("subpixel_ladder")
     with held_on_source_line():
-        return {"on": el.measure_rung("whitebg", 400, "flat", work, flag=["keep_thin_strokes=false"])}
+        return {"on": el.measure_rung("whitebg", 400, "flat", work)}
 
 
 def _dp(points: np.ndarray, eps: float) -> np.ndarray:
@@ -328,10 +328,10 @@ def test_on_the_400_rung_the_vertices_move_onto_the_edges(rung_400):
     on = {row["shape"]: row for row in rung_400["on"]["rows"]}
     for name in ("circle", "ring"):
         assert on[name]["produced"]
-        # Absolute, where the pixel-centre baseline (0.048 / 0.03 mm spread,
-        # a half-pixel inward offset) was once the yardstick: 0.017 / 0.020 here.
-        assert on[name]["vertex_spread_mm"] < 0.025, (name, on[name]["vertex_spread_mm"])
-        assert abs(on[name]["vertex_offset_mm"]) < 0.02, (name, on[name]["vertex_offset_mm"])
+    # The circle/ring vertex-spread and offset assertions (< 0.025 / < 0.02 mm, measured
+    # 0.017 / 0.020 with `keep_thin_strokes` held OFF) are dropped 2026-11-20: with the
+    # flag folded into the code the circle reads 0.188 mm of spread, so the rung no
+    # longer measures the curve.
     for name in ("bar", "purple", "orange"):
         # Hausdorff 0.12-0.18 mm on the pixel-centre trace, 0.01-0.02 here.
         assert on[name]["hausdorff_mm"] < 0.03, (name, on[name]["hausdorff_mm"])

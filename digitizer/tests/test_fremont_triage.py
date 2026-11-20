@@ -68,28 +68,11 @@ def test_fixture_is_the_transparent_upload():
 
 @pytest.fixture(scope="module")
 def main_run():
-    """`small_glyph_keep` ON (2026-10-13) on the engine these pins were read
+    """`small_glyph_keep` (ON 2026-10-13, folded into the code 2026-11-20) on the engine these pins were read
     on: the 2026-10-23 flips off (the small-text set raises 1895 to ~4 mm
     satin, which is a different test)."""
     from tools.flip_eight_proof import BEFORE
     return ft.run_arm("main", preflight=False, overrides=dict(BEFORE))
-
-
-@pytest.fixture(scope="module")
-def off_run():
-    """Kent's job as it was: `small_glyph_keep` set False explicitly."""
-    return ft.run_arm("small_glyph_keep_off", preflight=False)
-
-
-def test_reproduces_kents_job(off_run):
-    """His stitch-out predates the flip, so it is the OFF arm that matches his
-    15,129 stitches (the default now sews the "1" and the counters)."""
-    s = off_run["plan"].stats
-    colours = len({tuple(b.rgb) for b in off_run["plan"].blocks})
-    assert colours == ft.KENT_COLOURS
-    assert abs(s.stitch_count - ft.KENT_STITCHES) / ft.KENT_STITCHES < 0.03, s.stitch_count
-    assert len(off_run["result"].regions) == 161      # his "Edit shapes (161)"
-    assert abs(s.size_mm[0] - 81.0) < 1.5 and abs(s.size_mm[1] - 44.0) < 1.5
 
 
 def _ink_shapes(run):
@@ -97,28 +80,8 @@ def _ink_shapes(run):
     return r, [s for s in r["shapes"] if min(s["rgb"]) < ft.WHITE_MIN]
 
 
-def test_1895_with_small_glyph_keep_off_is_the_reported_loss(off_run):
-    """PINS THE DEFECT, not a goal: `cfg.small_glyph_keep` False (the engine
-    as it was). At 81 mm every 1895 digit is a shape under `min_detail_mm`^2
-    (2.25 mm^2), so stage 7's small-shape rescue routes it to the run tier
-    before the Column lane is asked: the digits sew as bean outlines of solid
-    blobs (the 8's and 9's counters are gone by stage 4), and one digit sews
-    nothing. That is Kent's "098". The thread still lands on most of the ink
-    -- a run outline over a 0.2 mm stroke covers it -- which is why
-    ARTWORK_UNCOVERED is silent."""
-    r, shapes = _ink_shapes(off_run)
-    assert len(shapes) == 4
-    assert all(s["under_min_detail_mm2"] for s in shapes)
-    assert not any(s["column_lane"] for s in shapes)
-    assert not any(s["holes"] for s in shapes)
-    tiers = sorted(s["tier"] for s in shapes)
-    assert tiers == ["UNSEWN", "run", "run", "run"], tiers
-    assert 3.0 < r["ink_mm2"] < 5.0
-    assert r["ink_bare_mm2"] < 1.5
-
-
 def test_1895_at_the_default_is_sewn(main_run):
-    """`cfg.small_glyph_keep` is ON by default (Kent's ruling 2026-10-13): the
+    """`small_glyph_keep` is the code (Kent's ruling 2026-10-13; folded 2026-11-20): the
     "1" is sewn (the white ground still has no hole for it, so stage 5 sews
     its artwork over the ground rather than clipping it to nothing) and the
     8 and 9 keep their counters (2 and 1, 0.30-0.52 mm^2)."""

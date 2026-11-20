@@ -6,7 +6,7 @@ stage 7's small-shape rescue (`routes_to_run`, `min_detail_mm`^2 = 2.25 mm^2):
 a letter under that area is sewn as an outline run before the Column lane is
 asked. What small lettering under 2.25 mm^2 SHOULD sew as is left open.
 `cfg.small_print_floor` (#873/#878/#880, OFF) is the existing answer and
-`cfg.lettering_columns_small_stem` (#896, OFF) is the existing way to let a
+`lettering_columns_small_stem` (#896, OFF) is the existing way to let a
 thin stem reach the Column lane. This measures exactly what they give on this
 upload, at this size, per glyph. Nothing in the engine changes, no flag is
 flipped, no constant is touched (ROADMAP gate 1: pull and floor values are
@@ -52,7 +52,7 @@ PRO_WIDTH_MM = 92.5     # the pro's file (memory pro-files-refute-scale-limit-20
 
 # name -> (width mm, PipelineConfig overrides on the Studio request, label)
 FLOOR = {"small_print_floor": True}
-STEM = {"lettering_columns_small_stem": True}
+STEM = {}
 ARMS = {
     "main_81": (81.0, {}, "main"),
     "floor_81": (81.0, dict(FLOOR), "small_print_floor ON"),
@@ -74,8 +74,11 @@ ARMS = {
     # the counter loss. It is ON by default since 2026-10-13 (Kent's ruling),
     # so every arm above runs with it ON and these two are the OFF controls
     # (they were `keep_81` / `keep_floor_81`, the ON arms, before the flip).
-    "nokeep_81": (81.0, {"small_glyph_keep": False}, "small_glyph_keep OFF (control)"),
-    "nokeep_floor_81": (81.0, {"small_glyph_keep": False, **FLOOR},
+    # FOLDED 2026-11-20: `small_glyph_keep` and `lettering_columns_small_stem`
+    # are the code now, so a re-run of `nokeep_*` / `stem_81` gives the ON
+    # engine; the committed `signatures.json` record of them is the OFF result.
+    "nokeep_81": (81.0, {}, "small_glyph_keep OFF (control)"),
+    "nokeep_floor_81": (81.0, {**FLOOR},
                         "small_glyph_keep OFF + small_print_floor ON (control)"),
 }
 # `small_text_true_size` is ON by default since 2026-10-14 (Kent, WoK 56
@@ -91,7 +94,7 @@ from tools.flip_eight_proof import BEFORE as _FLIP_2026_10_23  # noqa: E402
 # ...and `group_consistent_tier`/`_fill_angle` (ON 2026-11-14, Kent): the line's
 # record predates them (THE reads S* S* S* with them ON, R S* S* as recorded)
 _GROUP_2026_11_14 = {"group_consistent_tier": False, "group_consistent_fill_angle": False}
-PRE_TRUE_SIZE = {"small_text_true_size": False, "lettering_columns_small_stem": False,
+PRE_TRUE_SIZE = {"small_text_true_size": False,
                  **_FLIP_2026_10_23,
                  **_GROUP_2026_11_14}
 ARMS = {name: (w, {**PRE_TRUE_SIZE, **o}, label) for name, (w, o, label) in ARMS.items()}

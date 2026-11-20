@@ -1,5 +1,5 @@
 """Crosses square to the line of text in the Column lane
-(`cfg.lettering_columns_text_lean`, built OFF 2026-10-23;
+(`lettering_columns_text_lean`, built OFF 2026-10-23, folded in 2026-11-20;
 `digitizer_core/column_lean.py`, `docs/lettering-10mm-up-2026-10-23.md`).
 
 The pro sews every stroke of Becker's MARINE (12.8-17.1 mm caps) with the
@@ -9,8 +9,8 @@ column whose axis the word's house cross can span within the 30 degree
 lean cap (`stage6_satin._clamp_to_span`, Kent's 2026-09-03 convention) is
 re-stationed with its crosses along the house, one every spacing /
 cos(lean) along the axis; an upright stem under upright text, a curved
-column and a letter with no house angle keep their stations. OFF is the
-lane as it was, station for station.
+column and a letter with no house angle keep their stations. A letter with
+no house angle is the lane as it was, station for station.
 """
 from __future__ import annotations
 
@@ -50,11 +50,6 @@ def _cross_deg(station) -> float:
 
 def _leans(cols) -> list[float]:
     return [cross_direction(c.axis, 0.0)[2] for c in cols if c.axis is not None]
-
-
-def test_flag_default_is_on():
-    # Kent 2026-10-24, "Flip it ON" (docs/big-letter-construction-2026-10-24.md)
-    assert PipelineConfig().lettering_columns_text_lean is True
 
 
 def test_cross_direction_is_the_satin_tiers_clamp():
@@ -154,7 +149,7 @@ def _plan(poly: Polygon, meta: dict | None = None, **cfg_kw):
                  thread_number="4101", area_mm2=poly.area, source="test", meta=m)
     planned = [PlannedRegion(region=reg, polygon=poly, sew_index=0)]
     blocks, _w = sequence(planned, fabric_for_garment("hat_front"),
-                          PipelineConfig(underlay=False, lettering_columns_skip_blobs=False, **cfg_kw))
+                          PipelineConfig(underlay=False, **cfg_kw))
     return [r for b in blocks for r in b.runs]
 
 
@@ -171,32 +166,24 @@ def _satin_cross_angles(runs) -> list[float]:
     return out
 
 
-def test_off_is_the_lane_as_it_was_with_a_house_angle_present():
-    # the default is ON since 2026-10-24, so the plain lane is the explicit
-    # False arm and the default is the leaned one
+def test_a_house_angle_leans_the_lane():
+    # (folded in 2026-11-20: the unleaned lane is now a letter with no house
+    # angle, which is what the old explicit-False arm stationed)
     n = _n_letter()
-    a = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=True)
-    b = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=False)
+    a = _plan(n, {"satin_angle_deg": 0.0})
+    b = _plan(n)
     assert [r.points for r in a] != [r.points for r in b]
-    assert [r.points for r in _plan(n, {"satin_angle_deg": 0.0})] == [r.points for r in a]
-
-
-def test_on_with_no_house_angle_is_the_lane_as_it_was():
-    n = _n_letter()
-    a = _plan(n, lettering_columns_text_lean=False)
-    b = _plan(n, lettering_columns_text_lean=True)
-    assert [r.points for r in a] == [r.points for r in b]
 
 
 def test_on_the_n_diagonal_sews_with_the_stems_cross():
     n = _n_letter()
-    off = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=False)
-    on = _plan(n, {"satin_angle_deg": 0.0}, lettering_columns_text_lean=True)
+    off = _plan(n)                                   # no house angle: the unleaned lane
+    on = _plan(n, {"satin_angle_deg": 0.0})
     assert [r.points for r in on] != [r.points for r in off]
     off_angles, on_angles = _satin_cross_angles(off), _satin_cross_angles(on)
-    # off, the diagonal's crosses sit square to the diagonal (this N's runs
+    # unleaned, the diagonal's crosses sit square to the diagonal (this N's runs
     # 35.7 deg off upright, so its crosses are 30-60 deg off the stems');
-    # on, past the cap the lean fades and every cross lies within 20 deg
+    # leaned, past the cap the lean fades and every cross lies within 20 deg
     # of the stems' horizontal
     assert sum(1 for a in off_angles if a > 20.0) >= 20
     assert max(on_angles) < 20.0, max(on_angles)
@@ -205,8 +192,8 @@ def test_on_the_n_diagonal_sews_with_the_stems_cross():
 
 def test_the_wiring_reads_the_designs_house_when_the_word_has_none():
     n = _n_letter()
-    off = _plan(n, satin_angle_deg=0.0, lettering_columns_text_lean=False)
-    on = _plan(n, satin_angle_deg=0.0, lettering_columns_text_lean=True)
+    off = _plan(n)
+    on = _plan(n, satin_angle_deg=0.0)
     assert [r.points for r in on] != [r.points for r in off]
 
 

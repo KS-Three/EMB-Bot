@@ -154,7 +154,8 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # folded into the code 2026-11-20, `legacy_engine` patches its False path back)
 # and say so here -- the posture `conftest.PRE_FLIP` documents.
 # `keep_thin_strokes` joined that posture 2026-09-13 (flipped ON by Kent's
-# ruling) for the same reason: ON, drone keeps 33 more sub-floor regions, an
+# ruling; folded into the code 2026-11-20, so it is no longer held off here
+# and the fixtures run with it) for the same reason: ON, drone keeps 33 more sub-floor regions, an
 # artwork cone sews twice again (`[..., 259, ..., 259, ...]`) and the fold
 # stops paying for itself in thread (18,140 against 18,049). Those are the
 # flip's numbers, not this fold's, and the claims here are the fold's.
@@ -178,7 +179,6 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
 # The engine these claims were measured on has the skeleton tier.
 PRE_FLIP_RC = {"border_by_size": False,
-               "lettering_columns_corner_fold": False, "keep_thin_strokes": False,
                "lettering_columns": False}
 
 
@@ -192,32 +192,51 @@ def drone_on():
     return _digitize(True, plain_mean=True, **PRE_FLIP_RC)
 
 
-def test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP(drone_on):
-    """The fold's invariant, with the one exemption Kent ruled on 2026-09-11.
+def test_the_fixture_still_declares_duplicate_cones(drone_off):
+    """Guards the whole file against going vacuous: if quantization stops
+    producing a duplicate here, every assertion below proves nothing."""
+    _res, plan = drone_off
+    cones = [b.thread_index for b in plan.blocks]
+    assert len(cones) - len(set(cones)) >= 1, \
+        "no cone revisit left on the fixture — re-pick it or retire this file"
 
-    The design-silhouette cap (`cfg.edge_cap`, default "bean" since that
-    ruling) is a design-level pass that sews AFTER all artwork, in the thread
-    of whichever region owns most of the silhouette — so on essentially every
-    design it re-loads a cone the job already ran. Measured that day across
-    six fixtures: **all six**, and the alternative was measured too. Always
-    reusing the last-loaded cone would remove the stop and put the wrong
-    colour on the edge — on `logo_gaulke_roofing` the best-match cone owns
-    **95.0%** of the silhouette against the last-sewn cone's **5.4%**, and on
-    `enthusiast_logo` 77.8% against 22.2%.
 
-    **Kent's call: keep the best match and accept the stop.** So the fold's
-    rule is unchanged for every ARTWORK block — which is what it was written
-    about, and what this test still pins — and the cap is excluded by name.
-    A second cap block, or an artwork revisit, still fails here.
-    """
-    _res, plan = drone_on
-    art = [b for b in plan.blocks
-           if not any(r.shape_id == "__edge_cap__" for r in b.runs)]
-    caps = len(plan.blocks) - len(art)
-    assert caps <= 1, f"more than one cap block: {caps}"
-    cones = [b.thread_index for b in art]
-    assert len(cones) == len(set(cones)), \
-        f"an artwork cone still sews twice: {cones}"
+# `test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP` (no artwork cone
+# sews twice on `drone_on`) was deleted 2026-11-20: it held on the engine before
+# `keep_thin_strokes` went ON, and that flag is in the code now, so one artwork
+# cone sews twice on this fixture again (13 artwork blocks, 12 cones). The
+# cap-block exemption it recorded (Kent 2026-09-11: keep the best-match cone on
+# the silhouette cap and accept the stop) stands; the revisit claim on the
+# engine as it ships is `test_on_the_shipped_engine_the_fold_still_saves_...`.
+def test_the_fold_costs_the_operator_fewer_stops(drone_off, drone_on):
+    """A block boundary is a colour change, and on a single head a colour
+    change is the machine halting for a human. That is what this buys."""
+    _o, off = drone_off
+    _n, on = drone_on
+    assert len(on.blocks) < len(off.blocks)
+
+
+def test_the_fold_does_not_pay_for_itself_in_thread(drone_off, drone_on):
+    """The reorder could have traded stops for flying. It does not: less
+    needle-up travel, over slightly more lifts — short ones replacing the long
+    flights back out to the tail fragments. (It also used to save stitches;
+    with `keep_thin_strokes` folded in 2026-11-20 the fold costs 13 of 18,730,
+    the same direction `test_on_the_shipped_engine_...` bounds at 2%, so the
+    `<=` stitch assertion measured on the engine without it is dropped.)"""
+    import math
+
+    def needle_up_mm(plan):
+        up, prev = 0.0, None
+        for b in plan.blocks:
+            for r in b.runs:
+                if prev is not None and (r.jump or r.trim):
+                    up += math.dist(prev, r.points[0])
+                prev = r.points[-1]
+        return up
+
+    _o, off = drone_off
+    _n, on = drone_on
+    assert needle_up_mm(on) < needle_up_mm(off)
 
 
 def test_the_fold_reports_which_spools_it_merged(drone_on):

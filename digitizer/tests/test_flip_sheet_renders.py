@@ -180,7 +180,7 @@ def test_flags_with_one_base_share_one_off_arm():
             missing = object()
             extra = {k: v for k, v in spec["sets"].items() if spec["base"].get(k, missing) != v}
             assert extra and fsr.arm_sets(fsr.off_arm(f)) == spec["base"], f
-    assert fsr.off_arm("wave3_flips") == fsr.off_arm("small_text_bay_mouth") == "wave3_off__off"
+    assert fsr.off_arm("wave3_flips") == "wave3_off__off"
 
 
 @pytest.mark.usefixtures("fabric_flags")
@@ -235,7 +235,7 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
     for f in ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
               "silhouette_underfill_panels", "small_text_bay_mouth"):
         assert f not in fsr.WAVE3
-    assert cfg.small_text_bay_mouth is True and "small_text_bay_mouth" in fsr.FLAGS
+    assert "small_text_bay_mouth" not in fsr.FLAGS       # folded into the code 2026-11-20
     # ... and the two Kent flipped from this sheet, 2026-10-26, and the two from wave 5,
     # 2026-10-27: off the list, rows kept, ON
     for f in ("outline_loop_mitre", "text_cluster_part_touching",

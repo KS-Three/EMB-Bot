@@ -376,7 +376,7 @@ _COVERAGE_FLOOR_UNITS = 0.25
 _COVERAGE_MIN_PATCH_MM2 = 25.0
 
 # Legibility on the render (quality review 2026-09-08 item 11, built
-# 2026-09-10 behind `cfg.legibility_check`, DEFAULT OFF): per text cluster,
+# 2026-09-10 behind `legibility_check`, DEFAULT OFF): per text cluster,
 # the edit similarity between what tesseract reads off the artwork and off
 # the thread render (`legibility.measure`; 1.0 the thread says what the art
 # says). RULED by Kent 2026-09-10 (option A of docs/superpowers/plans/
@@ -4576,10 +4576,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     # Legibility on the render — what the thread SAYS against what the art
     # says, per text cluster. Needs the artwork, the regions (the clusters)
-    # and the tesseract binary; `cfg.legibility_check` (ON by default since
+    # and the tesseract binary; `legibility_check` (ON by default since
     # 2026-09-10, Kent's ruling), and the report says whether it ran either
     # way.
-    if (cfg.legibility_check and p is not None and result is not None
+    if (p is not None and result is not None
             and _legibility.tesseract_available()):
         leg_findings, leg_metrics = _legibility_findings(p, result, plan, cfg)
         findings.extend(leg_findings)

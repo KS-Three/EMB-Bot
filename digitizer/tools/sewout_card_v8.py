@@ -131,9 +131,7 @@ PIN = {
     "small_text_cap_letter_gap_mm": 0.25,
     "small_text_cap_bold_scale": 1.45,
     "small_text_cap_reach_edges": True,
-    "small_text_bay_mouth": True,
     "small_text_reset_grow_away": True,
-    "lettering_columns_small_bold": True,
     "bean_only_lines": True,
     "dark_ink_bean": True,
     # Rebuilt 2026-11-08 on main 2ce938eb: the six flips that landed since the

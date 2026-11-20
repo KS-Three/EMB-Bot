@@ -194,7 +194,7 @@ def test_word_ocr_text_joins_in_reading_order():
 
 def test_readers_follow_the_flag():
     # A stroke-shaped box (1 x 6), not a 1 x 1 square: a solid blob is refused
-    # by `lettering_columns_skip_blobs` (ON since 2026-10-13), tagged or not.
+    # by `lettering_columns_skip_blobs` (ON since 2026-10-13, folded in 2026-11-20), tagged or not.
     r = _region("a", box(0, 0, 1, 6))
     r.meta.update({"text_candidate": True, "text_cluster_id": "TCx", "lettering_group": True})
     off, on = PipelineConfig(), PipelineConfig(lettering_words=True)

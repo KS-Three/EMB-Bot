@@ -94,18 +94,13 @@ def _run(fixture: str, on: bool):
     `test_resnap_mask_matches_grader` records: CI runners are 2-core and
     `summit_badge` costs ~54 s a digitize on this container.
 
-    `keep_thin_strokes` is held at its PRE-FLIP `False` (flipped ON by
-    default 2026-09-13, Kent's ruling) — the posture `conftest.PRE_FLIP`
-    documents, and load-bearing here: ON, the flag keeps enough contrasting
-    sub-floor regions on `summit_badge` that layer 12 no longer diverges at
-    all, and `test_the_election_closes_the_divergence_on_the_fixture_that_
-    fires_it` fails on its own premise guard rather than on its claim. The
-    divergence this file prices is the CAP's, measured on the engine
-    `docs/palette-mismatch-2026-09-12.md` §1 measured it on."""
+    (`keep_thin_strokes` was held at its PRE-FLIP `False` here until it was
+    folded into the code 2026-11-20; with it, `summit_badge`'s layer 12 no
+    longer diverges, which is why the fixture-level test of the election's
+    close was deleted.)"""
     with _election(on):
         result, plan = digitize(TESTDATA / fixture,
-                            _cfg(keep_thin_strokes=False,
-                                 # `region_blobs` is a steep synthetic ramp
+                            _cfg(# `region_blobs` is a steep synthetic ramp
                                  # and reads `photo_scene` on the 2026-10-28
                                  # texture gate; this file prices the BLEND
                                  # tier's palette on the gradient lane it was
@@ -242,25 +237,12 @@ def test_a_shape_parked_past_the_end_of_the_list_elects_nothing():
 
 # --- real fixtures ----------------------------------------------------------
 
-def test_the_election_closes_the_divergence_on_the_fixture_that_fires_it():
-    """`summit_badge`: the cap moves 7 shapes out of layer 12 and the list
-    goes on naming the cone they left. Read the CONE LIST, not a grade."""
-    off, _ = _run(CAPPED, False)
-    on, _ = _run(CAPPED, True)
-
-    bad_off = _violations(off)
-    assert bad_off, (
-        "premise gone: `summit_badge` no longer diverges, so this file is "
-        "measuring nothing — re-read docs/palette-mismatch-2026-09-12.md §1")
-    assert [i for i, _c, _t in bad_off] == [12]
-    assert bad_off[0][1] == "0134" and bad_off[0][2] == ["4174"]
-
-    assert _violations(on) == []
-    assert _layer_cones(on)[12] == "4174"
-    # One entry per layer, still — the election renames rows, never drops one.
-    assert len(on.palette) == len(off.palette)
-
-
+# `test_the_election_closes_the_divergence_on_the_fixture_that_fires_it`
+# (`summit_badge`: the cap moves 7 shapes out of layer 12 and the list names
+# `0134` against the `4174` they left) was deleted 2026-11-20: it was measured
+# with `keep_thin_strokes` held OFF, and with that folded into the code the
+# contrasting sub-floor regions are kept, layer 12 no longer diverges, and its
+# own premise guard fails. The synthetic test above still prices the election.
 def test_the_invariant_holds_on_every_layer_of_both_fixtures():
     """`palette[i]["number"] in {r.thread_number for r in layer i}`, which is
     the whole contract. Stated over all layers so a future pass that moves a
@@ -271,8 +253,8 @@ def test_the_invariant_holds_on_every_layer_of_both_fixtures():
 
 
 def test_a_layer_that_sews_nothing_names_its_own_shapes_cone():
-    """`logo_whitebg`'s enclosed ring hole: layer 4 lists `0015 White`, 159.6
-    mm², `stitched=False`, and the machine loads five spools not six.
+    """`logo_whitebg`'s enclosed ring hole: layer 5 lists `0015 White`, 160.8
+    mm², `stitched=False`, and the machine loads six spools not seven.
 
     The fix does NOT delete it, and that is the point of this test. An
     unstitched layer is a real review row and must keep a real colour — the
@@ -281,32 +263,33 @@ def test_a_layer_that_sews_nothing_names_its_own_shapes_cone():
     `palette ⊆ block cones` is NOT the invariant.
     """
     # `cfg()` is `PipelineConfig(target_width_mm=80.0)`, the config §3 of the
-    # doc walked through, so these are the numbers it published — plus
-    # `keep_thin_strokes=False`, its value on that day (flipped ON by default
-    # 2026-09-13, Kent's ruling). ON, whitebg keeps its teal patch as a
-    # seventh region, so layer 4 names `4531` and the machine loads six
-    # spools, not the five the doc's §3 walked through; that is the flip's
-    # arithmetic, pinned in `tests/test_keep_thin_strokes.py`, not this
-    # election's. `sew_enclosed_white=False` the same way (ON by default since
+    # doc walked through. RE-PINNED 2026-11-20 for `keep_thin_strokes`, folded
+    # into the code (it was held OFF here, 2026-09-13 on): whitebg keeps its
+    # teal patch as a region of its own (layer 4, `4531`), so the ring hole
+    # moves to layer 5, there are seven review rows and the machine loads
+    # six spools, not the six rows and five the doc's §3 walked through;
+    # that is the flip's arithmetic, pinned in
+    # `tests/test_keep_thin_strokes.py`, not this election's.
+    # `sew_enclosed_white=False` the same way (ON by default since
     # 2026-10-26): ON, the ring hole sews and no layer sews nothing.
     with _election(False):
         off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
-                                 cfg(keep_thin_strokes=False, sew_enclosed_white=False))
+                                 cfg(sew_enclosed_white=False))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
-                           cfg(keep_thin_strokes=False, sew_enclosed_white=False))
+                           cfg(sew_enclosed_white=False))
 
     assert _layer_cones(off) == _layer_cones(on), (
         "an unstitched layer's cone was already its own regions' cone; the "
         "election must be a no-op here")
-    assert _layer_cones(on)[4] == "0015"
-    hole = [r for r in on.regions if r.meta["layer"] == 4]
+    assert _layer_cones(on)[5] == "0015"
+    hole = [r for r in on.regions if r.meta["layer"] == 5]
     assert hole and all(r.meta["stitched"] is False for r in hole)
     assert _violations(on) == []
 
-    # Six review rows, five spools — the gap is the ring hole, both ways.
+    # Seven review rows, six spools — the gap is the ring hole, both ways.
     spools = {str(b.thread_number) for b in on_plan.blocks}
     assert spools == {str(b.thread_number) for b in off_plan.blocks}
-    assert len(_layer_cones(on)) == 6 and len(spools) == 5
+    assert len(_layer_cones(on)) == 7 and len(spools) == 6
     assert set(_layer_cones(on)) - spools == {"0015"}
 
 

@@ -55,7 +55,7 @@ FIXTURES = ("synthetic", "fremont_tagline")
 from tools.flip_eight_proof import BEFORE as _FLIP_2026_10_23  # noqa: E402
 # ...and the nine layout flags flipped 2026-10-23 (the rows predate them too)
 OFF_FLIPS = {"small_text_true_size": False, **_FLIP_2026_10_23}
-PINNED = {"small_glyph_keep": True, "small_lettering_skeleton": False,
+PINNED = {"small_lettering_skeleton": False,
           "small_text_cap_mm": None, "small_text_restore_mm": None}
 
 MIN_COLUMN_CROSSES = 5

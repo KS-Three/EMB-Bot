@@ -1,5 +1,5 @@
 """Column END shapes in the lettering Column lane: how each column ends against
-the letter's own outline, OFF vs `cfg.lettering_columns_square_ends`.
+the letter's own outline, OFF vs `lettering_columns_square_ends`.
 
 Kent, 2026-10-13: "we need to work on lettering and how they start / end".
 The Fremont 81 mm Hat triage (`tools/fremont_triage.py`, PR #898) traced three
@@ -44,7 +44,7 @@ receives it, tucks included -- independent of the face rule):
 - `bare_mm2`: outline area no satin stitch's thread covers (each zigzag
   stitch read `THREAD_HALF_MM` either side) -- the price of holding a face.
 
-`--connectors` adds `cfg.lettering_columns_inside_connectors` to the ON arm
+`--connectors` adds `lettering_columns_inside_connectors` to the ON arm
 (2026-10-13: every connector on the letter or its satin, Kent's M->O "loop").
 
 Fremont is an UNREPRESENTATIVE fixture: reproduce defects on it, never size a
@@ -303,17 +303,17 @@ def design_census(calls, square_ends: bool, tol_mm: float = TOL_MM,
     }
 
 
-#: the ON arm's config. Both flags are ON by default since Kent's ruling
-#: 2026-10-13, so the OFF arm PINS them False and the ON arm names them;
+#: Both flags (`lettering_columns_square_ends`, `lettering_columns_inside_connectors`)
+#: were folded into the code 2026-11-20: a whole-design run is always the ON engine, so
+#: the "OFF" arms of the whole-design captures below are no longer OFF; the lane replays
+#: that pass `square_ends=` / `inside_connectors=` to the lane directly still are.
 #: `--connectors` is kept for old command lines and changes nothing.
-ON = {"lettering_columns_square_ends": True,
-      "lettering_columns_inside_connectors": True}
-OFF = {"lettering_columns_square_ends": False,
-       "lettering_columns_inside_connectors": False}
+ON = {}
+OFF = {}
 
 
 def _on_conn() -> bool:
-    return bool(ON.get("lettering_columns_inside_connectors"))
+    return True
 
 
 def fixture_census(name: str, tol_mm: float = TOL_MM, full_on: bool = False) -> dict:
@@ -360,8 +360,7 @@ def fremont81(out: Path, renders: Path | None, tol_mm: float = TOL_MM,
     for arm, ov in (("off", dict(OFF)), ("on", dict(ON))):
         if arms and arm not in arms:
             continue
-        conn = bool(ov.get("lettering_columns_inside_connectors"))
-        sq = bool(ov.get("lettering_columns_square_ends"))
+        conn = sq = arm == "on"
         ft.ARMS[f"square_ends_{arm}"] = ov
         calls = []
         real = s7.lettering_columns_shape
@@ -594,8 +593,6 @@ def main(argv=None) -> int:
     ap.add_argument("--tol", type=float, default=TOL_MM)
     a = ap.parse_args(argv)
     sys.path.insert(0, str(ROOT))
-    if a.connectors:
-        ON["lettering_columns_inside_connectors"] = True
     if a.letters:       # --out is the PNG here
         box = tuple(float(v) for v in a.box.split(","))
         print(letter_panel(load_letters(a.letters), box, a.out, a.title or a.letters.stem, a.px))

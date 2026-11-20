@@ -1,5 +1,5 @@
-"""`cfg.small_glyph_keep` (built OFF 2026-10-13, ON by Kent's
-ruling the same day): a rescued small glyph keeps
+"""`small_glyph_keep` (built OFF 2026-10-13, ON by Kent's
+ruling the same day, folded in 2026-11-20): a rescued small glyph keeps
 its counters, and its ink when its ground has no hole for it.
 
 Kent's Hotel Fremont at 81 mm on a hat sewed "1895" as "098"
@@ -13,8 +13,8 @@ of what is in the hole:
   artwork lay under an earlier colour and stage 5's clip by what is already
   down left nothing (SHAPE_NOT_STITCHED).
 
-These pin both halves on synthetic geometry, and that OFF is byte-identical
-(the flat-lane goldens' md5, as `test_small_print.py` pins them).
+These pin both halves on synthetic geometry, and that the flat-lane goldens
+are unmoved (their md5, as `test_small_print.py` pins them).
 """
 from __future__ import annotations
 
@@ -42,11 +42,6 @@ TESTDATA = Path(__file__).resolve().parents[1] / "testdata"
 PPM = 30.0
 
 
-def test_flag_is_on_by_default():
-    """ON by Kent's ruling 2026-10-13; False is the old engine."""
-    assert PipelineConfig().small_glyph_keep is True
-
-
 # --- stage 4: a rescued small glyph's counters --------------------------------
 
 def _eight(counter_px: int = 16, shell=(36, 51)):
@@ -71,30 +66,27 @@ def _vectorize(mask, **kw):
     return regions[0]
 
 
-def test_off_fills_a_small_glyphs_counters_on_keeps_them():
-    off = _vectorize(_eight(), small_glyph_keep=False)
-    on = _vectorize(_eight(), small_glyph_keep=True)
-    assert off.meta["rescued_small_shape"] and on.meta["rescued_small_shape"]
+def test_a_small_glyph_keeps_its_counters():
+    on = _vectorize(_eight())
+    assert on.meta["rescued_small_shape"]
     floor = 0.25 * PipelineConfig().min_detail_mm ** 2
     holes = [Polygon(r).area for r in on.polygon.interiors]
-    assert len(off.polygon.interiors) == 0
     assert len(holes) == 2
     assert all(machine.RUN_MIN_AREA_MM2 <= a < floor for a in holes), holes
-    assert on.polygon.exterior.equals(off.polygon.exterior)
 
 
 def test_a_counter_under_the_run_floor_stays_filled():
-    on = _vectorize(_eight(counter_px=10), small_glyph_keep=True)   # 0.11 mm²
+    on = _vectorize(_eight(counter_px=10))   # 0.11 mm²
     assert len(on.polygon.interiors) == 0
 
 
 def test_a_shape_over_the_detail_floor_keeps_the_sliver_floor():
     """Only a rescued small shape's holes move: a big shape's 0.28 mm² hole
-    is still filled ON, as it always was."""
+    is still filled, as it always was."""
     m = np.zeros((200, 200), bool)
     m[20:180, 20:180] = True
     m[90:106, 90:106] = False
-    on = _vectorize(m, small_glyph_keep=True)
+    on = _vectorize(m)
     assert "rescued_small_shape" not in on.meta
     assert len(on.polygon.interiors) == 0
 
@@ -127,41 +119,22 @@ def _lost(warnings):
     return [i for w in warnings if w["code"] == SHAPE_NOT_STITCHED for i in w.get("ids", [])]
 
 
-def test_off_loses_the_glyph_under_its_ground_on_sews_its_ink():
+def test_a_glyph_under_its_ground_sews_its_ink():
     regs = _ground_and_one()
-    off, off_w = _plan(regs, small_glyph_keep=False)
-    assert "one" not in [p.shape_id for p in off]
-    assert _lost(off_w) == ["one"]
-
-    on, on_w = _plan(regs, small_glyph_keep=True)
+    on, on_w = _plan(regs)
     one = next(p for p in on if p.shape_id == "one")
     assert one.polygon.equals(regs[1].polygon), "the artwork, ungrown"
     assert not _lost(on_w)
-    # The ground plans exactly as it did.
-    g_off = next(p for p in off if p.shape_id == "ground")
-    g_on = next(p for p in on if p.shape_id == "ground")
-    assert g_on.polygon.equals_exact(g_off.polygon, 0.0)
 
 
 def test_a_shape_that_is_not_a_rescued_glyph_is_still_clipped():
     regs = _ground_and_one(rescued=False)
-    on, on_w = _plan(regs, small_glyph_keep=True)
+    on, on_w = _plan(regs)
     assert "one" not in [p.shape_id for p in on]
     assert _lost(on_w) == ["one"]
 
 
-def test_a_glyph_with_ink_left_after_the_clip_plans_as_before():
-    """Half the stroke runs off the ground: the clip leaves ink, so ON is the
-    clip exactly."""
-    regs = _ground_and_one(glyph=box(10, 8, 10.25, 12))
-    off, _ = _plan(regs, small_glyph_keep=False)
-    on, _ = _plan(regs, small_glyph_keep=True)
-    a = next(p for p in off if p.shape_id == "one")
-    b = next(p for p in on if p.shape_id == "one")
-    assert b.polygon.equals_exact(a.polygon, 0.0)
-
-
-# --- OFF is byte-identical -----------------------------------------------------
+# --- the flat-lane goldens are unmoved -----------------------------------------
 
 # The flat-lane goldens' stitch streams, as `test_small_print.py` pins them.
 GOLDEN_MD5 = FLAT_GOLDEN_MD5
@@ -172,15 +145,13 @@ def _md5(coords) -> str:
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
-@pytest.mark.parametrize("flag", [False, True])
-def test_goldens_are_byte_identical_either_way(fixture, flag):
-    """OFF is the engine as it was. ON too, on these three: none has a
-    rescued small shape with a hole or one sitting wholly on a ground."""
+def test_goldens_are_byte_identical(fixture):
+    """The engine as it was, on these three: none has a rescued small shape
+    with a hole or one sitting wholly on a ground."""
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
-                                            small_glyph_keep=flag))
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == GOLDEN_MD5[fixture]

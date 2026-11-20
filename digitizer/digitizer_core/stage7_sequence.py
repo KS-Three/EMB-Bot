@@ -424,7 +424,7 @@ def _one_polygon(geom, fallback: Polygon) -> Polygon:
 
 
 def _text_lean_house(region, cfg: PipelineConfig) -> float | None:
-    """`cfg.lettering_columns_text_lean` (2026-10-23): the house cross a
+    """`lettering_columns_text_lean` (2026-10-23): the house cross a
     Column letter's straight columns lean to -- the word's
     `satin_angle_deg` (the house pass, `set_lettering_house_angle`), else
     the design's `cfg.satin_angle_deg`; None where neither names one, and
@@ -3349,13 +3349,11 @@ def sequence(
                       if cfg.border_abrupt_raggedness is not None
                       else machine.BORDER_ABRUPT_RAGGEDNESS)
     rescue = True        # `small_shape_rescue`, folded in
-    # `cfg.lettering_columns_small_stem` (default ON, 2026-10-20): a lettering stem
-    # under the area floor goes to the Column lane, not the run tier. Off,
-    # `routes_to_run` below is today's, branch for branch. It also needs the
-    # lane itself (satin + lettering_columns): a stem the lane does not take
+    # `lettering_columns_small_stem` (folded in): a lettering stem under the
+    # area floor goes to the Column lane, not the run tier. It needs the lane
+    # itself (satin + lettering_columns): a stem the lane does not take
     # would otherwise fall through to the classifier with no outline run.
-    small_stem = bool(cfg.lettering_columns_small_stem and cfg.lettering_columns
-                      and cfg.satin)
+    small_stem = bool(cfg.lettering_columns and cfg.satin)
     # The config-to-emitter mapping the split-satin knobs document: None
     # defers to the corpus-median machine default.
     split_above = cfg.split_satin_above_mm
@@ -4327,7 +4325,7 @@ def sequence(
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
                     underlay_style=satin_underlay, start_near=entry,
                     end_near=exit_near,
-                    inside_connectors=cfg.lettering_columns_inside_connectors,
+                    inside_connectors=True,
                     inside_stagger=cfg.lettering_columns_inside_stagger,
                     ink=ink_source, drawn_width=cfg.script_strokes_drawn_width,
                     cover_hops=cfg.lettering_columns_cover_hops,
@@ -4389,12 +4387,10 @@ def sequence(
                 _cored = [] if cfg.small_print_floor else cored_holes_of(_letter)
                 if _cored:
                     _clear = profile_for(p).width_mm / 2.0
-                # `cfg.lettering_columns_text_lean` (default ON since 2026-10-24):
-                # the word's house cross on every straight column it can
-                # span (`column_lean`); off, or no house angle, None and the
-                # call below is today's, argument for argument
-                _lean = (_text_lean_house(p.region, cfg)
-                         if cfg.lettering_columns_text_lean else None)
+                # `lettering_columns_text_lean` (folded in): the word's house
+                # cross on every straight column it can span (`column_lean`);
+                # no house angle, None and the call below omits it
+                _lean = _text_lean_house(p.region, cfg)
                 runs, report = lettering_columns_shape(
                     _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
@@ -4406,17 +4402,15 @@ def sequence(
                     end_near=exit_near,
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
                     **({"counter_holes": _cored} if _cored else {}),
-                    # `cfg.lettering_columns_fold_cuts` (default ON, Kent 2026-10-20): off,
-                    # the call is today's, argument for argument
-                    **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
-                    # `cfg.lettering_columns_square_ends` (default ON, Kent 2026-10-13): same rule
-                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
+                    # `lettering_columns_fold_cuts`, `lettering_columns_square_ends`
+                    # (folded in)
+                    fold_cuts=True,
+                    square_ends=True,
                     # `cfg.lettering_columns_rail_axis` (default ON, 2026-10-20): same rule
                     **({"rail_axis": True} if cfg.lettering_columns_rail_axis else {}),
-                    # `cfg.lettering_columns_small_bold` (default OFF, 2026-10-21):
-                    # a letter under 5 mm only (`_small`); off, today's call
-                    **({"small_bold": True}
-                       if cfg.lettering_columns_small_bold and _small else {}),
+                    # `lettering_columns_small_bold` (folded in): a letter under
+                    # 5 mm only (`_small`)
+                    **({"small_bold": True} if _small else {}),
                     # `cfg.extra["small_bold_pull_reaches_floor"]` (built OFF 2026-11-17):
                     # the small-bold pull cap never starves a stroke under one cross
                     **({"small_bold_pull_floor": True}
@@ -4448,9 +4442,9 @@ def sequence(
                     # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
                     **({"pull_by_stroke": True}
                        if pull_by_stroke_for(fabric, cfg.pull_comp_by_stroke) else {}),
-                    # `cfg.lettering_columns_corner_fold` (default OFF, 2026-10-23):
-                    # one column round an L corner; off, today's call
-                    **({"corner_fold": True} if cfg.lettering_columns_corner_fold else {}),
+                    # `lettering_columns_corner_fold` (folded in): one column
+                    # round an L corner
+                    corner_fold=True,
                     # `cfg.lettering_columns_corner_fold_apex_side` (built OFF 2026-11-14):
                     # a pointed slot's tip folds too; off, today's call
                     **({"corner_fold_apex_side": True}
@@ -4458,15 +4452,13 @@ def sequence(
                     # `cfg.lettering_columns_inside_stagger` (default OFF, 2026-10-23):
                     # the pro's inside at a pivot; off, today's call
                     **({"inside_stagger": True} if cfg.lettering_columns_inside_stagger else {}),
-                    # `cfg.lettering_columns_text_lean` (default ON since 2026-10-24): the
-                    # word's house cross (`satin_angle_deg`, the house pass; else
-                    # the design's `satin_angle_deg`) on every straight column it
-                    # can span -- the pro's diagonals; off, or no house, the call
-                    # is today's, argument for argument
+                    # `lettering_columns_text_lean` (folded in): the word's house
+                    # cross (`satin_angle_deg`, the house pass; else the design's
+                    # `satin_angle_deg`) on every straight column it can span --
+                    # the pro's diagonals; no house, the call omits it
                     **({"text_lean_deg": _lean} if _lean is not None else {}),
-                    # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
-                    **({"inside_connectors": True}
-                       if cfg.lettering_columns_inside_connectors else {}),
+                    # `lettering_columns_inside_connectors` (folded in)
+                    inside_connectors=True,
                     # `cfg.lettering_columns_connectors_buried` (built OFF 2026-11-14):
                     # no hop left on the letter's finished satin; off, today's call
                     **({"connectors_buried": True}

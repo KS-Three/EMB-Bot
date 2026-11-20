@@ -545,7 +545,7 @@ def test_a_beanie_dst_whose_first_block_is_lettering_of_its_own_is_not_called_a_
 
 def test_the_board_records_the_flag_set_by_name_and_prints_what_is_off():
     flags = lb.effective_flags({})
-    assert flags["sew_enclosed_white"] is True and flags["lettering_columns_corner_fold"] is True
+    assert flags["sew_enclosed_white"] is True and flags["lettering_columns_ring_floor"] is True
     assert flags["cut_every_jump"] is False and all(isinstance(v, bool) for v in flags.values())
     assert lb.effective_flags({"cut_every_jump": True})["cut_every_jump"] is True        # `--set` shows
     line = lb._flags_line({"a_on": True, "b_off": False, "c_off": False})
