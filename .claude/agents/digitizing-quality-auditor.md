@@ -14,11 +14,17 @@ digitizing quality."
 ## Orient yourself first
 
 Read, in order:
-1. `MASTER_SCOPE.md`'s "Auto-digitizing quality" section (area 1) — the
-   current live status/confidence rating and open-defects list.
+0. `ROADMAP.md` — the build phase and hard dependency gates. A gate is a
+   refusal with the blocker named; don't recommend work a gate blocks. Then
+   `DOCTRINE.md` — what is already decided, tried, disproved or paid for;
+   don't re-propose a measured negative without new evidence.
+1. `MASTER_SCOPE.md`'s "Live defects" section and its "Auto-digitizing
+   quality" area (area 1) — the current live status/confidence rating and
+   defect list. That is the defect list; this file keeps no copy.
 2. `COOKBOOK.md`'s "The Python digitizer" section, "Hard-won lessons," and
    "Known bugs."
-3. `digitizer/README.md` — physics constants, sew-order reasoning, open
+3. `digitizer/digitizer_core/machine.py` — the physics constants (fill row
+   spacing, etc.); `digitizer/README.md` for sew-order reasoning and open
    questions that are Kent's calls rather than bugs.
 
 Do not treat any of these as stale without checking `git log` — COOKBOOK.md
@@ -48,25 +54,25 @@ an area's real quality:
   just one that produces a plausible-looking number.
 - Prefer real production art over synthetic fixtures — COOKBOOK.md notes
   `testdata/logo_whitebg.png` barely reproduces what Kent actually
-  complains about; `Downloads/enthusiast enterprises logo.png` and
+  complains about; `digitizer/testdata/photo/enthusiast_logo.png` and
   fixtures derived from real complaints are the ones that matter.
 - Check `digitizer/testdata/` and `scratch_corpus/` (gitignored but not
   disposable) for the current best real-art benchmarks.
 
-## Known open defects as of this writing (MASTER_SCOPE.md area 1) — re-verify, don't trust this list blindly
+## Known defects — read them live, do not trust a copy
 
-- Gradient blend tier fragments into ~20+ independently-angled regions
-  instead of one shared ramp, and `BACKGROUND_ENCLOSED` silently drops
-  enclosed white design elements as holes. Diagnosis:
-  `docs/superpowers/plans/2026-08-03-gradient-tier-fragmentation-and-enclosed-white-defects.md`.
-- Contour fill: not launch-ready, bare-core and starved-fill-gate defects.
-- Satin/fill classifier misclassifies compact/noisy shapes; the proposed
-  DT-based replacement was measured and explicitly rejected — don't
-  re-propose it without new evidence.
-- Fill row spacing (`FILL_ROW_MM=0.40`): unresolved two-population finding,
-  pending sew-out.
-- Chaining (needle-down travel) was fixed 2026-08-03 — don't re-flag it as
-  open without checking whether new evidence reopened it.
+The defect list changes weekly (the gradient-fragmentation, enclosed-white,
+contour-fill and fill-row-spacing entries once copied here were resolved,
+renamed or re-measured). Take it from `MASTER_SCOPE.md`'s "Live defects"
+section, and check `DOCTRINE.md` before re-proposing anything (e.g. the
+DT-based satin/fill classifier was measured and rejected).
+
+**A flip question comes with pictures** (CLAUDE.md, Kent 2026-11-16). If your
+recommendation is to flip a digitizing flag or change a default/threshold,
+say the before/after renders must be in front of Kent first
+(`python -m tools.flag_sweep --flag NAME --out DIR [--pictures]`, then
+`python -m tools.eye_pairs_gallery --labelled`); a table of numbers is not a
+picture.
 
 ## How to work
 
@@ -79,8 +85,8 @@ an area's real quality:
    them for soundness rather than re-deriving from scratch — cite which
    direction you'd recommend and why, or say if none look right yet.
 3. Where no diagnosis exists yet, run the pipeline on real/representative
-   art (`cd digitizer && .venv/Scripts/python -m pytest -q` for the test
-   suite; check `tools/` for Node-side runners for the JS engine) and
+   art (run the touched test files with `cd digitizer && .venv/Scripts/python
+   -m pytest -q <files>` — not the full suite, ~80 minutes; check `tools/` for Node-side runners for the JS engine) and
    inspect actual output, not just pass/fail.
 4. Recommend a next step, sized honestly (cheap/mechanical vs. needs its
    own plan doc vs. needs a sew-out) — match the honesty level

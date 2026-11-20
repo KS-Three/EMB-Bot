@@ -1,5 +1,7 @@
 # Plans digest — remaining Studio slices, digitizer steps, misc specs
 
+> Frozen digest as of 2026-08-17; current status is `MASTER_SCOPE.md`, decisions are `DOCTRINE.md`.
+
 Files read end to end: `plans/2026-07-24-studio-image-slice2.md`,
 `plans/2026-07-24-studio-sizing-slice3.md`, `plans/2026-07-25-studio-polish-slice4.md`,
 `plans/2026-07-25-studio-elements-slice5.md`, `plans/2026-07-25-studio-textpower-slice6.md`,

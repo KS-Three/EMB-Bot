@@ -31,6 +31,7 @@ from .config import PipelineConfig
 from .detail_spokes import find_tips
 from .stage1_prep import Prep
 from .stage2_quantize import Quant
+from .threads import rgb_to_lab
 from .warnings_codes import (
     ABSORBED_SMALL_SHAPES,
     DROPPED_SMALL_SHAPES,
@@ -654,8 +655,15 @@ def resolve_small_regions(
     counter_core: np.ndarray | None = None,
     protect_layers: frozenset | None = None,
     page_fringe: np.ndarray | None = None,
+    src_rgb: np.ndarray | None = None,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
+
+    `src_rgb` (`(H, W, 3)` uint8 RGB of the working raster; the caller passes
+    it only under `cfg.rescue_needs_drawn_edge`, None = byte-identical): the
+    `keep_thin_strokes` rescue then also asks that the artwork step in colour
+    across the region's boundary (`drawn_edge`), so a speck quantisation cut
+    out of a smooth shade goes to its host instead of punching a hole in it.
 
     `protect_layers` (`cfg.dark_ink_floor_rescue`; the dark-ink labels of
     stage 2's carve, `Quant.dark_ink_labels`; None by default and
@@ -847,6 +855,23 @@ def resolve_small_regions(
     # dot with a stem under it (`has_stem_below`).
     dot_scope = bool(cfg.small_dot_rung and cfg.small_dot_rung_lettering)
     keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None
+
+    def drawn_edge(i: int, win, sub: np.ndarray, halo: np.ndarray, host: int) -> bool:
+        """`cfg.rescue_needs_drawn_edge`: does the ARTWORK step in colour
+        across region `i`'s boundary with `host`? The mean CIELAB of the
+        region's own source pixels against the mean of the host's pixels in
+        its one-pixel halo, CIE76, over `cfg.merge_delta_e` (the tolerance the
+        layer colours were just compared on; no new number). A drawn dot or
+        stroke steps by its full contrast there; a speck the quantiser cut out
+        of a smooth shade (the darkest centre of a shaded disc) steps by one
+        pixel's worth of ramp, though its LAYER colour is a different thread.
+        No host pixel in the halo reads as drawn (today's verdict)."""
+        y0, x0, y1, x1 = win
+        theirs = halo & regions[host].window(y0, x0, y1, x1)
+        if not sub.any() or not theirs.any():
+            return True
+        lab = rgb_to_lab(src_rgb[y0:y1, x0:x1].reshape(-1, 3).astype(np.float64)).reshape(y1 - y0, x1 - x0, 3)
+        return float(np.linalg.norm(lab[sub].mean(axis=0) - lab[theirs].mean(axis=0))) > cfg.merge_delta_e
     # `cfg.light_thin_stroke_keep`: photo lane only (no layer colours), and it
     # needs the raster's colours to read a region's lightness.
     light_thin = bool(getattr(cfg, "light_thin_stroke_keep", False)
@@ -1143,7 +1168,9 @@ def resolve_small_regions(
             # and are absorbed as before; a stroke drawn across it is not,
             # and is kept for the run tier as an isolated one would be.
             de = float(np.linalg.norm(layer_lab[regions[i].layer] - layer_lab[regions[best].layer]))
-            if de > cfg.merge_delta_e:
+            if de > cfg.merge_delta_e and (
+                    src_rgb is None
+                    or drawn_edge(i, (wy0, wx0, wy1, wx1), sub, halo, best)):
                 rescued.append(i)
                 continue
         if light_thin and clears:

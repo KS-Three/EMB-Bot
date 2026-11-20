@@ -11,12 +11,12 @@ cross-cutting issues list. It exists so Kent and any Claude session can see
 where the project actually stands without re-deriving it from specs and
 plans each time. Read it in full before touching it.
 
-**It is one file in a set of three, and writing to the wrong one is the
+**It is one file in a set of four, and writing to the wrong one is the
 failure mode this skill exists to prevent:**
 
 | File | Holds | Rule |
 |---|---|---|
-| `MASTER_SCOPE.md` | current state only | **27,000-word budget** |
+| `MASTER_SCOPE.md` | current state only | **27,000-word budget, 400 words per numbered entry** (rule 4b) |
 | `DOCTRINE.md` | decided / tried / disproved / paid for | no budget; must change what someone DOES |
 | `docs/scope-history.md` | dated snapshots | append-only, never edited |
 | `docs/scope/<area>.md` | per-area supporting detail | linked from the verdict |
@@ -78,7 +78,7 @@ rules below are mechanical rather than advisory.
    that reopens a structural decision, not a status update):
    - Auto-digitizing quality (image → stitches)
    - Font library & lettering
-   - Studio app / guided wizard
+   - Studio app / configurator (the wizard is gone, 2026-09-30)
    - Export formats
    - Stitch-out review & manual editing tools
 2. Re-check that area's Status and Confidence against current evidence —
@@ -103,16 +103,21 @@ rules below are mechanical rather than advisory.
    physical machine verification (sew-outs, real stitch quality, fabric
    accuracy) and no new sew-out happened, leave it `pending sew-out` — don't
    upgrade a hardware-dependent score just because the code changed.
-4. Check whether the change affects a cross-cutting issue (DST axis bug,
-   font license compliance gap, no-sew-out-yet) — update that section too if
-   so, and keep it as the single source for that issue rather than
-   duplicating detail back into the area row.
+4. Check whether the change affects a cross-cutting issue (read the
+   "Cross-cutting issues" headings for the current set — e.g. "DST codec —
+   FIXED", "Font license compliance — RESOLVED", "Digitize time", "CI feedback
+   speed", the uncontrolled-icon / no controlled sew-out card entry) — update
+   that section too if so, and keep it as the single source for that issue
+   rather than duplicating detail back into the area row.
 5. Update the "At a glance" table to match.
 5b. Re-check the **"Waiting on Kent"** section (right after At a glance).
    It is the decision queue — everything blocked on Kent rather than on
-   effort. Add an item when work stops for a call only he can make; REMOVE
-   one the moment he makes that call, and record the ruling in the area it
-   belongs to. A queue that only grows is a queue nobody reads.
+   effort. Add an item when work stops for a call only he can make; when he
+   makes that call, mark the entry **RESOLVED <date>** with a one-line
+   pointer, KEEP its number (a resolved entry keeps its number rather than
+   being deleted, as MASTER_SCOPE says of both this list and the defect list;
+   other docs cite them by number), and move the detail and the ruling to the
+   area file it belongs to. Don't let OPEN entries pile up unread.
 6. Update the "Last updated" line at the top.
 7. If Kent previously overrode a score, don't silently revert it back to my
    own proposal on the next pass — carry his correction forward unless the
@@ -127,13 +132,21 @@ rules below are mechanical rather than advisory.
    reasoning. Over it,
    compact before you finish — do not leave it over and move on.
 
+   **Rule 4b: no numbered defect entry may exceed 400 words** (Kent,
+   2026-09-30); overflow goes to its area doc with the verdict left behind.
+   `digitizer/tests/test_scope_budget.py` enforces both numbers, and
+   `cd digitizer && python -m tools.scope_budget` reports them (totals plus the
+   fattest entries). **The "Closed" section keeps ONE entry per line** —
+   `scope_budget.py` parses it, and ten other docs cite those numbers; never
+   wrap or merge lines there.
+
    **Compact by moving, never by deleting.** In order of preference:
    1. Anything "was true then" that slipped in → `docs/scope-history.md`.
    2. Anything still in force but not current STATUS — a ruling, a rejected
       approach, a correction, a trap → `DOCTRINE.md`.
    3. Per-area supporting detail → the matching `docs/scope/<area>.md`, leaving
       the verdict plus a link behind.
-   3. A research catalogue or a closed investigation →
+   4. A research catalogue or a closed investigation →
       `docs/scope/research-backlog.md`.
 
    If you genuinely cannot get under budget without cutting something still in

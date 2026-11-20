@@ -22,6 +22,7 @@ what takes a boundary-edit re-run from a full stage 0-7 cost to
 from __future__ import annotations
 
 import copy
+import functools
 from contextlib import ExitStack
 from dataclasses import dataclass, field, replace
 from pathlib import Path
@@ -90,7 +91,7 @@ from .stitches import StitchPlan
 from .thin_ink import (bean_dark_ink, carve_flat_dark_ink, ink_after_ground, one_lane_per_line,
                        settle_dark_ink_bean,
                        thin_letters_after_ground)
-from .threads import chart_for, rgb_to_lab
+from .threads import chart_for, lab_memo_scope, rgb_to_lab
 from .warnings_codes import (
     COLOR_CAP_APPLIED,
     BACKGROUND_ENCLOSED,
@@ -567,6 +568,16 @@ def cored_counter_core(image, cfg: PipelineConfig, segmenter, p: Prep,
     return keep if keep.any() else None
 
 
+def _lab_memo(fn):
+    """`threads.lab_memo_scope` round one call (speed, exact: 2026-11-19)."""
+    @functools.wraps(fn)
+    def wrapped(*args, **kwargs):
+        with lab_memo_scope():
+            return fn(*args, **kwargs)
+    return wrapped
+
+
+@_lab_memo
 def build_generation(
     image: str | Path | bytes | np.ndarray,
     cfg: PipelineConfig | None = None,
@@ -1014,7 +1025,10 @@ def build_generation(
             and (classification.class_ == "gradient" or flat_dark_carve)) else None),
         # `cfg.flat_page_fringe_exclude`: stage 2's page-edge blend pixels
         # (None with the flag off and on every other lane).
-        page_fringe=getattr(q, "page_fringe", None))
+        page_fringe=getattr(q, "page_fringe", None),
+        # `cfg.rescue_needs_drawn_edge`: the artwork's own pixels, so the
+        # contrast rescue can ask whether a drawn edge bounds the region.
+        src_rgb=p.rgb if getattr(cfg, "rescue_needs_drawn_edge", False) else None)
     # `cfg.sliver_prune` (built OFF 2026-11-10, Kent on Pooh at 54 mm): masks
     # narrower than the source's own pixels that are not a shape -- the
     # page's halo along the silhouette is dropped, an off-colour tendril
@@ -1796,6 +1810,11 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         thread_indices = borders_last_layers(
             regions, thread_indices, cfg,
             design_class=gen.classification_class)
+    if cfg.keyline_under_face and not (
+            is_photographic(cfg, gen.classification_class)
+            or bool(cfg.extra.get("photo_sequencing"))):
+        from .keyline_under_face import keylines_under_face
+        thread_indices = keylines_under_face(regions, thread_indices, chart_for(cfg))
     # Explicit sew-order layers wait until the palette is settled: moving a
     # shape between layers must reorder sewing, never drop a thread from the
     # color list (see `apply_layer_overrides`).
@@ -2272,6 +2291,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # `cfg.lettering_columns_stroke_floor` (ON since 2026-11-16, Kent's flip), the same way, as ONE
     # manager (`columns.floor_scopes`); the scopes now enter through one `ExitStack` below
     from .columns import floor_scopes
+    from .columns import through_last_scope   # `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19), the same way
     from .outline_cut import apex_pro_joints_scope   # `cfg.lettering_columns_apex_pro_joints` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import fold_cap_flared_scope   # `cfg.lettering_columns_corner_fold_cap_flared` (ON since 2026-11-15, Kent's flip), the same way
     from .outline_cut import apex_band_knots_scope   # `cfg.extra["lettering_columns_apex_pro_band_knots"]` (built OFF), the same way
@@ -2279,10 +2299,11 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .outline_cut import r_bowl_scope, block_small_scope, a_bar_scope, e_top_scope, top_slab_scope   # `cfg.lettering_columns_r_bowl` / `_block_butt_small` / `_a_bar` (ON since 2026-11-19), the same way
     from .outline_cut import block_butt_scope        # `cfg.lettering_columns_block_butt` (ON since 2026-11-18), the same way
     from .outline_cut import flare_top_fold_scope    # `cfg.extra["lettering_columns_flare_top_fold"]` (built OFF), the same way
-    from .outline_cut import absorb_unsewn_scope     # `cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF), the same way
+    from .outline_cut import absorb_unsewn_scope     # `cfg.lettering_columns_absorb_unsewn` (ON since 2026-11-19), the same way
     from .outline_cut import neck_cuts_scope
     from .wedge_cap import wedge_cap_scope
     from .end_overlap import end_overlap_scope, junction_align_scope
+    from .patch_merge import patch_merge_scope
     from .hairline_leave import hairline_leave_scope
     from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
@@ -2327,7 +2348,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         _enter(top_slab_scope(bool((cfg.extra or {}).get("lettering_columns_top_slab"))))      # built OFF 2026-11-19
         _enter(block_small_scope(cfg.lettering_columns_block_butt_small))
         _enter(flare_top_fold_scope(bool((cfg.extra or {}).get("lettering_columns_flare_top_fold"))))
-        _enter(absorb_unsewn_scope(bool((cfg.extra or {}).get("lettering_columns_absorb_unsewn"))))
+        _enter(absorb_unsewn_scope(cfg.lettering_columns_absorb_unsewn))
         # `cfg.extra["lettering_columns_neck_cuts"]` (built OFF 2026-11-17), the same way
         _enter(neck_cuts_scope(bool((cfg.extra or {}).get("lettering_columns_neck_cuts"))))
         # `cfg.lettering_columns_stem_wedge_cap` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key)
@@ -2335,8 +2356,12 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         # `cfg.extra["lettering_columns_end_overlap_cut"]` (built OFF 2026-11-18), the same way
         _enter(end_overlap_scope(bool((cfg.extra or {}).get("lettering_columns_end_overlap_cut"))))
         _enter(junction_align_scope(bool((cfg.extra or {}).get("lettering_columns_junction_align"))))
+        # `cfg.extra["script_strokes_patch_merge"]` (built OFF 2026-11-19), the same way
+        _enter(patch_merge_scope(bool((cfg.extra or {}).get("script_strokes_patch_merge"))))
         # `cfg.extra["lettering_columns_hairline_leave"]` (built OFF 2026-11-19), the same way
         _enter(hairline_leave_scope(bool((cfg.extra or {}).get("lettering_columns_hairline_leave"))))
+        # `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19), the same way
+        _enter(through_last_scope(bool((cfg.extra or {}).get("lettering_columns_through_last"))))
         _enter(fill_section_travel.enabled(cfg))
         _enter(loop_mitre_scope(cfg.outline_loop_mitre))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))
@@ -2587,6 +2612,19 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
         # size, which the read needs), less what the customer turned off
         keyline_beans = {r.shape_id for r in stitched_regions if r.meta.get("hairline_outline")}
         stitched_regions = keyline_bean.sew_last(stitched_regions, keyline_beans)
+    # `cfg.seam_hold_skips_outline_bodies` (ON, 2026-11-19 regression repair):
+    # a body of an outline that sews is a plain FILL under its loop (stage 7's
+    # `outline_bodies`), never a satin, so `satin_seam_hold`'s tongue cut --
+    # which counts on satin rails carrying the pull under the later colour --
+    # must not reach it. Tagged here, where the outlines are known; stage 5
+    # reads the tag. Off: no region is touched.
+    if cfg.seam_hold_skips_outline_bodies and cfg.satin_seam_hold and art_outlines:
+        _sewn_ids = {r.shape_id for r in stitched_regions}
+        _body_ids = {bid for oid, bodies in art_outlines.items() if oid in _sewn_ids
+                     for bid, _hole, _w in bodies}
+        if _body_ids:
+            stitched_regions = [replace(r, meta={**r.meta, "outline_fill_body": True})
+                                if r.shape_id in _body_ids else r for r in stitched_regions]
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
                                                  hairline=hairline)

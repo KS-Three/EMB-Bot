@@ -1,6 +1,6 @@
 ---
 name: k3
-description: Run as foreman for EMB-Bot — dispatch many cloud Claude sessions (Opus for hard work, Sonnet/Haiku for the rest), keep every PR moving to auto-merge, and spend as few foreman tokens as possible. Use when Kent says "K3", "be foreman", "release agents/workers", "more workers", "run the team", or asks to parallelise work across many sessions.
+description: Run as foreman for EMB-Bot — dispatch many cloud Claude sessions (Sonnet for build work, Haiku for read-only, Opus only when Kent names it), keep every PR moving to auto-merge, and spend as few foreman tokens as possible. Use when Kent says "K3", "be foreman", "release agents/workers", "more workers", "run the team", or asks to parallelise work across many sessions.
 ---
 
 # K3 — foreman mode
@@ -16,7 +16,7 @@ run either got right or paid for.
 ## 1. Start
 
 1. Read `CLAUDE.md`, the `ROADMAP.md` gates, `DOCTRINE.md`. Don't re-read them later — delegate.
-2. Send ONE scout (Agent, `model: opus`, `run_in_background: false`) for a <400-word report:
+2. Send ONE scout (Agent, `model: sonnet`, `run_in_background: false`) for a <400-word report:
    open PRs (state, CI, auto-merge), running sessions, top candidate work items with their
    gate, recent in-flight memory notes.
 3. Put the choices to Kent with `AskUserQuestion` (what to dispatch, which OFF flags to
@@ -33,9 +33,15 @@ run either got right or paid for.
   that touches git MUST work in a fresh worktree under the scratchpad. A failed
   `git worktree add` followed by a `cd` that silently didn't happen once ran merges inside
   the foreman's own checkout — tell agents to verify `pwd` before any git write.
-- **Model choice:** `claude-opus-5-5` for defects, engine/digitizer changes, CI design;
-  `claude-sonnet-5-5` for tests, docs, small Studio fixes, reviews, stewards; `haiku` for
-  pure plumbing (broadcasting a message, launching sessions from a list).
+- **Model choice (Kent, 2026-11-02: "we should be saving on usage"; memory
+  `agents-cheap-models-2026-11-02`):** every `create_session`/`start_session` and every
+  `Agent` call passes `model`. `claude-sonnet-5-5` (`sonnet`) for build, measure and fix
+  work, tests, docs, reviews, stewards; `claude-haiku-5-5` (`haiku`) for read-only,
+  mechanical or census work and pure plumbing (broadcasting a message, launching sessions
+  from a list). Opus is not banned but is not the default: use it only when Kent names it
+  for a task. A `fork` inherits the parent's model, so hand work to a fresh agent with a
+  model set instead. Where this file says "Opus" below (scout, big-wave planner,
+  managers), read "Sonnet unless Kent says otherwise".
 - A session can push ONLY to the branch it was created with. New work on a new branch =
   new session; don't re-task an old one onto another branch.
 
@@ -49,7 +55,7 @@ PREAMBLE (prepend to every prompt verbatim):
 <the standing rules — see templates.md>
 
 TASKS (title | model | branch | task):
-1 | Short title | claude-opus-5-5 | claude/some-branch | What to do, the done-test, what to exclude.
+1 | Short title | claude-sonnet-5-5 | claude/some-branch | What to do, the done-test, what to exclude.
 ```
 
 Then: Agent(model: haiku) → "read the file; for each line call create_session once (all in
@@ -69,7 +75,7 @@ first"), fit the time left, and state its done-test (PR ready-for-review, auto-m
 - Don't edit MASTER_SCOPE.md / docs/scope-history.md / DOCTRINE.md / CLAUDE.md / COOKBOOK.md
   — only one named scope-refresh session and one COOKBOOK session do. Status goes in the
   PR body. (Shared docs caused nearly every merge conflict.)
-- Don't run the full digitizer suite locally (45+ min on 4 cores); CI shards it. Run only
+- Don't run the full digitizer suite locally (~80 min on 4 cores, 79 measured 2026-11-17); CI shards it. Run only
   touched tests.
 - `git fetch origin main && git merge origin/main` before every push; never rebase.
 - Ready-for-review PR, arm auto-merge while `mergeable_state` is `blocked`, never merge.
@@ -85,11 +91,22 @@ going") — that is the authority they're asking for. If Kent ruled directly in 
 
 - **Don't subscribe to every PR** — each subscription floods the foreman's context.
   Subscribe only to a handful you're personally driving.
-- **Sweep with `send_later` every 30 min.** The message tells future-you to dispatch one
+- **A wave out = set a wake-up before ending the turn** (Kent 2026-11-12, "you've been
+  stale for 10 hours"; memory `foreman-wakeup-while-wave-out-2026-11-12`). Cloud sessions
+  never report back and nothing wakes an idle foreman. Use a `CronCreate` hourly PR sweep
+  or a background `gh run watch` on the wave's slowest run; delete it (`CronDelete`) when
+  the queue is empty. Local sessions started with `wake_when_done` do wake you.
+- **Sweep every 30 min** (`send_later` where the session has it; otherwise the wake-up
+  above). The message tells future-you to dispatch one
   Sonnet steward: arm/undraft every open PR, find dirty or truly red heads, map branch →
   owning session via `list_sessions`, message the owner, report only exceptions.
-- **Auto-merge only.** The auto-mode classifier blocks hand merges ("Merge Without
-  Review"). Arm while `blocked`; once a PR is `clean` it can't be armed and needs Kent's click.
+- **Arm while `blocked`; the foreman merges a `clean` one** (Kent 2026-11-06, "i'm not
+  merging anything, you do it"; confirmed for CLAUDE.md 2026-11-19). Once every required
+  check is green a PR can't be armed, so the foreman (or director) runs
+  `gh pr merge --squash <n>` on it. Never `--admin`, never past a required check; a PR
+  that turns `blocked` again on a new head gets armed instead. Workers and managers still
+  only arm. If the auto-mode classifier refuses the merge ("Merge Without Review"), say
+  so in one line with the PR number; don't route around it.
 - **Fake reds:** a `digitizer` red whose shards are all `cancelled` is a superseded run
   (concurrency cancel), not a failure. Check the head sha before acting on any red.
 - **Two unrelated PRs red at once** → suspect shared infra (CI, main), diagnose once.
@@ -119,7 +136,7 @@ green?) and stops running stewards itself.
 
 ## 6. Throughput limits (say so when Kent asks for more)
 
-CI concurrency is the real ceiling: each PR fans out ~9 jobs. Past ~40 open PRs, new
+CI concurrency is the real ceiling: each PR fans out ~12 jobs (engine, studio, 6 digitizer shards + aggregator, 2 studio-e2e shards + aggregator). Past ~40 open PRs, new
 sessions mostly wait in the CI queue and re-merge main. Prefer "drain then refill":
 re-task finished sessions, keep ~30 active, fix CI speed first (sharding paid for itself
 in one evening). Offer Kent the choice with the trade-off; then do what he picks.

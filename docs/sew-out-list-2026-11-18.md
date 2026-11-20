@@ -251,6 +251,33 @@ slit and the 2.9 mm gap read on cloth. No flag built.
    for Kent; if the seam shows, both stay OFF and the overlap (his 1.0-1.5 mm) is the next thing to build.
 5. **Source.** `docs/marine-pro-construction-2026-11-18.md` sections 1 (rule 2) and 5 (#1689).
 
+### 18. MFab's A counter on the hat: 5.0 mm satin ceiling against a 7.5 mm triangle
+1. **Design, spot.** `mfab_hat` 104.9 mm, the A's counter at about (70, 16): a triangle 7.5 mm
+   tall and 3.75 mm wide at most (art 24.1 mm2; sewn region 17.9 mm2).
+2. **In doubt.** The 5.0 mm satin ceiling (gate 1, Kent 2026-11-15 "keep 5.0") refuses
+   `counter_fan_satin` from about 94 mm, so the counter sews as a 143-stitch fill whose rows run
+   about 30 degrees off the pro's fan (counter-fan note). The prime grader's 11-18 card calls the
+   result "crowded, ragged slanted stitches with a rough upper edge".
+3. **Sew, look.** The A's triangle with the fan (5.0 mm raised to about 7.5 mm for this one
+   shape) against the fill: ragged tip, the thread build-up in the point, the pull on a 3.75 mm
+   wide satin.
+4. **Unlocks.** Whether the satin ceiling can rise for a fanned counter; until then the fill stays.
+5. **Source.** `docs/mfab-top-line-faults-2026-11-19.md`, fault 6; memory `counter-fan-2026-11-14`.
+
+### 19. MFab hat white letters: our satin pitch 0.4 mm against his two passes at about 0.3-0.4
+1. **Design, spot.** `mfab_hat`, 104.9 mm, the white letters (M-F-A-B), the junctions at about (37, 7.5), (44, 11.5), (34.5, 16.5)
+   and (88, 18.5), and the B's left stem (79.3, 10-23).
+2. **In doubt.** Our satin spacing is 0.4 mm same-side (5.1-5.2 stitches per mm of stem per pass; `SATIN_SPACING_MM`); his file's stems run
+   5-7 crossings per mm per pass in two passes. At the junctions ours stacks higher at F4 (15 layers against 9, mean 4.8 against 3.6) and
+   the prime grader read them as lumps (faults 3, 4, 8). Not sewn on cloth. Whether a denser pass or a junction fix is the cure is not
+   known: the like-for-like density is close (`docs/mfab-top-line-faults-2026-11-19.md`, conclusion).
+3. **Sew, look.** The white letters at 105 mm on a hat: do the F-arm and B-slot junctions read as lumps against the stems; does the
+   white cover the black body at the stem edges; does the B stem (sewn twice by our ladder) read heavier than the M stem.
+4. **Unlocks.** A denser lettering satin or a second pass (gate 1, fabric constant) only if the stems read thin; otherwise the junction
+   construction (a satin-piece census of his file first), not density.
+5. **Source.** `docs/mfab-top-line-faults-2026-11-19.md`; PR #1694.
+
+
 ## What this list does not claim
 
 - No row says a sew-out will come out any particular way.
@@ -259,3 +286,11 @@ slit and the 2.9 mm gap read on cloth. No flag built.
   nearest precedent.
 - If an existing sew-out list or card is extended instead of this page, move the rows, do not
   duplicate them.
+
+## Golden Tee red keyline: sewn at the floor, or under the face (added 2026-11-19)
+
+Art keyline 0.37-0.48 mm; we sew 1.2-1.3 mm satin (floor + pull 0.4), last, over the gold; `keyline_under_face` (built OFF)
+puts it under the faces and the red all but disappears; the pro sews GT's at 1.7 mm after the face and has none in GOLF.
+Sew the Golden Tee hat both ways (flag OFF and ON) and look: does the red read as a thin outline at arm's length, or as a heavy
+band (OFF) / is it missing (ON)? Unlocks: whether a thin red run/bean (about 0.45 mm) is worth building.
+Source: `docs/goldentee-red-keyline-2026-11-19.md`.

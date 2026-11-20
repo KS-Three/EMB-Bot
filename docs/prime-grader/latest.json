@@ -1,36 +1,30 @@
 {
  "schema": 1,
- "date": "2026-11-18",
- "rubric_version": "2026-11-17",
- "rubric_sha256": "96eff44f4baabf85dba0d471d920d26b089cc4bf558fba7bd805af352ee9e806",
- "kit_sha256": "075405c236f146f43529b202ecf16cfdcbbcb29e359f59de9a2fdf10a1cf6da5",
- "tree_sha": "2bae00d535c8a8da252516b659243161083369b5",
+ "date": "2026-11-19",
+ "rubric_version": "2026-11-18",
+ "rubric_sha256": "9a169b10624376fc30dc5fa515bb347826565c2fc463855a9fd9b8f8dd2bd2ec",
+ "kit_sha256": "fa76410ce8c5d007395c97896fa5f5653b0ba2b2bd2d2ec7616cf6e566f75569",
+ "tree_sha": "f8373d58f25ffcef9f827c8a5b037d68417cce2b",
  "rollup": {
   "designs": 9,
   "grades": {
    "Great": 0,
    "Good": 0,
-   "Okay": 6,
+   "Okay": 4,
    "Bad": 3,
    "Terrible": 0
   },
-  "mean_step": 2.33,
+  "disagree": [
+   "L_gaulke_roofing_hat",
+   "L_tires_hat_3d"
+  ],
+  "mean_step": 2.43,
   "classes": {
    "letter": [
+    "L_becker_hat_large",
     "L_gaulke_roofing_hat",
     "L_goldentee_hat",
-    "L_hotel_fremont_hat",
     "L_mfab_hat",
-    "L_precision_drone",
-    "L_tires_hat_3d",
-    "L_toat_beanie",
-    "L_toat_machine_hat"
-   ],
-   "artefact": [
-    "L_goldentee_hat",
-    "L_hotel_fremont_hat",
-    "L_mfab_hat",
-    "L_precision_drone",
     "L_tires_hat_3d",
     "L_toat_beanie",
     "L_toat_machine_hat"
@@ -38,226 +32,177 @@
    "edge": [
     "L_becker_hat_large",
     "L_gaulke_roofing_hat",
-    "L_goldentee_hat",
-    "L_hotel_fremont_hat",
-    "L_tires_hat_3d",
-    "L_toat_beanie",
-    "L_toat_machine_hat"
-   ],
-   "pen_flow": [
-    "L_becker_hat_large",
-    "L_goldentee_hat",
-    "L_precision_drone",
-    "L_toat_beanie",
-    "L_toat_machine_hat"
-   ],
-   "stitch_type": [
-    "L_hotel_fremont_hat",
-    "L_mfab_hat",
-    "L_tires_hat_3d",
-    "L_toat_machine_hat"
-   ],
-   "gap": [
-    "L_gaulke_roofing_hat",
-    "L_mfab_hat",
     "L_precision_drone"
    ],
-   "missing": [
-    "L_becker_hat_large",
-    "L_goldentee_hat",
-    "L_precision_drone"
+   "artefact": [
+    "L_mfab_hat",
+    "L_toat_machine_hat"
    ],
    "colour": [
-    "L_goldentee_hat",
     "L_precision_drone"
    ],
-   "extra": [
-    "L_goldentee_hat",
-    "L_precision_drone"
-   ],
-   "other": [
-    "L_mfab_hat",
-    "L_precision_drone"
+   "pen_flow": [
+    "L_goldentee_hat"
    ]
   },
   "rows": [
    {
     "id": "L_becker_hat_large",
-    "size": "102.1 x 65.0 mm on hat_front",
+    "size": "102.1 x 64.7 mm on hat_front",
     "grade": "Okay",
     "step": 2,
-    "whole": [
-     "detail_lost"
-    ],
+    "disagree": false,
+    "one_reader": 18,
+    "whole": [],
     "ruins": 0,
-    "noticeable": 5,
-    "nitpick": 7,
+    "noticeable": 2,
+    "nitpick": 2,
     "gross_by_class": {
      "edge": 1,
-     "missing": 1,
-     "pen_flow": 3
+     "letter": 1
     },
-    "reason": "The MARINE lettering is sewn with fan-shaped, radiating stitch angles in the R, N and E and the A counter is filled in, which a customer would see straight away. BECKER is recognisable with a clean outline, but the C counter ring is lumpy and the outline bands are rough in places. Long needle-up travels cross the lettering."
+    "reason": "1: Recognisably BECKER MARINE with the right shapes, outline and fills, but the R of MARINE has lost its closed counter and has a fan-stitched bowl, and the dark inner shape of the C is a lumpy fan with a notch the art does not have. The outline column has ragged edges and small gaps in several places, and the long magenta travel runs cross the whole design. | 2: The R of MARINE has its round counter opened into a notch on the left side with a radial fan fill, which changes the letter, and the dark C shadow in BECKER is a lumpy bulged shape with a gap sliver unlike the original. Everything else is recognisable and the outlines are mostly clean, but several outline joins, ragged edges and column seams would need clean-up before shipping."
    },
    {
     "id": "L_gaulke_roofing_hat",
     "size": "114.2 x 47.6 mm on hat_front",
-    "grade": "Okay",
-    "step": 2,
-    "whole": [
-     "detail_lost"
-    ],
+    "grade": "Bad / Okay",
+    "step": null,
+    "disagree": true,
+    "one_reader": 28,
+    "whole": [],
     "ruins": 0,
-    "noticeable": 9,
-    "nitpick": 7,
+    "noticeable": 2,
+    "nitpick": 2,
     "gross_by_class": {
      "edge": 1,
-     "gap": 2,
-     "letter": 6
+     "letter": 1
     },
-    "reason": "The logo is recognisably right and the lettering reads, but the fine detail is lost: the white gaps between the sun and roof bands have closed or become ragged, and counters in the lettering are choked. Every edge is scalloped rather than clean, and letter strokes are fattened against the original. It needs a clean-up before it ships."
+    "reason": "1: The lettering is sewn much heavier and rougher than the art's light geometric sans, so counters in the R, P, S, G and ampersand are mostly filled and every letter edge is saw-toothed. The roof and sun mark is recognisable but its edges are ragged and thin gaps are uneven, so the piece needs clean-up before a customer would accept it. | 2: Recognisably the right logo, with all text and the roof, sun and window present and the letters readable, but every edge is saw-toothed and the lettering is sewn heavier than the art so small counters (R, &, S, G) clog. The roof ridge and thin stripes lose their separation near the peak, and a single colour block with long jumps across the text needs clean-up."
    },
    {
     "id": "L_hotel_fremont_hat",
     "size": "93.3 x 50.6 mm on hat_front",
-    "grade": "Okay",
-    "step": 2,
+    "grade": "Bad",
+    "step": 3,
+    "disagree": false,
+    "one_reader": 23,
     "whole": [
      "detail_lost"
     ],
     "ruins": 0,
-    "noticeable": 7,
-    "nitpick": 6,
-    "gross_by_class": {
-     "artefact": 2,
-     "edge": 1,
-     "letter": 3,
-     "stitch_type": 1
-    },
-    "reason": "The small tan lettering (EST 1895, EAT STAY PLAY) is sewn as lumpy blobby strokes with wrong letter forms, which is what most holds it back. The big black HOTEL FREMONT, the Wisconsin shape and the layout are recognisably right, but the rope border is a plain zigzag and the dividers are wrong. Needs a clean-up on the small text and dividers."
+    "noticeable": 0,
+    "nitpick": 3,
+    "gross_by_class": {},
+    "reason": "1: The EAT | STAY | PLAY line is badly mangled: the A and Y are sewn as forked stick shapes and the divider bars are taller and heavier than the art, so a ruined part of the design. EST 1895 is wobbly and the star is an asterisk, and the big black lettering has ragged, stair-stepped edges. The black frame, bars and white fill are sound, and the overall design reads correctly. | 2: The small tan lettering (EAT STAY PLAY, EST 1895) is sewn as thin single-line runs that distort the serif letters into stick figures, and the star is replaced by an asterisk. The black HOTEL FREMONT letters have ragged, saw-toothed edges, and the rope border is sewn as a plain satin band with the twist lost. The overall layout, colours and big shapes are right and recognisable."
    },
    {
     "id": "L_mfab_hat",
     "size": "105.3 x 40.5 mm on hat_front",
-    "grade": "Bad",
-    "step": 3,
+    "grade": "Okay",
+    "step": 2,
+    "disagree": false,
+    "one_reader": 17,
     "whole": [
      "detail_lost"
     ],
-    "ruins": 1,
-    "noticeable": 17,
+    "ruins": 0,
+    "noticeable": 4,
     "nitpick": 3,
     "gross_by_class": {
-     "artefact": 5,
-     "gap": 1,
-     "letter": 10,
-     "other": 1,
-     "stitch_type": 1
+     "artefact": 1,
+     "letter": 3
     },
-    "reason": "The small AND WELDING LLC line is mushed: thread outlines are thin and ragged, black fill ovals pile over the letter edges, and the LLC and the A/N counters are hard to read. The big M-FAB top half is recognisable and mostly clean, but the inner F and B details are blobby or misshaped and several junctions pile up. A customer would see the bottom line as a different, worse logo than the art."
+    "reason": "1: The big M-FAB outline reads correctly and the long satin runs are clean, but the small AND WELDING LLC lettering is mushed: counters are closed, hairline white strokes are replaced by crowded and crossing stitches, and the LLC is hard to read. Several small shapes (A-triangle, B bars, M notch) also deviate from the art, and travel is long with many needle-up jumps. | 2: The big MFAB outline and its straight uprights and diagonals sew cleanly, so the logo reads. The small AND WELDING LLC lettering is what holds it back: its tiny strokes are mushed, with ragged ends, doubled outline passes and filled counters. The centre of the M and the F junctions are also untidy."
    },
    {
     "id": "L_precision_drone",
     "size": "63.2 x 65.0 mm on hat_front",
     "grade": "Bad",
     "step": 3,
+    "disagree": false,
+    "one_reader": 27,
     "whole": [
-     "detail_lost",
-     "too_busy"
+     "detail_lost"
     ],
-    "ruins": 2,
-    "noticeable": 14,
-    "nitpick": 2,
+    "ruins": 0,
+    "noticeable": 3,
+    "nitpick": 1,
     "gross_by_class": {
-     "artefact": 3,
-     "colour": 2,
-     "extra": 1,
-     "gap": 1,
-     "letter": 4,
-     "missing": 2,
-     "other": 1,
-     "pen_flow": 2
+     "colour": 1,
+     "edge": 2
     },
-    "reason": "The drone, which is the focal point, is lost: the body, camera and arms are a mush of black and grey fragments, and the split-scope scene is a vague blob with a black background sewn over it. The wordmark is readable but PRECISION and THERMAL have lumpy, misdirected fills and AND DRONE is weak. Travel is chaotic with long jumps across the whole design."
+    "reason": "1: The drone and scene are reduced to a black blob with scattered grey patches, so the drone body, camera and forest landscape are barely readable and the left half of the scene is largely missing. The lettering is legible but has messy stitch direction on THERMAL and AND DRONE, and the propeller blades are fat and jagged. | 2: The drone, the scope ring and the landscape are reduced to black with scattered grey and white patches, so the drone body, camera and trees are barely recognisable and the thermal lens is a blob of orange. The lettering is legible but PRECISION is washed into grey and the A of AND is a black blob. Many stray travel jumps and messy satin direction changes add to it."
    },
    {
     "id": "L_tires_hat_3d",
     "size": "114.4 x 42.3 mm on hat_front",
-    "grade": "Okay",
-    "step": 2,
+    "grade": "Okay / Good",
+    "step": null,
+    "disagree": true,
+    "one_reader": 16,
     "whole": [],
     "ruins": 0,
-    "noticeable": 8,
-    "nitpick": 8,
+    "noticeable": 1,
+    "nitpick": 2,
     "gross_by_class": {
-     "artefact": 1,
-     "edge": 5,
-     "letter": 1,
-     "stitch_type": 1
+     "letter": 1
     },
-    "reason": "The word reads clearly as Tires and every stroke, the i dot and the open e and s counters are present. What holds it back is the scalloped, saw-toothed edge along nearly every stroke, plus the messy e crossing and the pinched s counter. A customer would see the rough edges and a clean-up would be needed."
+    "reason": "1: The word reads clearly as Tires with all letters, the i dot and the counters present. The jagged fan-shaped edges on every inside curve, the ragged s counter and the lumpy r/e join make it look rough close up and it needs clean-up. | 2: The script word is fully recognisable with all strokes, the i dot and the open e and s counters present, and nothing is missing or extra. What holds it back is a saw-toothed, fan-ribbed edge on the curves and a distorted, hard-edged s counter. These are small at hat size, and the single colour block is correct."
    },
    {
     "id": "L_goldentee_hat",
     "size": "75.4 x 62.9 mm on hat_front",
     "grade": "Bad",
     "step": 3,
+    "disagree": false,
+    "one_reader": 18,
     "whole": [
-     "detail_lost",
-     "too_busy"
+     "detail_lost"
     ],
     "ruins": 1,
-    "noticeable": 7,
-    "nitpick": 3,
+    "noticeable": 3,
+    "nitpick": 0,
     "gross_by_class": {
-     "artefact": 2,
-     "colour": 1,
-     "edge": 1,
-     "extra": 1,
-     "letter": 1,
-     "missing": 1,
+     "letter": 3,
      "pen_flow": 1
     },
-    "reason": "The GOLF wordmark is mushed: black outline stitches pile over the yellow/orange fills so the O counter and the L and F are barely readable, and a grey shadow fringe is sewn under it that the art only has as a soft blur. The GT block and tee are recognisable but the bevel colours are blocky and the travel moves are long and tangled across the face. The TM is missing."
+    "reason": "1: The GOLF word, the part customers read first, is a mush of overlapping red, orange, yellow and grey stitches in which the G, O, L and F are barely separable and the counters are filled with grey thread. The GT letters and tee are recognisable but the black outline is saw-toothed all round and the TM is missing. Colour blocks are sewn in an order that sends long travel runs across the whole design. | 2: The GOLF wordmark is mushed into a tangle of red, yellow and orange fragments with letters merging and the counters of O and G clogged, so the logo's key word is barely readable. The TM is missing, black shadows are saw-toothed throughout, and the G and T show stitch direction and colour-band breaks, though the swoosh, tee stem and big GT are recognisable."
    },
    {
     "id": "L_toat_machine_hat",
     "size": "90.6 x 64.7 mm on hat_front",
     "grade": "Okay",
     "step": 2,
+    "disagree": false,
+    "one_reader": 15,
     "whole": [
-     "detail_lost"
+     "background_sewn"
     ],
     "ruins": 0,
-    "noticeable": 11,
-    "nitpick": 9,
+    "noticeable": 2,
+    "nitpick": 2,
     "gross_by_class": {
-     "artefact": 3,
-     "edge": 1,
-     "letter": 3,
-     "pen_flow": 1,
-     "stitch_type": 3
+     "artefact": 1,
+     "letter": 1
     },
-    "reason": "The badge, border and the script word Machine are recognisably right, but the thin tapering speed lines are sewn as fat uniform bars and the script strokes carry lumps, pile-ups and crossover stitches where letters join. The A of To A T and the C of LLC are visibly misshapen, so it needs a clean-up before shipping."
+    "reason": "1: The whole interior of the badge is filled with a grey hatch fill where the original is plain white, so fabric is covered that should show and the logo reads grey-on-grey. The lettering itself is recognisable and counters stay open, but the M and the n-e join have mushed, notched stitch pile-ups, and the speed lines are heavier than the hairlines in the art. | 2: The whole interior of the badge is sewn with a light hatch fill that the white-background original does not have, which would be wasteful and visible on a hat. The black lettering and border are otherwise recognisable and clean, but the speed lines lose their taper, the M's thin inner strokes are pinched with stray bits, and a few letter joins (c, h, n) are jumbled."
    },
    {
     "id": "L_toat_beanie",
     "size": "83.4 x 56.1 mm on beanie",
     "grade": "Okay",
     "step": 2,
-    "whole": [
-     "detail_lost"
-    ],
+    "disagree": false,
+    "one_reader": 18,
+    "whole": [],
     "ruins": 0,
-    "noticeable": 7,
-    "nitpick": 7,
+    "noticeable": 2,
+    "nitpick": 1,
     "gross_by_class": {
-     "artefact": 2,
-     "edge": 3,
-     "letter": 1,
-     "pen_flow": 1
+     "letter": 2
     },
-    "reason": "The Machine script is recognisable but its strokes are lumpy and the c, h and i are tangled with piled stitches and direction changes mid-stroke. The To A T lettering, frame and LLC read cleanly, though the speed lines are blobby and several lose their taper. Needs a clean-up on the script before it ships."
+    "reason": "1: The hexagon border, wordmark and speed lines are all present and recognisable, but the script Machine letters are lumpy and mushed where strokes join, with fan-shaped stitch pile-ups in the c, h and e. The small To A T letters have narrowed counters and a muddy A. Needs a clean-up, not a re-do. | 2: The Machine script is the weak point: the a, c, h and the joins between them are sewn with fan-shaped, shifting stitch angles that make bumpy, mushy strokes where the original has clean pen strokes. The To A T lettering and the border are sound, though the o and A counters are tight and the thin speed lines are fatter than the art."
    }
   ]
  },
@@ -302,1216 +247,2055 @@
  "readings": {
   "L_becker_hat_large": {
    "grade": "Okay",
-   "whole": [
-    "detail_lost"
+   "grades": [
+    "Okay",
+    "Okay"
    ],
-   "reason": "The MARINE lettering is sewn with fan-shaped, radiating stitch angles in the R, N and E and the A counter is filled in, which a customer would see straight away. BECKER is recognisable with a clean outline, but the C counter ring is lumpy and the outline bands are rough in places. Long needle-up travels cross the lettering.",
+   "disagree": false,
+   "whole": [],
+   "reason": "1: Recognisably BECKER MARINE with the right shapes, outline and fills, but the R of MARINE has lost its closed counter and has a fan-stitched bowl, and the dark inner shape of the C is a lumpy fan with a notch the art does not have. The outline column has ragged edges and small gaps in several places, and the long magenta travel runs cross the whole design. | 2: The R of MARINE has its round counter opened into a notch on the left side with a radial fan fill, which changes the letter, and the dark C shadow in BECKER is a lumpy bulged shape with a gap sliver unlike the original. Everything else is recognisable and the outlines are mostly clean, but several outline joins, ragged edges and column seams would need clean-up before shipping.",
    "faults": [
     {
-     "x_mm": 48.5,
-     "y_mm": 52.0,
+     "x_mm": 79.0,
+     "y_mm": 53.5,
+     "what": "gap",
+     "severity": "nitpick",
+     "note": "1: The N of MARINE has a visible slit and a stitch-direction seam where the diagonal meets the right upright. | 2: The N of MARINE has a small gap and seam where the diagonal meets the right upright.",
+     "seen_in": "C3"
+    },
+    {
+     "x_mm": 96.0,
+     "y_mm": 56.5,
      "what": "direction",
+     "severity": "nitpick",
+     "note": "1: The arms of the E are sewn with vertical stitches while the spine is horizontal, and the lower arm is a separate patch with a ragged right edge. | 2: The E arms of MARINE are stitched vertically while the stem is stitched horizontally, giving a visible change of texture at the junction; the E arms also show seams.",
+     "seen_in": "C3"
+    },
+    {
+     "x_mm": 51.25,
+     "y_mm": 54.0,
+     "what": "letter_shape",
      "severity": "noticeable",
-     "note": "The R of MARINE fans its stitches out from one point across the bowl instead of following the stroke, unlike the straight columns in the original.",
+     "note": "1: The R of MARINE has its round counter open to the left as a notch beside the stem instead of a closed hole, and the bowl is a fan of radiating stitches. | 2: The round counter of the R in MARINE is not a closed hole; it is a notch open to the left stem, and the bowl is a radial fan that fills the original's counter area.",
      "seen_in": "C2"
     },
     {
-     "x_mm": 90.0,
-     "y_mm": 56.0,
-     "what": "direction",
+     "x_mm": 97.5,
+     "y_mm": 34.0,
+     "what": "jagged",
      "severity": "noticeable",
-     "note": "The E of MARINE has stitches radiating from a point at its spine, so the arms and spine run in conflicting directions.",
-     "seen_in": "C3"
-    },
+     "note": "1: The outer edge of the R's outline on the right is ragged with stitch ends sticking out unevenly; this repeats along the outline. | 2: The outline on the right of the final R has ragged, uneven stitch ends sticking out along its outer edge; this saw-toothed edge repeats down to the foot.",
+     "seen_in": "B3"
+    }
+   ],
+   "one_reader": [
     {
-     "x_mm": 72.0,
-     "y_mm": 54.0,
-     "what": "direction",
+     "x_mm": 52.0,
+     "y_mm": 60.0,
+     "what": "pen_flow",
      "severity": "noticeable",
-     "note": "The N diagonal meets the left upright with a starburst of stitch angles and a visible seam, rather than a clean join.",
-     "seen_in": "C3"
+     "note": "The R's leg is a separate patch whose stitches run a different way from the stem and bowl, with a visible seam where they meet.",
+     "seen_in": "C2",
+     "reader": 1
     },
     {
-     "x_mm": 27.0,
-     "y_mm": 54.0,
-     "what": "missing",
-     "severity": "noticeable",
-     "note": "The triangular counter of the A is filled with thread, so the A reads as a solid block, against the open hole in the original.",
-     "seen_in": "C1"
-    },
-    {
-     "x_mm": 27.0,
-     "y_mm": 61.0,
-     "what": "direction",
-     "severity": "nitpick",
-     "note": "The A crossbar is a slanted patch of stitches that clashes with the vertical columns around it.",
-     "seen_in": "C1"
-    },
-    {
-     "x_mm": 13.0,
-     "y_mm": 55.0,
-     "what": "direction",
-     "severity": "nitpick",
-     "note": "The V notch of the M is sewn with stitches at diagonal angles that differ from the upright columns, leaving visible seams.",
-     "seen_in": "C1"
-    },
-    {
-     "x_mm": 43.0,
-     "y_mm": 13.0,
+     "x_mm": 45.0,
+     "y_mm": 9.5,
      "what": "lumpy_curve",
      "severity": "noticeable",
-     "note": "The C counter is a ring of outline with a fill of mixed angles and a lumpy notch at its top, not the clean smooth solid shape in the original.",
-     "seen_in": "A2"
+     "note": "The dark inner shape of the C has a heart-like notch at its top with a fan of radiating stitches, where the art has a smooth flat-topped blob.",
+     "seen_in": "A2",
+     "reader": 1
     },
     {
-     "x_mm": 57.0,
-     "y_mm": 8.0,
+     "x_mm": 42.0,
+     "y_mm": 16.0,
+     "what": "mushed",
+     "severity": "nitpick",
+     "note": "The left edge of the C's dark shape shows small gaps between fan stitches and uneven turning.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 2.5,
+     "y_mm": 13.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The left outline of the B has a sawtooth fan edge and an extra overlapping patch near x 1.5, y 16.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 23.0,
+     "y_mm": 10.0,
+     "what": "pen_flow",
+     "severity": "nitpick",
+     "note": "Where the B's outline meets the E's outline the columns pile together with abrupt direction changes.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 53.0,
+     "y_mm": 2.5,
+     "what": "gap",
+     "severity": "nitpick",
+     "note": "A small notch interrupts the top outline column between the C and K.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 30.0,
+     "y_mm": 60.0,
      "what": "letter_shape",
      "severity": "nitpick",
-     "note": "The dark slash between the C and K is a thin, uneven bar and is narrower than the original.",
-     "seen_in": "A2"
+     "note": "The counter of the A has a separate crossbar patch with a different stitch direction and ragged edges.",
+     "seen_in": "C1",
+     "reader": 1
     },
     {
      "x_mm": 10.0,
-     "y_mm": 38.0,
-     "what": "jagged",
+     "y_mm": 51.0,
+     "what": "pen_flow",
      "severity": "nitpick",
-     "note": "The outer border stitches around the lower left of the B fan irregularly at the corner and show ragged ends (this repeats around the border).",
-     "seen_in": "B1"
+     "note": "The M's centre V is a separate patch with seams, and its edge steps into the legs.",
+     "seen_in": "C1",
+     "reader": 1
     },
     {
-     "x_mm": 90.0,
-     "y_mm": 38.0,
-     "what": "jagged",
-     "severity": "nitpick",
-     "note": "The border on the right R is saw-toothed on its outer edge with uneven stitch ends.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 14.0,
-     "y_mm": 31.0,
+     "x_mm": 13.0,
+     "y_mm": 30.0,
      "what": "mushed",
      "severity": "nitpick",
-     "note": "The B counter fill has radiating stitch angles that look messy, and its outline is a little lumpy.",
-     "seen_in": "B1"
+     "note": "The B's lower dark counter has a fan of stitches with a small gap at its left edge.",
+     "seen_in": "B1",
+     "reader": 1
     },
     {
-     "x_mm": 60.0,
-     "y_mm": 40.0,
+     "x_mm": 50.0,
+     "y_mm": 25.0,
+     "what": "extra",
+     "severity": "nitpick",
+     "note": "The outline under the E is a heavy flat-bottomed column where the art has a thinner shadow line.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 50.0,
+     "y_mm": 30.0,
      "what": "stray",
      "severity": "nitpick",
-     "note": "Long needle-up moves run across the BECKER and from BECKER to MARINE, so they need trimming or they leave loose threads on the face.",
-     "seen_in": "travel"
+     "note": "Long needle-up moves cross the whole lettering, for example from the bottom of the B to the top right of the R, and could show as trims or loose threads.",
+     "seen_in": "travel",
+     "reader": 1
+    },
+    {
+     "x_mm": 44.0,
+     "y_mm": 13.0,
+     "what": "lumpy_curve",
+     "severity": "noticeable",
+     "note": "The dark inner shape of the C in BECKER has a bulbous top lobe and a notched step on its upper right, and thin gaps show in its fill, where the original is one smooth rounded block.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 58.0,
+     "y_mm": 13.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The K's dark wedge is split by a diagonal seam with a small gap at its left tip.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 2.5,
+     "y_mm": 15.5,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "The outline at the upper left of the B has an overlapping pile-up of stitch fans at the corner where the curve meets the stem.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 1.5,
+     "y_mm": 36.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The lower-left curve of the B outline fans out with uneven stitch ends and a notch at its join.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 53.0,
+     "y_mm": 2.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The top outline between the C and K steps with a visible notch and a seam where two columns meet.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 29.0,
+     "y_mm": 57.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The A counter in MARINE is squared off and has a seam and a small step at its lower edge.",
+     "seen_in": "C1",
+     "reader": 2
+    },
+    {
+     "x_mm": 12.0,
+     "y_mm": 52.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The M of MARINE has horizontal seams where the diagonal vee joins the stems, with stepped edges.",
+     "seen_in": "C1",
+     "reader": 2
     }
    ]
   },
   "L_gaulke_roofing_hat": {
-   "grade": "Okay",
-   "whole": [
-    "detail_lost"
+   "grade": null,
+   "grades": [
+    "Bad",
+    "Okay"
    ],
-   "reason": "The logo is recognisably right and the lettering reads, but the fine detail is lost: the white gaps between the sun and roof bands have closed or become ragged, and counters in the lettering are choked. Every edge is scalloped rather than clean, and letter strokes are fattened against the original. It needs a clean-up before it ships.",
+   "disagree": true,
+   "whole": [],
+   "reason": "1: The lettering is sewn much heavier and rougher than the art's light geometric sans, so counters in the R, P, S, G and ampersand are mostly filled and every letter edge is saw-toothed. The roof and sun mark is recognisable but its edges are ragged and thin gaps are uneven, so the piece needs clean-up before a customer would accept it. | 2: Recognisably the right logo, with all text and the roof, sun and window present and the letters readable, but every edge is saw-toothed and the lettering is sewn heavier than the art so small counters (R, &, S, G) clog. The roof ridge and thin stripes lose their separation near the peak, and a single colour block with long jumps across the text needs clean-up.",
    "faults": [
-    {
-     "x_mm": 45.0,
-     "y_mm": 14.0,
-     "what": "gap",
-     "severity": "noticeable",
-     "note": "The white sliver between the sun disc and the top roof band is ragged and partly closed, where the original has a clean even white stripe.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 62.0,
-     "y_mm": 14.5,
-     "what": "mushed",
-     "severity": "noticeable",
-     "note": "The roof peak and its inner stripes near the apex fuse into one black mass, losing the separate chevron lines and the small triangle seen in the original.",
-     "seen_in": "A3"
-    },
-    {
-     "x_mm": 60.0,
-     "y_mm": 20.0,
-     "what": "gap",
-     "severity": "noticeable",
-     "note": "The thin white gaps between the parallel roof bands are choked, uneven and broken into dashes.",
-     "seen_in": "A3"
-    },
-    {
-     "x_mm": 57.0,
-     "y_mm": 24.5,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The window panes are barely separated: the white mullions of the four-pane window are mostly filled in.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 35.0,
-     "y_mm": 24.0,
-     "what": "jagged",
-     "severity": "nitpick",
-     "note": "The upper roof wing edge is scalloped with small steps; this repeats along every roof band.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 38.0,
-     "y_mm": 28.5,
-     "what": "gap",
-     "severity": "nitpick",
-     "note": "The white line between the lower two roof wings is thin and uneven compared with the original.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 19.5,
-     "y_mm": 35.5,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The G is fattened and its crossbar blob nearly fills the counter, so the opening of the G is much smaller than in the original.",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 10.0,
-     "y_mm": 35.0,
-     "what": "jagged",
-     "severity": "noticeable",
-     "note": "The C has a heavily scalloped rim and thickened terminals; this scalloping repeats on every round letter.",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 6.0,
-     "y_mm": 44.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The S of STEEL is lumpy with a fat spine and uneven terminals.",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 98.0,
-     "y_mm": 35.5,
-     "what": "mushed",
-     "severity": "noticeable",
-     "note": "The counter of the R and the tongue of the E are nearly closed, and the arm of the E is a squeezed slit.",
-     "seen_in": "B4"
-    },
-    {
-     "x_mm": 104.0,
-     "y_mm": 37.0,
-     "what": "stray",
-     "severity": "nitpick",
-     "note": "The S of INDUSTRIES has a small notch and a sharp crack in its lower curve.",
-     "seen_in": "B4"
-    },
-    {
-     "x_mm": 74.0,
-     "y_mm": 44.0,
-     "what": "mushed",
-     "severity": "noticeable",
-     "note": "The ampersand is clogged: its small upper counter and the lower openings are mostly filled.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 104.0,
-     "y_mm": 44.0,
-     "what": "mushed",
-     "severity": "nitpick",
-     "note": "The counters in P and P of SUPPLY are small, though still open; they repeat on the other letters of the line.",
-     "seen_in": "B4"
-    },
-    {
-     "x_mm": 68.0,
-     "y_mm": 36.5,
-     "what": "pen_flow",
-     "severity": "nitpick",
-     "note": "The bowl of the U in INDUSTRIES shows a hard seam in the curve where fill direction changes.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 45.0,
-     "y_mm": 44.0,
-     "what": "jagged",
-     "severity": "nitpick",
-     "note": "The O's of ROOFING have saw-toothed outer and inner edges; this repeats across both lines.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 100.0,
-     "y_mm": 6.0,
-     "what": "other",
-     "severity": "nitpick",
-     "note": "The travel shows two very long needle-up jumps across the logo and the letters; they would need trims.",
-     "seen_in": "travel"
-    }
-   ]
-  },
-  "L_goldentee_hat": {
-   "grade": "Bad",
-   "whole": [
-    "detail_lost",
-    "too_busy"
-   ],
-   "reason": "The GOLF wordmark is mushed: black outline stitches pile over the yellow/orange fills so the O counter and the L and F are barely readable, and a grey shadow fringe is sewn under it that the art only has as a soft blur. The GT block and tee are recognisable but the bevel colours are blocky and the travel moves are long and tangled across the face. The TM is missing.",
-   "faults": [
-    {
-     "x_mm": 42.0,
-     "y_mm": 41.0,
-     "what": "mushed",
-     "severity": "ruins",
-     "note": "The GOLF letters O, L and F are buried under heavy black outline blobs and overlapping fills so the word is hard to read.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 57.0,
-     "y_mm": 41.0,
-     "what": "blob",
-     "severity": "noticeable",
-     "note": "The F of GOLF has black blocks and jumbled fill directions where the arms should be clean bars.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 35.0,
-     "y_mm": 47.0,
-     "what": "extra",
-     "severity": "noticeable",
-     "note": "A grey-white fringe of stitches is sewn under GOLF for the soft drop shadow, which reads as a fuzzy halo rather than art.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 68.0,
-     "y_mm": 40.0,
-     "what": "missing",
-     "severity": "noticeable",
-     "note": "The TM mark to the right of the F is not sewn.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 28.0,
-     "y_mm": 24.0,
-     "what": "colour",
-     "severity": "noticeable",
-     "note": "The G bevel is a thick red-brown satin with patches of yellow and white, where the art has a thin red line with a gold-to-cream gradient.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 10.0,
-     "y_mm": 18.0,
-     "what": "jagged",
-     "severity": "noticeable",
-     "note": "The black outer edge of the swoosh is bumpy and scalloped, and the white fill is a thin stitch-end ladder; this repeats along the arc.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 4.0,
-     "y_mm": 27.0,
-     "what": "other",
-     "severity": "nitpick",
-     "note": "The swoosh tail point is doubled with a white fringe beside the black tip and is wider than the art's fine point.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 10.0,
-     "y_mm": 37.0,
-     "what": "direction",
-     "severity": "noticeable",
-     "note": "The tee neck has overlapping stitch angles and a ragged jumble where the top bar turns into the stem.",
-     "seen_in": "B1"
-    },
     {
      "x_mm": 20.0,
-     "y_mm": 35.0,
-     "what": "letter_shape",
+     "y_mm": 35.5,
+     "what": "mushed",
      "severity": "nitpick",
-     "note": "The tee top-bar tip is a stubby curl against the art's sharp barb.",
+     "note": "1: The G has its counter and crossbar closed up, with the bar jammed against the bowl. | 2: The G's crossbar is a blocky lump with a ragged lower notch rather than the clean bar of the art.",
      "seen_in": "B1"
     },
     {
-     "x_mm": 60.0,
-     "y_mm": 21.0,
-     "what": "stitch_type",
-     "severity": "nitpick",
-     "note": "The T bevel lines are blocky, with the cream band as a separate white bead row and a red block corner that is not in the art.",
-     "seen_in": "A3"
+     "x_mm": 33.5,
+     "y_mm": 43.5,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "1: The R in ROOFING has a tiny counter and a lumpy leg, much heavier than the art. | 2: The counter of the R in ROOFING is a small ragged notch instead of the open bowl in the art, because the letter is sewn too heavy.",
+     "seen_in": "B2"
     },
     {
      "x_mm": 40.0,
-     "y_mm": 32.0,
+     "y_mm": 12.5,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "1: The sun's lower-left edge and the roof ridge edge are saw-toothed and the white gap between them varies in width. | 2: The left edge of the sun disc is stair-stepped where the art has a clean arc, and the sun's lower-left tail ends in a blunt lump.",
+     "seen_in": "A2"
+    },
+    {
+     "x_mm": 60.5,
+     "y_mm": 15.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "1: Small thread-gap slits break the black of the roof band near its fold. | 2: Pale slits and notches cut into the roof stripe beside the peak, at stripe joins.",
+     "seen_in": "A3"
+    }
+   ],
+   "one_reader": [
+    {
+     "x_mm": 92.0,
+     "y_mm": 35.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The counter of the R in INDUSTRIES is mostly filled to a small notch, where the art has an open bowl.",
+     "seen_in": "B4",
+     "reader": 1
+    },
+    {
+     "x_mm": 101.0,
+     "y_mm": 35.5,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The S in INDUSTRIES is clogged with thin slits for its openings and its stroke is much heavier than the art.",
+     "seen_in": "B4",
+     "reader": 1
+    },
+    {
+     "x_mm": 66.5,
+     "y_mm": 35.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The D in INDUSTRIES has its counter shrunk to a small ragged hole, far smaller than the art's.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 72.0,
+     "y_mm": 35.5,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The S in INDUSTRIES has its upper and lower openings squeezed shut to thin slits.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 78.5,
+     "y_mm": 44.0,
+     "what": "mushed",
+     "severity": "ruins",
+     "note": "The ampersand has its two loops filled to tiny holes and reads as a blob rather than an &.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 85.0,
+     "y_mm": 44.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The S of SUPPLY has its openings squeezed to thin slits, as with the other S letters.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 1.5,
+     "y_mm": 44.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The first S of STEEL is clogged at its slits and sewn heavier than the art.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 49.0,
+     "y_mm": 35.5,
+     "what": "mushed",
+     "severity": "nitpick",
+     "note": "The E in GOLKE has narrowed arm gaps and a filled middle bar, heavier than the art.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 60.0,
+     "y_mm": 40.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "Every letter of both lines has a saw-toothed edge from stitch ends; the worst are the curves of C, O, S and U, and it repeats across the whole text.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 96.0,
+     "y_mm": 44.5,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The bowls of the P and U in SUPPLY have stair-stepped, bristly edges, and this repeats on the Y.",
+     "seen_in": "B4",
+     "reader": 1
+    },
+    {
+     "x_mm": 63.0,
+     "y_mm": 13.5,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The gap between sun and roof ridge is ragged and has stray slivers, where the art has a clean uniform white band.",
+     "seen_in": "A3",
+     "reader": 1
+    },
+    {
+     "x_mm": 71.0,
+     "y_mm": 16.0,
+     "what": "lumpy_curve",
+     "severity": "nitpick",
+     "note": "The sun's right edge has a lumpy bottom tip, where the art is a smooth circle edge.",
+     "seen_in": "A3",
+     "reader": 1
+    },
+    {
+     "x_mm": 43.0,
+     "y_mm": 25.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "Hairline gaps and notches cut across the roof band where column segments meet.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 38.0,
+     "y_mm": 30.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The roof eave bar and the band above it have ragged edges and an uneven gap between them.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 57.5,
+     "y_mm": 26.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The window panes are lumpy and unevenly sized and the cross gaps are irregular, against the clean rounded panes in the art.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 62.0,
+     "y_mm": 9.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The travel picture shows very long jumps across the lettering between blocks, so many trims and visible connections are likely.",
+     "seen_in": "travel",
+     "reader": 1
+    },
+    {
+     "x_mm": 5.0,
+     "y_mm": 35.5,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The C of C GOLKE has a saw-toothed outer edge and a ragged inner counter, and the same fringe repeats on every letter of both lines.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 4.0,
+     "y_mm": 44.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The S of STEEL has a stair-stepped edge and a lumpy, ragged inner curve against the smooth S in the art.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 13.5,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The white gap between the sun and the upper roof stripe is saw-toothed and varies in width, where the art has a clean even channel.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 66.0,
+     "y_mm": 44.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The ampersand has two tiny clogged counters and a lumpy join, so it reads poorly against the open & in the art.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 78.0,
+     "y_mm": 34.5,
+     "what": "letter_shape",
+     "severity": "noticeable",
+     "note": "The S in INDUSTRIES has a narrow sliver slash for its inner curve and heavy blunt terminals, so it looks cramped; the S in SUPPLY and the S in STEEL repeat this.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 98.0,
+     "y_mm": 35.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The final S has a thin slash for its counter and jagged terminals, heavier than the original S.",
+     "seen_in": "B4",
+     "reader": 2
+    },
+    {
+     "x_mm": 38.0,
+     "y_mm": 22.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "Small pale slits cut across the roof stripe where column segments meet.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 66.0,
+     "y_mm": 24.5,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "Small white ticks in the roof stripe at its bend on the right slope.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 57.0,
+     "y_mm": 14.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "At the roof peak the thin white stripes and chevron lines of the art are narrowed and partly merged, so the layered ridge loses crispness.",
+     "seen_in": "overview",
+     "reader": 2
+    },
+    {
+     "x_mm": 62.0,
+     "y_mm": 24.5,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The window panes have fuzzy, stair-stepped edges; the dividers between panes are uneven.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 47.0,
+     "y_mm": 30.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The lower roof stripe and base bar edges are toothed along their full length, and the slim gap between them is uneven.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 60.0,
+     "y_mm": 33.0,
      "what": "stray",
      "severity": "noticeable",
-     "note": "Many long needle-up jumps cross the face of GT and GOLF between seven colour blocks, which would need trimming and risk visible tack-downs.",
-     "seen_in": "travel"
+     "note": "One colour block with untrimmed long jumps, such as the 80 mm run across the top of the INDUSTRIES line, would leave visible thread over the lettering.",
+     "seen_in": "travel",
+     "reader": 2
     }
    ]
   },
   "L_hotel_fremont_hat": {
-   "grade": "Okay",
+   "grade": "Bad",
+   "grades": [
+    "Bad",
+    "Bad"
+   ],
+   "disagree": false,
    "whole": [
     "detail_lost"
    ],
-   "reason": "The small tan lettering (EST 1895, EAT STAY PLAY) is sewn as lumpy blobby strokes with wrong letter forms, which is what most holds it back. The big black HOTEL FREMONT, the Wisconsin shape and the layout are recognisably right, but the rope border is a plain zigzag and the dividers are wrong. Needs a clean-up on the small text and dividers.",
+   "reason": "1: The EAT | STAY | PLAY line is badly mangled: the A and Y are sewn as forked stick shapes and the divider bars are taller and heavier than the art, so a ruined part of the design. EST 1895 is wobbly and the star is an asterisk, and the big black lettering has ragged, stair-stepped edges. The black frame, bars and white fill are sound, and the overall design reads correctly. | 2: The small tan lettering (EAT STAY PLAY, EST 1895) is sewn as thin single-line runs that distort the serif letters into stick figures, and the star is replaced by an asterisk. The black HOTEL FREMONT letters have ragged, saw-toothed edges, and the rope border is sewn as a plain satin band with the twist lost. The overall layout, colours and big shapes are right and recognisable.",
    "faults": [
     {
-     "x_mm": 40.0,
-     "y_mm": 13.0,
-     "what": "mushed",
-     "severity": "noticeable",
-     "note": "EST is sewn as fat bumpy tubes with the S and T barely readable against the clean slab serif letters of the original.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 57.0,
-     "y_mm": 13.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The 1895 digits are distorted, the 8 and 9 are lumpy with blobby loops and the 1 has lost its flag and serif.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 47.5,
+     "x_mm": 47.75,
      "y_mm": 11.0,
      "what": "letter_shape",
      "severity": "nitpick",
-     "note": "The white star in the Wisconsin shape is sewn as a fat asterisk and sits low and off-centre.",
+     "note": "1: The white five-point star inside Wisconsin is sewn as a six-armed asterisk and is off its place in the art. | 2: The star inside the Wisconsin shape is sewn as a six-armed asterisk and the state outline has a stair-stepped left edge.",
      "seen_in": "A2"
+    },
+    {
+     "x_mm": 76.5,
+     "y_mm": 14.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "1: Short stray ticks stick out at the upper-right corner where the rope meets the black frame. | 2: Tiny stray stitch ticks sit on the black band's outer curve at the upper right corner.",
+     "seen_in": "A3"
+    },
+    {
+     "x_mm": 75.25,
+     "y_mm": 35.75,
+     "what": "blob",
+     "severity": "nitpick",
+     "note": "1: The rope band ends in a crumpled pile of stitches at the lower-right corner, against a clean rope end in the art. | 2: The rope band end at the lower right corner piles up in a lump with stray stitch ticks beside the black band.",
+     "seen_in": "B3"
+    }
+   ],
+   "one_reader": [
+    {
+     "x_mm": 38.0,
+     "y_mm": 36.0,
+     "what": "letter_shape",
+     "severity": "ruins",
+     "note": "The A in EAT is sewn as a forked lambda-like stick and the T is thin, so EAT does not read as the serif capitals in the art.",
+     "seen_in": "B2",
+     "reader": 1
     },
     {
      "x_mm": 50.0,
      "y_mm": 36.0,
      "what": "letter_shape",
+     "severity": "ruins",
+     "note": "The Y in STAY (and the Y in PLAY, which repeats) is a branching twig with a split stem, not a Y with a straight stem and serifs.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 39.5,
+     "y_mm": 37.5,
+     "what": "extra",
      "severity": "noticeable",
-     "note": "STAY and PLAY are built from tube-like strokes: the Y and A read as lambda shapes and the serifs are gone, and the same repeats across EAT.",
-     "seen_in": "B2"
+     "note": "The divider bar between EAT and STAY is sewn thicker and runs about 2 mm lower than the thin bar in the art; the one at x 53.5 repeats this.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 57.0,
+     "y_mm": 36.0,
+     "what": "stitch_type",
+     "severity": "noticeable",
+     "note": "PLAY is a thin single-line stroke with no serifs or stroke contrast, which loses the slab-serif look of the art.",
+     "seen_in": "B2",
+     "reader": 1
     },
     {
      "x_mm": 40.0,
-     "y_mm": 37.0,
-     "what": "blob",
+     "y_mm": 13.5,
+     "what": "wavy",
      "severity": "noticeable",
-     "note": "The two vertical dividers in EAT | STAY | PLAY are sewn about twice as thick and taller than the thin bars in the art and crowd the letters beside them; the second one repeats this near x 53.",
-     "seen_in": "B2"
+     "note": "The letters of EST wobble, with uneven stroke width and bent uprights, where the art has clean straight serif strokes.",
+     "seen_in": "A2",
+     "reader": 1
     },
     {
-     "x_mm": 30.0,
+     "x_mm": 57.0,
+     "y_mm": 13.5,
+     "what": "wavy",
+     "severity": "noticeable",
+     "note": "The digits of 1895 are lumpy single-line strokes with wavy uprights, and the 9 and 5 curves are uneven; the wobble repeats across the numerals.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 48.0,
      "y_mm": 10.0,
-     "what": "stitch_type",
-     "severity": "noticeable",
-     "note": "The twisted rope border is replaced by a plain zigzag satin band with no twist, and it repeats along every rope segment.",
-     "seen_in": "A1"
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The Wisconsin silhouette is stair-stepped along its left and bottom edges.",
+     "seen_in": "A2",
+     "reader": 1
     },
     {
-     "x_mm": 47.0,
-     "y_mm": 47.0,
+     "x_mm": 12.0,
+     "y_mm": 23.0,
      "what": "jagged",
      "severity": "noticeable",
-     "note": "At the bottom point the rope and black border meet in a ragged pile-up with stitches that fold over each other instead of a clean mitre.",
-     "seen_in": "B2"
+     "note": "The H and O of HOTEL have ragged, stair-stepped edges and bumpy serifs, and the O curve has flat spots; this repeats across the whole HOTEL FREMONT line.",
+     "seen_in": "A1",
+     "reader": 1
     },
     {
-     "x_mm": 18.0,
-     "y_mm": 15.0,
-     "what": "blob",
-     "severity": "nitpick",
-     "note": "The rope end near the top-left corner is a tangled lump of stitches that does not match the neat rope end in the art.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 75.0,
-     "y_mm": 35.0,
-     "what": "stray",
+     "x_mm": 56.0,
+     "y_mm": 27.0,
+     "what": "jagged",
      "severity": "noticeable",
-     "note": "The rope end at the right shoulder is a messy fold of stitches with loose stitch ends, and the Y of PLAY pokes past the border beside it.",
-     "seen_in": "B3"
+     "note": "The R diagonal leg and the E and M edges in FREMONT are saw-toothed rather than clean.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 76.0,
+     "y_mm": 24.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The N and T of FREMONT have notched, uneven corners and edges.",
+     "seen_in": "A3",
+     "reader": 1
     },
     {
      "x_mm": 47.0,
-     "y_mm": 3.0,
-     "what": "other",
+     "y_mm": 3.5,
+     "what": "stitch_type",
      "severity": "nitpick",
-     "note": "The black border has a visible seam at the apex and the rope pieces meet there with a gap.",
-     "seen_in": "A2"
+     "note": "The rope border is sewn as a plain zigzag satin band without the twisted-rope pattern, and it has a visible seam at the top apex.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 19.0,
+     "y_mm": 34.5,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "A stray thread stub sticks out above the start of the lower-left rope band.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 47.0,
+     "y_mm": 47.5,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "The rope bands meet at the bottom apex with an overlap and loose stitch ticks.",
+     "seen_in": "B2",
+     "reader": 1
     },
     {
      "x_mm": 20.0,
-     "y_mm": 23.0,
-     "what": "lumpy_curve",
+     "y_mm": 13.5,
+     "what": "jagged",
      "severity": "nitpick",
-     "note": "The edges of the HOTEL FREMONT letters are scalloped and bumpy where the art has crisp straight stems and curves, and this repeats across all letters; the slab serifs are rounded off.",
-     "seen_in": "A1"
+     "note": "The black frame ends and the rope corner at the upper left have ragged cut ends and a rough bend.",
+     "seen_in": "A1",
+     "reader": 1
     },
     {
-     "x_mm": 35.0,
-     "y_mm": 18.0,
-     "what": "other",
-     "severity": "nitpick",
-     "note": "The black rule bars have visible butt joints where separate satin runs meet, and the bars are thicker than in the art.",
-     "seen_in": "A2"
+     "x_mm": 57.0,
+     "y_mm": 36.0,
+     "what": "letter_shape",
+     "severity": "noticeable",
+     "note": "EAT STAY PLAY is run-stitched as thin sticks so the A and Y become branching forks and the serifs are gone, hard to read as the original slab letters.",
+     "seen_in": "B2",
+     "reader": 2
     },
     {
      "x_mm": 45.0,
-     "y_mm": 30.0,
-     "what": "stray",
+     "y_mm": 13.0,
+     "what": "letter_shape",
+     "severity": "noticeable",
+     "note": "EST 1895 is wobbly thin single-line lettering, the S, 8 and 9 are lumpy and not the clean slab serif of the original.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 20.0,
+     "y_mm": 25.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The edges of the HOTEL FREMONT letters are saw-toothed and wavy on stems and the O curve; this repeats on every letter.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 50.0,
+     "y_mm": 19.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "THE and the FREMONT letters have ragged, uneven edges on stems and serifs, repeating across the word.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 72.0,
+     "y_mm": 27.0,
+     "what": "jagged",
      "severity": "nitpick",
-     "note": "Long needle-up travel runs cross the open design and a trim/jump from the tagline to the top is not hidden.",
-     "seen_in": "travel"
+     "note": "The N diagonal and O of MONT have stepped edges, repeating the raggedness of the other letters.",
+     "seen_in": "A3",
+     "reader": 2
+    },
+    {
+     "x_mm": 39.0,
+     "y_mm": 37.0,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "The two black divider bars between EAT, STAY and PLAY are blocky, hang below the text line and are heavier than the thin originals.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 48.0,
+     "y_mm": 47.0,
+     "what": "stitch_type",
+     "severity": "noticeable",
+     "note": "The rope border is a plain zigzag satin band with no twist and a messy pile-up at the bottom point where the two sides meet, where stray stitches also show.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 19.0,
+     "y_mm": 13.0,
+     "what": "stitch_type",
+     "severity": "nitpick",
+     "note": "The rope band end at the left corner is fanned and lumpy and the rope reads as a flat tan stripe, not a rope.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 25.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "Long travel runs cross the design between colour blocks and may leave visible threads on the fill.",
+     "seen_in": "travel",
+     "reader": 2
     }
    ]
   },
   "L_mfab_hat": {
-   "grade": "Bad",
+   "grade": "Okay",
+   "grades": [
+    "Okay",
+    "Okay"
+   ],
+   "disagree": false,
    "whole": [
     "detail_lost"
    ],
-   "reason": "The small AND WELDING LLC line is mushed: thread outlines are thin and ragged, black fill ovals pile over the letter edges, and the LLC and the A/N counters are hard to read. The big M-FAB top half is recognisable and mostly clean, but the inner F and B details are blobby or misshaped and several junctions pile up. A customer would see the bottom line as a different, worse logo than the art.",
+   "reason": "1: The big M-FAB outline reads correctly and the long satin runs are clean, but the small AND WELDING LLC lettering is mushed: counters are closed, hairline white strokes are replaced by crowded and crossing stitches, and the LLC is hard to read. Several small shapes (A-triangle, B bars, M notch) also deviate from the art, and travel is long with many needle-up jumps. | 2: The big MFAB outline and its straight uprights and diagonals sew cleanly, so the logo reads. The small AND WELDING LLC lettering is what holds it back: its tiny strokes are mushed, with ragged ends, doubled outline passes and filled counters. The centre of the M and the F junctions are also untidy.",
    "faults": [
     {
-     "x_mm": 16.0,
-     "y_mm": 18.5,
+     "x_mm": 88.0,
+     "y_mm": 28.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "1: The two Ls of LLC have their narrow white and black stripes collapsed into dense crossing stitches, so the letters are unreadable. | 2: The LL of LLC are crowded and ragged, with the narrow counters shrunk to blobs and stitch angles messy.",
+     "seen_in": "B4"
+    },
+    {
+     "x_mm": 71.0,
+     "y_mm": 15.75,
      "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The small crown/V notch under the M centre is distorted, with a lump on the left arm and a pile-up at the base, unlike the clean wedge in the art.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 16.0,
-     "y_mm": 10.0,
-     "what": "blob",
      "severity": "nitpick",
-     "note": "The M's centre V point has crossing stitches piled where the two diagonals meet.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 35.0,
-     "y_mm": 6.0,
-     "what": "blob",
-     "severity": "nitpick",
-     "note": "The upper junction of the first upright with the F top bar has stitches fanning and piling.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 45.0,
-     "y_mm": 12.5,
-     "what": "blob",
-     "severity": "noticeable",
-     "note": "The F diagonal meets its horizontal arm with overlapping, doubled stitch blocks and a stepped joint that the art does not have.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 36.0,
-     "y_mm": 17.0,
-     "what": "stray",
-     "severity": "noticeable",
-     "note": "A stray diagonal run and uneven stitch columns sit across the small counter of the H-like bar of the dash/F junction.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 70.0,
-     "y_mm": 16.0,
-     "what": "stitch_type",
-     "severity": "noticeable",
-     "note": "The small triangle of the A is filled with crowded, ragged slanted stitches with a rough upper edge, unlike the clean triangle in the art.",
+     "note": "1: The white triangle inside the A is a ragged wedge with a lumpy curved edge, where the art has a straight-edged triangle with a flat base. | 2: The A's inner triangle is sewn as a smaller, softer wedge than the art's crisp triangle.",
      "seen_in": "A3"
     },
     {
-     "x_mm": 91.0,
-     "y_mm": 11.5,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The B's upper slot is a short lumpy sausage that is too narrow and rounded compared with the angular parallelogram in the art.",
-     "seen_in": "A4"
-    },
-    {
-     "x_mm": 89.0,
-     "y_mm": 18.5,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The B's lower slot has a lumpy messy left end and a shorter right end, and is not the clean angled bar of the art.",
-     "seen_in": "A4"
-    },
-    {
-     "x_mm": 100.0,
-     "y_mm": 14.5,
-     "what": "jagged",
+     "x_mm": 100.5,
+     "y_mm": 14.0,
+     "what": "wavy",
      "severity": "nitpick",
-     "note": "The B's right outline kinks and bulges around the notch instead of running as a clean line.",
+     "note": "1: The right upright of the B's outline wobbles and kinks near y 14 where the art is straight. | 2: The right upright of the B is wavy at about y 13 to 16, with a kink where the art is straight.",
      "seen_in": "A4"
     },
     {
-     "x_mm": 18.0,
-     "y_mm": 28.0,
+     "x_mm": 94.5,
+     "y_mm": 24.5,
+     "what": "stray",
+     "severity": "noticeable",
+     "note": "1: A long thin bar runs across the top of the C beyond the letter, a stray run not in the art. | 2: A thin stray line runs across the top of the LLC from the L to the right, where the art has no stroke.",
+     "seen_in": "B4"
+    },
+    {
+     "x_mm": 32.5,
+     "y_mm": 16.25,
      "what": "mushed",
      "severity": "noticeable",
-     "note": "The A and N of AND have thread outlines so thin and broken that black fill balls cover the letter edges and the A counter nearly closes; this repeats across the small lettering.",
-     "seen_in": "B1"
+     "note": "1: The F's crossbar area is two stacked bars with a small black slot between, and angled stitches at the joins make a lumpy mess unlike the art's clean bars. | 2: The F's crossbar counter is distorted, with the bar stitched as an uneven cluster and a small odd hole at the join.",
+     "seen_in": "A2"
+    },
+    {
+     "x_mm": 89.5,
+     "y_mm": 11.75,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "1: The upper bar inside the B is a short lumpy blob that does not reach the right and has a wavy outline, unlike the art's parallelogram bar. | 2: The B's upper eye is a rounded blob with uneven ends instead of a sharp slanted slot.",
+     "seen_in": "A4"
     },
     {
      "x_mm": 15.0,
-     "y_mm": 21.5,
-     "what": "blob",
+     "y_mm": 27.5,
+     "what": "mushed",
      "severity": "noticeable",
-     "note": "Black fill pile sits at the base of the M notch and runs into the top of the N.",
+     "note": "1: The letters A and N of AND are crowded with diagonal fill and closed counters, so the thin white outline strokes are lost and the shapes are lumpy. | 2: The A and N of AND have rough, fuzzy edges and a fragmented N where the art has clean strokes, and the lettering repeats this fuzz.",
      "seen_in": "B1"
+    }
+   ],
+   "one_reader": [
+    {
+     "x_mm": 15.5,
+     "y_mm": 18.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The notch in the centre of the M has ragged, lumpy edges and a pile-up at its base compared with the clean V in the art.",
+     "seen_in": "A1",
+     "reader": 1
     },
     {
-     "x_mm": 28.0,
+     "x_mm": 37.0,
+     "y_mm": 6.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The join where the diagonal meets the F's upright and top bar has overlapping stitch directions and a small stray bit.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 24.0,
      "y_mm": 28.0,
-     "what": "gap",
+     "what": "direction",
      "severity": "noticeable",
-     "note": "The D counter is filled with diagonal fabric-coloured thread showing a ragged edge instead of a clean small triangle.",
-     "seen_in": "B1"
+     "note": "The D's triangular counter is filled with diagonal hatching running across the stroke instead of following it, and the A and N strokes use diagonal fill across thin verticals.",
+     "seen_in": "B1",
+     "reader": 1
     },
     {
-     "x_mm": 35.0,
+     "x_mm": 36.0,
      "y_mm": 28.0,
      "what": "mushed",
      "severity": "noticeable",
-     "note": "The W of WELDING has a double-line, saw-edged diagonal and black blobs covering strokes so its zigzag is hard to follow.",
-     "seen_in": "B2"
+     "note": "The W is jagged and blobby, with its inner strokes merged and stitches running across the diagonals; it repeats across WELDING.",
+     "seen_in": "B2",
+     "reader": 1
     },
     {
      "x_mm": 45.0,
      "y_mm": 28.0,
      "what": "mushed",
      "severity": "noticeable",
-     "note": "The E has thin uneven thread lines and its arms are not distinct, with black overflow in the stem.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 63.0,
-     "y_mm": 23.5,
-     "what": "blob",
-     "severity": "noticeable",
-     "note": "The top bar over the D and I has a messy knot of fanning stitches at its corner.",
-     "seen_in": "B3"
+     "note": "The E has crude blocky edges and its arms are ragged, with the white strokes thickened and uneven against the art.",
+     "seen_in": "B2",
+     "reader": 1
     },
     {
      "x_mm": 68.0,
-     "y_mm": 28.0,
-     "what": "mushed",
-     "severity": "noticeable",
-     "note": "The I and N strokes merge with broken outlines and black overlaps so the letters run together.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 73.0,
-     "y_mm": 31.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The G is hard to read, with black fill covering its inner arm and ragged outline on its descending tail.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 87.0,
-     "y_mm": 28.0,
+     "y_mm": 27.0,
      "what": "mushed",
      "severity": "ruins",
-     "note": "The two L letters of LLC are tangled with fanning crossed stitches and no clear thin inner lines, so they read as one smudge.",
-     "seen_in": "B4"
+     "note": "The I and N of DING are mashed together with crossing stitches, closed counters and a pile-up at the top, so the letters barely read.",
+     "seen_in": "B3",
+     "reader": 1
     },
     {
-     "x_mm": 90.0,
-     "y_mm": 24.5,
-     "what": "stray",
+     "x_mm": 75.0,
+     "y_mm": 30.0,
+     "what": "letter_shape",
      "severity": "noticeable",
-     "note": "A long thin straight run crosses along the top of the L and C letters, not in the art.",
-     "seen_in": "B4"
+     "note": "The G is ragged and its inner black counter is misshapen compared with the art.",
+     "seen_in": "B3",
+     "reader": 1
     },
     {
      "x_mm": 98.0,
-     "y_mm": 28.0,
+     "y_mm": 30.0,
      "what": "letter_shape",
      "severity": "noticeable",
-     "note": "The C's upper right end and counter are lumpy with a distorted opening compared with the art.",
-     "seen_in": "B4"
+     "note": "The C's arms are lumpy and the inner slot is much narrower than in the art.",
+     "seen_in": "B4",
+     "reader": 1
+    },
+    {
+     "x_mm": 16.0,
+     "y_mm": 19.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The centre notch of the M is a ragged, clumpy stitch pile with a black blob where the art has a clean V.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 14.0,
+     "y_mm": 16.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The left arm of the M's inner V is blobbed and lumpy at its tip, unlike the crisp arm in the art.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 46.0,
+     "y_mm": 13.0,
+     "what": "pen_flow",
+     "severity": "noticeable",
+     "note": "The F's diagonal meets its arm as a patchwork of overlapping column segments with visible direction changes and a bump at the join.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 8.0,
+     "y_mm": 30.0,
+     "what": "extra",
+     "severity": "noticeable",
+     "note": "The A of AND has a doubled outline pass sewn as a separate thin line beside the column, an artefact the art does not have.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 37.0,
+     "y_mm": 28.0,
+     "what": "extra",
+     "severity": "noticeable",
+     "note": "The W has a long thin double line along its diagonal outline that looks like a second pass stitched next to the column.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 47.0,
+     "y_mm": 28.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The W and E counters have ragged, saw-toothed black edges, and the E is nearly solid against the art's open bars.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 66.0,
+     "y_mm": 24.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The top of the I and N in WELDING is a tangled pile of crossing stitches with direction changes, not a clean stroke.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 72.0,
+     "y_mm": 31.0,
+     "what": "gap",
+     "severity": "noticeable",
+     "note": "The N and G lower outline has a thin, doubled and wavy line that detaches from the letter.",
+     "seen_in": "B3",
+     "reader": 2
     },
     {
      "x_mm": 50.0,
-     "y_mm": 25.0,
+     "y_mm": 28.0,
      "what": "other",
-     "severity": "noticeable",
-     "note": "Long needle-up jumps (about 40 to 100 mm) cross the face of the design between the letters and will need trimming or leave loose threads.",
-     "seen_in": "travel"
+     "severity": "nitpick",
+     "note": "The travel moves are long and cross the whole design, so many trims and jumps will be needed over the lettering.",
+     "seen_in": "travel",
+     "reader": 2
     }
    ]
   },
   "L_precision_drone": {
    "grade": "Bad",
-   "whole": [
-    "detail_lost",
-    "too_busy"
+   "grades": [
+    "Bad",
+    "Bad"
    ],
-   "reason": "The drone, which is the focal point, is lost: the body, camera and arms are a mush of black and grey fragments, and the split-scope scene is a vague blob with a black background sewn over it. The wordmark is readable but PRECISION and THERMAL have lumpy, misdirected fills and AND DRONE is weak. Travel is chaotic with long jumps across the whole design.",
+   "disagree": false,
+   "whole": [
+    "detail_lost"
+   ],
+   "reason": "1: The drone and scene are reduced to a black blob with scattered grey patches, so the drone body, camera and forest landscape are barely readable and the left half of the scene is largely missing. The lettering is legible but has messy stitch direction on THERMAL and AND DRONE, and the propeller blades are fat and jagged. | 2: The drone, the scope ring and the landscape are reduced to black with scattered grey and white patches, so the drone body, camera and trees are barely recognisable and the thermal lens is a blob of orange. The lettering is legible but PRECISION is washed into grey and the A of AND is a black blob. Many stray travel jumps and messy satin direction changes add to it.",
    "faults": [
     {
-     "x_mm": 20.0,
-     "y_mm": 12.0,
+     "x_mm": 8.0,
+     "y_mm": 13.5,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "1: The left propeller blades are thick, saw-toothed black and dark grey shapes instead of thin tapered blades, and the left one is merged into the black. | 2: The left propeller blades are saw-toothed black and dark grey wedges, and the upper blade is the wrong shape and misplaced.",
+     "seen_in": "A1"
+    },
+    {
+     "x_mm": 56.5,
+     "y_mm": 13.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "1: The right propeller blades are fat with stepped edges and are not tapered like the art. | 2: The right propeller blades are saw-toothed and the blades are mushed into the ring edge (repeats on the left).",
+     "seen_in": "A2"
+    },
+    {
+     "x_mm": 43.5,
+     "y_mm": 27.0,
+     "what": "blob",
+     "severity": "nitpick",
+     "note": "1: A small blue ring blob sits inside the orange trees where the art has none. | 2: A small blue ring sits inside the orange mass with no counterpart in the art.",
+     "seen_in": "B2"
+    },
+    {
+     "x_mm": 14.5,
+     "y_mm": 58.0,
+     "what": "colour",
+     "severity": "noticeable",
+     "note": "1: The A of AND is black while the rest of the line is grey and the A is a solid blob. | 2: The A of AND is sewn in near-black as a blob while the other letters are grey, and its crossbar and shape are lost.",
+     "seen_in": "C1"
+    }
+   ],
+   "one_reader": [
+    {
+     "x_mm": 12.0,
+     "y_mm": 11.0,
      "what": "missing",
      "severity": "ruins",
-     "note": "The drone body, camera housing and arms are not recognisable; they are broken into disconnected grey and black patches.",
-     "seen_in": "overview"
+     "note": "The drone body, arms and camera housing are a black mass with random grey fragments, so the drone is not recognisable as in the art.",
+     "seen_in": "overview",
+     "reader": 1
+    },
+    {
+     "x_mm": 14.0,
+     "y_mm": 28.0,
+     "what": "missing",
+     "severity": "ruins",
+     "note": "The left grey forest and lake scene is a few grey blobs with the black fill showing through, losing the trees and shoreline.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 28.0,
+     "what": "other",
+     "severity": "noticeable",
+     "note": "The orange forest is a single blob with horizontal fill and stray vertical spikes, with no individual trees and no blue sky behind them.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 40.0,
+     "y_mm": 36.0,
+     "what": "other",
+     "severity": "noticeable",
+     "note": "The blue water is patchy and a white crosshair bar overlaps it, while the large blue sky of the right half is black instead.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 31.0,
+     "y_mm": 13.0,
+     "what": "direction",
+     "severity": "noticeable",
+     "note": "Drone body stitches change direction at random with crossed white bars and no clear shape.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 34.0,
+     "y_mm": 36.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The crosshair target is a tangle of white stitches, with no circle and no clear cross.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 31.0,
+     "y_mm": 23.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The thermal camera lens is a pile of crossed orange stitches with no lens detail.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 14.0,
+     "y_mm": 53.0,
+     "what": "pen_flow",
+     "severity": "noticeable",
+     "note": "THERMAL letters H, E and R have mixed stitch angles and overlapping blocks, and the counters of R and A are clogged; this repeats across the word.",
+     "seen_in": "C1",
+     "reader": 1
+    },
+    {
+     "x_mm": 48.0,
+     "y_mm": 53.0,
+     "what": "letter_shape",
+     "severity": "noticeable",
+     "note": "The A in THERMAL has a lumpy, filled counter and the M has swirling stitch direction.",
+     "seen_in": "C2",
+     "reader": 1
+    },
+    {
+     "x_mm": 43.0,
+     "y_mm": 58.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The O in DRONE has a triangular counter and the letters are rough and lumpy at this size.",
+     "seen_in": "C2",
+     "reader": 1
+    },
+    {
+     "x_mm": 10.0,
+     "y_mm": 47.0,
+     "what": "pen_flow",
+     "severity": "nitpick",
+     "note": "The R and E in PRECISION have stitches cutting across the strokes at the joins; the repeated look is mushy letter edges.",
+     "seen_in": "C1",
+     "reader": 1
+    },
+    {
+     "x_mm": 36.0,
+     "y_mm": 63.0,
+     "what": "mushed",
+     "severity": "nitpick",
+     "note": "The orange target icon is a messy spiral with a tiny centre, not concentric rings.",
+     "seen_in": "C1",
+     "reader": 1
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 40.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The right outer ring edge steps in a stair-step with a black outline wider than the art.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 20.0,
+     "y_mm": 13.0,
+     "what": "missing",
+     "severity": "ruins",
+     "note": "The drone body, arms and camera housing are lost to black with a few disconnected grey patches, so the drone is not recognisable as in the art.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 13.0,
+     "what": "missing",
+     "severity": "ruins",
+     "note": "The right half of the drone body and motor housings are lost to black with random grey fragments, unlike the art.",
+     "seen_in": "A2",
+     "reader": 2
     },
     {
      "x_mm": 30.0,
      "y_mm": 22.0,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "The glowing thermal lens is a tangle of orange stitches with no lens ring or dark lens, unlike the art.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 15.0,
+     "y_mm": 25.0,
      "what": "missing",
-     "severity": "ruins",
-     "note": "The orange thermal camera lens and dark lens are reduced to a small orange scribble and the lens is not readable.",
-     "seen_in": "A1"
+     "severity": "noticeable",
+     "note": "The grey forest and lake on the left are reduced to jagged grey slabs with no trees or shoreline.",
+     "seen_in": "B1",
+     "reader": 2
     },
     {
-     "x_mm": 18.0,
-     "y_mm": 28.0,
-     "what": "other",
+     "x_mm": 45.0,
+     "y_mm": 30.0,
+     "what": "missing",
      "severity": "noticeable",
-     "note": "The grey forest and lake on the left half are a flat grey blob with no trees or shoreline, against the original's pines.",
-     "seen_in": "B1"
+     "note": "The orange trees and lake merge into one flat orange mass with a fringe of vertical spikes, and the blue sky is sewn as black.",
+     "seen_in": "B2",
+     "reader": 2
     },
     {
-     "x_mm": 8.0,
-     "y_mm": 10.0,
-     "what": "extra",
+     "x_mm": 36.0,
+     "y_mm": 35.0,
+     "what": "direction",
      "severity": "noticeable",
-     "note": "Black background is sewn behind the ring where the art has cream and the ring outline loses its silver bezel, so the shape bulges beyond the art.",
-     "seen_in": "A1"
+     "note": "The white crosshair bar and ring are sewn as a chaotic pile of crossing stitches instead of a clean ring and line.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 22.0,
+     "y_mm": 13.0,
+     "what": "direction",
+     "severity": "noticeable",
+     "note": "The grey and white arm pieces are patches with stitches changing direction mid-stroke and crossing, not following the arm.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 10.0,
+     "y_mm": 50.0,
+     "what": "gap",
+     "severity": "noticeable",
+     "note": "PRECISION letters have open, uneven satin edges and the P and R bowls are cluttered with crossing fills, so counters are muddy.",
+     "seen_in": "C1",
+     "reader": 2
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 45.0,
+     "what": "pen_flow",
+     "severity": "noticeable",
+     "note": "The O and N of PRECISION change stitch direction across the stroke and the N diagonal is rough.",
+     "seen_in": "C2",
+     "reader": 2
     },
     {
      "x_mm": 20.0,
-     "y_mm": 14.0,
-     "what": "direction",
+     "y_mm": 52.0,
+     "what": "mushed",
      "severity": "noticeable",
-     "note": "The left propellers are sewn as thick black wedges with stitches across the blade and are wider than the thin blades in the original.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 50.0,
-     "y_mm": 12.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The right propeller blades are thick dark blobs fused with the arm and no longer read as blades; this repeats on the lower right propeller.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 43.0,
-     "y_mm": 28.0,
-     "what": "colour",
-     "severity": "noticeable",
-     "note": "Orange forest is a solid wedge with spiky bar tips and sky blue is replaced by black, with a stray blue dot at 43,27 in the orange.",
-     "seen_in": "B2"
+     "note": "The E and R of THERMAL have overlapping stitch pile-ups and the M and A are lumpy with the A counter filled.",
+     "seen_in": "C2",
+     "reader": 2
     },
     {
      "x_mm": 35.0,
-     "y_mm": 36.0,
-     "what": "stray",
-     "severity": "noticeable",
-     "note": "The crosshair reticle is broken into white lumps and the circle is a tangle of fragments, not a clean ring.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 38.0,
-     "y_mm": 37.0,
-     "what": "gap",
-     "severity": "noticeable",
-     "note": "Water is a few blue bars with black gaps between them instead of a continuous reflection.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 12.0,
-     "y_mm": 40.0,
-     "what": "lumpy_curve",
-     "severity": "nitpick",
-     "note": "The silver bezel on the lower left is chopped into sections of different grey and white with visible breaks.",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 5.0,
-     "y_mm": 46.0,
-     "what": "pen_flow",
-     "severity": "noticeable",
-     "note": "The P and R of PRECISION have stitches that swirl and cross in the bowls and the R leg, against clean block letters; this repeats across the word.",
-     "seen_in": "C1"
-    },
-    {
-     "x_mm": 46.0,
-     "y_mm": 47.0,
-     "what": "mushed",
-     "severity": "noticeable",
-     "note": "The O and N of PRECISION have tangled direction changes, the O counter is cramped, and the S is lumpy.",
-     "seen_in": "C2"
-    },
-    {
-     "x_mm": 18.0,
-     "y_mm": 53.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The T, H and E of THERMAL have overlapping fills and pile-ups where letters touch, with a darker orange crossover on the E.",
-     "seen_in": "C1"
-    },
-    {
-     "x_mm": 42.0,
-     "y_mm": 53.0,
-     "what": "blob",
-     "severity": "noticeable",
-     "note": "The R, M and A of THERMAL are lumpy with overlapping fills and the A counter is almost closed.",
-     "seen_in": "C2"
-    },
-    {
-     "x_mm": 18.0,
-     "y_mm": 58.0,
-     "what": "colour",
-     "severity": "noticeable",
-     "note": "The A of AND is sewn in near black, unlike the mid grey of the rest of the line, and its shape is a blob.",
-     "seen_in": "C1"
-    },
-    {
-     "x_mm": 40.0,
-     "y_mm": 58.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "AND DRONE letters at this size are rings of swirling stitches; the R and O are poorly formed and the E is sketchy.",
-     "seen_in": "C2"
-    },
-    {
-     "x_mm": 31.0,
      "y_mm": 63.0,
      "what": "blob",
      "severity": "noticeable",
-     "note": "The orange target icon is a solid lump with its rings and centre dot lost.",
-     "seen_in": "C1"
+     "note": "The orange target icon is a spiral tangle of stitches that loses the ring and crosshair ticks.",
+     "seen_in": "C1",
+     "reader": 2
     },
     {
-     "x_mm": 32.0,
+     "x_mm": 30.0,
      "y_mm": 30.0,
      "what": "stray",
+     "severity": "noticeable",
+     "note": "Many long needle-up jumps cross the whole design and the colour blocks are revisited many times.",
+     "seen_in": "travel",
+     "reader": 2
+    },
+    {
+     "x_mm": 3.0,
+     "y_mm": 52.0,
+     "what": "stitch_type",
      "severity": "nitpick",
-     "note": "The travel plan makes dozens of long needle-up jumps across the whole design, which means many trims or loose threads on the hat.",
-     "seen_in": "travel"
+     "note": "The tapered speed lines are sewn as a uniform-width bar rather than tapering to a point (repeats on all four).",
+     "seen_in": "C1",
+     "reader": 2
+    },
+    {
+     "x_mm": 53.0,
+     "y_mm": 28.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The silver ring edge on the right is stepped and saw-toothed against the black outline.",
+     "seen_in": "B2",
+     "reader": 2
     }
    ]
   },
   "L_tires_hat_3d": {
-   "grade": "Okay",
+   "grade": null,
+   "grades": [
+    "Okay",
+    "Good"
+   ],
+   "disagree": true,
    "whole": [],
-   "reason": "The word reads clearly as Tires and every stroke, the i dot and the open e and s counters are present. What holds it back is the scalloped, saw-toothed edge along nearly every stroke, plus the messy e crossing and the pinched s counter. A customer would see the rough edges and a clean-up would be needed.",
+   "reason": "1: The word reads clearly as Tires with all letters, the i dot and the counters present. The jagged fan-shaped edges on every inside curve, the ragged s counter and the lumpy r/e join make it look rough close up and it needs clean-up. | 2: The script word is fully recognisable with all strokes, the i dot and the open e and s counters present, and nothing is missing or extra. What holds it back is a saw-toothed, fan-ribbed edge on the curves and a distorted, hard-edged s counter. These are small at hat size, and the single colour block is correct.",
    "faults": [
     {
-     "x_mm": 10.0,
-     "y_mm": 10.0,
+     "x_mm": 44.75,
+     "y_mm": 14.25,
      "what": "jagged",
-     "severity": "noticeable",
-     "note": "The inner edge of the T crossbar curl is saw-toothed with visible gaps between stitch ends, where the original edge is smooth.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 14.0,
-     "y_mm": 14.5,
-     "what": "jagged",
-     "severity": "noticeable",
-     "note": "The lower inner edge of the T curl shows comb-like stitch ends, and the terminal tip is cut off square instead of round.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 63.0,
-     "y_mm": 2.0,
-     "what": "jagged",
-     "severity": "noticeable",
-     "note": "The upper edge and tip of the crossbar's right end are comb-toothed and the tip is squared off rather than rounded.",
-     "seen_in": "A3"
+     "severity": "nitpick",
+     "note": "1: The i dot is a polygon with stepped edge instead of a smooth circle. | 2: The i dot is a polygon of ragged edges, not a clean circle.",
+     "seen_in": "A2"
     },
     {
      "x_mm": 102.5,
-     "y_mm": 19.0,
-     "what": "jagged",
-     "severity": "noticeable",
-     "note": "The top of the s stem has fanned, spiky stitch ends on its left shoulder instead of a smooth curve; the edge scallop repeats along the whole s.",
-     "seen_in": "A4"
-    },
-    {
-     "x_mm": 78.0,
-     "y_mm": 19.0,
-     "what": "jagged",
-     "severity": "nitpick",
-     "note": "The top of the e bowl has fanned stitch ends along its outer edge, where the original is smooth.",
-     "seen_in": "A3"
-    },
-    {
-     "x_mm": 22.5,
-     "y_mm": 37.0,
+     "y_mm": 28.0,
      "what": "letter_shape",
-     "severity": "nitpick",
-     "note": "The start of the r/i stroke has a flat angled cut end rather than the rounded terminal in the original.",
-     "seen_in": "B1"
+     "severity": "noticeable",
+     "note": "1: The s counter has a straight vertical right edge and a notched top, unlike the smooth teardrop of the original. | 2: The s counter has a straight vertical right edge and a notched top and bottom, where the original is a smooth teardrop.",
+     "seen_in": "B4"
     },
     {
-     "x_mm": 12.0,
+     "x_mm": 39.0,
+     "y_mm": 38.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "1: The outside bottom edge of the i-u curve is saw-toothed from fanned stitch ends, repeating across the lower curves. | 2: The bottom of the i/r U-curve has ribbed fan edges and slits.",
+     "seen_in": "B2"
+    }
+   ],
+   "one_reader": [
+    {
+     "x_mm": 8.5,
+     "y_mm": 9.5,
+     "what": "gap",
+     "severity": "noticeable",
+     "note": "Thin white slits open between satin stitches on the inner edge of the T's top curl, where the original is a clean solid edge.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 11.0,
+     "y_mm": 15.0,
+     "what": "gap",
+     "severity": "noticeable",
+     "note": "Slits show along the inner edge of the T's hook terminal and the edge is notched against the smooth original.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 11.5,
      "y_mm": 36.0,
      "what": "gap",
-     "severity": "nitpick",
-     "note": "Small slits show between stitch blocks on the T stem's lower outer edge, which sits wavy.",
-     "seen_in": "B1"
+     "severity": "noticeable",
+     "note": "White slits along the inside of the T's bottom curve, repeating the same fan gaps seen elsewhere.",
+     "seen_in": "B1",
+     "reader": 1
     },
     {
      "x_mm": 40.0,
      "y_mm": 35.0,
      "what": "gap",
-     "severity": "nitpick",
-     "note": "Narrow slits open in the inner bottom of the i/r curve where stitch fans meet.",
-     "seen_in": "B2"
+     "severity": "noticeable",
+     "note": "Slits open on the inside bottom of the i/u curve where stitches fan apart.",
+     "seen_in": "B2",
+     "reader": 1
     },
     {
-     "x_mm": 33.0,
-     "y_mm": 30.0,
+     "x_mm": 31.0,
+     "y_mm": 31.0,
      "what": "gap",
      "severity": "nitpick",
-     "note": "Thin white slits cut across the diagonal i stroke where segments join.",
-     "seen_in": "B2"
+     "note": "A thin slit cuts into the stroke where the T stem meets the connecting stroke.",
+     "seen_in": "B2",
+     "reader": 1
     },
     {
-     "x_mm": 72.5,
+     "x_mm": 98.0,
+     "y_mm": 38.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The bottom of the s is saw-toothed and has a notch near x 103 and the junction near x 93 is lumpy.",
+     "seen_in": "B4",
+     "reader": 1
+    },
+    {
+     "x_mm": 75.0,
      "y_mm": 31.0,
-     "what": "blob",
+     "what": "lumpy_curve",
      "severity": "noticeable",
-     "note": "The r to e junction is a lumpy pile-up with a hard rectangular step and ragged seams where the strokes cross, not the smooth crossing in the original.",
-     "seen_in": "B3"
+     "note": "The r to e junction is lumpy with a pile-up and the e's counter is ragged at its lower tip.",
+     "seen_in": "B3",
+     "reader": 1
     },
     {
-     "x_mm": 76.5,
-     "y_mm": 28.5,
-     "what": "stitch_type",
+     "x_mm": 66.0,
+     "y_mm": 24.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The r's left edge is stepped and wavy rather than a smooth curve, and a step appears at the r's inner shoulder near y 22.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 100.0,
+     "y_mm": 18.0,
+     "what": "jagged",
      "severity": "noticeable",
-     "note": "The e counter pinches down to a small sliver and its lower left corner is jagged, so it is smaller than in the original.",
-     "seen_in": "B3"
+     "note": "The top of the s stroke has coarse radial fan teeth on its left flank, unlike the smooth original.",
+     "seen_in": "A4",
+     "reader": 1
     },
     {
      "x_mm": 60.0,
+     "y_mm": 3.0,
+     "what": "gap",
+     "severity": "nitpick",
+     "note": "Slits on the inner edge of the T crossbar end, and the end is toothed where the original is a smooth round cap.",
+     "seen_in": "A3",
+     "reader": 1
+    },
+    {
+     "x_mm": 101.0,
      "y_mm": 34.5,
+     "what": "gap",
+     "severity": "nitpick",
+     "note": "A thin gap slit shows at the bottom of the s counter and at the lower right where the stroke overlaps.",
+     "seen_in": "B4",
+     "reader": 2
+    },
+    {
+     "x_mm": 93.0,
+     "y_mm": 35.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The e-to-s join has a notched step where the two strokes overlap at the lower left of the s.",
+     "seen_in": "B4",
+     "reader": 2
+    },
+    {
+     "x_mm": 73.0,
+     "y_mm": 30.0,
+     "what": "mushed",
+     "severity": "nitpick",
+     "note": "The e crossing where its loop meets the r is blocky and squared, and the e counter tip is slightly ragged.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 62.0,
+     "y_mm": 18.0,
      "what": "jagged",
      "severity": "nitpick",
-     "note": "The r bowl inner bottom has a hard flat step in the edge, and the heavy fan teeth along the bottom edge of r and e repeat across the baseline.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 102.0,
-     "y_mm": 28.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The s counter right wall is a straight, ruler-flat edge with a notch at the top, where the original curves, and the counter is narrower.",
-     "seen_in": "B4"
-    },
-    {
-     "x_mm": 96.0,
-     "y_mm": 36.0,
-     "what": "jagged",
-     "severity": "noticeable",
-     "note": "The s lower left has a blocky square-cornered step where strokes meet, and the bottom edge is heavily fanned and scalloped.",
-     "seen_in": "B4"
-    },
-    {
-     "x_mm": 110.0,
-     "y_mm": 31.0,
-     "what": "letter_shape",
-     "severity": "nitpick",
-     "note": "The s exit stroke ends with a flat angled cut and a ragged outline rather than a rounded terminal.",
-     "seen_in": "B4"
+     "note": "The upper r shoulder and the arm below it have a saw-toothed fan edge; this repeats around most curves.",
+     "seen_in": "A3",
+     "reader": 2
     },
     {
      "x_mm": 10.0,
-     "y_mm": 25.0,
-     "what": "stray",
+     "y_mm": 13.5,
+     "what": "jagged",
      "severity": "nitpick",
-     "note": "Long needle-up jump across the T from the curl end down to the stem foot (a trim risk, though hidden under later stitching).",
-     "seen_in": "travel"
-    }
-   ]
-  },
-  "L_toat_beanie": {
-   "grade": "Okay",
-   "whole": [
-    "detail_lost"
-   ],
-   "reason": "The Machine script is recognisable but its strokes are lumpy and the c, h and i are tangled with piled stitches and direction changes mid-stroke. The To A T lettering, frame and LLC read cleanly, though the speed lines are blobby and several lose their taper. Needs a clean-up on the script before it ships.",
-   "faults": [
-    {
-     "x_mm": 43.0,
-     "y_mm": 33.0,
-     "what": "mushed",
-     "severity": "noticeable",
-     "note": "The c and h of Machine are a tangle of overlapping stitch angles, so the letter shapes and the join between them are hard to read.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 37.0,
-     "y_mm": 31.0,
-     "what": "pen_flow",
-     "severity": "noticeable",
-     "note": "The a bowl changes stitch direction abruptly inside the stroke instead of following the pen path.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 67.0,
-     "y_mm": 32.0,
-     "what": "blob",
-     "severity": "noticeable",
-     "note": "The e of Machine has a pile-up of crossing stitches at its crossbar and left side.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 19.0,
-     "y_mm": 23.0,
-     "what": "blob",
-     "severity": "noticeable",
-     "note": "The second stem of the M has a small crossover stitch cluster where two stroke pieces meet.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 11.0,
-     "y_mm": 38.0,
-     "what": "lumpy_curve",
-     "severity": "noticeable",
-     "note": "The bottoms of the M strokes are lumpy and stepped rather than a smooth curve (repeats along the M).",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 23.0,
-     "y_mm": 30.0,
-     "what": "stray",
-     "severity": "nitpick",
-     "note": "The small isolated tick above the M's right loop has a stub and is not in the art as drawn.",
-     "seen_in": "B1"
+     "note": "The inner edge of the T crossbar hook has white slits between the stitch ends; this repeats on the other inner curves.",
+     "seen_in": "A1",
+     "reader": 2
     },
     {
      "x_mm": 8.0,
-     "y_mm": 16.0,
-     "what": "wavy",
-     "severity": "noticeable",
-     "note": "The M's left uprights show uneven edges and ragged stitch ends compared with the clean straight originals.",
-     "seen_in": "A1"
-    },
+     "y_mm": 36.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "White slits along the inside of the T tail curve and a bumpy tail end.",
+     "seen_in": "B1",
+     "reader": 2
+    }
+   ]
+  },
+  "L_goldentee_hat": {
+   "grade": "Bad",
+   "grades": [
+    "Bad",
+    "Bad"
+   ],
+   "disagree": false,
+   "whole": [
+    "detail_lost"
+   ],
+   "reason": "1: The GOLF word, the part customers read first, is a mush of overlapping red, orange, yellow and grey stitches in which the G, O, L and F are barely separable and the counters are filled with grey thread. The GT letters and tee are recognisable but the black outline is saw-toothed all round and the TM is missing. Colour blocks are sewn in an order that sends long travel runs across the whole design. | 2: The GOLF wordmark is mushed into a tangle of red, yellow and orange fragments with letters merging and the counters of O and G clogged, so the logo's key word is barely readable. The TM is missing, black shadows are saw-toothed throughout, and the G and T show stitch direction and colour-band breaks, though the swoosh, tee stem and big GT are recognisable.",
+   "faults": [
     {
-     "x_mm": 30.0,
-     "y_mm": 41.5,
-     "what": "wavy",
-     "severity": "noticeable",
-     "note": "The top lower speed line varies in thickness along its length, bulging and pinching where the original tapers evenly.",
+     "x_mm": 28.0,
+     "y_mm": 41.0,
+     "what": "mushed",
+     "severity": "ruins",
+     "note": "1: The G of GOLF is a tangle of red outline strips, orange and white fills with no clear letter form, unlike the clean G in the art. | 2: The G of GOLF is unreadable, with its bar and bowl broken into scattered red, white and orange patches that merge into the O.",
      "seen_in": "B2"
     },
     {
-     "x_mm": 18.0,
-     "y_mm": 42.0,
-     "what": "jagged",
-     "severity": "nitpick",
-     "note": "The left end of the lower speed line stutters into beads, and the line below ends in a spike (repeats on the neighbouring lines).",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 80.0,
-     "y_mm": 39.5,
-     "what": "stray",
-     "severity": "nitpick",
-     "note": "The right speed line next to LLC ends in an arrowhead barb that is not in the art.",
+     "x_mm": 55.0,
+     "y_mm": 40.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "1: The F of GOLF is a cluster of short mismatched red, yellow and orange blocks that overlap and lose the F's arms. | 2: The F of GOLF is a cluster of small red, yellow and orange pieces with its arms barely distinguishable and colliding with the T of GT above.",
      "seen_in": "B3"
     },
     {
-     "x_mm": 63.0,
-     "y_mm": 44.5,
-     "what": "other",
-     "severity": "nitpick",
-     "note": "The period after LLC is a tiny blob that reads as a smudge.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 13.0,
-     "y_mm": 13.0,
-     "what": "stitch_type",
-     "severity": "nitpick",
-     "note": "The thin upper speed lines are sewn as thick satin bars and lose the tapered thin look of the original (repeats on the right).",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 41.0,
-     "y_mm": 13.0,
-     "what": "letter_shape",
-     "severity": "nitpick",
-     "note": "The A is smaller and rounder than the original and its crossbar is crowded, so it is slightly squashed.",
+     "x_mm": 40.5,
+     "y_mm": 20.0,
+     "what": "direction",
+     "severity": "noticeable",
+     "note": "1: The bevel bands along the G top are chopped into mismatched yellow, white and red segments and the red bar sags and overlaps the white fill, where the art has one continuous gradient bevel. | 2: The G top bevel band changes colour in patches (yellow, white, red) and its stitch direction flips, unlike the smooth gold-to-cream gradient of the art.",
      "seen_in": "A2"
     },
     {
-     "x_mm": 20.0,
-     "y_mm": 20.0,
+     "x_mm": 46.5,
+     "y_mm": 41.5,
+     "what": "letter_shape",
+     "severity": "noticeable",
+     "note": "1: The L of GOLF is broken into patches of orange, yellow and red with its foot ragged and overlapping the F. | 2: The L of GOLF has fragmented red and orange blocks with a tuft of random stitches at its foot and a patchy stem.",
+     "seen_in": "B2"
+    }
+   ],
+   "one_reader": [
+    {
+     "x_mm": 35.0,
+     "y_mm": 43.0,
+     "what": "mushed",
+     "severity": "ruins",
+     "note": "The O of GOLF is a pile of crossing red, yellow, orange and grey fills with its counter half filled with grey stitches, so the letter does not read as an O.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 71.0,
+     "y_mm": 38.0,
+     "what": "missing",
+     "severity": "nitpick",
+     "note": "The TM mark to the right of the F is absent from the render.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 10.0,
+     "y_mm": 15.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The black outline of the swoosh arc has a stepped, saw-toothed edge along both sides where the art is smooth, and it repeats around the whole design.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 3.0,
+     "y_mm": 27.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The lower tip of the swoosh arc ends in a blunt notched point with a kink instead of the art's fine tapering tail.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 36.0,
+     "y_mm": 10.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The right end of the swoosh arc frays into loose white strips and a ragged black edge instead of a clean tapered tip.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 53.0,
+     "y_mm": 28.0,
+     "what": "gap",
+     "severity": "nitpick",
+     "note": "The inner counter of the G has its black shadow edge uneven and the red bevel misaligned with the art around the notch.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 57.0,
+     "y_mm": 22.0,
      "what": "other",
      "severity": "nitpick",
-     "note": "Long needle-up jumps cross the design between the script, the top lettering and the bottom lines, leaving many trims to clean.",
-     "seen_in": "travel"
+     "note": "The T crossbar bevel strips (white, red, yellow) are separate short blocks that do not meet cleanly at the crossbar-stem corner.",
+     "seen_in": "A3",
+     "reader": 1
+    },
+    {
+     "x_mm": 14.0,
+     "y_mm": 33.0,
+     "what": "direction",
+     "severity": "nitpick",
+     "note": "The tee yellow flare's stitches fan irregularly and the tip near the right end is a ragged separate fragment.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 8.0,
+     "y_mm": 50.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The long tee stem edges are stair-stepped on both the yellow and black sides.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 40.0,
+     "y_mm": 38.0,
+     "what": "stray",
+     "severity": "noticeable",
+     "note": "Long needle-up runs (magenta) cross the whole design between colour blocks, including from the tee bottom up to GOLF and across to the T, which risks visible trims and jump threads.",
+     "seen_in": "travel",
+     "reader": 1
+    },
+    {
+     "x_mm": 38.0,
+     "y_mm": 41.0,
+     "what": "mushed",
+     "severity": "ruins",
+     "note": "The O of GOLF is a swirl of mixed-direction fragments with its counter filled by white stitching and red ring, no longer a clean open O with a bevel.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 66.0,
+     "y_mm": 40.0,
+     "what": "missing",
+     "severity": "noticeable",
+     "note": "The TM mark to the right of GOLF is absent from the render.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 12.0,
+     "y_mm": 12.0,
+     "what": "jagged",
+     "severity": "noticeable",
+     "note": "The black outline and shadow along the swoosh are saw-toothed and uneven in width, repeating along the whole arc and on the G and T outlines.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 3.0,
+     "y_mm": 26.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "The thin outer line of the swoosh tip ends in a ragged black wedge and sparse white stitches instead of a fine point.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 36.0,
+     "y_mm": 12.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "The swoosh tip end has loose white stitches and a black blob that does not taper like the original.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 57.0,
+     "y_mm": 22.0,
+     "what": "pen_flow",
+     "severity": "noticeable",
+     "note": "The T fill runs in diagonal strokes unlike the G's horizontal fill, and the bevel at the T crossbar junction is broken into abrupt colour patches.",
+     "seen_in": "A3",
+     "reader": 2
+    },
+    {
+     "x_mm": 8.0,
+     "y_mm": 33.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The tee top yellow band is made of crossing stitches with a ragged lower edge and hooked tip that differ from the clean flare in the art.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 38.0,
+     "y_mm": 28.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "The G inner stem pieces are chopped into separate yellow and red blocks with a visible tuft where they meet.",
+     "seen_in": "A2",
+     "reader": 2
     }
    ]
   },
   "L_toat_machine_hat": {
    "grade": "Okay",
-   "whole": [
-    "detail_lost"
+   "grades": [
+    "Okay",
+    "Okay"
    ],
-   "reason": "The badge, border and the script word Machine are recognisably right, but the thin tapering speed lines are sewn as fat uniform bars and the script strokes carry lumps, pile-ups and crossover stitches where letters join. The A of To A T and the C of LLC are visibly misshapen, so it needs a clean-up before shipping.",
+   "disagree": false,
+   "whole": [
+    "background_sewn"
+   ],
+   "reason": "1: The whole interior of the badge is filled with a grey hatch fill where the original is plain white, so fabric is covered that should show and the logo reads grey-on-grey. The lettering itself is recognisable and counters stay open, but the M and the n-e join have mushed, notched stitch pile-ups, and the speed lines are heavier than the hairlines in the art. | 2: The whole interior of the badge is sewn with a light hatch fill that the white-background original does not have, which would be wasteful and visible on a hat. The black lettering and border are otherwise recognisable and clean, but the speed lines lose their taper, the M's thin inner strokes are pinched with stray bits, and a few letter joins (c, h, n) are jumbled.",
    "faults": [
     {
-     "x_mm": 20.0,
-     "y_mm": 14.5,
-     "what": "stitch_type",
-     "severity": "noticeable",
-     "note": "The thin tapering speed lines left of the T are sewn as thick uniform satin bars instead of fine tapered strokes; this repeats on every speed line.",
-     "seen_in": "A1"
-    },
-    {
-     "x_mm": 70.0,
-     "y_mm": 16.0,
-     "what": "stitch_type",
-     "severity": "noticeable",
-     "note": "The three speed lines right of the second T are fat blunt bars rather than thin lines that taper to a point; the same is true under Machine.",
-     "seen_in": "A3"
-    },
-    {
-     "x_mm": 42.0,
-     "y_mm": 48.5,
-     "what": "stitch_type",
-     "severity": "noticeable",
-     "note": "The three long lines left of LLC are far heavier than the hairline originals, and the ends are blunt with small stubs at about x=54.",
-     "seen_in": "C2"
-    },
-    {
-     "x_mm": 47.5,
-     "y_mm": 18.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The A in To A T is a lumpy block whose crossbar and counter have filled in, and its apex is square with a ragged leg bottom, unlike the clean triangle of the original.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 38.5,
-     "y_mm": 14.5,
-     "what": "letter_shape",
-     "severity": "nitpick",
-     "note": "The counter of the small o is narrower and rounder than the squared original counter, and the stitches fan radially around it.",
-     "seen_in": "A2"
-    },
-    {
-     "x_mm": 9.5,
-     "y_mm": 22.5,
+     "x_mm": 19.0,
+     "y_mm": 22.75,
      "what": "stray",
      "severity": "noticeable",
-     "note": "A short crossover stitch pokes out where the M's thin first upstroke joins the thick stem.",
+     "note": "1: Crossover stitch bars pile up where the M's diagonal stroke meets the second stem, a visible artefact not in the original. | 2: Crossed stitch bars at the top of the M's second thin diagonal form a small pile-up not in the original.",
      "seen_in": "B1"
     },
     {
-     "x_mm": 19.5,
-     "y_mm": 23.5,
+     "x_mm": 9.25,
+     "y_mm": 22.25,
      "what": "stray",
-     "severity": "noticeable",
-     "note": "Crossover stitches sit at the top of the M's second thin upstroke where it meets the thick stem.",
+     "severity": "nitpick",
+     "note": "1: A short loose stitch bar sits at the junction of the M's first stem and its diagonal. | 2: A short crossing stitch bar sits where the M's thin diagonal joins the stem, an artefact not in the art.",
      "seen_in": "B1"
     },
     {
-     "x_mm": 10.5,
-     "y_mm": 31.0,
-     "what": "jagged",
+     "x_mm": 50.5,
+     "y_mm": 23.75,
+     "what": "gap",
      "severity": "nitpick",
-     "note": "The M's thick left stem has a stepped edge and a visible seam where one satin section ends and the next starts, instead of one smooth stroke.",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 12.5,
-     "y_mm": 41.5,
-     "what": "lumpy_curve",
-     "severity": "nitpick",
-     "note": "The foot of the M's thick stem and the join into the thin stroke are lumpy with overlapping stitch bands.",
-     "seen_in": "B1"
-    },
-    {
-     "x_mm": 40.0,
-     "y_mm": 33.5,
-     "what": "blob",
-     "severity": "noticeable",
-     "note": "The terminal of the c is a pile of short overlapping stitches with a stub, not the clean pointed hook of the original.",
+     "note": "1: Small white slits break the top of the h ascender where column stitches fail to meet. | 2: Small white slivers cut into the top of the h ascender where stitch ends do not meet.",
      "seen_in": "B2"
     },
     {
-     "x_mm": 50.0,
-     "y_mm": 36.0,
-     "what": "lumpy_curve",
-     "severity": "noticeable",
-     "note": "The h arch joins the stem in a lumpy mass with direction changes and a visible seam, and the arch looks wider and rounder than the original.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 47.5,
-     "y_mm": 43.0,
-     "what": "mushed",
-     "severity": "nitpick",
-     "note": "The bottom of the c and h curves fan out in a radial pinch where stitch direction swings sharply; the same is repeated at the bottoms of i, n and e.",
-     "seen_in": "B2"
-    },
-    {
-     "x_mm": 63.5,
-     "y_mm": 35.5,
+     "x_mm": 65.0,
+     "y_mm": 38.0,
      "what": "mushed",
      "severity": "noticeable",
-     "note": "The i and n merge into a pile of crossing stitch blocks and the i dot is joined to the body, so the two letters are hard to separate.",
+     "note": "1: The join between the n and the e is a tangle of fanning and overlapping stitches that mushes the two letters together. | 2: The i and n join at the lower left of the n is a messy overlap of fanned stitches with ragged edges and no clean stroke.",
      "seen_in": "B3"
-    },
-    {
-     "x_mm": 68.0,
-     "y_mm": 41.0,
-     "what": "blob",
-     "severity": "nitpick",
-     "note": "The base of the n curls into a tight radial fan with pinched stitching.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 76.0,
-     "y_mm": 37.5,
-     "what": "pen_flow",
-     "severity": "noticeable",
-     "note": "Where the e crosses its own stroke the stitches are stacked and criss-crossed with direction changes mid-stroke, rather than following the pen.",
-     "seen_in": "B3"
-    },
-    {
-     "x_mm": 68.0,
-     "y_mm": 47.0,
-     "what": "letter_shape",
-     "severity": "noticeable",
-     "note": "The C of LLC is broken into several stitch blocks with a notch at the top terminal and a ragged lower hook, and is crowded against the L.",
-     "seen_in": "C3"
-    },
-    {
-     "x_mm": 71.5,
-     "y_mm": 51.0,
-     "what": "extra",
-     "severity": "nitpick",
-     "note": "The period after LLC is a small block that reads as a stitched square, and the dash left of the lines has a stray nub at x=71.",
-     "seen_in": "C3"
-    },
-    {
-     "x_mm": 57.0,
-     "y_mm": 50.0,
-     "what": "letter_shape",
-     "severity": "nitpick",
-     "note": "The first L of LLC has a seam at the corner where its foot joins the upright, and the top is slanted off.",
-     "seen_in": "C2"
-    },
-    {
-     "x_mm": 1.5,
-     "y_mm": 16.5,
-     "what": "jagged",
-     "severity": "nitpick",
-     "note": "The top-left border corner is a rounded, broken join with an overlapping stitch pile rather than a sharp mitre.",
-     "seen_in": "A1"
-    },
+    }
+   ],
+   "one_reader": [
     {
      "x_mm": 45.0,
      "y_mm": 30.0,
+     "what": "extra",
+     "severity": "noticeable",
+     "note": "The whole badge interior is sewn with a light grey diagonal hatch fill that the white-background original does not have.",
+     "seen_in": "overview",
+     "reader": 1
+    },
+    {
+     "x_mm": 10.0,
+     "y_mm": 20.0,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "The top of the M's first stem is built from stacked, misaligned column blocks with notches and small gaps, giving a lumpy, broken edge unlike the clean stem in the art.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 69.0,
+     "y_mm": 41.0,
+     "what": "direction",
+     "severity": "nitpick",
+     "note": "The bottom of the n's stem fans stitches radially in a rosette instead of following the stroke.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 38.0,
+     "y_mm": 43.0,
+     "what": "direction",
+     "severity": "nitpick",
+     "note": "The base of the c and the bowl of the a collapse into radial fans with a dense pile at the bottom, repeated in several lowercase letters.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 20.0,
+     "y_mm": 15.0,
+     "what": "letter_shape",
+     "severity": "noticeable",
+     "note": "The speed lines beside the To A T and above LLC are sewn as thick bars, much heavier than the tapered hairlines in the art; this repeats on every line.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 2.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The outer border satin has saw-toothed edges and a ragged apex at the top point; this repeats along the whole border.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 72.0,
+     "y_mm": 46.0,
+     "what": "stray",
+     "severity": "nitpick",
+     "note": "A little nub sticks out at the left end of the upper speed line beside the C.",
+     "seen_in": "C3",
+     "reader": 1
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 25.0,
      "what": "other",
      "severity": "nitpick",
-     "note": "Long needle-up jumps cross the open art between the letters and the speed lines, many in a single colour block, which means many trims and a poor sew order.",
-     "seen_in": "travel"
+     "note": "Many long needle-up travels cross the open field between the letters, which would need trimming.",
+     "seen_in": "travel",
+     "reader": 1
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 35.0,
+     "what": "extra",
+     "severity": "noticeable",
+     "note": "The whole badge interior is filled with a light grey hatch fill; the original is plain white background there, so fabric should show.",
+     "seen_in": "overview",
+     "reader": 2
+    },
+    {
+     "x_mm": 20.0,
+     "y_mm": 18.0,
+     "what": "other",
+     "severity": "noticeable",
+     "note": "Speed lines left of and right of the T are sewn as uniform 1 to 1.5 mm bars where the original has fine tapered lines, so they read heavier and blunt (repeats on all speed lines).",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 10.0,
+     "y_mm": 19.0,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The top of the M's first stem is chopped into notched blocks with small gaps along its right edge compared with the clean original stem.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 9.0,
+     "y_mm": 27.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The slim gap between the M's first diagonal and stem is narrower and more ragged than the original.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 32.5,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "The top of the c's terminal is a jumbled cluster of short fan stitches, blunter than the pointed original.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 72.0,
+     "y_mm": 38.0,
+     "what": "mushed",
+     "severity": "nitpick",
+     "note": "The n to e connection is a rough patch of overlapping stitch directions, less clean than the original stroke.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 57.0,
+     "y_mm": 23.0,
+     "what": "direction",
+     "severity": "nitpick",
+     "note": "The h and i stems change stitch angle between segments with visible steps in the edge.",
+     "seen_in": "travel",
+     "reader": 2
+    }
+   ]
+  },
+  "L_toat_beanie": {
+   "grade": "Okay",
+   "grades": [
+    "Okay",
+    "Okay"
+   ],
+   "disagree": false,
+   "whole": [],
+   "reason": "1: The hexagon border, wordmark and speed lines are all present and recognisable, but the script Machine letters are lumpy and mushed where strokes join, with fan-shaped stitch pile-ups in the c, h and e. The small To A T letters have narrowed counters and a muddy A. Needs a clean-up, not a re-do. | 2: The Machine script is the weak point: the a, c, h and the joins between them are sewn with fan-shaped, shifting stitch angles that make bumpy, mushy strokes where the original has clean pen strokes. The To A T lettering and the border are sound, though the o and A counters are tight and the thin speed lines are fatter than the art.",
+   "faults": [
+    {
+     "x_mm": 46.0,
+     "y_mm": 15.5,
+     "what": "letter_shape",
+     "severity": "noticeable",
+     "note": "1: The A of To A T is lumpy with a filled-in crossbar area, and its counter is nearly closed. | 2: The A counter is nearly closed and the crossbar fills the triangle, so the A reads as a blob compared with the open original.",
+     "seen_in": "A2"
+    },
+    {
+     "x_mm": 82.0,
+     "y_mm": 14.75,
+     "what": "gap",
+     "severity": "nitpick",
+     "note": "1: The border corner at the top right shows a small gap and ragged join between sections. | 2: The right border corner has small bright slivers of fabric showing where the stitches turn the corner.",
+     "seen_in": "A3"
+    },
+    {
+     "x_mm": 40.0,
+     "y_mm": 32.5,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "1: The c and h of Machine merge into a tangle of fanned stitches, and the c's inner hook is filled in. | 2: The c and h of Machine are a tangle of fanned stitch angles with a lumpy outline, so the letter forms are muddy next to the clean original strokes.",
+     "seen_in": "B2"
+    }
+   ],
+   "one_reader": [
+    {
+     "x_mm": 13.5,
+     "y_mm": 22.0,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "The first upstroke of the M has a small pile-up of crossed stitches where its two sections meet.",
+     "seen_in": "A1",
+     "reader": 1
+    },
+    {
+     "x_mm": 10.5,
+     "y_mm": 38.5,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The bottom of the M's inner V is notched and ragged where the stroke ends, against a clean point in the original.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 41.5,
+     "y_mm": 13.0,
+     "what": "lumpy_curve",
+     "severity": "nitpick",
+     "note": "The o counter is narrowed and its outline is uneven with fanning stitches.",
+     "seen_in": "A2",
+     "reader": 1
+    },
+    {
+     "x_mm": 48.0,
+     "y_mm": 36.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The loop of the h at its base is a fan pile-up with a small hole, not a smooth curve.",
+     "seen_in": "B2",
+     "reader": 1
+    },
+    {
+     "x_mm": 65.0,
+     "y_mm": 34.0,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "The bowl of the final e has fan-shaped pile-ups and a stray block stitched into its counter; repeats on the n before it.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 66.5,
+     "y_mm": 44.0,
+     "what": "extra",
+     "severity": "nitpick",
+     "note": "The small dash after LLC is sewn as a broken blob that does not match the thin dash in the art.",
+     "seen_in": "B3",
+     "reader": 1
+    },
+    {
+     "x_mm": 14.0,
+     "y_mm": 42.0,
+     "what": "wavy",
+     "severity": "nitpick",
+     "note": "The thin speed lines under the M pulse in width and wobble along their length; the same on the lines right of LLC.",
+     "seen_in": "B1",
+     "reader": 1
+    },
+    {
+     "x_mm": 40.0,
+     "y_mm": 30.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "Very long needle-up jumps cross open fill across the design (for example from the right side to the LLC area); they would need trimming.",
+     "seen_in": "travel",
+     "reader": 1
+    },
+    {
+     "x_mm": 52.0,
+     "y_mm": 35.0,
+     "what": "mushed",
+     "severity": "noticeable",
+     "note": "The h and i junction pile up in fan-shaped stitches and the small loop is nearly closed.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 63.0,
+     "y_mm": 34.0,
+     "what": "lumpy_curve",
+     "severity": "noticeable",
+     "note": "The n-e connection and the e bowl have a rough fanned bottom curve and a notch where strokes overlap, unlike the smooth original.",
+     "seen_in": "B3",
+     "reader": 2
+    },
+    {
+     "x_mm": 30.0,
+     "y_mm": 36.0,
+     "what": "lumpy_curve",
+     "severity": "noticeable",
+     "note": "The a bowl bottom is built from radiating stitches with a ragged edge and a stub where the stroke ends.",
+     "seen_in": "B2",
+     "reader": 2
+    },
+    {
+     "x_mm": 8.0,
+     "y_mm": 38.0,
+     "what": "wavy",
+     "severity": "noticeable",
+     "note": "The left strokes of the M have wobbly, ragged edges and a notched bottom where the original is a clean tapered stroke.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 12.0,
+     "y_mm": 35.5,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The V of the M has a small gap and ragged overlap where the two strokes meet.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 18.5,
+     "y_mm": 22.0,
+     "what": "blob",
+     "severity": "noticeable",
+     "note": "A small pile of crossed stitches sits on the inner edge of the second M stroke where the original has a smooth edge.",
+     "seen_in": "A1",
+     "reader": 2
+    },
+    {
+     "x_mm": 40.0,
+     "y_mm": 14.0,
+     "what": "letter_shape",
+     "severity": "nitpick",
+     "note": "The o in To has a tight counter and a lumpy outer outline, smaller and rounder than the squarish original.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 45.0,
+     "y_mm": 22.0,
+     "what": "wavy",
+     "severity": "nitpick",
+     "note": "The h ascender stroke is stepped and wavy along its length where the original is a straight tapered stroke.",
+     "seen_in": "A2",
+     "reader": 2
+    },
+    {
+     "x_mm": 18.0,
+     "y_mm": 44.0,
+     "what": "other",
+     "severity": "nitpick",
+     "note": "The thin speed lines below the M are sewn fatter and with uneven width and blunt ends where the original tapers to a point; this repeats on the upper lines.",
+     "seen_in": "B1",
+     "reader": 2
+    },
+    {
+     "x_mm": 62.0,
+     "y_mm": 44.5,
+     "what": "jagged",
+     "severity": "nitpick",
+     "note": "The period after LLC is a broken little stub instead of a clean small rectangle.",
+     "seen_in": "B3",
+     "reader": 2
     }
    ]
   }
  },
- "prev_date": "2026-11-17",
- "prev_tree_sha": "3608ef6388b2ac29fe19b84635ea58f0264f463b",
+ "prev_date": "2026-11-18",
+ "prev_tree_sha": "2bae00d535c8a8da252516b659243161083369b5",
+ "prev_rubric_version": "2026-11-17",
+ "readers": 2,
+ "agreement_rule": "two blind readers per design; a fault counts only when both place one of the same class within 3 mm; a grade counts only when both give it",
+ "prev_readers": 1,
  "movement": [
   {
    "id": "L_becker_hat_large",
@@ -1519,48 +2303,36 @@
    "grade": "Okay",
    "steps": 0,
    "gained": [
-    "edge",
-    "missing"
-   ],
-   "cleared": [
-    "artefact",
     "letter"
-   ]
-  },
-  {
-   "id": "L_gaulke_roofing_hat",
-   "was": "Okay",
-   "grade": "Okay",
-   "steps": 0,
-   "gained": [
-    "gap"
    ],
    "cleared": [
-    "extra",
-    "missing"
+    "missing",
+    "pen_flow"
    ]
   },
   {
    "id": "L_hotel_fremont_hat",
    "was": "Okay",
-   "grade": "Okay",
-   "steps": 0,
-   "gained": [
-    "artefact"
-   ],
-   "cleared": []
+   "grade": "Bad",
+   "steps": 1,
+   "gained": [],
+   "cleared": [
+    "artefact",
+    "edge",
+    "letter",
+    "stitch_type"
+   ]
   },
   {
    "id": "L_mfab_hat",
-   "was": "Okay",
-   "grade": "Bad",
-   "steps": 1,
-   "gained": [
+   "was": "Bad",
+   "grade": "Okay",
+   "steps": -1,
+   "gained": [],
+   "cleared": [
+    "gap",
     "other",
     "stitch_type"
-   ],
-   "cleared": [
-    "edge"
    ]
   },
   {
@@ -1569,30 +2341,30 @@
    "grade": "Bad",
    "steps": 0,
    "gained": [
-    "other"
+    "edge"
    ],
-   "cleared": []
-  },
-  {
-   "id": "L_tires_hat_3d",
-   "was": "Okay",
-   "grade": "Okay",
-   "steps": 0,
-   "gained": [
-    "stitch_type"
-   ],
-   "cleared": []
+   "cleared": [
+    "artefact",
+    "extra",
+    "gap",
+    "letter",
+    "missing",
+    "other",
+    "pen_flow"
+   ]
   },
   {
    "id": "L_goldentee_hat",
    "was": "Bad",
    "grade": "Bad",
    "steps": 0,
-   "gained": [
-    "missing"
-   ],
+   "gained": [],
    "cleared": [
-    "gap"
+    "artefact",
+    "colour",
+    "edge",
+    "extra",
+    "missing"
    ]
   },
   {
@@ -1600,11 +2372,23 @@
    "was": "Okay",
    "grade": "Okay",
    "steps": 0,
-   "gained": [
-    "stitch_type"
-   ],
+   "gained": [],
    "cleared": [
-    "other"
+    "edge",
+    "pen_flow",
+    "stitch_type"
+   ]
+  },
+  {
+   "id": "L_toat_beanie",
+   "was": "Okay",
+   "grade": "Okay",
+   "steps": 0,
+   "gained": [],
+   "cleared": [
+    "artefact",
+    "edge",
+    "pen_flow"
    ]
   }
  ],

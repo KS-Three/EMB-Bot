@@ -66,6 +66,8 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
     ("outline_cut", "_APEX_PRO"),
     ("columns", "_RING_FLOOR"),
     ("columns", "_STROKE_FLOOR"),
+    ("columns", "_THROUGH_LAST"),
+    ("patch_merge", "_ON"),
     ("wedge_cap", "_ON"),
     ("end_overlap", "_ON"),
     ("end_overlap", "_ALIGN"),
@@ -110,9 +112,13 @@ _AMBIENT: tuple[tuple[str, str], ...] = (
 #: `columns._RAILS_MEMO` is one `lettering_columns_shape` call's pushed rails:
 #: set and reset inside the call, and a hit is what `_sewn_rails` would have
 #: returned for the same letter, column, pull, faces and keep.
+#: `threads._LAB_MEMO` is one `build_generation` call's Lab of the latest
+#: large frame, keyed by its bytes: a hit is a copy of what the conversion
+#: returns for those bytes.
 _CACHES: frozenset[tuple[str, str]] = frozenset({("outline_cut", "_MEMO"),
                                                  ("stage6_fill", "_BRIDGE_MEMO"),
-                                                 ("columns", "_RAILS_MEMO")})
+                                                 ("columns", "_RAILS_MEMO"),
+                                                 ("threads", "_LAB_MEMO")})
 #: ContextVars no emitter's OUTPUT depends on: `deadline._DEADLINE` is the
 #: service's job budget, read by `deadline.check` to STOP a job, never to
 #: shape a stitch -- a hit under one deadline is the miss under any other.

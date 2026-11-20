@@ -1,5 +1,7 @@
 # Scope digest — engine plans (what outlives execution)
 
+> Frozen digest as of 2026-08-17; current status is `MASTER_SCOPE.md`, decisions are `DOCTRINE.md`.
+
 Sources are all under `docs/superpowers/`. Paths below are relative to that.
 
 ## Design decisions that still govern

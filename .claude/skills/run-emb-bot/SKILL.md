@@ -195,11 +195,17 @@ Also in `tools/`: `run-flatten.mjs` (color-flatten only), `render-dst.mjs`
 ## Test
 
 ```bash
-node --test                    # engine: 356 tests, 350 pass, 6 skip, ~6.5s
-cd app && npm test             # Studio vitest: 40 files, 768 tests, ~27s
-cd app && npx playwright test  # e2e: 13 tests in 7 spec files, ~48s
+node --test                    # engine: 90 test files in test/ (2026-11-19)
+cd app && npm test             # Studio vitest: 164 *.spec.js files under app/src/ (2026-11-19)
+cd app && npx playwright test  # e2e: 79 spec files in app/e2e/ (2026-11-19); CI shards it
 cd digitizer && .venv/bin/python -m pytest -q -n auto
 ```
+
+Counts move with every PR, so none is pinned here. Read a run's totals as a GAP
+against the last run you recorded, and re-derive the file counts with
+`ls test | grep -c '\.test\.'` (engine), `find app/src -name '*.spec.*' | wc -l`
+(Studio) and `ls app/e2e | grep -c '\.spec\.'` (e2e); the per-run test totals come
+from the runner's own summary line.
 
 `npx playwright test` starts its own dev server on **5183** and stops it, so
 nothing needs to be running first. It also **auto-starts the digitizer**
@@ -258,6 +264,17 @@ cd <repo>\digitizer ; .venv\Scripts\python -m digitizer_service
 
 Then browser → `http://localhost:5173`, **with** the `http://` prefix.
 
+**One-port Studio (what a customer gets, since 2026-11-10; COOKBOOK.md "One
+port").** The service can serve the built Studio itself, no Vite:
+
+```powershell
+cd <repo>\app ; npm run build
+cd <repo>\digitizer ; .venv\Scripts\python -m digitizer_service --studio ..\app\dist
+```
+
+Then `http://127.0.0.1:8721/`. Off unless `--studio` (or `EMBBOT_STUDIO_DIR`)
+names a directory holding `index.html`; a wrong path exits 2 with one line.
+
 ### Confirmed failure modes on Kent's machine
 
 Each has actually happened; check in this order.
@@ -275,7 +292,7 @@ Each has actually happened; check in this order.
    it bound. `start-emb-bot.ps1` waits on and opens 5173 unless told
    `-Port <n>`, so it will open the wrong URL.
 6. **Server never started.** `app/scripts/copy-engine.mjs` hard-throws
-   `missing engine file: <name>` if any of the **22** files it copies is
+   `missing engine file: <name>` if any of the **25** files (`ENGINE_FILES`, 2026-11-19) it copies is
    absent from `src/`; it runs in `predev`, so Vite never boots. The error is
    above where the Vite banner would be.
 7. **Wrong tree.** A `.claude/worktrees/` lane has its own `node_modules` and
@@ -348,7 +365,7 @@ These are the ones that cost real time here.
 - **The service rejects unknown config fields with 400.** It's
   `target_width_mm`, not `width_mm` →
   `{"detail":"unknown config field(s): width_mm"}`. The allowlist is
-  `PipelineConfig`'s 70 dataclass fields:
+  `PipelineConfig`'s dataclass fields (~413 on 2026-11-19 — it grows with every flag):
   `.venv/bin/python -c "from dataclasses import fields; from digitizer_core.config import PipelineConfig; print(sorted(f.name for f in fields(PipelineConfig)))"`
 
 - **`npm run dev` DOES auto-start the digitizer here — do not start a second
@@ -373,7 +390,7 @@ These are the ones that cost real time here.
 
 - **A green `npx playwright test` can be a smaller run than you think.** The
   digitize specs `test.skip` when the service is down. 13 tests pass with it
-  up. Confirm the service is healthy before reading a green run as coverage.
+  up (13 when this was written; many more specs now). Confirm the service is healthy before reading a green run as coverage.
 
 - **Playwright *can* upload files.** `setInputFiles` on the hidden
   `input[type=file]` works headless — earlier notes here claimed agent
@@ -465,8 +482,10 @@ These are the ones that cost real time here.
   exactly like a clean run to anyone scanning for `# fail 0`.
 
   **Both directions of this trap read as a pass. The only reliable tell is a
-  COUNT you recognise** — 505 for the engine, 53 files for the Studio — so
-  check the number, never just the `fail 0`.
+  COUNT you recognise** — read the engine's and the Studio's totals as a gap
+  against the last run you recorded (re-derive file counts with the `ls`/`find`
+  commands under "Test"; 90 engine files and 164 Studio files on 2026-11-19) —
+  so check the number, never just the `fail 0`.
 
 - **A "404 Not Found" console error is almost always the favicon.** The
   message text is generic — the URL is only in `location()`. The driver
@@ -477,9 +496,12 @@ These are the ones that cost real time here.
   `scratch_flat.png`, `scratch_new.dst`, `scratch_new_colors.json`. Gitignored,
   but per CLAUDE.md footgun #5 `scratch_*` is *not* safe to delete blindly.
 
-- **DST orientation.** When checking DST for *correctness* rather than
-  round-tripping, decode through pyembroidery/the service's `/export`, never
-  `src/dstimport.js` — CLAUDE.md footgun #1.
+- **DST orientation.** The browser DST codec's axis bug was FIXED 2026-09-08
+  (both halves; `src/dstimport.js` is standard now). When a check is about
+  ORIENTATION, render it (`tools/render-dst.mjs`) — a swapped bounding box fits a
+  turn and a mirror equally. A `.dst` EMB-Bot wrote before the fix still
+  re-imports transposed; the service's `/export` (pyembroidery) is the second,
+  independent path — CLAUDE.md footgun #1.
 
 ### Six locator traps, all measured 2026-09-07
 
@@ -578,9 +600,10 @@ out of the saved project instead.
 ## Standalone bundle — deleted, do not rebuild
 
 `EMB-Bot-standalone.html` was deleted 2026-08-04 (Kent's call) and
-`tools/bundle.mjs` is dead code. Test `EMB-Bot.html` + `src/`, or the Studio.
+`tools/bundle.mjs` is gone too (and `EMB-Bot.html` was deleted 2026-08-08). Test
+`src/` through `node --test` and the Node harness, or the Studio.
 
 ## Where things live
 
-Architecture is in COOKBOOK.md; the DST axis bug is CLAUDE.md footgun #1.
+Architecture is in COOKBOOK.md; the DST axis lesson (render orientation claims) is CLAUDE.md footgun #1.
 Both are read before this skill, so they aren't repeated here.

@@ -30,7 +30,13 @@ from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
 from digitizer_core.stage7_sequence import sequence
 
-from .conftest import FLIP_2026_10_23, PLAN_CFG_KW, cfg
+from .conftest import FLIP_2026_10_23, PLAN_CFG_KW, SATIN_STARS_2026_11_19_OFF, cfg
+
+# ...and `satin_stars` (ON since 2026-11-19) off: the benchmark's ENTHUSIAST mark
+# is a four-point star, which now enters and leaves on its tips, 0.4 mm from the
+# E's notches; that alone moves the benchmark (a trim gone, chain-off bare floor
+# 4.5 -> 5.18 mm, measured 2026-11-19). This file prices chaining.
+FLIP_2026_10_23 = {**FLIP_2026_10_23, **SATIN_STARS_2026_11_19_OFF}
 
 FABRIC = fabric_for_garment(PLAN_CFG_KW["garment_id"])   # pique knit, trims at 3.0 mm
 

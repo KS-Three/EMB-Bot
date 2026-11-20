@@ -48,9 +48,25 @@ def test_the_roadmap_is_within_its_own_budget():
         "keeps the refusal and its blocker.")
 
 
+HOOK = SCOPE.parent / ".claude" / "hooks" / "roadmap-gates.js"
+
+
+def _hook_headings() -> list[str]:
+    """The `WANTED` list, read from the hook itself so the two cannot drift."""
+    m = re.search(r"const WANTED = \[(.*?)\];", HOOK.read_text(encoding="utf-8"), re.S)
+    assert m, f"no `const WANTED = [...]` in {HOOK}"
+    return re.findall(r"'([^']+)'", m.group(1))
+
+
 def test_the_sections_the_session_hook_lifts_are_still_there():
     """`roadmap-gates.js` finds these by heading and a rename fails SILENT:
-    the session simply starts without its gates."""
+    the session simply starts without its gates. Until 2026-11-19 this test
+    named its own two headings while the hook also asked for a
+    `## Standing item` ROADMAP no longer had; it now reads the hook's list."""
     text = _text()
-    for heading in ("## Where we are", "## Hard gates"):
-        assert re.search(rf"^{re.escape(heading)}", text, re.M), heading
+    wanted = _hook_headings()
+    assert {"## Where we are", "## Hard gates"} <= set(wanted), wanted
+    for heading in wanted:
+        assert re.search(rf"^{re.escape(heading)}", text, re.M), (
+            f"roadmap-gates.js lifts {heading!r} but ROADMAP.md has no heading "
+            "starting with it: rename one side or drop it from WANTED.")

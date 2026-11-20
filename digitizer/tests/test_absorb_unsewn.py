@@ -1,4 +1,5 @@
-"""`cfg.extra["lettering_columns_absorb_unsewn"]` (built OFF 2026-11-16): a
+"""`cfg.lettering_columns_absorb_unsewn` (built OFF 2026-11-16 as a `cfg.extra` key; ON
+since 2026-11-19, the review pack's flip): a
 small bold letter's pieces that no construction fits merge into the column
 they share the longest edge with, and the merge is kept only if the letter
 sews better for it (`columns.absorb_gains`).
@@ -55,6 +56,16 @@ def _bare(runs, region) -> float:
         p = [tuple(map(float, q)) for q in run.points]
         quads += [MultiPoint(p[i:i + 4]).convex_hull for i in range(len(p) - 3)]
     return region.difference(unary_union(quads)).area if quads else region.area
+
+
+def test_config_default_is_on_and_false_is_the_old_engine():
+    # ON since 2026-11-19; the ambient scope outside a plan stays False, so a bare call is the old lane
+    from digitizer_core.config import PipelineConfig
+    from tests.conftest import PRE_FLIP
+    assert PipelineConfig().lettering_columns_absorb_unsewn is True
+    assert PRE_FLIP["lettering_columns_absorb_unsewn"] is False
+    assert PipelineConfig(lettering_columns_absorb_unsewn=False).lettering_columns_absorb_unsewn is False
+    assert oc._ABSORB_UNSEWN.get() is False
 
 
 def test_off_is_never_called(monkeypatch):

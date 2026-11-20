@@ -6,8 +6,9 @@ fonts, a **logo/image** (auto-digitized when the local service is up, else
 flattened to thread colors by the browser engine — decided when the element is
 added), traced or preset **shapes**, or an imported stitch file — arranged on a
 realistic 2.5D thread preview, then download machine-ready files (DST / EXP /
-PES, plus SVG, PNG, and a printable PDF worksheet). Guided steps: garment →
-content → create → download. Elements sew in list order with a trim + color
+PES in the browser; JEF / XXX / VP3 written by the digitizer service; plus SVG,
+PNG, and a printable PDF worksheet). Guided steps: garment → content (add and
+arrange elements, with the live preview and review summary) → download. Elements sew in list order with a trim + color
 change between them. Resizing regenerates text/shape/image stitches so density
 stays correct; imported and auto-digitized elements scale their baked stitches
 instead — density changes with size, and their panels say so.
@@ -18,8 +19,9 @@ localStorage-backed projects drawer) and as portable `.embproj` files
 service** — the Python pipeline in `../digitizer`, served by FastAPI on
 `127.0.0.1:8721`, loopback-only. The Studio runs without it, but the image
 auto-digitize path needs it, and purely-digitized projects prefer its
-pystitch `/export` for stitch files (the browser's own DST encoder has a
-known axis dispute with third-party software — see `../COOKBOOK.md`).
+pystitch `/export` for stitch files. (The browser's own DST encoder wrote X
+and Y swapped until 2026-09-08; it now matches the standard, but a `.dst`
+written before that fix re-imports transposed — see `../CLAUDE.md` footgun 1.)
 
 Text, shape, and image-flatten stitch math is the proven JS engine in
 `../src` (satin fonts, underpathing, exporters) — the source of truth, **not**
@@ -48,11 +50,17 @@ modules (in dependency order) into `public/engine/` and the satin-font library
 (manifest, `.embf` binaries, license texts, previews) into `public/fonts/`.
 The engine file list lives in THREE places that must stay in sync —
 `ENGINE_FILES` in `scripts/copy-engine.mjs`, `ENGINE_KEYS` in
-`src/lib/emb.js`, and the `<script>` tags in `index.html`. No test guards
-this; miss one and fonts break only in the live browser while tests stay
-green.
+`src/lib/emb.js`, and the `<script>` tags in `index.html`.
+`src/lib/engineList.spec.js` checks that the three agree, so a miss fails
+`npm test`; add a new engine file to all three, in dependency order.
 
 ## Build (static)
+
+How the product is delivered: since Kent's 2026-11-10 ruling it is one local
+Windows app, where the digitizer service also serves the built Studio on one
+loopback port; the hosted web Studio (PR #550) was reversed on 2026-09-28. See
+`../PRODUCT.md` ("Launch posture") and launch row 8. The static-hosting notes
+below describe what `dist/` is capable of, not the delivery plan.
 
 ```bash
 npm run build    # -> app/dist/  (index.html + assets + engine/ + fonts/)
@@ -69,9 +77,10 @@ localhost origins only, so a hosted copy can't reach it.
 
 - **Netlify / Vercel / Cloudflare Pages:** base directory `app`, build command
   `npm run build`, publish directory `dist`.
-- **GitHub Pages:** root/custom-domain sites only — Vite `base` is `"./"`, but
-  fonts are fetched root-absolute (`/fonts/…`), so a sub-path project page
-  breaks every font.
+- **GitHub Pages:** font URLs are relative since 2ccca02c (guarded by
+  `src/lib/assetPaths.spec.js`), but the engine `<script>` tags in
+  `index.html` are still root-absolute (`/engine/…`), so a sub-path project
+  page would still fail to load the engine. Use a root or custom-domain site.
 
 ## Structure
 
@@ -83,8 +92,10 @@ localhost origins only, so a hosted copy can't reach it.
   step screens and the panels they open (font browser, auto-digitize, manual
   trace, shapes, thread picker, projects drawer, …). `*.testHarness.svelte`
   files exist only for component tests.
-- `e2e/` — Playwright suite: wizard smoke plus the digitize / manual-trace /
-  text-conversion contracts. Runs in CI as the `studio-e2e` job.
+- `e2e/` — Playwright suite: 82 spec files, 243 tests when CI last counted
+  (2026-11-07): configurator smoke, the digitize / manual-trace /
+  text-conversion contracts, field editing, download and project round trips.
+  Runs in CI as the `studio-e2e` job (two shards).
 - `scripts/copy-engine.mjs` — the engine copy step above.
 
 ## Test
@@ -93,6 +104,10 @@ localhost origins only, so a hosted copy can't reach it.
 npm test                          # Vitest (app logic + components)
 npx playwright test --workers=1   # e2e (one worker: specs share one service)
 ```
+
+`--workers=1` is the safe local default. CI is faster: it runs the service-free
+specs on 4 workers and only the digitizer-service specs serially
+(`.github/workflows/python-package-conda.yml`, `studio-e2e shard k/2`).
 
 App test files use `.spec.js` so the repo-root `node --test` (engine gate)
 never picks them up; the engine is guarded separately at the repo root.
