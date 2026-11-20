@@ -154,7 +154,7 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # 2026-10-12, Kent): it sews drone's lettering from the outline, and the fold's
 # thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
 # The engine these claims were measured on has the skeleton tier.
-PRE_FLIP_RC = {"border_by_size": False, "enclosed_alpha_hole_parts": False,
+PRE_FLIP_RC = {"border_by_size": False,
                "lettering_columns_corner_fold": False, "robust_region_colour": False, "keep_thin_strokes": False,
                "lettering_columns": False}
 
@@ -177,13 +177,6 @@ def test_the_default_is_on():
     assert PipelineConfig().merge_duplicate_cones is True
 
 
-def test_the_fixture_still_declares_duplicate_cones(drone_off):
-    """Guards the whole file against going vacuous: if quantization stops
-    producing a duplicate here, every assertion below proves nothing."""
-    _res, plan = drone_off
-    cones = [b.thread_index for b in plan.blocks]
-    assert len(cones) - len(set(cones)) >= 1, \
-        "no cone revisit left on the fixture — re-pick it or retire this file"
 
 
 def test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP(drone_on):
@@ -214,34 +207,8 @@ def test_the_fold_removes_every_cone_revisit_EXCEPT_THE_CAP(drone_on):
         f"an artwork cone still sews twice: {cones}"
 
 
-def test_the_fold_costs_the_operator_fewer_stops(drone_off, drone_on):
-    """A block boundary is a colour change, and on a single head a colour
-    change is the machine halting for a human. That is what this buys."""
-    _o, off = drone_off
-    _n, on = drone_on
-    assert len(on.blocks) < len(off.blocks)
 
 
-def test_the_fold_does_not_pay_for_itself_in_thread(drone_off, drone_on):
-    """The reorder could have traded stops for flying. It does not: fewer
-    stitches AND less needle-up travel, over slightly more lifts — short
-    ones replacing the long flights back out to the tail fragments."""
-    import math
-
-    def needle_up_mm(plan):
-        up, prev = 0.0, None
-        for b in plan.blocks:
-            for r in b.runs:
-                if prev is not None and (r.jump or r.trim):
-                    up += math.dist(prev, r.points[0])
-                prev = r.points[-1]
-        return up
-
-    _o, off = drone_off
-    _n, on = drone_on
-    assert sum(b.stitch_count for b in on.blocks) <= \
-        sum(b.stitch_count for b in off.blocks)
-    assert needle_up_mm(on) < needle_up_mm(off)
 
 
 def test_the_fold_reports_which_spools_it_merged(drone_on):

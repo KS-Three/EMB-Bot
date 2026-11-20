@@ -249,39 +249,13 @@ def test_the_scale_relative_read_s_stated_limit_is_the_drone_downscaled(tmp_path
     assert {_classify_at(TESTDATA / rel, w, tmp_path, OFF) for w in WIDTHS} == {"gradient"}
 
 
-def test_the_drone_left_the_broken_set_through_the_alpha_extension_not_a_recalibration(tmp_path):
-    """The record behind the sets above, executable: on the pre-flip engine
-    (`alpha_edge_extend=False`) the drone at 250 px still reads a different
-    class from its native one — the render's backdrop under its alpha — and
-    on the shipped engine it reads the native class. If this stops holding,
-    the drone's invariance came from somewhere else and the comment lies."""
-    rel = "photo/drone_render.png"
-    # On the OFF arm: the record is about the pixel-absolute windows, and ON the
-    # drone reads `flat` at 250 px for a different reason (the scale-relative
-    # limit pinned above).
-    native = stage0_classify.classify(str(TESTDATA / rel), OFF).class_
-    assert native == FIXTURES[rel]
-    pre_flip = _classify_at(TESTDATA / rel, 250, tmp_path,
-                            PipelineConfig(alpha_edge_extend=False, stage0_scale_relative_grad=False))
-    assert pre_flip != native, f"pre-flip engine reads {pre_flip} at 250px — the drone's dependence is gone without the extension"
-    assert _classify_at(TESTDATA / rel, 250, tmp_path, OFF) == native
-
-
 @pytest.mark.usefixtures("source_line_grid")
-def test_enthusiast_s_sweep_flip_was_the_gate_s_boundary_and_stage_0_s_whole_image_read_removes_it(tmp_path):
-    """The record behind `FLIPS_ACROSS_SWEEP` being empty, executable: with
-    stage 0 held to the gate (`alpha_edge_extend_stage0_whole=False`)
-    ENTHUSIAST reads a different class at 400 px — the gate shut, the
-    pre-flip reading — from 250 px, where the gate is open; the shipped
-    engine reads the sweep as one class. Its native class stays `flat`
+def test_enthusiast_reads_the_sweep_as_one_class_and_its_native_class_stays_in_the_windows(tmp_path):
+    """The record behind `FLIPS_ACROSS_SWEEP` being empty, executable: stage 0
+    classifies on the whole-image extension wherever the file has alpha, so
+    ENTHUSIAST reads the sweep as one class. Its native class stays `flat`
     against `gradient` downscaled: the windows, still in `DEPARTS_FROM_NATIVE`."""
     rel = "photo/enthusiast_logo.png"
-    gated = PipelineConfig(alpha_edge_extend_stage0_whole=False, stage0_scale_relative_grad=False)
-    at_250 = _classify_at(TESTDATA / rel, 250, tmp_path, gated)
-    at_400 = _classify_at(TESTDATA / rel, 400, tmp_path, gated)
-    assert at_250 != at_400, f"gate-only engine reads {at_250} at 250px and {at_400} at 400px — the boundary is gone without the stage-0 read"
-    assert at_400 == _classify_at(TESTDATA / rel, 400, tmp_path,
-                                  PipelineConfig(alpha_edge_extend=False, stage0_scale_relative_grad=False))
     shipped = {w: _classify_at(TESTDATA / rel, w, tmp_path, OFF) for w in WIDTHS}
     assert len(set(shipped.values())) == 1, shipped
     assert rel in DEPARTS_FROM_NATIVE and rel not in FLIPS_ACROSS_SWEEP

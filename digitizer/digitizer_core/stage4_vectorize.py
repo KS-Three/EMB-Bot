@@ -1460,8 +1460,7 @@ def garment_sews_enclosed(p: Prep, cfg: PipelineConfig) -> tuple[bool, float | N
     return de > float(cfg.enclosed_by_garment_de00), de
 
 
-def tag_enclosed_background(regions: list[Region], p: Prep, *,
-                            alpha_hole_parts: bool = False) -> None:
+def tag_enclosed_background(regions: list[Region], p: Prep) -> None:
     """Post-vectorization pass: mark `region.meta["enclosed_background"]`
     True for every Region that is (nearly) the same shape as one connected
     component of `Prep.enclosed_mask` — the bg-colored-but-not-border-
@@ -1499,10 +1498,10 @@ def tag_enclosed_background(regions: list[Region], p: Prep, *,
     original bug (a hole nobody can review), so uncertainty always resolves
     to "keep stitching it".
 
-    `alpha_hole_parts` (`cfg.enclosed_alpha_hole_parts`, 2026-10-23): on the
+    Alpha hole parts (2026-10-23): on the
     ALPHA path only, a region is tagged when it is mostly inside one
     transparent component — the first ratio alone. A transparent hole has no
-    colour of its own, and `alpha_edge_extend` paints it with the nearest
+    colour of its own, and the alpha extension paints it with the nearest
     opaque colour, so a counter inside a two-tone letter vectorizes as two
     (or more) regions, each under 0.6 of its hole, and every one of them
     failed open and sewed in the letter's thread (Precision Drone's O at
@@ -1513,7 +1512,7 @@ def tag_enclosed_background(regions: list[Region], p: Prep, *,
     mask = p.enclosed_mask
     if mask is None or not mask.any():
         return
-    parts_rule = bool(alpha_hole_parts and p.bg_from_alpha)
+    parts_rule = bool(p.bg_from_alpha)
     h, w = mask.shape
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0

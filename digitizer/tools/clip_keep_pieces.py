@@ -100,17 +100,16 @@ def _uncovered(result, plan, cfg, image) -> dict:
 
 
 def run(rel: str, cfg_kw: dict, preflight: bool = False, full: bool = False) -> dict:
-    """OFF = both settings False (the engine before defect 61); ON = the
-    shipped default, `clip_parent_keeps_ink` alone; FULL (`full=True`) =
+    """OFF = ON = the parent keeps the inkiest piece, no extra pieces kept; FULL (`full=True`) =
     `clip_keep_pieces` too, which keeps the extra pieces as their own regions."""
     gen = build_generation(str(ROOT / "testdata" / rel), PipelineConfig(**cfg_kw))
     out: dict = {"fixture": rel, "cfg": cfg_kw}
     off_by_id: dict = {}
-    variants = [("off", False, False), ("on", True, False)]
+    variants = [("off", False), ("on", False)]
     if full:
-        variants.append(("full", True, True))
-    for tag, flag, keep in variants:
-        cfg = PipelineConfig(**cfg_kw, clip_parent_keeps_ink=flag, clip_keep_pieces=keep)
+        variants.append(("full", True))
+    for tag, keep in variants:
+        cfg = PipelineConfig(**cfg_kw, clip_keep_pieces=keep)
         result = finish_generation(gen.fork(), cfg)
         plan, planned = _plan(result, cfg)
         st = plan.stats

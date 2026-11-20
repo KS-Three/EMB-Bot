@@ -37,7 +37,7 @@ from digitizer_core.pipeline import fabric_for  # noqa: E402
 from digitizer_core.stage5_overlap import resolve_overlaps  # noqa: E402
 from digitizer_core.threads import chart_for  # noqa: E402
 
-LEGACY = dict(clip_parent_keeps_ink=False, clip_keep_pieces=False)
+LEGACY = dict(clip_keep_pieces=False)
 
 
 def _fill(img, poly, bgr, x0, y0, s, outline=None):

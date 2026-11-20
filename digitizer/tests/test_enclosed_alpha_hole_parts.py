@@ -1,4 +1,4 @@
-"""`cfg.enclosed_alpha_hole_parts` (2026-10-23): a TRANSPARENT counter cut
+"""Alpha hole parts (2026-10-23): a TRANSPARENT counter cut
 into several colour regions is still a counter.
 
 The 5-10 mm lettering band against the pro (`docs/lettering-5-10mm-2026-10-23.md`):
@@ -60,24 +60,12 @@ def _hole_regions(result):
             and r.polygon.area < np.pi * hole_mm ** 2 * 1.2]
 
 
-def test_off_reproduces_the_blob():
-    """OFF is the engine as it was: the transparent middle vectorizes as more
-    than one region and at least one of them is left stitched — the Drone O."""
-    result = run_stages(two_tone_ring_with_transparent_middle(),
-                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=False))
-    parts = _hole_regions(result)
-    assert len(parts) >= 2, [r.polygon.bounds for r in parts]
-    untagged = [r for r in parts if not r.meta.get("enclosed_background")]
-    assert untagged, "the fixture no longer reproduces the split-hole defect"
-    assert any(r.meta.get("stitched", True) for r in untagged)
-
-
 def test_on_tags_every_part_of_the_transparent_hole():
     """ON: each part of the hole is enclosed background with no colour of its
     own, and none of them sews -- with `sew_enclosed_white` OFF (ON by default
     since 2026-10-26, which sews a tagged alpha hole white)."""
     result = run_stages(two_tone_ring_with_transparent_middle(),
-                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=True,
+                        cfg(target_width_mm=20.0,
                             sew_enclosed_white=False))
     parts = _hole_regions(result)
     assert len(parts) >= 2, [r.polygon.bounds for r in parts]
@@ -91,7 +79,7 @@ def test_on_leaves_the_ring_itself_sewn():
     """The rule reaches only regions mostly INSIDE a transparent component:
     the ring, which merely borders the hole, keeps sewing."""
     result = run_stages(two_tone_ring_with_transparent_middle(),
-                        cfg(target_width_mm=20.0, enclosed_alpha_hole_parts=True))
+                        cfg(target_width_mm=20.0))
     hole = {r.shape_id for r in _hole_regions(result)}
     ring = [r for r in result.regions if r.shape_id not in hole]
     assert ring
@@ -100,11 +88,7 @@ def test_on_leaves_the_ring_itself_sewn():
 
 
 def test_colour_path_is_untouched():
-    """`logo_whitebg.png`'s hole is found by COLOUR: ON changes nothing there
-    (the second ratio stays), and nothing reads colour-unknown."""
-    off = run_stages(TESTDATA / "logo_whitebg.png", cfg())
-    on = run_stages(TESTDATA / "logo_whitebg.png", cfg(enclosed_alpha_hole_parts=True))
-    key = lambda res: sorted((r.shape_id, bool(r.meta.get("enclosed_background")),
-                              bool(r.meta.get("enclosed_colour_unknown"))) for r in res.regions)
-    assert key(on) == key(off)
+    """`logo_whitebg.png`'s hole is found by COLOUR: the
+    second ratio stays, and nothing reads colour-unknown."""
+    on = run_stages(TESTDATA / "logo_whitebg.png", cfg())
     assert not any(r.meta.get("enclosed_colour_unknown") for r in on.regions)

@@ -285,10 +285,10 @@ class PipelineResult:
     # The gate's whole read, per region (`fur_regions.read_regions`): the
     # census a tool reports. None when the gate did not run.
     hair_fur_read: dict | None = None
-    # `cfg.white_keyline_art_recipe` (built OFF): `finish_generation` read this
-    # art as white-keyline art (`white_keyline_art.detect`), so `plan_stitches`
-    # folds the recipe into its caller's config the way it folds the photo
-    # verdict. False on a hand-built result and whenever the flag was off.
+    # `finish_generation` read this art as white-keyline art
+    # (`white_keyline_art.detect`), so `plan_stitches` folds the recipe into
+    # its caller's config the way it folds the photo verdict. False on a
+    # hand-built result.
     white_keyline_art: bool = False
     # The raster stage 1.5's photo prep handed to segmentation and stage 4's
     # thread revalidation (`p.rgb` after `photo_prep`): a REFERENCE to the
@@ -1072,7 +1072,7 @@ def build_generation(
     # derived every generation — like `layer`, unlike the review-screen
     # fields a resent `shape_overrides` carries forward on a stable id — so it
     # belongs before shape edits, not after.
-    tag_enclosed_background(regions, p, alpha_hole_parts=cfg.enclosed_alpha_hole_parts)
+    tag_enclosed_background(regions, p)
     # A kept counter (`cfg.keep_counters`) wears the same tag, and `counter`
     # beside it to say which kind: it is a gap in the letter round it that
     # shows the cloth unless switched on, which is everything that tag means
@@ -1635,11 +1635,11 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # a review `stitched` still wins over it, exactly as over the default.
     sews_by_garment, garment_de00 = garment_sews_enclosed(p, cfg)
     shape_overrides = cfg.shape_overrides or {}
-    # `cfg.white_keyline_art_recipe` (built OFF, Kent 2026-10-26: "Gate to
+    # (Kent 2026-10-26: "Gate to
     # MFab art first"): white-keyline art -- a dark host round a white field
     # outlining letters -- turns its recipe on here, before the first of its
     # switches (`sew_enclosed_white`, just below) acts; the verdict rides the
-    # result to `plan_stitches`. Off, or any other art: cfg untouched.
+    # result to `plan_stitches`. Any other art: cfg untouched.
     keyline_art = white_keyline_art.detect(regions, cfg)
     cfg = white_keyline_art.apply(cfg, keyline_art)
     # The customer's "sew the white inside" (`cfg.sew_enclosed_white`, built
@@ -2269,8 +2269,7 @@ def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
-    # `cfg.white_keyline_art_recipe` (built OFF): the verdict `finish_generation`
-    # read, folded in before anything below reads the recipe's switches (the
+    # The white-keyline verdict `finish_generation` read, folded in before anything below reads the recipe's switches (the
     # loop mitre's scope is the first). Read with getattr: the scope tests
     # hand this a stand-in result (None, a bare object).
     cfg = white_keyline_art.apply(cfg, getattr(result, "white_keyline_art", False))

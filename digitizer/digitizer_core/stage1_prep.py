@@ -129,7 +129,7 @@ class Prep:
     bg_rgb: tuple[int, int, int] | None = None
     # The raster with the file's OWN colour under the transparency, in
     # `rgb`'s frame and through the same denoise and upscale — set only
-    # under `cfg.alpha_edge_extend`, where `rgb` carries nearest-opaque
+    # when the alpha extension ran, where `rgb` carries nearest-opaque
     # colour there instead. For the readers that want the exporter's colour
     # (preflight's `GROUND_SEWN` border colour); `bg_edge_rgb` above is
     # already read from it. None otherwise: read `rgb`.
@@ -398,12 +398,12 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
     warnings: list[dict] = []
 
-    # `cfg.alpha_edge_extend`: every stage reads nearest-opaque colour under
-    # every non-opaque pixel instead of whatever the exporter left there;
-    # `raw` keeps the file's own, carried through the same steps, for the two
-    # readers that want exactly that (`bg_edge_rgb` below, preflight's border
-    # colour — see `extend_opaque_colour`). With the flag off nothing here
-    # runs and `raw` is never read.
+    # Every stage reads nearest-opaque colour under every non-opaque pixel
+    # instead of whatever the exporter left there (gated on an upscale ahead,
+    # `extension_applies`); `raw` keeps the file's own, carried through the
+    # same steps, for the two readers that want exactly that (`bg_edge_rgb`
+    # below, preflight's border colour — see `extend_opaque_colour`). When no
+    # extension runs `raw` is never read.
     extend = extension_applies(cfg, alpha, design_class=design_class)
     raw = rgb
     if extend:
@@ -716,8 +716,8 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for
     # both an opaque backdrop and an alpha cutout (where it picks up whatever
-    # RGB sits under the transparency — from `raw` under `alpha_edge_extend`,
-    # so the flag changes what the filters read and not what this reads).
+    # RGB sits under the transparency — from `raw` when the extension ran,
+    # so the extension changes what the filters read and not what this reads).
     bg_edge_rgb = None
     if bg.any():
         near_fg = (

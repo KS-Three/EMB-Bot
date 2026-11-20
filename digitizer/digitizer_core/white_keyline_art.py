@@ -1,4 +1,4 @@
-"""White-keyline art turns its own recipe on (`cfg.white_keyline_art_recipe`, ON since 2026-10-26).
+"""White-keyline art turns its own recipe on (on since 2026-10-26).
 
 EVERY JOB since 2026-10-27: Kent, verbatim, "Every job (Recommended)". Every
 switch in `RECIPE` is a plain `PipelineConfig` default since (and
@@ -68,10 +68,9 @@ RECIPE_EXTRA = ("absorb_fragments",)
 
 
 def detect(regions, cfg) -> bool:
-    """`cfg.white_keyline_art_recipe`: is this white-keyline art (module docstring)?
-    False with the flag off, or without `border_from_outline` (the loops the
-    recipe sews are that pass's)."""
-    if not getattr(cfg, "white_keyline_art_recipe", False) or not cfg.border_from_outline:
+    """Is this white-keyline art (module docstring)? False without
+    `border_from_outline` (the loops the recipe sews are that pass's)."""
+    if not cfg.border_from_outline:
         return False
     if not any(r.meta.get("enclosed_background") and r.polygon is not None
                and r.polygon.geom_type == "Polygon" and r.polygon.interiors for r in regions):
@@ -98,9 +97,9 @@ def detect(regions, cfg) -> bool:
 
 
 def apply(cfg, verdict: bool):
-    """Fold a verdict into a config: the recipe's switches ON when the flag is
-    on and the art is white-keyline art; otherwise the same config object."""
-    if not (verdict and getattr(cfg, "white_keyline_art_recipe", False)):
+    """Fold a verdict into a config: the recipe's switches ON when the art is
+    white-keyline art; otherwise the same config object."""
+    if not verdict:
         return cfg
     extra = {**(cfg.extra or {}), **{k: True for k in RECIPE_EXTRA}}
     return replace(cfg, **{k: True for k in RECIPE if hasattr(cfg, k)}, extra=extra)
