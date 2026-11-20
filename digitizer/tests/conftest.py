@@ -1268,6 +1268,10 @@ PRE_FLIP.update(ABSORB_UNSEWN_2026_11_19_OFF)
 # sews point by point with a needle on every tip. `tests/test_satin_stars.py`.
 SATIN_STARS_2026_11_19_OFF = {"satin_stars": False}
 PRE_FLIP.update(SATIN_STARS_2026_11_19_OFF)
+# `seam_hold_skips_outline_bodies` (2026-11-19, regression repair of #1641 on Ahora's gear;
+# Kent: "We need to make sure we are not going backwards"): `tests/test_seam_hold_bodies.py`.
+SEAM_HOLD_BODIES_2026_11_19_OFF = {"seam_hold_skips_outline_bodies": False}
+PRE_FLIP.update(SEAM_HOLD_BODIES_2026_11_19_OFF)
 #: The three, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (

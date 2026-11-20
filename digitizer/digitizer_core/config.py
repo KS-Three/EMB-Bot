@@ -4114,6 +4114,21 @@ class PipelineConfig:
     # sew-out question (gate 1); no constant changed. False is the engine as
     # it was; PRE_FLIP (FLAG_ENDS_SEAM_2026_11_17_OFF) pins it False.
     satin_seam_hold: bool = True
+    # `seam_hold_skips_outline_bodies` (2026-11-19, a regression repair): an
+    # outline's BODY (`border_from_outline`, stage 7's `outline_bodies`) sews
+    # as a plain fill under its loop, never on satin rails, so
+    # `satin_seam_hold`'s cut tongue (which counts on rails carrying the pull
+    # under the later colour) must not reach it. Ahora's gold O round its
+    # toothed gear at 80 mm left chest lost its 22 mm^2 tongue under the white
+    # gear when #1641 flipped the hold ON (2026-11-17): the fill stopped
+    # round a gear-shaped hole and its travel crossed the hole, bare yellow
+    # bars between the teeth. Kent: "it was previously stitching out a nice
+    # gear just a day or two ago"; "We need to make sure we are not going
+    # backwards". ON, Ahora is byte-identical to the hold OFF; over 41 designs
+    # (scorecard + committed lettering/logo art, 80 mm left chest) only Ahora
+    # and one Golke-screenshot icon move. False is #1641's engine; PRE_FLIP
+    # (SEAM_HOLD_BODIES_2026_11_19_OFF) pins it. `tests/test_seam_hold_bodies.py`.
+    seam_hold_skips_outline_bodies: bool = True
     # `stripe_underfill` (2026-11-12, built OFF, Kent: "Build it, OFF"): a
     # field of parallel bands alternating between two threads (a flag's
     # stripes) sews the LIGHTER thread once as a fill of the whole field and
