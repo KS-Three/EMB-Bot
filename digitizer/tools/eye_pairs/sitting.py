@@ -43,8 +43,7 @@ import sys
 from datetime import datetime
 from pathlib import Path
 
-from digitizer_core.config import PipelineConfig
-from digitizer_core.config import RETIRED_FIELDS
+from digitizer_core.config import RETIRED_FIELDS, PipelineConfig
 
 from . import analysis as an
 from . import density_flow as df
@@ -116,7 +115,9 @@ def _check_arm(name: str, arm: dict, spec: dict, fields: set, defaults: dict,
         problems.append(f"arm {name!r}: no flags")
         flags = {}
     for k, v in flags.items():
-        if k in RETIRED_FIELDS:      # a pre-registered arm on a flag flag consolidation folded: historical
+        if k in RETIRED_FIELDS:
+            # a pre-registered sitting names a flag that flag consolidation later deleted: a valid
+            # record, not buildable today (`config.RETIRED_FIELDS`), so nothing more to check
             continue
         if k not in fields:
             problems.append(f"arm {name!r}: {k!r} is not a PipelineConfig field")

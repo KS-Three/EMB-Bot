@@ -34,6 +34,7 @@ from tools.eye_pairs import __main__ as cli  # noqa: E402
 from tools.eye_pairs import pooled, sitting  # noqa: E402
 from digitizer_core.config import RETIRED_FIELDS  # noqa: E402
 from tools.eye_pairs.pairs import BASE, append_pick  # noqa: E402
+from digitizer_core.config import RETIRED_FIELDS  # noqa: E402
 
 from .conftest import draw_tiny_logo, held_on_source_line  # noqa: E402
 
@@ -121,6 +122,19 @@ def mini_spec(tmp_path, *, same_as_judged=False):
 def test_a_valid_mini_spec_passes(tmp_path):
     spec, td, judged = mini_spec(tmp_path)
     sitting.validate_spec(spec, testdata=td, judged=judged)
+
+
+def test_an_arm_naming_a_retired_field_is_a_valid_historical_record(tmp_path, monkeypatch):
+    """A pre-registered sitting (dreamsim-confirm's `apex_cut_on`) names a field flag
+    consolidation deleted: valid, not buildable. A name that is neither a field nor retired
+    is still refused."""
+    spec, td, judged = mini_spec(tmp_path)
+    monkeypatch.setattr(sitting, "RETIRED_FIELDS", frozenset({"gone_flag"}))
+    spec["arms"]["angle45"]["flags"]["gone_flag"] = True
+    sitting.validate_spec(spec, testdata=td, judged=judged)
+    spec["arms"]["angle45"]["flags"]["never_existed"] = True
+    with pytest.raises(sitting.SpecError, match="never_existed.*not a PipelineConfig field"):
+        sitting.validate_spec(spec, testdata=td, judged=judged)
 
 
 @pytest.mark.parametrize("mutate,needle", [
@@ -953,7 +967,8 @@ def test_the_dreamsim_confirm_arms_are_six_one_flag_arms_with_two_reserves():
     assert len(spec["arms"]) == 6 and len(spec["reserve_arms"]) == 2
     for name, arm in list(spec["arms"].items()) + [(r["name"], r) for r in spec["reserve_arms"]]:
         (flag, value), = arm["flags"].items()
-        assert defaults[flag] is not value, name
+        # `apex_cut_on` names a field deleted 2026-11-19: a valid historical record
+        assert flag in RETIRED_FIELDS or defaults[flag] is not value, name
         assert arm["moves"] == {} and arm["holds"] == [], name
     strata = {a["stratum"] for a in spec["arms"].values()}
     assert all(r["stratum"] in strata for r in spec["reserve_arms"])
