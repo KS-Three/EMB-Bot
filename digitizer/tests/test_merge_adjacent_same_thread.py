@@ -27,7 +27,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.stage7_sequence import _merge_adjacent_same_thread
 from digitizer_core.stitches import StitchBlock, StitchRun
-from tests.conftest import PRE_FLIP
+from tests.conftest import own_thread_only
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
@@ -97,13 +97,27 @@ def test_degenerate_inputs_are_a_no_op(blocks):
     assert len(_merge_adjacent_same_thread(src, trim_at=3.0)) == len(src)
 
 
-def test_flat_artwork_is_byte_identical_with_the_flag_either_way():
+def _merge_off(monkeypatch):
+    """The engine before the merge became unconditional (2026-11-20): the
+    adjacent merge, the hoist and the edge cap's seam join do nothing, so
+    each block is tied once where `_shade_blocks` makes it, as the
+    `merge_adjacent_same_thread=False` arm always did."""
+    import digitizer_core.stage7_sequence as s7
+    for name, fake in (("_merge_adjacent_same_thread", lambda blocks, trim_at: blocks),
+                       ("_hoist_same_thread", lambda blocks, trim_at, margin_mm: blocks),
+                       ("_cap_seam_joins", lambda blocks, c_index, cfg: False)):
+        real = getattr(s7, name)
+        monkeypatch.setattr(s7, name, own_thread_only(fake, real))
+
+
+def test_flat_artwork_is_byte_identical_with_the_merge_either_way(monkeypatch):
     """The merge only fires where two adjacent blocks share a thread, which
     no flat design measured here produces — so the flat lane, and every
     golden pinned on it, must be untouched by the default flip."""
     img = TESTDATA / "logo_whitebg.png"
-    _r1, off = digitize(img, PipelineConfig(merge_adjacent_same_thread=False))
-    _r2, on = digitize(img, PipelineConfig(merge_adjacent_same_thread=True))
+    _r2, on = digitize(img, PipelineConfig())
+    _merge_off(monkeypatch)
+    _r1, off = digitize(img, PipelineConfig())
 
     def shape(plan):
         return [(b.thread_index, [tuple(r.points) for r in b.runs])
@@ -112,7 +126,7 @@ def test_flat_artwork_is_byte_identical_with_the_flag_either_way():
     assert shape(off) == shape(on)
 
 
-def test_ties_are_applied_exactly_once_across_the_merge():
+def test_ties_are_applied_exactly_once_across_the_merge(monkeypatch):
     """`apply_ties` is not idempotent — its own docstring warns that tying
     twice "doubles the lock into eight stitches of thread piled in one spot".
     The merge defers tying so it happens once, on the surviving blocks; if it
@@ -124,7 +138,7 @@ def test_ties_are_applied_exactly_once_across_the_merge():
     re-snaps by `rehome_resnapped_regions`, review-screen recolors by
     `apply_shape_edits`' own layer-move (regions.py: "the layer moves with
     it") — so no committed artwork reaches the merge with anything to fold
-    (the owl sews 12 blocks with the flag OFF; pinned below). The invariant
+    (the owl sews 12 blocks with the merge off). The invariant
     is exercised where the file's unit tests already live: `sequence()` on
     hand-built regions whose thread identity is forced, the one lane —
     upstream state this pipeline no longer produces, or a future split
@@ -144,6 +158,8 @@ def test_ties_are_applied_exactly_once_across_the_merge():
                       meta={"layer": layer, "tier": "fill"})
 
     def blocks_with(merge: bool):
+        if not merge:
+            _merge_off(monkeypatch)
         # t7 at layers 0 and 2 with t9 between — [t7, t9, t7] raw. The
         # shapes sit 20 mm apart, far beyond both the hoist margin (their
         # order provably cannot move a seam) and trim_at (every block
@@ -155,11 +171,10 @@ def test_ties_are_applied_exactly_once_across_the_merge():
         # block SEQUENCE [7, 9, 7] the merge collapses. The design-silhouette
         # cap (ON by default since 2026-09-11) appends a fourth block that the
         # merge has nothing to say about.
-        conf = PipelineConfig(garment_id="left_chest",
-                              merge_adjacent_same_thread=merge,
-                              edge_cap="none")
+        conf = PipelineConfig(garment_id="left_chest", edge_cap="none")
         planned, _ = resolve_overlaps(regions, fabric, conf)
         blocks, _ = sequence(planned, fabric, conf)
+        monkeypatch.undo()
         return blocks
 
     off, on = blocks_with(False), blocks_with(True)
@@ -171,63 +186,6 @@ def test_ties_are_applied_exactly_once_across_the_merge():
     # No two adjacent blocks may share a thread once the pass has run.
     seq = [b.thread_index for b in on]
     assert all(x != y for x, y in zip(seq, seq[1:]))
-
-
-def test_the_pipelines_own_output_no_longer_needs_the_merge():
-    """The owl, flag OFF, must sew NO adjacent same-thread blocks: the
-    re-snap splits that used to produce them (t46 at blocks 3-4, t12 at
-    14-15, 2026-08-28) are consolidated upstream by
-    `rehome_resnapped_regions` now, so merge-off equals merge-on. If this
-    ever fails, a NEW split source has appeared — find it before reaching
-    for the merge to paper over it.
-
-    2026-09-13: one appeared, it was FOUND rather than papered over, and it
-    is a default — `cfg.keep_thin_strokes`, flipped ON that day (Kent's
-    ruling). The pipeline arms `resolve_small_regions` with the quantiser's
-    layer colours on EVERY lane when that flag is on, so on the owl two
-    contrasting sub-floor regions are now kept instead of absorbed and come
-    back as their own blocks: with the flag on and the merge off the owl
-    plans `[..., 305, 305, ..., 12, 12, ...]`. The shipped engine still sews
-    no such pair — `merge_adjacent_same_thread` is ON by default and folds
-    them — so what this test pins, the claim that the RE-SNAP splits are
-    consolidated upstream, is pinned on the engine that claim was measured
-    on (PRE_FLIP's posture, and the same reason `test_the_hoist_...` below
-    pins its own arms)."""
-    img = TESTDATA / "photo/owl_kent.jpg"
-    # `photo_prep=False` pinned 2026-10-02 (#553). Declaring the owl
-    # photographic also requests the subject cutout. Where `rembg_isolated/
-    # venv` exists, the owl is re-cut and the run is a different design from
-    # the one this claim was measured on. CI never builds that venv: its
-    # requested-but-unavailable cutout skips prep entirely, which is this
-    # pin's geometry (`test_background_removal.test_an_unavailable_cutout_
-    # falls_back_to_no_prep_at_all`).
-    # `blend_fallback_underlay=False` pinned 2026-10-07, when it flipped ON:
-    # the underlay moves where the owl's gradient fills enter and leave, so
-    # stage 7 picks a different order and two existing thread-17 blocks
-    # (`..., 17, 155, 17, ...` -> `..., 17, 17, 155, ...`) land side by side.
-    # Same regions, same block count — an ORDER change, not a new split, and
-    # the shipped engine's merge (ON) folds it. Pinned for the same reason as
-    # `keep_thin_strokes` above.
-    # `keep_dark_thin_strokes=False` pinned 2026-10-28, when Kent flipped it ON
-    # (#1170): the dark-ink read carves 16 strokes out of the owl's grounds and
-    # they come back as their own blocks, which the merge folds (`..., 248,
-    # 248, ...` with it off). Same reason as `keep_thin_strokes` above.
-    # `stage0_texture_gate=False` pinned 2026-10-28, when it was built ON: the
-    # owl now classes `photo_scene` on the texture route, and the re-snap
-    # claim above was measured on its gradient-lane plan. Same reason as
-    # `keep_thin_strokes` above.
-    _r, off = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                           is_photographic=True,
-                                           keep_thin_strokes=False,
-                                           keep_dark_thin_strokes=False,
-                                           merge_adjacent_same_thread=False,
-                                           blend_fallback_underlay=False,
-                                           photo_prep=False,
-                                           stage0_texture_gate=False))
-    seq = [b.thread_index for b in off.blocks]
-    assert all(x != y for x, y in zip(seq, seq[1:])), (
-        f"adjacent same-thread blocks are back: {seq}"
-    )
 
 
 # --- The non-adjacent half: _hoist_same_thread -----------------------------
@@ -310,40 +268,6 @@ def test_a_one_point_run_still_has_geometry():
     b = _block(7, [StitchRun(points=[(1.0, 1.0)], shape_id="s")])
     g = _block_thread_geom(b)
     assert g is not None and not g.is_empty
-
-
-@pytest.mark.usefixtures("source_line_grid")
-def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
-    """The whole safety argument, end to end: if the gate is right, reordering
-    disjoint blocks cannot change what the design looks like. A changed render
-    would mean the gate let through a reorder that moved a seam."""
-    from digitizer_core.adapter import plan_to_design
-    from digitizer_core.stitchviz import render_png_bytes
-
-    img = TESTDATA / "photo/owl_kent.jpg"
-    # Pinned to the pixel-centre trace (`subpixel_edges=False`) 2026-09-09:
-    # with sub-pixel edges on by default the owl at 100 mm plans 14 blocks
-    # with the hoist off as well as on -- the 15th block, the one revisit
-    # this argument needs, is no longer planned -- and the assertion below
-    # would read as "the hoist did nothing" on a plan that gave it nothing
-    # to do. The old polygon keeps the revisit, so the end-to-end argument
-    # keeps its ground; the gate itself is flag-blind.
-    # ... and to the engine before the 2026-09-10 colour-bundle flip
-    # (PRE_FLIP), for the same reason: the four flags re-cone the owl's
-    # blocks and the plan the hoist argument needs is the pre-flip one.
-    off = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                       hoist_same_thread_margin_mm=0.0,
-                                       subpixel_edges=False, **PRE_FLIP))[1]
-    on = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                      subpixel_edges=False, **PRE_FLIP))[1]
-
-    assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
-    n_off = sum(len(r.points) for b in off.blocks for r in b.runs)
-    n_on = sum(len(r.points) for b in on.blocks for r in b.runs)
-    assert n_on == n_off, "hoisting changed the stitch count"
-    assert (render_png_bytes(plan_to_design(off), px_per_mm=8.0)
-            == render_png_bytes(plan_to_design(on), px_per_mm=8.0)), (
-        "the render moved — the disjointness gate let a real seam reorder through")
 
 
 def test_flat_artwork_is_untouched_by_the_hoist_too():

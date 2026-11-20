@@ -19,10 +19,11 @@ edge cap leaves that edge alone on its own.
 from __future__ import annotations
 
 import math
+from unittest import mock
 
 from shapely.geometry import LineString, Point, Polygon
 
-from digitizer_core import PipelineConfig, machine, stitches
+from digitizer_core import PipelineConfig, columns, machine, stitches
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
@@ -101,11 +102,13 @@ def test_lettering_is_left_alone():
                  thread_number="4101", area_mm2=hexa.area, source="test",
                  meta={"layer": 0, "text_cluster_id": 1, "text_candidate": True})
     planned = [PlannedRegion(region=reg, polygon=hexa, sew_index=0)]
-    # `lettering_columns_skip_blobs` (ON) already untags a solid blob as
-    # lettering; off, the tag stands and this rule must still step aside
-    cfg = PipelineConfig(underlay=False, lettering_columns=False,
-                         lettering_columns_skip_blobs=False)
-    blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
+    # `lettering_columns_skip_blobs` (folded in 2026-11-20) untags a solid
+    # blob as lettering, so the hexagon would be a plain compact solid; the
+    # blob predicate answers no here, so the text tag stands and this rule
+    # must still step aside
+    cfg = PipelineConfig(underlay=False, lettering_columns=False)
+    with mock.patch.object(columns, "is_solid_blob", lambda _p: False):
+        blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg)
     kinds = [r.kind for blk in blocks for r in blk.runs if r.shape_id == "Sblob"]
     assert stitches.FILL in kinds
     assert stitches.SATIN not in kinds

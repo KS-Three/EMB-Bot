@@ -319,32 +319,6 @@ def whitebg():
 
 
 @pytest.fixture(scope="session")
-def whitebg_pre_flip():
-    """The same fixture on the engine BEFORE `cfg.keep_thin_strokes` was
-    flipped ON by default (2026-09-13, Kent's ruling on
-    `docs/thin-strokes-flip-2026-09-13.md`).
-
-    ON, whitebg's ~1.2 mm² teal patch is contrasting, clears the run tier's
-    floors and is KEPT as its own teal run instead of being absorbed into
-    the white ground it touches; a second former absorbee (~0.42 mm²) fails
-    those floors and drops instead. So the fixture gains a region, a block
-    and a cone, `ABSORBED_SMALL_SHAPES` stops being emitted, and two
-    neighbours' polygons shrink by the pieces they no longer swallow. That
-    is the shipped engine now, pinned in `tests/test_keep_thin_strokes.py`
-    and in the flat-lane golden — use the plain `whitebg` fixture for
-    anything asking what the engine DOES.
-
-    This one exists for the handful of claims that were MEASURED on the old
-    polygons and are about something else entirely (stage 3's absorb
-    reporting, the bare-core gate's false-alarm analysis): the posture
-    `PRE_FLIP` below documents, as a fixture because three tests in two
-    files need the same run."""
-    # `FLOW_2026_11_19_OFF` too (`read_primitives` snaps whitebg's discs, moving
-    # the bare-core radii these claims were measured on)
-    return run_stages(TESTDATA / "logo_whitebg.png", cfg(keep_thin_strokes=False, **FLOW_2026_11_19_OFF))
-
-
-@pytest.fixture(scope="session")
 def whitebg_white_off():
     """The same fixture with `sew_enclosed_white` OFF (it is ON by default since
     Kent's flip 2026-10-26). ON, whitebg's ring hole sews white; OFF it is the
@@ -527,20 +501,19 @@ def segments(stitch_plan):
             yield b, run, a, c
 
 
-# The colour bundle (quality review 2026-09-08 item 8): four flags Kent
-# flipped ON by default as one set on 2026-09-10 (`docs/colour-bundle-
-# decision-2026-09-10.md`), and a fifth later the same day --
-# `robust_region_colour`, the stage-2 repair for the loss that flip's own
-# test run found (PR #445 built it OFF; the PR after flipped it on his
-# ruling). Each flag's own test file still prices the flag ALONE, so its
-# baseline is the PRE-FLIP engine -- the five False -- and "on" is that
-# baseline plus the one flag; otherwise "off" would mean "this flag off,
-# the others on", which is not the engine any measurement was made on. The
-# shipped engine is BUNDLE_ON (the fifth flag is the default there), and
-# each file pins that once.
+# The colour bundle (quality review 2026-09-08 item 8): flags Kent flipped
+# ON by default as one set on 2026-09-10 (`docs/colour-bundle-
+# decision-2026-09-10.md`). Two of its five (`bind_resnap_all_classes`,
+# `robust_region_colour`) were folded into the code 2026-11-20
+# (`docs/flag-history/tier-b3-colour.md`); three remain. Each flag's own
+# test file still prices the flag ALONE, so its baseline is the PRE-FLIP
+# engine -- the three False -- and "on" is that baseline plus the one flag;
+# otherwise "off" would mean "this flag off, the others on", which is not
+# the engine any measurement was made on. The shipped engine is BUNDLE_ON,
+# and each file pins that once.
 COLOUR_BUNDLE = ("enforce_color_cap", "resnap_mask_matches_grader",
-                 "revalidate_small_shapes", "bind_resnap_all_classes")
-PRE_FLIP = {name: False for name in COLOUR_BUNDLE + ("robust_region_colour",)}
+                 "revalidate_small_shapes")
+PRE_FLIP = {name: False for name in COLOUR_BUNDLE}
 # `edge_cap` joined the flipped set 2026-09-11 ("bean", Kent's ruling after
 # item 14). It is a STRING, not a bool, so it cannot ride the dict
 # comprehension above -- and it is in PRE_FLIP for the same reason the five
@@ -548,40 +521,6 @@ PRE_FLIP = {name: False for name in COLOUR_BUNDLE + ("robust_region_colour",)}
 # measurement was made on, and every cap arm before today was made with the
 # cap off.
 PRE_FLIP["edge_cap"] = "none"
-# `keep_thin_strokes` joined the flipped set 2026-09-13 (Kent's ruling on
-# `docs/thin-strokes-flip-2026-09-13.md`), and is in PRE_FLIP for the same
-# reason as the six above: ON it keeps a contrasting sub-floor region for the
-# run tier instead of absorbing it, which adds regions, blocks and cones to
-# real logos -- so an arm measured before today was measured without it, and
-# a test pricing one OTHER flag must not silently pick it up. Measured: with
-# it left ON, twelve such arms across seven files moved (the owl, Bridge Bar,
-# gaulke, the screenshot, drone).
-PRE_FLIP["keep_thin_strokes"] = False
-# `strip_letterbox` joined the flipped set 2026-09-14, and is in PRE_FLIP for
-# exactly the reason stated above: a test pricing one flag alone must measure
-# against the engine its measurement was made on. Every arm in the resnap and
-# thread-match files was measured on `photo/logo_gaulke_roofing.png` WITH its
-# letterbox bars — 16.1 px/mm, the 247-vs-54 px footprint, the 63.6 dE00
-# Silver — and cropping the bars changes the raster those numbers describe.
-#
-# This is NOT a way of dodging the re-point work. The distinction that
-# settles it: those tests are about the COLOUR flags, and `strip_letterbox`
-# is orthogonal to every one of them, so pinning it here keeps each test
-# measuring the thing it is named for, on the pixels it measured. The tests
-# that are genuinely ABOUT the crop (`test_letterbox`, the full-bleed guard,
-# `test_enclosed_by_garment`) do not use PRE_FLIP and were re-pointed
-# properly instead.
-#
-# Measured before choosing this: no single fixture in the corpus reproduces
-# gaulke's uncropped severity on BOTH axes the resnap premise asserts.
-# `photo/logo_bridge_bar.jpg` has the footprint inflation (raw 229 px vs
-# grader 39, ratio 5.87 against the test's `> 3`) but not the bimodality
-# (26 dark pixels against `> 50`, because it decodes at 4.0 px/mm);
-# `photo/screenshot_phone_ui_golke.jpg` has the bimodality (92 dark / 102
-# light at 12.75 px/mm) but not the ratio (2.20). Splitting one premise
-# across two fixtures to keep a number green would have been the
-# fit-to-output move this repo's doctrine warns about.
-PRE_FLIP["strip_letterbox"] = False
 # `stage0_texture_gate` joined the flipped set 2026-10-28 (built ON, Kent's
 # "ON by default (Recommended)"), for the reason every entry above gives: ON,
 # an opaque photograph or steep-ramp raster that read `gradient` on the grain
@@ -738,42 +677,6 @@ PRE_FLIP["thread_match_grade_traced_letter"] = False
 # leaves transparent is no longer an `ARTWORK_ELEMENT_DROPPED`.
 # `tests/engine_2026_10_27.json` carries it False.
 PRE_FLIP["dropped_element_v2"] = False
-# `snap_region_edges` joined the flipped set 2026-09-30 (Kent's flip on
-# renders of his Instagram icon, drone, Bridge Bar and the repro), for the
-# reason every entry above gives. ON, a gradient-lane region's edge follows
-# the pixels instead of the SEEDS superpixels, which removes exactly the
-# slivers and halo fragments the colour files use as their PREMISE -- the
-# resnap's Silver-on-near-black shape, the drifted sliver, the repeated cone
-# -- so an arm measured before that day was measured with them present.
-# Measured at the flip: left ON, 26 tests across 13 files moved, and in the
-# files that read this dict every one was a premise assert ("fixture drift",
-# "should be there to lose"), not the flag under test getting worse. The
-# test that is ABOUT the snap is `tests/test_snap_region_edges.py`.
-PRE_FLIP["snap_region_edges"] = False
-# `two_tone_snap` joined the flipped set 2026-10-11 (defect 58, Kent's
-# approval 2026-10-08), for the reason every entry above gives. ON, a
-# black-and-white raster is thresholded to its two inks before any region
-# exists, so gaulke's grey halo -- the Silver `3971` escape, the 0.58 mm²
-# shard, the enclosed `4174` that the resnap and thread-match files take as
-# their PREMISE -- is never segmented at all. The test that is ABOUT the snap
-# is `tests/test_two_tone.py`.
-PRE_FLIP["two_tone_snap"] = False
-# `lettering_columns_square_ends` and `lettering_columns_inside_connectors`
-# joined the flipped set 2026-10-13 (Kent's ruling), for the reason every
-# entry above gives. ON, the Column lane ends every column on the letter's
-# own outline and keeps its connectors on the letter, so a lettering fixture's
-# stitches, trims and penetrations move; a test pricing one OTHER flag must
-# measure against the engine its arms were made on. The tests ABOUT them are
-# `tests/test_column_ends.py`.
-PRE_FLIP["lettering_columns_square_ends"] = False
-PRE_FLIP["lettering_columns_inside_connectors"] = False
-# `small_glyph_keep` joined the flipped set 2026-10-13 (Kent's ruling), for the
-# reason every entry above gives. ON, stage 4 keeps the counters and the ground
-# hole of a rescued small glyph, which on `screenshot_phone_ui_golke` adds one
-# cone (15 -> 16) under `revalidate_small_shapes` alone -- the premise
-# `test_revalidate_small_shapes` prices that flag against ("16 -> 16 cones").
-# The test that is ABOUT the keep is `tests/test_small_glyph_keep.py`.
-PRE_FLIP["small_glyph_keep"] = False
 # `small_text_true_size` joined the flipped set 2026-10-14 (Kent, WoK 56
 # option A, after PR #948's drone fix), for the reason every entry above
 # gives. ON, small lettering is re-traced at its true size and thin letters
@@ -812,25 +715,19 @@ PRE_FLIP["bean_letter_bay_hold"] = None
 # #1047, `docs/flip-sheet-2026-10-23.md`: OFF | ON | pro renders, judged by
 # numbers against the pro's file where the eye cannot tell at viewing
 # size). Same reason as every entry above: an arm measured before that day
-# was measured without them. The small-text set is the sheet's exact
-# `small_text_set` arm: the four cap values AND `lettering_columns_small_bold`.
+# was measured without them. The small-text set is the sheet's cap values
+# (`lettering_columns_small_bold`, its other half, was folded into the code
+# 2026-11-20).
 FLIP_2026_10_23 = {
-    "fill_turn_slant": False,
-    "trim_bury_under_later": False,
-    "tie_in_off": False,
-    "fill_underlay_cross": False,
     "small_text_cap_mm": None,
     "small_text_cap_max_width_scale": None,
     "small_text_cap_min_stroke_mm": None,
     "small_text_cap_letter_gap_mm": None,
     "small_text_cap_bold_scale": None,
-    "lettering_columns_small_bold": False,
     # PR #1057 (Kent 2026-10-23, same day, by the pro's numbers): the two layout
-    # flags and the corner fold, so every site that pins "before the 10-23 flips"
-    # pins them too.
+    # flags (and the corner fold, folded into the code 2026-11-20), so every
+    # site that pins "before the 10-23 flips" pins them too.
     "border_by_size": False,
-    "enclosed_alpha_hole_parts": False,
-    "lettering_columns_corner_fold": False,
     # The bean rule (`bean_only_lines`, built OFF and flipped ON by Kent the
     # same day, 2026-10-27, #1165): every site that pins "before the 10-23
     # flips" was measured on an engine that beaned letters, sub-floor solids
@@ -863,37 +760,10 @@ PRE_FLIP["detail_spoke_scale"] = None
 # mm"). None is the even 0.45 pitch, the engine before that call. The
 # tests ABOUT it are `tests/test_bean_straight.py`.
 PRE_FLIP["bean_letter_straight_mm"] = None
-# Native-read corner runs (Kent's ruling 2026-10-20, MASTER_SCOPE item 41):
-# one side-line fit per corner run, an unread vertex takes its read
-# neighbours' offset, a vertex landing behind its predecessor drops. False is
-# the pre-flip engine: Becker's outline at 1.8 px/mm carries 7.1 reversals
-# per 100 mm. The tests ABOUT it are in `tests/test_subpixel_corner_runs.py`.
-PRE_FLIP["subpixel_corner_runs"] = False
-# The lowercase shoulder cut (Kent's flip 2026-10-20, after PR #986's sewn
-# judge): a lettering piece that folds its crosses through a shoulder takes a
-# second look, judged sewn. False is the pre-flip lane. The tests ABOUT it are
-# `tests/test_lowercase_angle.py`.
-PRE_FLIP["lettering_columns_fold_cuts"] = False
-# The small stem and the dot rung, scoped to lettering (Kent's flip
-# 2026-10-20, MASTER_SCOPE item 52; OFF/ON renders in PR #991). ON, a thin
-# lettering stem under the area floor sews satin in the Column lane, and an
-# i/j dot over a same-colour stem sews instead of being dropped, which moves
-# the stitches and trims of lettering fixtures. False is the pre-flip engine.
-# The tests ABOUT them are `tests/test_small_stem.py`,
-# `tests/test_small_dot_rung.py` and `tests/test_dot_rung_lettering.py`.
-PRE_FLIP["lettering_columns_small_stem"] = False
 # The rail axis (2026-10-20): a short italic bar in the Column lane runs along
 # its rails, not its spine's chord, so an italic wordmark's arms move. False
 # is the pre-flip lane. The tests ABOUT it are `tests/test_column_rail_axis.py`.
 PRE_FLIP["lettering_columns_rail_axis"] = False
-# The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF
-# 2026-09-04 and flipped it ON 2026-10-20, MASTER_SCOPE item 46, on PR
-# #1003's pricing): a merged label that is mostly boundary and a blend of its
-# two sides folds into the nearer side, so a JPEG's halo cones are never
-# planned. False is the pre-flip engine, with every halo shard the colour
-# files take as their premise. The tests ABOUT it are
-# `tests/test_phantom_blend_photo.py`.
-PRE_FLIP["dissolve_phantom_blends"] = False
 # Stage 5's cut-off pieces (defect 61's second half; Kent flipped it ON
 # 2026-10-20, item 46, after the halo lever above): every piece of a split
 # shape whose artwork clears the stage-4 floor sews as a region of its own,
@@ -902,24 +772,17 @@ PRE_FLIP["dissolve_phantom_blends"] = False
 # the other pieces drop. The tests ABOUT it are
 # `tests/test_clip_keep_pieces.py`.
 PRE_FLIP["clip_keep_pieces"] = False
-# The edge cap leaves a bean letter alone (2026-10-20, Proseal's two A's):
-# a text member sewn as bean runs gives the silhouette nothing, so no cap
-# rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
-# are in `tests/test_edge_cap.py`.
-PRE_FLIP["edge_cap_skip_bean_letters"] = False
 # Kent's wave-2 flips (2026-10-24, from the flip sheet of PR #1069), for the
-# reason every entry above gives. `border_from_outline` (#1065): an art outline
-# sews as one satin loop per body at the outline's width, its bodies as fills.
+# reason every entry above gives.
 # `small_text_cap_reach_edges` (#1066): the re-set reaches a line on the
 # design's edge; inert while the re-set itself is unset.
-PRE_FLIP["border_from_outline"] = False
 PRE_FLIP["small_text_cap_reach_edges"] = False
-# Three lettering flags Kent flipped ON 2026-10-24 ("Flip it ON", then "Ship
-# 3, fix white next" on 2026-10-25), for the reason every entry above gives:
+# Two lettering flags Kent flipped ON 2026-10-24 ("Flip it ON", then "Ship
+# 3, fix white next" on 2026-10-25; the third, `lettering_columns_text_lean`,
+# was folded into the code 2026-11-20), for the reason every entry above gives:
 # each moves lettering only. False is the engine before the flip. The tests
-# ABOUT them are `tests/test_column_text_lean.py`,
-# `tests/test_column_inside_stagger.py` and `tests/test_wide_letters.py`.
-PRE_FLIP["lettering_columns_text_lean"] = False
+# ABOUT them are `tests/test_column_inside_stagger.py` and
+# `tests/test_wide_letters.py`.
 PRE_FLIP["lettering_columns_inside_stagger"] = False
 PRE_FLIP["text_cluster_wide_letters"] = False
 # `border_from_outline_line_art_guard` (#1078), Kent's flip 2026-10-25 ("Flip
@@ -930,8 +793,8 @@ PRE_FLIP["text_cluster_wide_letters"] = False
 # `tests/test_outline_line_art_guard.py`.
 PRE_FLIP["border_from_outline_line_art_guard"] = False
 # Kent's wave-3 flips (2026-10-26), for the reason every entry above gives.
-# `small_text_bay_mouth` (#1085, "Flip ON"): the re-set cuts back a terminal
-# that shuts a bay. `sew_enclosed_white` (#1087's option A, "Flip, but prove
+# (`small_text_bay_mouth`, #1085, was folded into the code 2026-11-20.)
+# `sew_enclosed_white` (#1087's option A, "Flip, but prove
 # it first"): the white inside the design sews, its fields-fill and keyline
 # companions still OFF. `small_text_reset_grow_away` (#1113, "Flip ON
 # (Recommended)", the same day): the re-set widens by its traced stroke and
@@ -945,7 +808,7 @@ PRE_FLIP["border_from_outline_line_art_guard"] = False
 # a pin taken before that day that spreads a dated dict rather than PRE_FLIP.
 FLIP_2026_10_30 = {"fill_bridge_cut_exposed": False, "fill_seam_order": False,
                    "fill_seam_order_priced": False, "knockdown_shorter_walk": False}
-FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
+FLIP_2026_10_26 = {"sew_enclosed_white": False,
                    "small_text_reset_grow_away": False, "script_strokes": False}
 PRE_FLIP.update(FLIP_2026_10_26)
 # `outline_loop_mitre` (#1059's loops, built 2026-10-25), Kent's flip on the
@@ -1300,11 +1163,139 @@ PRE_FLIP.update(FLIP_FOUR_2026_11_19_OFF)
 # through_last, e_top_arm + top_slab"; then "Hold OFF, fix the leg (Recommended)"): `tests/test_through_last.py`.
 THROUGH_LAST_2026_11_19_OFF = {"lettering_columns_through_last": False}
 PRE_FLIP.update(THROUGH_LAST_2026_11_19_OFF)
-#: The three, OFF: for a test that pins a number the flip moved but that is
+#: The two, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
 LETTERING_2026_10_24_OFF = {k: PRE_FLIP[k] for k in (
-    "lettering_columns_text_lean", "lettering_columns_inside_stagger", "text_cluster_wide_letters")}
+    "lettering_columns_inside_stagger", "text_cluster_wide_letters")}
 BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
+
+
+def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=False,
+                  bind=False, two_tone=False, strip=False, thin=False):
+    """The engine as it was before seven colour switches were folded into the
+    code (2026-11-20, `docs/flag-history/tier-b3-colour.md`), for a test whose
+    PREMISE is the engine one of their False paths made. Each patch is exactly
+    what that switch's False branch did, so a test that held the switch False
+    holds the same pixels now. `mp` is a `pytest.MonkeyPatch`; pass True for
+    each one to switch OFF:
+      design_ramp  stage 1's ramp fit (flattens a sweep before the merge)
+      robust       `robust_region_colour`: a region's palette colour is the RGB mean
+      snap         `snap_region_edges`: superpixel-edged labels
+      dissolve     `dissolve_phantom_blends`: the photo lane keeps JPEG halo labels
+      bind         `bind_resnap_all_classes`: only photo classes bind the re-snap
+      two_tone     `two_tone_snap`: no black-and-white snap
+      strip        `strip_letterbox`: letterbox bars stay in the raster
+      thin         `keep_thin_strokes` (folded 2026-11-20, `docs/flag-history/tier-b2-lettering.md`):
+                   no thin-ink population on the gradient lane, and stage 3's contrast
+                   rescue not asked (a sub-floor region is absorbed into what it touches)
+    """
+    import numpy as np
+
+    import digitizer_core.pipeline as pl
+    import digitizer_core.stage0_classify as s0
+    import digitizer_core.stage1_prep as s1
+    import digitizer_core.stage2_photo_segment as ps
+    from digitizer_core import two_tone as tt
+    from digitizer_core.config import is_photographic
+    from digitizer_core.threads import rgb_to_lab
+
+    def patch(mod, name, fake):
+        mp.setattr(mod, name, own_thread_only(fake, getattr(mod, name)))
+
+    if design_ramp:
+        patch(pl, "fit_design_ramp", lambda p, *a, **kw: None)
+    if robust:
+        patch(ps, "_region_lab", lambda px, cfg: rgb_to_lab(
+            np.asarray(px).reshape(-1, 3).mean(axis=0, keepdims=True))[0])
+    if snap:
+        patch(ps, "snap_region_edges", lambda labels, valid, lab, **kw: labels)
+    if dissolve:
+        patch(ps, "dissolve_phantom_blends", lambda merged, valid, *a, **kw: (merged, None, []))
+    if bind:
+        real = pl.revalidate_threads
+
+        def unbound(regions, p, cfg, **kw):
+            if not is_photographic(cfg, kw.get("design_class", "flat")):
+                kw["palette_indices"] = None
+            return real(regions, p, cfg, **kw)
+        patch(pl, "revalidate_threads", unbound)
+    if two_tone:
+        patch(tt, "apply", lambda p: False)
+    if strip:
+        for mod in (s0, s1):
+            patch(mod, "strip_letterbox", lambda rgb, alpha=None: (rgb, alpha))
+    if thin:
+        real_small, real_seg = pl.resolve_small_regions, pl.photo_segment
+        patch(pl, "resolve_small_regions",
+              lambda *a, **kw: real_small(*a, **{**kw, "keep_contrast_rescue": False}))
+        patch(pl, "photo_segment",
+              lambda *a, **kw: real_seg(*a, **{**kw, "thin_population": False}))
+
+
+#: The seven the old `PRE_FLIP` held False (everything but `design_ramp`, which it never pinned).
+PRE_FLIP_FOLDED = dict(robust=True, snap=True, dissolve=True, bind=True, two_tone=True, strip=True,
+                       thin=True)
+
+
+def legacy_lettering(mp, *, small_bold=True, corner_fold=True, text_lean=True):
+    """The Column lane as it was before `lettering_columns_small_bold`,
+    `lettering_columns_corner_fold` and `lettering_columns_text_lean` were folded
+    into the code (2026-11-20, `docs/flag-history/tier-b2-lettering.md`), for a test whose
+    numbers were read with `FLIP_2026_10_23` / `LETTERING_2026_10_24_OFF` holding them False:
+    stage 7's call to `lettering_columns_shape` drops the keyword each False branch
+    left out. `mp` is a `pytest.MonkeyPatch`; pass False to keep one of the three."""
+    import digitizer_core.stage7_sequence as s7
+
+    real = s7.lettering_columns_shape
+
+    def wrapped(*a, **kw):
+        if small_bold:
+            kw.pop("small_bold", None)
+        if corner_fold:
+            kw.pop("corner_fold", None)
+        if text_lean:
+            kw.pop("text_lean_deg", None)
+        return real(*a, **kw)
+    mp.setattr(s7, "lettering_columns_shape", own_thread_only(wrapped, real))
+
+
+def legacy_lettering_module_gen():
+    """A whole module on `legacy_lettering()`, module-scoped (see `pre_flip_module_gen`):
+    `legacy_lettering_module = pytest.fixture(autouse=True, scope="module")(legacy_lettering_module_gen)`."""
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_lettering(mp)
+        yield
+
+
+def on_the_pre_flip_engine(fn):
+    """Run one function (a test, or a cached helper a module's tests share) with
+    `legacy_engine(**PRE_FLIP_FOLDED)` in force, then put everything back."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        with pytest.MonkeyPatch.context() as mp:
+            legacy_engine(mp, **PRE_FLIP_FOLDED)
+            return fn(*args, **kwargs)
+    return wrapper
+
+
+def pre_flip_module_gen():
+    """A whole module on the pre-flip engine (`legacy_engine(**PRE_FLIP_FOLDED)`),
+    module-scoped so its other module-scoped fixtures and `lru_cache`d runs see
+    it too. In the module: `pre_flip_module = pytest.fixture(autouse=True,
+    scope="module")(pre_flip_module_gen)`."""
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, **PRE_FLIP_FOLDED)
+        yield
+
+
+@pytest.fixture
+def pre_flip_engine(monkeypatch):
+    """`legacy_engine(**PRE_FLIP_FOLDED)`: for a module whose numbers were read
+    with the six folded colour switches False (they were in `PRE_FLIP` until
+    2026-11-20). Opt in with `pytestmark = pytest.mark.usefixtures("pre_flip_engine")`."""
+    legacy_engine(monkeypatch, **PRE_FLIP_FOLDED)
 
 
 @pytest.fixture

@@ -424,7 +424,7 @@ def _one_polygon(geom, fallback: Polygon) -> Polygon:
 
 
 def _text_lean_house(region, cfg: PipelineConfig) -> float | None:
-    """`cfg.lettering_columns_text_lean` (2026-10-23): the house cross a
+    """`lettering_columns_text_lean` (2026-10-23): the house cross a
     Column letter's straight columns lean to -- the word's
     `satin_angle_deg` (the house pass, `set_lettering_house_angle`), else
     the design's `cfg.satin_angle_deg`; None where neither names one, and
@@ -2653,7 +2653,7 @@ def _cap_seam_joins(blocks: list[StitchBlock], c_index: int,
     block in that same cone -- the edge cap's repeated-cone route (MASTER_SCOPE
     defect 18), read by `tools/cone_revisits.py` at gap 1.
 
-    `cfg.merge_adjacent_same_thread` already folds consecutive same-thread
+    The adjacent same-thread merge already folds consecutive same-thread
     ARTWORK blocks; this is the same rule at the one seam it did not reach.
     The caller extends `blocks[-1]` with the cap's runs instead of appending a
     block: they stay jump + trim + tied as a block start, so every stitch and
@@ -2662,7 +2662,7 @@ def _cap_seam_joins(blocks: list[StitchBlock], c_index: int,
     `cfg.edge_cap_fold_into_colour` (`_cap_fold_host`, OFF). An operator-step
     block (appliqué, puff) is never joined: its stop is the operator's.
     """
-    if not (cfg.merge_adjacent_same_thread and blocks):
+    if not blocks:
         return False
     prev = blocks[-1]
     return (prev.thread_index == c_index and prev.step is None
@@ -3305,7 +3305,7 @@ def sequence(
         if cfg.shade_palette_demand and palette_spools:
             shade_palette = sorted(set(shade_palette) | set(palette_spools))
     class_fill_underlay = (_PHOTO_FILL_UNDERLAY if photo
-                           else fill_underlay_for(fabric, cfg.fill_underlay_cross))
+                           else fill_underlay_for(fabric, True))
     underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
                       if cfg.underlay else "none")
@@ -3349,13 +3349,11 @@ def sequence(
                       if cfg.border_abrupt_raggedness is not None
                       else machine.BORDER_ABRUPT_RAGGEDNESS)
     rescue = True        # `small_shape_rescue`, folded in
-    # `cfg.lettering_columns_small_stem` (default ON, 2026-10-20): a lettering stem
-    # under the area floor goes to the Column lane, not the run tier. Off,
-    # `routes_to_run` below is today's, branch for branch. It also needs the
-    # lane itself (satin + lettering_columns): a stem the lane does not take
+    # `lettering_columns_small_stem` (folded in): a lettering stem under the
+    # area floor goes to the Column lane, not the run tier. It needs the lane
+    # itself (satin + lettering_columns): a stem the lane does not take
     # would otherwise fall through to the classifier with no outline run.
-    small_stem = bool(cfg.lettering_columns_small_stem and cfg.lettering_columns
-                      and cfg.satin)
+    small_stem = bool(cfg.lettering_columns and cfg.satin)
     # The config-to-emitter mapping the split-satin knobs document: None
     # defers to the corpus-median machine default.
     split_above = cfg.split_satin_above_mm
@@ -3731,7 +3729,6 @@ def sequence(
     # list below is scoped to one colour; the silhouette is the union of
     # all of them, and a region that produced nothing has no edge to cap.
     cap_sewn: list[PlannedRegion] = []
-    merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
     # `cfg.small_letter_ties` (default OFF): the shapes sewn below as bean
     # letters or skeleton runs, whose runs `stitches.apply_ties` locks along
@@ -3746,7 +3743,7 @@ def sequence(
     if _rect_lock and not tie_kw:
         tie_kw = {"small_letters": set()}
     _lock_ids = tie_kw.get("small_letters")
-    # `cfg.border_from_outline` (built OFF, 2026-10-24): an outline in the
+    # The art's own outline (2026-10-24): an outline in the
     # art that sews (its id in `planned`) loops every looped hole at the
     # width of the body it holds (`outline_holes`); its bodies sew as plain
     # fills under it, never satin and never a border of their own -- the
@@ -3765,7 +3762,7 @@ def sequence(
     # it leaves the shape, sewn as split travel when it stays on it
     # (`lift_piece`). Off, never read past this line.
     piece_lift = bool(cfg.inshape_piece_lift)
-    if art_outlines and cfg.border_from_outline:
+    if art_outlines:
         _sewn = {_p.shape_id for _p in planned}
         _planned_by_id = {_p.shape_id: _p for _p in planned}
         for _oid, _bodies in art_outlines.items():
@@ -4144,7 +4141,7 @@ def sequence(
                     return runs, report, False
                 tier = "auto"
                 outline_tried = True
-            # `cfg.border_from_outline` (built OFF, 2026-10-24): the art's own
+            # The art's own outline (2026-10-24):
             # outline sewn the pro's way -- one satin loop round each body it
             # holds, rail on the body's edge, crosses out across the outline
             # at his width (`art_outline.outline_width_mm`: the art outline's
@@ -4309,10 +4306,10 @@ def sequence(
                     angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                     stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at, under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry, density_boost=cfg.fill_density_boost)
                 if runs:
                     report["outline_body"] = 1
@@ -4328,7 +4325,7 @@ def sequence(
                     pull_mm=fabric.pull_comp_mm, pull_floor_mm=cfg.min_detail_mm,
                     underlay_style=satin_underlay, start_near=entry,
                     end_near=exit_near,
-                    inside_connectors=cfg.lettering_columns_inside_connectors,
+                    inside_connectors=True,
                     inside_stagger=cfg.lettering_columns_inside_stagger,
                     ink=ink_source, drawn_width=cfg.script_strokes_drawn_width,
                     cover_hops=cfg.lettering_columns_cover_hops,
@@ -4390,12 +4387,10 @@ def sequence(
                 _cored = [] if cfg.small_print_floor else cored_holes_of(_letter)
                 if _cored:
                     _clear = profile_for(p).width_mm / 2.0
-                # `cfg.lettering_columns_text_lean` (default ON since 2026-10-24):
-                # the word's house cross on every straight column it can
-                # span (`column_lean`); off, or no house angle, None and the
-                # call below is today's, argument for argument
-                _lean = (_text_lean_house(p.region, cfg)
-                         if cfg.lettering_columns_text_lean else None)
+                # `lettering_columns_text_lean` (folded in): the word's house
+                # cross on every straight column it can span (`column_lean`);
+                # no house angle, None and the call below omits it
+                _lean = _text_lean_house(p.region, cfg)
                 runs, report = lettering_columns_shape(
                     _letter, p.shape_id, trim_at_mm=trim_at,
                     spacing_mm=satin_spacing_for(p), split_above_mm=split_above,
@@ -4407,17 +4402,15 @@ def sequence(
                     end_near=exit_near,
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
                     **({"counter_holes": _cored} if _cored else {}),
-                    # `cfg.lettering_columns_fold_cuts` (default ON, Kent 2026-10-20): off,
-                    # the call is today's, argument for argument
-                    **({"fold_cuts": True} if cfg.lettering_columns_fold_cuts else {}),
-                    # `cfg.lettering_columns_square_ends` (default ON, Kent 2026-10-13): same rule
-                    **({"square_ends": True} if cfg.lettering_columns_square_ends else {}),
+                    # `lettering_columns_fold_cuts`, `lettering_columns_square_ends`
+                    # (folded in)
+                    fold_cuts=True,
+                    square_ends=True,
                     # `cfg.lettering_columns_rail_axis` (default ON, 2026-10-20): same rule
                     **({"rail_axis": True} if cfg.lettering_columns_rail_axis else {}),
-                    # `cfg.lettering_columns_small_bold` (default OFF, 2026-10-21):
-                    # a letter under 5 mm only (`_small`); off, today's call
-                    **({"small_bold": True}
-                       if cfg.lettering_columns_small_bold and _small else {}),
+                    # `lettering_columns_small_bold` (folded in): a letter under
+                    # 5 mm only (`_small`)
+                    **({"small_bold": True} if _small else {}),
                     # `cfg.extra["small_bold_pull_reaches_floor"]` (built OFF 2026-11-17):
                     # the small-bold pull cap never starves a stroke under one cross
                     **({"small_bold_pull_floor": True}
@@ -4449,9 +4442,9 @@ def sequence(
                     # LC and beanie presets only (`fabrics.PULL_BY_STROKE_FABRICS`)
                     **({"pull_by_stroke": True}
                        if pull_by_stroke_for(fabric, cfg.pull_comp_by_stroke) else {}),
-                    # `cfg.lettering_columns_corner_fold` (default OFF, 2026-10-23):
-                    # one column round an L corner; off, today's call
-                    **({"corner_fold": True} if cfg.lettering_columns_corner_fold else {}),
+                    # `lettering_columns_corner_fold` (folded in): one column
+                    # round an L corner
+                    corner_fold=True,
                     # `cfg.lettering_columns_corner_fold_apex_side` (built OFF 2026-11-14):
                     # a pointed slot's tip folds too; off, today's call
                     **({"corner_fold_apex_side": True}
@@ -4459,15 +4452,13 @@ def sequence(
                     # `cfg.lettering_columns_inside_stagger` (default OFF, 2026-10-23):
                     # the pro's inside at a pivot; off, today's call
                     **({"inside_stagger": True} if cfg.lettering_columns_inside_stagger else {}),
-                    # `cfg.lettering_columns_text_lean` (default ON since 2026-10-24): the
-                    # word's house cross (`satin_angle_deg`, the house pass; else
-                    # the design's `satin_angle_deg`) on every straight column it
-                    # can span -- the pro's diagonals; off, or no house, the call
-                    # is today's, argument for argument
+                    # `lettering_columns_text_lean` (folded in): the word's house
+                    # cross (`satin_angle_deg`, the house pass; else the design's
+                    # `satin_angle_deg`) on every straight column it can span --
+                    # the pro's diagonals; no house, the call omits it
                     **({"text_lean_deg": _lean} if _lean is not None else {}),
-                    # `cfg.lettering_columns_inside_connectors` (default ON, Kent 2026-10-13): same rule
-                    **({"inside_connectors": True}
-                       if cfg.lettering_columns_inside_connectors else {}),
+                    # `lettering_columns_inside_connectors` (folded in)
+                    inside_connectors=True,
                     # `cfg.lettering_columns_connectors_buried` (built OFF 2026-11-14):
                     # no hop left on the letter's finished satin; off, today's call
                     **({"connectors_buried": True}
@@ -4956,10 +4947,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -4990,10 +4981,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="wave",
                 )
@@ -5017,10 +5008,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -5042,10 +5033,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="brick",
                 )
@@ -5065,10 +5056,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="fur",
                     seed=cfg.seed,
@@ -5122,8 +5113,7 @@ def sequence(
                 # a per-job override moved every fill on a design EXCEPT its
                 # gradient regions.
                 # The underlay style had the same hole (2026-10-05): this
-                # tier was never handed it. Sewn only under
-                # `cfg.blend_fallback_underlay`, on the fallback path.
+                # tier was never handed it. Sewn on the fallback path.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
                                           start_near=entry,
                                           polygon=small_print_cut(p, p.polygon, bar_mm=row_mm),
@@ -5179,10 +5169,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -5558,7 +5548,7 @@ def sequence(
         # `sequence()` job.
         group_blocks = _shade_blocks(ordered, group[0].region.thread_index,
                                      chart_for(cfg), trim_at,
-                                     tie=not merge_same_thread, **tie_kw)
+                                     tie=False, **tie_kw)
         art_blocks.extend(group_blocks)
         cursor = group_blocks[-1].runs[-1].points[-1]
         cap_sewn.extend(sewn)
@@ -5580,26 +5570,24 @@ def sequence(
             int(cfg.max_colors), chart_for(cfg))
         if folded:
             fold_warnings.append(folded)
-    if merge_same_thread:
+    art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
+    # The non-adjacent half, gated on geometry (see `_hoist_same_thread`).
+    # Hoisting only ever CREATES adjacency, so the adjacent pass re-runs to
+    # fold what it brought together; ties wait for both to finish.
+    if hoist_same_thread > 0:
+        art_blocks = _hoist_same_thread(art_blocks, trim_at,
+                                        hoist_same_thread)
         art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
-        # The non-adjacent half, gated on geometry (see `_hoist_same_thread`).
-        # Hoisting only ever CREATES adjacency, so the adjacent pass re-runs to
-        # fold what it brought together; ties wait for both to finish.
-        if hoist_same_thread > 0:
-            art_blocks = _hoist_same_thread(art_blocks, trim_at,
-                                            hoist_same_thread)
-            art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
-        # `cfg.skip_covered_shapes` (built OFF): a shape its own colour's
-        # other thread wholly covers is not sewn; first, so the hops it
-        # leaves are offered to the burying pass below.
-        if cfg.skip_covered_shapes:
-            _skip_covered_shapes(art_blocks, trim_at)
-        # `cfg.trim_bury_under_later` (built OFF): before the ties, which
-        # lock every cut that is left.
-        if cfg.trim_bury_under_later:
-            _bury_trims_under_later(art_blocks)
-        for _b in art_blocks:
-            _apply_ties(_b.runs, **tie_kw)
+    # `cfg.skip_covered_shapes` (built OFF): a shape its own colour's
+    # other thread wholly covers is not sewn; first, so the hops it
+    # leaves are offered to the burying pass below.
+    if cfg.skip_covered_shapes:
+        _skip_covered_shapes(art_blocks, trim_at)
+    # Bury the cut hops later thread covers: before the ties, which
+    # lock every cut that is left.
+    _bury_trims_under_later(art_blocks)
+    for _b in art_blocks:
+        _apply_ties(_b.runs, **tie_kw)
     blocks.extend(art_blocks)
 
     # --- The design-silhouette edge cap (cfg.edge_cap) ----------------------
@@ -5620,8 +5608,8 @@ def sequence(
     # a block boundary is where the needle lifts and this pass starts
     # somewhere the previous colour did not end. When the picked thread
     # happens to match the last artwork block, the cap sews at the end of
-    # that block instead (`_cap_seam_joins`, under the same
-    # `cfg.merge_adjacent_same_thread`, 2026-10-20): its first run keeps the
+    # that block instead (`_cap_seam_joins`, under
+    # the adjacent same-thread merge, 2026-10-20): its first run keeps the
     # lift and the cut, so the pass still starts fresh, and the stop between
     # two blocks of one cone bought nothing. Until then this was the edge
     # cap's repeated-cone route (defect 18).
@@ -5666,26 +5654,24 @@ def sequence(
         # its sewn polygon joins the cover and no cap sample stands on it.
         # The gate's published saving and cover then include it, which is
         # what they measure: what the cap was told not to sew.
-        if cfg.edge_cap_skip_lettering:
-            _letters = _satin_lettering_cover(cap_sewn, blocks, cfg)
-            if _letters is not None:
-                cap_omit = (_letters if cap_omit is None
-                            else unary_union([cap_omit, _letters]))
-        # A bean letter's outline is not an edge either (2026-10-20, see
-        # `cfg.edge_cap_skip_bean_letters`): it sewed its ink's centre
+        _letters = _satin_lettering_cover(cap_sewn, blocks, cfg)
+        if _letters is not None:
+            cap_omit = (_letters if cap_omit is None
+                        else unary_union([cap_omit, _letters]))
+        # A bean letter's outline is not an edge either (2026-10-20): it
+        # sewed its ink's centre
         # lines, and its polygon -- pull-grown in stage 5, since a bean
         # letter is not a satin column -- is not what it laid. Its polygon
         # joins the cover exactly as a satin letter's does; the silhouette
         # itself is untouched, so every other ring samples as it did.
-        if cfg.edge_cap_skip_bean_letters:
-            _beans = _bean_letter_ids(cap_sewn, blocks)
-            if _beans:
-                _bean_cover = unary_union([p.polygon for p in cap_sewn
-                                           if p.shape_id in _beans
-                                           and p.polygon is not None
-                                           and not p.polygon.is_empty])
-                cap_omit = (_bean_cover if cap_omit is None
-                            else unary_union([cap_omit, _bean_cover]))
+        _beans = _bean_letter_ids(cap_sewn, blocks)
+        if _beans:
+            _bean_cover = unary_union([p.polygon for p in cap_sewn
+                                       if p.shape_id in _beans
+                                       and p.polygon is not None
+                                       and not p.polygon.is_empty])
+            cap_omit = (_bean_cover if cap_omit is None
+                        else unary_union([cap_omit, _bean_cover]))
         c_runs, c_report = silhouette_cap(
             silhouette,
             "__edge_cap__",
@@ -5714,17 +5700,16 @@ def sequence(
             # the detail layer below and every artwork block above get.
             c_runs[0].jump = True
             c_runs[0].trim = True
-            # Per-stretch colour (cfg.edge_cap_follow_adjacent): decided on
+            # Per-stretch colour: decided on
             # the bare runs, BEFORE ties, so each block's ties are laid on its
             # own run ends. A one-colour edge is still one block, its runs the
             # emitter's own, so that case sews exactly what it did before.
             c_blocks = None
-            if cfg.edge_cap_follow_adjacent:
-                _pieces = _cap_follow_pieces(c_runs, cap_sewn, cfg)
-                if _pieces is not None:
-                    c_blocks = {}
-                    for t, piece, _mid in _pieces:
-                        c_blocks.setdefault(t, []).append((piece, _mid))
+            _pieces = _cap_follow_pieces(c_runs, cap_sewn, cfg)
+            if _pieces is not None:
+                c_blocks = {}
+                for t, piece, _mid in _pieces:
+                    c_blocks.setdefault(t, []).append((piece, _mid))
             if c_blocks is None:
                 _apply_ties(c_runs)
             else:
@@ -5736,10 +5721,10 @@ def sequence(
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
-            # ...net of the start locks `cfg.tie_in_off` (ON since 2026-10-23)
-            # strips at the end of this function, so the bill is what the cap
+            # ...net of the start locks stage 7 strips at the end of this
+            # function (`drop_tie_ins`), so the bill is what the cap
             # SEWS, dropped or applied (`test_edge_cap_budget`'s identities).
-            _cap_st = sum(len(r.points) - (r.tie_in_pts if cfg.tie_in_off else 0)
+            _cap_st = sum(len(r.points) - r.tie_in_pts
                           for r in (c_runs if c_blocks is None else
                                     [it[0] for its in c_blocks.values()
                                      for it in its]))
@@ -5750,8 +5735,7 @@ def sequence(
             # because the budget decision below has to happen before the
             # append, not after it.)
             _art_st = sum(b.stitch_count for b in blocks)
-            if cfg.tie_in_off:
-                _art_st -= sum(r.tie_in_pts for b in blocks for r in b.runs)
+            _art_st -= sum(r.tie_in_pts for b in blocks for r in b.runs)
             _percent = round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0
             cap_over_budget = _art_st > 0 and _percent > EDGE_CAP_BUDGET_PCT
             cap_dropped = cap_over_budget and _over_budget_action(cfg) == "drop"
@@ -6108,7 +6092,7 @@ def sequence(
         warnings.append(
             warn(
                 LONG_JUMPS_TRIMMED,
-                # "is lifted", not "had to be": with `cfg.fill_bridge_cut` a
+                # "is lifted", not "had to be": with the bridge cut a
                 # lift can be the engine's CHOICE -- a route existed and a cut
                 # was cheaper than thread on top of finished fill.
                 f"The thread is lifted {jumps} time"
@@ -6155,11 +6139,9 @@ def sequence(
                 count=border_narrow,
             )
         )
-    # `cfg.tie_in_off` (ON by default since 2026-10-23): strip the run-start
-    # locks. The cap's bill above was counted net of them (`_cap_st`), so the
-    # readout is what the cap sews either way.
-    if cfg.tie_in_off:
-        stitches.drop_tie_ins(blocks)
+    # Strip the run-start locks. The cap's bill above was counted net of them
+    # (`_cap_st`), so the readout is what the cap sews either way.
+    stitches.drop_tie_ins(blocks)
     if cap_cost is not None:
         warnings.append(
             warn(
@@ -6256,13 +6238,12 @@ def sequence(
         # `cfg.extra["bury_step_fine"]` (built OFF 2026-11-06): this pass's
         # thread tests at `_BURY_STEP_FINE_MM` instead of `_BURY_STEP_MM`.
         _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"), cut_every_jump_step_mm(cfg))
-    # `cfg.tie_in_off` (built OFF): after `cut_every_jump`, so a cut that
+    # After `cut_every_jump`, so a cut that
     # pass adds loses its tie-in too (`stitches.tie_in` records it in
     # `tie_in_pts`) -- no run start is locked, even after a cut. It only
     # strips leading lock points; the sew order the pass above read is
     # unchanged.
-    if cfg.tie_in_off:
-        stitches.drop_tie_ins(blocks)
+    stitches.drop_tie_ins(blocks)
     # The same fold once more over the finished list: the detail layer picks
     # a chart cone of its own after the artwork pass above (the edge cap and
     # the hairline strands sew loaded cones already). A no-op at or under

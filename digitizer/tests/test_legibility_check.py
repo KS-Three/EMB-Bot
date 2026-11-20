@@ -1,4 +1,4 @@
-"""`cfg.legibility_check` — preflight reading what the thread SAYS.
+"""`legibility_check` (folded into the code 2026-11-20) — preflight reading what the thread SAYS.
 
 Quality review 2026-09-08 item 11, plan
 `docs/superpowers/plans/2026-09-10-legibility-yardstick.md` §2c: the one
@@ -49,7 +49,7 @@ def _on(**kw) -> PipelineConfig:
     """The shipped default, spelled out so the tests read the same before
     and after the flip."""
     return PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                          legibility_check=True, **kw)
+                          **kw)
 
 
 def _cluster_ids(result) -> set[str]:
@@ -60,25 +60,13 @@ def _hits(report) -> list[dict]:
     return [f for f in report["findings"] if f["code"] == pf.LETTERING_ILLEGIBLE]
 
 
-def test_default_on_and_the_thresholds_are_ordered():
-    """DEFAULT ON since 2026-09-10 (Kent's ruling A over the OCR crops):
+def test_the_thresholds_are_ordered():
+    """ON since 2026-09-10 (Kent's ruling A over the OCR crops):
     a warn under 0.5 and never a block — the crops showed no similarity
     band that separates lost lettering from damaged lettering (plan §4.2),
-    so the block threshold sits at 0.0. False is the pre-flip report."""
-    assert PipelineConfig().legibility_check is True
+    so the block threshold sits at 0.0."""
     assert pf.LEGIBILITY_BLOCK == 0.0
     assert 0.0 <= pf.LEGIBILITY_BLOCK < pf.LEGIBILITY_WARN < 1.0
-
-
-def test_off_says_unchecked_and_emits_nothing():
-    result, plan = _enthusiast()
-    report = pf.run_preflight(result, plan, PipelineConfig(
-        target_width_mm=80.0, garment_id="left_chest", legibility_check=False),
-        image=ART)
-    m = report["metrics"]
-    assert m["legibility_checked"] is False
-    assert m["legibility"] is None and m["legibility_worst"] is None
-    assert not _hits(report)
 
 
 def test_no_artwork_means_unchecked_even_when_on():

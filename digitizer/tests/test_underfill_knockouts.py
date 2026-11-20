@@ -97,7 +97,7 @@ def test_apply_cfg_hands_the_outlines_to_the_plan_without_riders():
     regs, b1, b2 = _becker_with_a_shadow()
     outlines = {"Sring": [("Sb1", b1, W), ("Sb2", b2, W)]}
     cfg = SimpleNamespace(silhouette_underfill_panels=False, sew_enclosed_white=True,
-                          border_from_outline=True, overlap_mm=0.3)
+                          overlap_mm=0.3)
     out, report, outl = su.apply_cfg(regs, (), cfg, outlines)
     assert outl is outlines
     host = next(r for r in out if r.shape_id == "Sb1")

@@ -1,7 +1,7 @@
 #!/usr/bin/env python
-"""Does cropping flip `alpha_edge_extend` by moving px_per_mm across the floor?
+"""Does cropping flip the alpha edge extension by moving px_per_mm across the floor?
 
-`alpha_edge_extend_upscaled_only` gates on `alpha_edge.upscale_expected`,
+The extension's upscale gate is `alpha_edge.upscale_expected`,
 which compares the artwork's own px/mm at the target width against
 `cfg.min_px_per_mm`. Cropping changes that ratio. So a crop can turn the
 extension on or off without anyone deciding to -- which is a flag Kent
@@ -41,12 +41,11 @@ STRADDLE_MM = 25.0
 
 def sweep(art, width_mm, crops) -> None:
     print("{:>26}{:>10}{:>9}{:>9}{:>9}{:>8}".format(
-        "crop", "px/mm", "gate", "regions", "stitches", "trims")
-          + "{:>11}{:>11}{:>10}".format("rg_noext", "st_noext", "tr_noext"))
+        "crop", "px/mm", "gate", "regions", "stitches", "trims"))
     for crop in crops:
         cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                              crop=crop)
-        _rgb, alpha = _load(art, cfg.strip_letterbox, cfg.crop)
+        _rgb, alpha = _load(art, cfg.crop)
         gate = (upscale_expected(alpha, cfg.target_width_mm, cfg.min_px_per_mm)
                 if alpha is not None else None)
         # `input_px_per_mm` is what the SOURCE delivered for this crop, before
@@ -57,14 +56,7 @@ def sweep(art, width_mm, crops) -> None:
         result, plan = digitize(art, cfg)
         print("{:>26}{:>10.2f}{:>9}{:>9}{:>9}{:>8}".format(
             str(crop), ppm, str(gate), len(result.regions),
-            plan.stats.stitch_count, plan.stats.trims), end="")
-        # Same crop with the extension forced OFF: the difference is what the
-        # gate's verdict costs, separated from what the crop itself changes.
-        r0, plan0 = digitize(art, PipelineConfig(
-            target_width_mm=width_mm, garment_id="left_chest", crop=crop,
-            alpha_edge_extend=False))
-        print("{:>11}{:>11}{:>10}".format(
-            len(r0.regions), plan0.stats.stitch_count, plan0.stats.trims))
+            plan.stats.stitch_count, plan.stats.trims))
 
 
 def synthetic_above_floor() -> np.ndarray:

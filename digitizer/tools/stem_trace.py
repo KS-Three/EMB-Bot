@@ -28,7 +28,7 @@ Finding, measured by this tool (80 mm; `tests/test_small_stem.py` pins it):
   (0.51 x 4.34 mm, 2.196 mm^2) runs too (`--word HILTIL 18.42`), and a stem
   narrower than `machine.SATIN_MIN_CROSS_MM` (0.5) stays a run even with the
   flag (the same I at 36 px/mm is 0.44 mm across);
-- `cfg.lettering_columns_small_stem` (default OFF) lets a lettering stem under
+- `lettering_columns_small_stem` (default OFF) lets a lettering stem under
   the floor (long side >= `min_detail_mm`, short side >= 0.5, long / short
   >= 6) into the lane. The corpus sets the aspect bar: the phone screenshot
   has seven lettering shapes under the floor that are stems by length alone
@@ -108,8 +108,7 @@ def trace(width_mm: float, small_stem: bool = False, word: str | None = None,
     else:
         path = FIXTURE.with_suffix(".png")
         meta = json.loads(FIXTURE.with_suffix(".json").read_text(encoding="utf-8"))
-    cfg = PipelineConfig(target_width_mm=width_mm, forced_class="flat",
-                         lettering_columns_small_stem=small_stem)
+    cfg = PipelineConfig(target_width_mm=width_mm, forced_class="flat")
     result, plan = digitize(path, cfg)
     to_px, s = mm_to_px(result, meta["image"])
     sewn = {}
@@ -192,8 +191,7 @@ def census(name: str, small_stem: bool = False) -> list[dict]:
     from digitizer_core.columns import is_lettering, is_thin_stem
     from tools.lowercase_angle import CORPUS
     rel, width, garment, *_ = CORPUS[name]
-    cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
-                         lettering_columns_small_stem=small_stem)
+    cfg = PipelineConfig(target_width_mm=width, garment_id=garment)
     result, plan = digitize(ROOT / "testdata" / rel, cfg)
     sewn = {}
     for _b, run in plan.iter_runs():

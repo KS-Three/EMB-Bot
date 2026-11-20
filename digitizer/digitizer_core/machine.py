@@ -102,7 +102,7 @@ BLEND_FEATHER_MM = 1.5
 FILL_STAGGERS = 4
 
 # How far along the row the needle lands when a fill row turns into the next
-# one (`cfg.fill_turn_slant`, built OFF 2026-10-21). Stepping straight across
+# one (built OFF 2026-10-21, folded). Stepping straight across
 # makes the turn one row spacing long, 0.10-0.22 mm at 0.15 rows; the pro's
 # turns, read from his own DSTs by `tools/fill_turns.py` (a short stitch
 # between two antiparallel row stitches), run p50 0.71-0.82 mm and p10 0.41

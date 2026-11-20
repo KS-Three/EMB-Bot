@@ -12,8 +12,8 @@ construction. Spec §4.
     python tools/pro_parity/overlay.py --dir <out>/real/<slug>
     python tools/pro_parity/overlay.py --dir ... --crop 10 -5 40 15 --crop-name marine
     python tools/pro_parity/overlay.py --dir ... --by-thread
-    python tools/pro_parity/overlay.py --dir ... --flag keep_thin_strokes=true
-    python tools/pro_parity/overlay.py --dir ... --flag keep_thin_strokes=true --against baseline
+    python tools/pro_parity/overlay.py --dir ... --flag small_print_floor=true
+    python tools/pro_parity/overlay.py --dir ... --flag small_print_floor=true --against baseline
 """
 from __future__ import annotations
 

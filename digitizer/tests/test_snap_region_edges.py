@@ -114,11 +114,6 @@ def test_the_margin_is_the_documented_value():
     assert SNAP_MARGIN_LAB == 10.0
 
 
-def test_the_flag_is_on_by_default():
-    """Kent's flip, 2026-09-30, on renders (see `config.snap_region_edges`)."""
-    assert PipelineConfig().snap_region_edges is True
-
-
 def _wrong_side_px(snap: bool) -> tuple[int, int]:
     """Segment the committed gradient repro and count pixels on the wrong
     side of its white icon: white pixels in a mostly-colour label plus
@@ -144,3 +139,26 @@ def test_on_the_repro_icon_white_lands_on_its_own_side():
     on, _ = _wrong_side_px(True)
     assert off > 0.01 * n_white  # the defect is really there on this fixture
     assert on < off / 3, (off, on, n_white)
+
+
+def test_the_pipeline_snaps_the_gradient_lane(monkeypatch):
+    """Kent's flip, 2026-09-30, on renders; the switch is folded into the code
+    (2026-11-20), so the pipeline's own gradient-lane run reaches the snap."""
+    import digitizer_core.stage2_photo_segment as ps
+    from digitizer_core.pipeline import run_stages
+    from tests.conftest import own_thread_only
+
+    real = ps.snap_region_edges
+    calls: list[int] = []
+
+    def spy(*a, **kw):
+        calls.append(1)
+        return real(*a, **kw)
+
+    monkeypatch.setattr(ps, "snap_region_edges", own_thread_only(spy, real))
+    # stage0_scale_relative_grad=False: the repro must route through the gradient lane
+    cfg = PipelineConfig(target_width_mm=80.0, max_colors=6, edge_cap="none",
+                         stage0_scale_relative_grad=False)
+    result = run_stages(str(PHOTO_DIR / "repro_gradient_white_icon.png"), cfg)
+    assert result.design_class == "gradient"
+    assert calls, "the gradient lane never reached the edge snap"

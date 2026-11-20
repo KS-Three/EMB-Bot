@@ -173,8 +173,7 @@ def test_fremont_patch_flat_lane_reads_dark_ink_only_with_the_switch():
     cfg = _cfg("hotel_fremont_patch")
     assert cfg.flat_light_text_runs is True and cfg.keep_dark_thin_strokes
     p = prep(_pixels("hotel_fremont_patch"), cfg, design_class="flat")
-    if cfg.two_tone_snap:
-        two_tone.apply(p)
+    two_tone.apply(p)
     q = quantize(p, cfg)
     assert not q.dark_ink_labels
     carved = carve_flat_dark_ink(p, cfg, q)

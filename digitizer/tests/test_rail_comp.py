@@ -610,17 +610,8 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
                                        # the envelope is the skeleton tier's; the
                                        # Column lane (ON since 2026-10-12) has none
                                        lettering_columns=False,
-                                       # measured before `subpixel_corner_runs`
-                                       # (ON 2026-10-20): ON, the envelope's reach
-                                       # is 5.36 -> 5.07% bare, under the 0.5 pt
-                                       # this arm was sized on (`PRE_FLIP`)
-                                       subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"],
                                        # ... and `outline_redraw_k` (0.75 since 2026-11-14)
                                        outline_redraw_k=PRE_FLIP["outline_redraw_k"],
-                                       # ... and, the same way, `border_from_outline` (ON
-                                       # 2026-10-24) sews Becker's faces as fills, so the
-                                       # satin rails this prices are gone
-                                       border_from_outline=PRE_FLIP["border_from_outline"],
                                        # ... and white sewn (ON 2026-10-26): the faces' fill
                                        # changes the bare this arm was sized on
                                        sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
@@ -640,7 +631,9 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
     off_bare, off_std, off_st = arm(False)
     env_bare, env_std, env_st = arm("envelope")
     on_bare, on_std, on_st = arm(True)
-    assert env_bare < off_bare - 0.005, (off_bare, env_bare)          # it reaches: 10.2 -> 9.5%
+    # it reaches: 10.2 -> 9.5%; 6.06 -> 5.78% since the corner-run read and the
+    # outline rule joined the engine (folded 2026-11-20), so the margin is 0.002
+    assert env_bare < off_bare - 0.002, (off_bare, env_bare)
     assert env_std <= off_std * 1.15, (off_std, env_std)             # at a tenth more roughness (True: +40%)
     assert on_std > env_std, (on_std, env_std)
     # ... and none of True's thread. Within 2% of symmetric until

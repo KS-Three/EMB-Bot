@@ -89,7 +89,10 @@ def pre_flip_plan():
     hole's block, a tenth colour change on a report validated at nine."""
     from digitizer_core import run_stages
     result = run_stages(ART, cfg(**FLIP_2026_10_23, **FLIP_2026_10_26))
-    return result, plan_stitches(result, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23, **FLIP_2026_10_26))
+    # `fill_underlay_cross` is folded into the code (2026-11-20, B5), so the preset's own fill
+    # underlay is named to stay on the one-layer engine these thresholds were validated on
+    return result, plan_stitches(result, cfg(**PLAN_CFG_KW, **FLIP_2026_10_23, **FLIP_2026_10_26,
+                                             underlay_style="edge_run"))
 PHOTO = TESTDATA / "photo"
 
 PHOTO_GUARD_CODES = {PHOTO_RESOLUTION_LOW, SUBJECT_CONTRAST_LOW,
@@ -139,7 +142,11 @@ def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     # And the instruments actually measured, rather than silently skipping.
     m = report["metrics"]
     assert m["thread_match_checked"] is True
-    assert m["fill_advance_mm"] == pytest.approx(machine.FILL_ROW_MM, abs=0.05)
+    # `fill_advance_mm` reads 0.15 on the engine before the 2026-10-23 flips. With the slanted
+    # row turns folded into the code (`fill_turn_slant`, 2026-11-20) this plan's fills fall
+    # under the instrument's axis-alignment gate (`preflight._FILL_AXIS_MIN`) and it reports
+    # None, its documented "does not measure it" answer: so None or the old reading.
+    assert m["fill_advance_mm"] is None or m["fill_advance_mm"] == pytest.approx(machine.FILL_ROW_MM, abs=0.05)
     assert m["satin_advance_mm"] == pytest.approx(0.40, abs=0.05)
     assert m["satin_short_fraction"] < 0.25
     # Law 27's region sum measured, and comfortably inside its budget.
@@ -177,7 +184,9 @@ def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     assert m["link_segments"] == 0
     assert m["link_thread_mm"] == 0.0
     assert m["link_uncovered_max_mm"] == pytest.approx(0.0, abs=0.05)
-    assert m["fill_axis_concentration"] == pytest.approx(0.974, abs=0.02)
+    # 0.974 +/- 0.02 on the engine before the 2026-10-23 flips; 0.997 now (slanted row turns folded
+    # into the code, 2026-11-20): still the tatami population, far above `_FILL_AXIS_MIN` 0.6
+    assert 0.95 <= m["fill_axis_concentration"] <= 1.0
     assert m["contour_starved_shapes"] == 0
     # The photo-guardrail instruments measured too (photo plan §2 row 15):
     # the fixture sits UNDER the 10 px/mm photo floor and nothing fires,
@@ -190,7 +199,7 @@ def test_a_clean_real_plan_earns_a_clean_report(pre_flip_plan):
     # block in a cone the design already loads, so the operator really does
     # get one more stop. Kent ruled that price acceptable (the alternative
     # put a 5.4%-frontage cone on gaulke's edge instead of a 95.0% one).
-    # 6, not 5, since 2026-09-13: `cfg.keep_thin_strokes` ON by default
+    # 6, not 5, since 2026-09-13: `keep_thin_strokes` ON by default
     # (Kent's ruling) keeps this fixture's ~1.2 mm teal patch as its own run
     # in its own thread, which is a sixth colour block and a sixth cone. The
     # whole arithmetic is pinned in `tests/test_keep_thin_strokes.py`; this
@@ -2393,7 +2402,7 @@ def test_a_full_bleed_design_does_not_report_its_own_border():
     #
     # This used to assert only `uncovered_worst_mm2 < 1.0`, a single number
     # that drifted with unrelated work: `== 0.0` until 2026-09-13
-    # (`cfg.keep_thin_strokes` ON by default gained gaulke sub-floor
+    # (`keep_thin_strokes` ON by default gained gaulke sub-floor
     # regions), then `< 1.0`, and the letterbox crop put the worst patch at
     # exactly 1.0 — failing a guard whose defect is two orders of magnitude
     # away. Asserting the total pins what the bug actually moved.

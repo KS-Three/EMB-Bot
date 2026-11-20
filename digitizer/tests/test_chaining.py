@@ -38,6 +38,17 @@ from .conftest import FLIP_2026_10_23, PLAN_CFG_KW, SATIN_STARS_2026_11_19_OFF, 
 # 4.5 -> 5.18 mm, measured 2026-11-19). This file prices chaining.
 FLIP_2026_10_23 = {**FLIP_2026_10_23, **SATIN_STARS_2026_11_19_OFF}
 
+
+@pytest.fixture(autouse=True)
+def _no_bury_pass():
+    """Chaining is priced on the engine its numbers were measured on, where every under-later
+    hop is cut. `trim_bury_under_later` is folded into the code (2026-11-20, B5), so its pass is
+    stubbed out here to keep the "chaining off" arm a lift."""
+    from unittest import mock
+    from digitizer_core import stage7_sequence
+    with mock.patch.object(stage7_sequence, "_bury_trims_under_later", return_value=0):
+        yield
+
 FABRIC = fabric_for_garment(PLAN_CFG_KW["garment_id"])   # pique knit, trims at 3.0 mm
 
 # Chaining ships OFF (see `PipelineConfig.chain_links` for the measurement that
@@ -465,8 +476,10 @@ def test_no_link_is_left_uncovered(plan, alpha):
 def test_chaining_removes_trims_without_removing_locks(alpha):
     """`_apply_ties` locks the thread wherever it is cut, so fewer trims is
     fewer ties by construction — and the risk is that a chained sequence loses
-    the lock it still needs. Every block must still open and close with one,
-    and every surviving cut must still be locked on both sides."""
+    the lock it still needs. Every block must still close with one, and every
+    surviving cut must be tied off before it. (Since `tie_in_off` was folded into
+    the code, 2026-11-20, no run START carries a lock: that half of the test now
+    asserts the starts are bare.)"""
     conf = cfg(**CHAIN_ON)
     planned, _ = resolve_overlaps(alpha.regions, FABRIC, conf)
     blocks, _ = sequence(planned, FABRIC, conf)
@@ -481,11 +494,11 @@ def test_chaining_removes_trims_without_removing_locks(alpha):
 
     for block in blocks:
         assert block.runs[0].trim, "a colour change always cuts"
-        assert locked_head(block.runs[0]), "a chained block lost its start lock"
+        assert block.runs[0].tie_in_pts == 0, "a block start carries a lock"
         assert locked_tail(block.runs[-1]), "a chained block lost its end lock"
         for i, run in enumerate(block.runs):
             if run.trim and i > 0:
-                assert locked_head(run), "the thread restarts here unlocked"
+                assert run.tie_in_pts == 0, "a restart carries a lock"
                 assert locked_tail(block.runs[i - 1]), "cut without tying off"
 
 

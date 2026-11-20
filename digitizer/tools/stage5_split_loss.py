@@ -44,7 +44,7 @@ def measure(image: str, width_mm: float, **cfg_kw) -> dict:
         return out
 
     def split_spy(geom, art, floor, **kw):
-        # Since `cfg.clip_parent_keeps_ink` (default ON, 2026-10-12) a split
+        # Since 2026-10-12 (parent keeps its ink) a split
         # goes through `_split_clip`, not `_largest_polygon`: the pieces that
         # are neither the parent's nor kept (`cfg.clip_keep_pieces`, OFF by
         # default) are the ones dropped.

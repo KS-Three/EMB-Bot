@@ -60,8 +60,7 @@ def _region(sid, poly, thread, meta) -> Region:
 
 def _cfg(**kw) -> PipelineConfig:
     base = {"underlay": False, "garment_rgb": GARMENT, "edge_cap": "bean",
-            "border_by_size": False,
-            "lettering_columns_small_stem": False}
+            "border_by_size": False}
     return frozen_cfg(**{**base, **kw})
 
 

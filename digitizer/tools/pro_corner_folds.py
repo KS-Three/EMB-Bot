@@ -1,5 +1,5 @@
 """pro_corner_folds: how the professional turns a satin column round a
-corner, read off his DST files (2026-10-23, `cfg.lettering_columns_corner_fold`).
+corner, read off his DST files (2026-10-23, `lettering_columns_corner_fold`).
 
 WHAT IT READS. Within one needle-down run of a word's band, a FOLD is a
 stretch of four or more consecutive satin crosses whose ends on one side

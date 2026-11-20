@@ -459,11 +459,10 @@ def _bar_and_line(path):
 
 def test_puff_not_merged_with_flat(tmp_path):
     """A flat shape on the puff thread, sewn straight before its puff
-    blocks: with `merge_adjacent_same_thread` (default True) the puff blocks
+    blocks: with the adjacent same-thread merge the puff blocks
     stay blocks of their own, holding only puffed shapes."""
     path = _bar_and_line(tmp_path / "bar_line.png")
     c = cfg(garment_id="hat_front", puff=True)
-    assert c.merge_adjacent_same_thread is True
     plan = digitize(path, c)[1]
     puff = [b for b in plan.blocks if _is_puff(b)]
     assert [b.step["code"] for b in puff] == ["PUFF_TACKDOWN", "PUFF"]

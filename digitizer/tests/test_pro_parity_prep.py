@@ -338,10 +338,10 @@ def test_parity_config_matches_run_ours_and_applies_extra(monkeypatch):
     pa = _load("prep_all")
     monkeypatch.delenv("PRO_PARITY_FORCED_CLASS", raising=False)
     monkeypatch.delenv("PRO_PARITY_SIMPLIFY_TOL", raising=False)
-    cfg = pa.parity_config(95.66, "hat_front", keep_thin_strokes=True)
+    cfg = pa.parity_config(95.66, "hat_front", small_print_floor=True)
     assert cfg.target_width_mm == 95.7
     assert cfg.garment_id == "hat_front"
-    assert cfg.keep_thin_strokes is True
+    assert cfg.small_print_floor is True
     if "fill_density_boost" in type(cfg).__dataclass_fields__:
         assert cfg.fill_density_boost is True
     with pytest.raises(TypeError):

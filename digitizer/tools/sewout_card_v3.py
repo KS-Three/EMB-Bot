@@ -82,13 +82,13 @@ STOP_ORDER, STOPS = v2.STOP_ORDER, v2.STOPS
 # --- the Fremont cuts -----------------------------------------------------------------
 
 #: Arms of the Fremont replay (the Studio request at 81 mm on a Hat plus these
-#: overrides). `small_glyph_keep` is pinned OFF in every arm but its own, so the
-#: card does not move if that default flips (it is OFF on origin/main as of
-#: 2026-10-13; the flip branch `claude/small-glyph-keep-on` is not merged).
+#: overrides). `small_glyph_keep` was pinned OFF in every arm but its own; it was
+#: folded into the code 2026-11-20, so `today` and `keep` are one engine now and the
+#: committed card is the record of the OFF arm.
 CUT_ARMS = {
-    "today": {"small_glyph_keep": False},
-    "wordtier": {"small_glyph_keep": False, "lettering_words": True, "lettering_word_tiers": True},
-    "keep": {"small_glyph_keep": True},
+    "today": {},
+    "wordtier": {"lettering_words": True, "lettering_word_tiers": True},
+    "keep": {},
 }
 #: box name -> (fremont_triage.ROIS key, the arms it is cut from, in tooth order)
 CUT_BOXES = {
@@ -162,9 +162,9 @@ LETTERS = {**v2.LETTERS,
 F3_WORD = "APA"
 F3_CAP_MM = 2.2
 F3_STROKE_PER_CAP = 0.105          # Fremont's tagline: 0.23 mm stroke on a 2.17 mm cap
-F3_ARMS = (("today", dict(small_print_floor=False, small_glyph_keep=False)),
-           ("floor", dict(small_print_floor=True, small_glyph_keep=False)),
-           ("keep", dict(small_print_floor=False, small_glyph_keep=True)))
+F3_ARMS = (("today", dict(small_print_floor=False)),
+           ("floor", dict(small_print_floor=True)),
+           ("keep", dict(small_print_floor=False)))   # `small_glyph_keep` is the code now (folded 2026-11-20): today == keep
 GARMENT = "hat_front"              # the Hat profile, 0.4 mm pull: Kent's Fremont job
 
 #: block -> arms in tooth order (1 tooth, 2 teeth, ...). The piece key is `block:arm`.

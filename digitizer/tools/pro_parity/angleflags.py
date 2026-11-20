@@ -38,8 +38,7 @@ from .prep_all import parity_config
 
 OUT = Path(os.environ.get("PRO_PARITY_OUT", "pro_parity_out"))
 ARMS = [("shipped", {}),
-        ("curve_off", {"curve_turn_deg": None}),
-        ("both_off", {"subpixel_edges": False, "curve_turn_deg": None})]
+        ("curve_off", {"curve_turn_deg": None})]
 # `machine_lc` is the same art as `machine_hat` (33,921 vs 33,898 stitches);
 # counting both would count one design's fills twice.
 DUPLICATES = {"machine_lc"}
@@ -144,7 +143,7 @@ def record(slugs: list[str]) -> list[dict]:
 def summarise(rec: list[dict]) -> str:
     lines = []
     slugs = sorted({r["slug"] for r in rec} - DUPLICATES)
-    for arm in ("curve_off", "both_off"):
+    for arm in ("curve_off",):
         rows = []
         for slug in slugs:
             ship = [r for r in rec if r["slug"] == slug and r["arm"] == "shipped"]

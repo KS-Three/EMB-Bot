@@ -45,7 +45,7 @@ def test_arm_table_is_the_four_arms_kent_named():
     off = fsl.PRE_TRUE_SIZE                     # every arm: the engine before 2026-10-14
     assert fsl.ARMS["main_81"][:2] == (81.0, off)
     assert fsl.ARMS["floor_81"][:2] == (81.0, {**off, "small_print_floor": True})
-    both = {**off, "small_print_floor": True, "lettering_columns_small_stem": True}
+    both = {**off, "small_print_floor": True}    # `lettering_columns_small_stem` folded in 2026-11-20
     assert fsl.ARMS["floor_stem_81"][:2] == (81.0, both)
     assert fsl.ARMS["floor_stem_92"][:2] == (92.5, both)
 
@@ -54,8 +54,8 @@ def test_every_arm_flag_exists_and_is_built_off():
     """No arm is a no-op: every override moves its flag AWAY from the config
     default (an arm that sets a flag to the value it already has measures
     nothing), and every key is a real PipelineConfig field. The flags the
-    arms turn ON are OFF today; `small_glyph_keep` is the one default that
-    flipped ON (2026-10-13, Kent), so its arms turn it OFF."""
+    arms turn ON are OFF today (`small_glyph_keep`, whose arms turned it OFF,
+    was folded into the code 2026-11-20)."""
     from digitizer_core import PipelineConfig
     # `small_text_true_size` flipped ON 2026-10-14; every arm pins it OFF (the
     # record predates the flip), so the others are judged against that engine.
@@ -67,12 +67,8 @@ def test_every_arm_flag_exists_and_is_built_off():
             assert hasattr(base, k), f"{name}: {k} is not a PipelineConfig field"
             if k in fsl.PRE_TRUE_SIZE and v == fsl.PRE_TRUE_SIZE[k]:
                 continue                        # the pre-flip base, not an arm
-            if k == "small_glyph_keep":
-                assert base.small_glyph_keep is True, f"{name}: keep is no longer the default"
-                assert v is False, f"{name}: {k} is already ON"
-            else:
-                assert getattr(base, k) in (False, None), f"{name}: {k} is already ON"
-                assert v not in (False, None)
+            assert getattr(base, k) in (False, None), f"{name}: {k} is already ON"
+            assert v not in (False, None)
 
 
 def test_arms_run_the_studio_request_at_their_width():

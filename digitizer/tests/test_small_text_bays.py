@@ -1,5 +1,6 @@
-"""Keep each bay's mouth open (`cfg.small_text_bay_mouth`, W3-02,
-2026-10-25, built OFF; ON since 2026-10-26, Kent's flip; `small_text._open_mouths`).
+"""Keep each bay's mouth open (`small_text_bay_mouth`, W3-02,
+2026-10-25, built OFF; ON since 2026-10-26, Kent's flip; folded in 2026-11-20;
+`small_text._open_mouths`).
 
 The re-set (`small_text_cap_letter_gap_mm`) grows Fremont's EST 1895 to the
 pro's ~4 mm in bold satin, and the widening sews three bays shut: the 5's
@@ -157,6 +158,8 @@ def glyphs(regions):
 #: `md5` of `scene()` re-set WITHOUT the switch -- regions and report --
 #: captured on main's engine (84e1592f's small_text.py), before this switch
 #: existed; this branch's engine gives the same.
+# pin-rides-defaults: pins `enlarge_small_text` with explicit arguments (the switch is its own
+# `bay_mouth` argument); the one PipelineConfig in this file only reads the pipeline's call.
 OFF_MD5 = "2b1d5e0606d63dc35e7fb49b1dfffd39"
 LETTERS = Path(__file__).resolve().parents[1] / "testdata" / "bay_mouth_letters.json"
 ZIP = Path(__file__).resolve().parents[2] / "Embroidery Files.zip"
@@ -314,10 +317,9 @@ def test_census_splits_the_pros_joined_digits():
 # --- the wiring ------------------------------------------------------------------
 
 def test_the_key_reaches_small_text_through_the_pipeline(monkeypatch):
-    """`cfg.small_text_bay_mouth` is read by the pipeline's one call to the
-    growth: False, the call carries no `bay_mouth` at all (the pre-flip call,
-    word for word); the default (ON since 2026-10-26, Kent's flip) carries
-    `bay_mouth=True`. A tiny art -- two blobs on white -- through
+    """The pipeline's one call to the growth carries `bay_mouth=True`
+    (`small_text_bay_mouth`, ON since 2026-10-26, Kent's flip; folded in
+    2026-11-20). A tiny art -- two blobs on white -- through
     `build_generation`, the stage that grows."""
     from digitizer_core import PipelineConfig, small_text
     from digitizer_core.pipeline import build_generation
@@ -331,12 +333,6 @@ def test_the_key_reaches_small_text_through_the_pipeline(monkeypatch):
     monkeypatch.setattr(small_text, "enlarge_small_text", own_thread_only(
         lambda *a, **k: (calls.append(dict(k)), real(*a, **k))[1], real))
     reset = dict(target_width_mm=60.0, max_colors=4, **KW_CFG)
-    assert PipelineConfig().small_text_bay_mouth is True
-    from tests.conftest import PRE_FLIP
-    assert PRE_FLIP["small_text_bay_mouth"] is False
-    build_generation(img, PipelineConfig(**reset, small_text_bay_mouth=False))
     build_generation(img, PipelineConfig(**reset))
-    assert len(calls) == 2, calls
-    assert "bay_mouth" not in calls[0]
-    assert calls[1]["bay_mouth"] is True
-    assert {k: v for k, v in calls[1].items() if k != "bay_mouth"} == calls[0]
+    assert len(calls) == 1, calls
+    assert calls[0]["bay_mouth"] is True

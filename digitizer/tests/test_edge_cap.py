@@ -603,46 +603,14 @@ def _near(points, poly, d=0.6):
     return [p for p in points if zone.contains(Point(p))]
 
 
-def test_bean_letters_skip_the_cap_is_on_and_priced():
-    from tools.pro_parity import flagcost as fc
-
-    from .conftest import PRE_FLIP
-    assert PipelineConfig().edge_cap_skip_bean_letters is True
-    assert PRE_FLIP["edge_cap_skip_bean_letters"] is False
-    assert fc.FLAGS["edge_cap_skip_bean_letters"] is False
-
-
-def test_off_the_cap_rings_a_solid_bean_letter():
-    """The defect, pinned on the pre-flip engine: the letter sews as runs
-    and the cap rings its grown polygon anyway."""
-    a_poly, off = _bean_design(edge_cap_skip_bean_letters=False)
-    kinds = {str(r.kind) for b in off.blocks for r in b.runs if r.shape_id == "A"}
-    assert kinds == {"run"}, kinds
-    assert len(_near(_cap_points(off), a_poly)) > 0
-
+# Deleted 2026-11-20 (`edge_cap_skip_bean_letters` folded into the code, B5): the
+# flag-is-ON-and-priced check, `test_off_the_cap_rings_a_solid_bean_letter` and
+# `test_on_the_rest_of_the_cap_and_every_artwork_run_are_unchanged`, which all
+# read the `edge_cap_skip_bean_letters=False` arm that no longer exists.
 
 def test_on_no_cap_stitch_stands_on_a_bean_letter():
     a_poly, on = _bean_design()
     assert _near(_cap_points(on), a_poly) == []
-
-
-def test_on_the_rest_of_the_cap_and_every_artwork_run_are_unchanged():
-    """The flag reaches the silhouette and nothing else: the field is ringed
-    on the same line either way -- the ring may START elsewhere, since the
-    needle no longer arrives from the letter's ring -- and every artwork run
-    is what it was."""
-    a_poly, off = _bean_design(edge_cap_skip_bean_letters=False)
-    _a, on = _bean_design()
-    away = a_poly.buffer(0.6)
-    from shapely.geometry import MultiPoint, Point
-    rest_off = [p for p in _cap_points(off) if not away.contains(Point(p))]
-    rest_on = _cap_points(on)
-    assert rest_off and rest_on
-    assert abs(len(rest_on) - len(rest_off)) <= 0.05 * len(rest_off)
-    # Same line: every ON station within a hair of the OFF ring and back.
-    assert MultiPoint(rest_on).hausdorff_distance(MultiPoint(rest_off)) < 0.75
-    assert ([(t, [r.points for r in rs]) for t, rs in art_blocks(on)]
-            == [(t, [r.points for r in rs]) for t, rs in art_blocks(off)])
 
 
 def test_a_design_of_nothing_but_bean_letters_gets_no_cap():
@@ -652,5 +620,3 @@ def test_a_design_of_nothing_but_bean_letters_gets_no_cap():
                                         BEAN_LETTER_KEY: spines})]
     on = plan_for(only, edge_cap="bean")
     assert _cap_points(on) == []
-    off = plan_for(only, edge_cap="bean", edge_cap_skip_bean_letters=False)
-    assert _cap_points(off)

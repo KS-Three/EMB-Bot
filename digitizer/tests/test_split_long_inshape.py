@@ -56,7 +56,7 @@ def _too_long(runs):
 
 
 def _on(outline, body, **kw):
-    return _plan(outline, body, border_from_outline=True, extra={FLAG: True}, **kw)
+    return _plan(outline, body, extra={FLAG: True}, **kw)
 
 
 # ------------------------------------------------------------------ the flag
@@ -69,8 +69,8 @@ def test_flag_reads_off_by_default():
 
 @pytest.mark.parametrize("ring", [THICK, FAT, KEY], ids=["thick", "fat", "key"])
 def test_off_is_byte_identical_with_the_key_false_or_absent(ring):
-    absent = _plan(ring, FACE, border_from_outline=True)
-    false = _plan(ring, FACE, border_from_outline=True, extra={FLAG: False})
+    absent = _plan(ring, FACE)
+    false = _plan(ring, FACE, extra={FLAG: False})
     assert _md5(false) == _md5(absent)
 
 
@@ -159,7 +159,7 @@ def _check_split(off, on, sid):
 def test_border_from_outline_pieces_are_joined_under_the_ceiling(two_pieces, ring):
     # priced before `outline_frame_guard` (ON 2026-11-15): FAT reads as a
     # field under it, so both arms keep the guard off
-    off = _plan(ring, FACE, border_from_outline=True, **PIECE_LIFT_2026_11_14_OFF,
+    off = _plan(ring, FACE, **PIECE_LIFT_2026_11_14_OFF,
                 **FRAME_GUARD_2026_11_15_OFF)
     on = _on(ring, FACE, **PIECE_LIFT_2026_11_14_OFF, **FRAME_GUARD_2026_11_15_OFF)
     long_off = _check_split(off, on, "Souter")
@@ -183,4 +183,4 @@ def test_enclosed_white_keyline_pieces_are_joined_under_the_ceiling():
 def test_on_a_one_piece_outline_changes_nothing(ring):
     # unsplit, THICK's and FAT's rest is one strip and KEY's loop reaches all
     # of it: no second piece, no join
-    assert _md5(_on(ring, FACE)) == _md5(_plan(ring, FACE, border_from_outline=True))
+    assert _md5(_on(ring, FACE)) == _md5(_plan(ring, FACE))

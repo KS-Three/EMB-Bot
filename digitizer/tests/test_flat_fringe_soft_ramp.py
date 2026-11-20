@@ -55,8 +55,7 @@ def pixels():
 def _stage2(pixels, **extra):
     cfg = _cfg(**extra)
     p = prep(pixels, cfg, design_class="flat")
-    if cfg.two_tone_snap:
-        two_tone.apply(p)
+    two_tone.apply(p)
     return p, quantize(p, cfg), cfg
 
 
@@ -178,8 +177,7 @@ def test_a_thin_real_ink_between_its_own_ramps_is_kept():
     for extra in (OFF, dict(OFF, **DISSOLVE)):
         cfg = PipelineConfig(**_parse_config(json.dumps(pp.request(80.0, "left_chest", extra))))
         p = prep(px, cfg, design_class="flat")
-        if cfg.two_tone_snap:
-            two_tone.apply(p)
+        two_tone.apply(p)
         assert p.px_per_mm > p.input_px_per_mm
         out.append(quantize(p, cfg))
     assert "0152" in _threads(out[0], cfg)

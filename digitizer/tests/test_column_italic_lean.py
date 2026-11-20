@@ -24,7 +24,8 @@ from shapely.affinity import affine_transform, rotate, translate
 from shapely.geometry import Polygon, box
 
 from digitizer_core import PipelineConfig, column_lean, columns, machine
-from tests.conftest import FLIP_2026_10_23
+from tests.conftest import FLIP_2026_10_23, own_thread_only
+from digitizer_core import stage7_sequence as s7
 from digitizer_core.column_lean import (ITALIC_BAR_DEG, ITALIC_MIN_DEG, italic_lean, italic_words,
                                         lean_columns, with_italic_lean)
 from digitizer_core.fabrics import fabric_for_garment
@@ -180,10 +181,19 @@ def test_a_letter_outside_every_italic_word_is_untouched():
 
 def _sew(regions, italic: bool):
     planned = [PlannedRegion(region=r, polygon=r.polygon, sew_index=i) for i, r in enumerate(regions)]
-    # the synthetic E was measured before the 2026-10-23 flips (corner fold re-cuts its bars)
-    cfg = PipelineConfig(underlay=False, lettering_columns_skip_blobs=False, **FLIP_2026_10_23)
+    # the synthetic E was measured before the 2026-10-23 flips: the corner fold re-cuts its
+    # bars into one folded column, which the italic bar rule does not touch. The corner
+    # fold was folded into the code 2026-11-20, so its absence is stage 7's Column-lane
+    # call with `corner_fold` forced False (the keyword default of `lettering_columns_shape`).
+    cfg = PipelineConfig(underlay=False, **FLIP_2026_10_23)
     run = with_italic_lean(sequence, regions) if italic else sequence
-    blocks, _w = run(planned, fabric_for_garment("hat_front"), cfg)
+    real = s7.lettering_columns_shape
+
+    def no_corner_fold(poly, shape_id, **k):
+        return real(poly, shape_id, **{**k, "corner_fold": False})
+    with pytest.MonkeyPatch.context() as mp:
+        mp.setattr(s7, "lettering_columns_shape", own_thread_only(no_corner_fold, real))
+        blocks, _w = run(planned, fabric_for_garment("hat_front"), cfg)
     return [r for b in blocks for r in b.runs]
 
 

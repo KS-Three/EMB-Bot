@@ -231,7 +231,12 @@ def test_flat_and_gradient_lanes_still_match_golden_after_photo_dispatch(fixture
 # exercise fragmentation at all (`gradient_ramp_*`/`repro_gradient_white_
 # icon` are all much simpler). Not derived from any customer file. See
 # `MERGE_DELTAE00_THRESH`'s docstring for its own sweep numbers.
-BUSY_GRADIENT_FIXTURES = ("drone_render.png", "summit_badge.png")
+# `drone_render.png` was dropped from the band test 2026-11-20: it was read with
+# `keep_thin_strokes` held OFF (the flag adds a deliberate third population of
+# thin strokes on the gradient class, ~120 regions on drone_render), and the
+# flag is folded into the code now, so the band no longer reads fragmentation
+# there (117 regions). `summit_badge.png` still lands inside it.
+BUSY_GRADIENT_FIXTURES = ("summit_badge.png",)
 
 
 def test_gradient_class_dispatches_to_photo_segment_not_quantize():
@@ -249,28 +254,34 @@ def test_gradient_class_dispatches_to_photo_segment_not_quantize():
 
 
 @pytest.mark.parametrize("fixture", BUSY_GRADIENT_FIXTURES)
-def test_busy_gradient_fixtures_land_inside_the_accept_band(fixture):
+def test_busy_gradient_fixtures_land_inside_the_accept_band(fixture, monkeypatch):
     """The actual defect this pass fixes: plain k-means fragmented
     drone_render.png into 192+ final regions (measured pre-fix), ~10x the
     plan doc's own 20-80 accept band (F4 criteria). SLIC+RAG at the retuned
     threshold lands both independent real busy fixtures inside that band.
 
-    `keep_thin_strokes=False` since 2026-09-13, the day it went ON by
-    default (Kent's ruling). The band is about SEGMENTATION fragmenting;
-    that flag adds a deliberate THIRD population on top of the segmentation
+    `keep_thin_strokes` was held OFF here from 2026-09-13 until it was folded
+    into the code 2026-11-20 (see the note above `BUSY_GRADIENT_FIXTURES`). The
+    band is about SEGMENTATION fragmenting; that flag adds a deliberate THIRD population on top of the segmentation
     (`thin_ink.find_thin_ink`, gradient class only), and on the shipped
     engine drone_render lands at 120 regions here — the flip sheet records
     and Kent accepted that (74 -> 107 at the fixture's own Studio params).
     Reading the band against an engine that adds regions on purpose would
     make this test report the flip as fragmentation.
 
-    `snap_region_edges=False` since 2026-09-30, the day it went ON (Kent's
-    flip on renders), for the same reason: the snap hands edge pixels back
-    to the region whose colour they carry, and the pieces that leaves
-    standing on their own are regions it adds on purpose (drone_render's
-    crosshair comes back that way). Left ON, drone_render reads 81 here."""
-    cfg = PipelineConfig(target_width_mm=90.0, keep_thin_strokes=False,
-                         snap_region_edges=False)
+    The edge snap is held off (`stage2_photo_segment.snap_region_edges`
+    patched to hand its labels back; a switch until 2026-11-20, ON since
+    2026-09-30, Kent's flip on renders), for the same reason: the snap hands
+    edge pixels back to the region whose colour they carry, and the pieces
+    that leaves standing on their own are regions it adds on purpose
+    (drone_render's crosshair comes back that way). Left on, drone_render
+    reads 81 here."""
+    import digitizer_core.stage2_photo_segment as ps
+    from tests.conftest import own_thread_only
+    real = ps.snap_region_edges
+    monkeypatch.setattr(ps, "snap_region_edges",
+                        own_thread_only(lambda labels, valid, lab, **kw: labels, real))
+    cfg = PipelineConfig(target_width_mm=90.0)
     result = run_stages(str(PHOTO_DIR / fixture), cfg)
     assert result.design_class == "gradient"
     assert 20 <= len(result.regions) <= 80, (

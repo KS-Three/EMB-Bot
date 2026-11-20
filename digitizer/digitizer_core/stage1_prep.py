@@ -81,7 +81,7 @@ class Prep:
     # threshold that makes `bg_mask` throws it away, then the NEAREST
     # upscale of that mask turns every edge into a staircase of source
     # pixels (0.68 mm a step on Becker at 100 mm). `stage4_vectorize` reads
-    # the edge from these under `cfg.subpixel_edges_upscaled`; the Lanczos
+    # the edge from these (the native sub-pixel read); the Lanczos
     # ramp in `rgb` is manufactured and `subpixel.py` declines it.
     native_rgb: np.ndarray | None = None
     native_alpha: np.ndarray | None = None
@@ -129,7 +129,7 @@ class Prep:
     bg_rgb: tuple[int, int, int] | None = None
     # The raster with the file's OWN colour under the transparency, in
     # `rgb`'s frame and through the same denoise and upscale — set only
-    # under `cfg.alpha_edge_extend`, where `rgb` carries nearest-opaque
+    # where the alpha extension ran, where `rgb` carries nearest-opaque
     # colour there instead. For the readers that want the exporter's colour
     # (preflight's `GROUND_SEWN` border colour); `bg_edge_rgb` above is
     # already read from it. None otherwise: read `rgb`.
@@ -138,7 +138,6 @@ class Prep:
 
 
 def _load(image: str | Path | bytes | np.ndarray,
-          strip_bars: bool = False,
           crop=None) -> tuple[np.ndarray, np.ndarray | None]:
     """-> (rgb uint8, alpha uint8 or None)."""
     if isinstance(image, np.ndarray):
@@ -162,15 +161,10 @@ def _load(image: str | Path | bytes | np.ndarray,
     # as ink -- so black bars invert the whole design rather than merely
     # degrading it. Strip before anything reads the pixels.
     #
-    # Behind `cfg.strip_letterbox`, DEFAULT OFF -- see that flag's comment for
-    # why (11 tests depend on one fixture's letterboxed pathology, including a
-    # cv2.erode regression guard whose only full-bleed fixture this removes).
-    # `stage0_classify._load` is gated by the same flag, and they must stay in
+    # `stage0_classify._load` strips the same way, and they must stay in
     # step: if only one stripped, stage 0 would classify a different picture
     # than stage 1 digitizes.
-    if strip_bars:
-        return strip_letterbox(rgb, alpha)
-    return rgb, alpha
+    return strip_letterbox(rgb, alpha)
 
 
 def _border_ring(shape: tuple[int, int], width: int = 2) -> np.ndarray:
@@ -395,15 +389,14 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     """`design_class` is stage 0's verdict when the caller has one: it decides
     whether the working grid applies (`config.work_grid_px_per_mm` — a
     photograph keeps the source line). None reads as not photographic."""
-    rgb, alpha = _load(image, cfg.strip_letterbox, cfg.crop)
+    rgb, alpha = _load(image, cfg.crop)
     warnings: list[dict] = []
 
-    # `cfg.alpha_edge_extend`: every stage reads nearest-opaque colour under
+    # Alpha edge extension: every stage reads nearest-opaque colour under
     # every non-opaque pixel instead of whatever the exporter left there;
     # `raw` keeps the file's own, carried through the same steps, for the two
     # readers that want exactly that (`bg_edge_rgb` below, preflight's border
-    # colour — see `extend_opaque_colour`). With the flag off nothing here
-    # runs and `raw` is never read.
+    # colour — see `extend_opaque_colour`).
     extend = extension_applies(cfg, alpha, design_class=design_class)
     raw = rgb
     if extend:
@@ -716,8 +709,8 @@ def prep(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
     # Color the artwork's outer anti-alias band blends toward (see Prep).
     # Measured from the background side of the boundary, so it is correct for
     # both an opaque backdrop and an alpha cutout (where it picks up whatever
-    # RGB sits under the transparency — from `raw` under `alpha_edge_extend`,
-    # so the flag changes what the filters read and not what this reads).
+    # RGB sits under the transparency — from `raw` under the alpha extension,
+    # so the extension changes what the filters read and not what this reads).
     bg_edge_rgb = None
     if bg.any():
         near_fg = (
