@@ -52,13 +52,6 @@ def _run(**kw):
     # underlay) would price nothing. The lane's own trims are pinned in
     # `tests/test_lettering_columns.py`.
     kw.setdefault("lettering_columns", False)
-    # ... and without the photo lane's phantom-blend dissolve
-    # (`dissolve_phantom_blends`, ON since Kent's 2026-10-20 flip, item 46):
-    # this fixture reads the gradient lane, and with the dissolve ON both levers together
-    # leave 14 trims, not under ten (CI 2026-10-20).
-    # The numbers here were read without it; the dissolve's own price is
-    # `tests/test_phantom_blend_photo.py`'s and PR #1005's.
-    kw.setdefault("dissolve_phantom_blends", False)
     # ...and the 2026-10-23 flips (buried hops, no start locks, short-column
     # underlay): every trim count here was read without them.
     for k, v in FLIP_2026_10_23.items():
@@ -224,3 +217,17 @@ def test_both_levers_together_take_the_fixture_under_eighteen_trims(both_on):
     by = _trims_by_cause(r_on, p_on)
     assert by.get("underlay->satin", 0) == 0
     assert by.get("letter-to-shape", 0) <= 5
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _without_the_phantom_blend_dissolve():
+    """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
+    item 46; folded into the code 2026-11-20): this fixture reads the gradient lane, and with the dissolve ON both levers together
+    leave 14 trims, not under ten (CI 2026-10-20).
+    The numbers here were read without it; the dissolve's own price is
+    `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
+    what the switch's False path did."""
+    from tests.conftest import legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        yield

@@ -940,6 +940,19 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **Porting SAM2 to ONNX for CPU speed buys nothing. The speed lever is
+  DirectML on a GPU.** SAM2.1 tiny, self-exported from Meta's checkpoint and
+  run at production AMG settings on 6 photo fixtures, gave masks identical to
+  PyTorch on all 6. ONNX Runtime on CPU ran 1.0–1.6× faster than PyTorch on
+  CPU, which is inside that baseline's own run-to-run noise. ONNX Runtime with
+  DirectML on an RTX 4070 ran 3.2–15× faster (1.4–5.8 s). **What to do:** do
+  not spend a session on CPU ONNX or int8 for speed. Whatever case remains for
+  ONNX is install size (about 150 MB against a 2–3 GB PyTorch venv) and
+  DirectML, so measure it on an integrated-GPU laptop first. Also do not trust
+  "this machine has no GPU" in the SAM2 docs: Kent's desktop has one.
+  *(measured 2026-11-20 — `docs/sam2-onnx-directml-probe-2026-11-20.md`,
+  `digitizer/sam2_isolated/onnx_probe.py`)*
+
 - **Cap centre-out ordering costs more than twice the needle-up travel, and
   the one pro file that can be read disagrees with exactly the half that
   costs it.** `cfg.cap_center_out` is BUILT and parked OFF (MASTER_SCOPE

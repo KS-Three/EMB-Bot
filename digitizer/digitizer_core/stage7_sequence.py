@@ -2653,7 +2653,7 @@ def _cap_seam_joins(blocks: list[StitchBlock], c_index: int,
     block in that same cone -- the edge cap's repeated-cone route (MASTER_SCOPE
     defect 18), read by `tools/cone_revisits.py` at gap 1.
 
-    `cfg.merge_adjacent_same_thread` already folds consecutive same-thread
+    The adjacent same-thread merge already folds consecutive same-thread
     ARTWORK blocks; this is the same rule at the one seam it did not reach.
     The caller extends `blocks[-1]` with the cap's runs instead of appending a
     block: they stay jump + trim + tied as a block start, so every stitch and
@@ -2662,7 +2662,7 @@ def _cap_seam_joins(blocks: list[StitchBlock], c_index: int,
     `cfg.edge_cap_fold_into_colour` (`_cap_fold_host`, OFF). An operator-step
     block (appliqué, puff) is never joined: its stop is the operator's.
     """
-    if not (cfg.merge_adjacent_same_thread and blocks):
+    if not blocks:
         return False
     prev = blocks[-1]
     return (prev.thread_index == c_index and prev.step is None
@@ -3729,7 +3729,6 @@ def sequence(
     # list below is scoped to one colour; the silhouette is the union of
     # all of them, and a region that produced nothing has no edge to cap.
     cap_sewn: list[PlannedRegion] = []
-    merge_same_thread = bool(cfg.merge_adjacent_same_thread)
     hoist_same_thread = max(0.0, float(cfg.hoist_same_thread_margin_mm))
     # `cfg.small_letter_ties` (default OFF): the shapes sewn below as bean
     # letters or skeleton runs, whose runs `stitches.apply_ties` locks along
@@ -5114,8 +5113,7 @@ def sequence(
                 # a per-job override moved every fill on a design EXCEPT its
                 # gradient regions.
                 # The underlay style had the same hole (2026-10-05): this
-                # tier was never handed it. Sewn only under
-                # `cfg.blend_fallback_underlay`, on the fallback path.
+                # tier was never handed it. Sewn on the fallback path.
                 runs, report = blend_fill(p.region, source_pixels, cfg,
                                           start_near=entry,
                                           polygon=small_print_cut(p, p.polygon, bar_mm=row_mm),
@@ -5542,7 +5540,7 @@ def sequence(
         # `sequence()` job.
         group_blocks = _shade_blocks(ordered, group[0].region.thread_index,
                                      chart_for(cfg), trim_at,
-                                     tie=not merge_same_thread, **tie_kw)
+                                     tie=False, **tie_kw)
         art_blocks.extend(group_blocks)
         cursor = group_blocks[-1].runs[-1].points[-1]
         cap_sewn.extend(sewn)
@@ -5564,26 +5562,25 @@ def sequence(
             int(cfg.max_colors), chart_for(cfg))
         if folded:
             fold_warnings.append(folded)
-    if merge_same_thread:
+    art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
+    # The non-adjacent half, gated on geometry (see `_hoist_same_thread`).
+    # Hoisting only ever CREATES adjacency, so the adjacent pass re-runs to
+    # fold what it brought together; ties wait for both to finish.
+    if hoist_same_thread > 0:
+        art_blocks = _hoist_same_thread(art_blocks, trim_at,
+                                        hoist_same_thread)
         art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
-        # The non-adjacent half, gated on geometry (see `_hoist_same_thread`).
-        # Hoisting only ever CREATES adjacency, so the adjacent pass re-runs to
-        # fold what it brought together; ties wait for both to finish.
-        if hoist_same_thread > 0:
-            art_blocks = _hoist_same_thread(art_blocks, trim_at,
-                                            hoist_same_thread)
-            art_blocks = _merge_adjacent_same_thread(art_blocks, trim_at)
-        # `cfg.skip_covered_shapes` (built OFF): a shape its own colour's
-        # other thread wholly covers is not sewn; first, so the hops it
-        # leaves are offered to the burying pass below.
-        if cfg.skip_covered_shapes:
-            _skip_covered_shapes(art_blocks, trim_at)
-        # `cfg.trim_bury_under_later` (built OFF): before the ties, which
-        # lock every cut that is left.
-        if cfg.trim_bury_under_later:
-            _bury_trims_under_later(art_blocks)
-        for _b in art_blocks:
-            _apply_ties(_b.runs, **tie_kw)
+    # `cfg.skip_covered_shapes` (built OFF): a shape its own colour's
+    # other thread wholly covers is not sewn; first, so the hops it
+    # leaves are offered to the burying pass below.
+    if cfg.skip_covered_shapes:
+        _skip_covered_shapes(art_blocks, trim_at)
+    # `cfg.trim_bury_under_later` (built OFF): before the ties, which
+    # lock every cut that is left.
+    if cfg.trim_bury_under_later:
+        _bury_trims_under_later(art_blocks)
+    for _b in art_blocks:
+        _apply_ties(_b.runs, **tie_kw)
     blocks.extend(art_blocks)
 
     # --- The design-silhouette edge cap (cfg.edge_cap) ----------------------
@@ -5604,8 +5601,8 @@ def sequence(
     # a block boundary is where the needle lifts and this pass starts
     # somewhere the previous colour did not end. When the picked thread
     # happens to match the last artwork block, the cap sews at the end of
-    # that block instead (`_cap_seam_joins`, under the same
-    # `cfg.merge_adjacent_same_thread`, 2026-10-20): its first run keeps the
+    # that block instead (`_cap_seam_joins`, under
+    # the adjacent same-thread merge, 2026-10-20): its first run keeps the
     # lift and the cut, so the pass still starts fresh, and the stop between
     # two blocks of one cone bought nothing. Until then this was the edge
     # cap's repeated-cone route (defect 18).

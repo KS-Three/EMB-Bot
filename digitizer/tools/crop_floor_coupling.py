@@ -46,7 +46,7 @@ def sweep(art, width_mm, crops) -> None:
     for crop in crops:
         cfg = PipelineConfig(target_width_mm=width_mm, garment_id="left_chest",
                              crop=crop)
-        _rgb, alpha = _load(art, cfg.strip_letterbox, cfg.crop)
+        _rgb, alpha = _load(art, cfg.crop)
         gate = (upscale_expected(alpha, cfg.target_width_mm, cfg.min_px_per_mm)
                 if alpha is not None else None)
         # `input_px_per_mm` is what the SOURCE delivered for this crop, before

@@ -34,7 +34,13 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import PRE_FLIP, TESTDATA
+from .conftest import PRE_FLIP, TESTDATA, pre_flip_module_gen
+
+
+# The numbers in this file were read on the engine before six colour switches were
+# folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
+# held them False. `legacy_engine` patches their False paths back for the module.
+pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
 
 TINY = "photo/logo_gaulke_roofing.png"      # 4 cones, the 63.6 -> 58.6 case
 BRIDGE = "photo/logo_bridge_bar.jpg"        # 8 cones, the 21.3 -> 10.3 case

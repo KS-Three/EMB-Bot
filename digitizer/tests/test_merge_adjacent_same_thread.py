@@ -27,7 +27,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.stage7_sequence import _merge_adjacent_same_thread
 from digitizer_core.stitches import StitchBlock, StitchRun
-from tests.conftest import PRE_FLIP
+from tests.conftest import PRE_FLIP, own_thread_only
 
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
@@ -97,13 +97,27 @@ def test_degenerate_inputs_are_a_no_op(blocks):
     assert len(_merge_adjacent_same_thread(src, trim_at=3.0)) == len(src)
 
 
-def test_flat_artwork_is_byte_identical_with_the_flag_either_way():
+def _merge_off(monkeypatch):
+    """The engine before the merge became unconditional (2026-11-20): the
+    adjacent merge, the hoist and the edge cap's seam join do nothing, so
+    each block is tied once where `_shade_blocks` makes it, as the
+    `merge_adjacent_same_thread=False` arm always did."""
+    import digitizer_core.stage7_sequence as s7
+    for name, fake in (("_merge_adjacent_same_thread", lambda blocks, trim_at: blocks),
+                       ("_hoist_same_thread", lambda blocks, trim_at, margin_mm: blocks),
+                       ("_cap_seam_joins", lambda blocks, c_index, cfg: False)):
+        real = getattr(s7, name)
+        monkeypatch.setattr(s7, name, own_thread_only(fake, real))
+
+
+def test_flat_artwork_is_byte_identical_with_the_merge_either_way(monkeypatch):
     """The merge only fires where two adjacent blocks share a thread, which
     no flat design measured here produces — so the flat lane, and every
     golden pinned on it, must be untouched by the default flip."""
     img = TESTDATA / "logo_whitebg.png"
-    _r1, off = digitize(img, PipelineConfig(merge_adjacent_same_thread=False))
-    _r2, on = digitize(img, PipelineConfig(merge_adjacent_same_thread=True))
+    _r2, on = digitize(img, PipelineConfig())
+    _merge_off(monkeypatch)
+    _r1, off = digitize(img, PipelineConfig())
 
     def shape(plan):
         return [(b.thread_index, [tuple(r.points) for r in b.runs])
@@ -112,7 +126,7 @@ def test_flat_artwork_is_byte_identical_with_the_flag_either_way():
     assert shape(off) == shape(on)
 
 
-def test_ties_are_applied_exactly_once_across_the_merge():
+def test_ties_are_applied_exactly_once_across_the_merge(monkeypatch):
     """`apply_ties` is not idempotent — its own docstring warns that tying
     twice "doubles the lock into eight stitches of thread piled in one spot".
     The merge defers tying so it happens once, on the surviving blocks; if it
@@ -124,7 +138,7 @@ def test_ties_are_applied_exactly_once_across_the_merge():
     re-snaps by `rehome_resnapped_regions`, review-screen recolors by
     `apply_shape_edits`' own layer-move (regions.py: "the layer moves with
     it") — so no committed artwork reaches the merge with anything to fold
-    (the owl sews 12 blocks with the flag OFF; pinned below). The invariant
+    (the owl sews 12 blocks with the merge off). The invariant
     is exercised where the file's unit tests already live: `sequence()` on
     hand-built regions whose thread identity is forced, the one lane —
     upstream state this pipeline no longer produces, or a future split
@@ -144,6 +158,8 @@ def test_ties_are_applied_exactly_once_across_the_merge():
                       meta={"layer": layer, "tier": "fill"})
 
     def blocks_with(merge: bool):
+        if not merge:
+            _merge_off(monkeypatch)
         # t7 at layers 0 and 2 with t9 between — [t7, t9, t7] raw. The
         # shapes sit 20 mm apart, far beyond both the hoist margin (their
         # order provably cannot move a seam) and trim_at (every block
@@ -155,11 +171,10 @@ def test_ties_are_applied_exactly_once_across_the_merge():
         # block SEQUENCE [7, 9, 7] the merge collapses. The design-silhouette
         # cap (ON by default since 2026-09-11) appends a fourth block that the
         # merge has nothing to say about.
-        conf = PipelineConfig(garment_id="left_chest",
-                              merge_adjacent_same_thread=merge,
-                              edge_cap="none")
+        conf = PipelineConfig(garment_id="left_chest", edge_cap="none")
         planned, _ = resolve_overlaps(regions, fabric, conf)
         blocks, _ = sequence(planned, fabric, conf)
+        monkeypatch.undo()
         return blocks
 
     off, on = blocks_with(False), blocks_with(True)
@@ -172,14 +187,6 @@ def test_ties_are_applied_exactly_once_across_the_merge():
     seq = [b.thread_index for b in on]
     assert all(x != y for x, y in zip(seq, seq[1:]))
 
-
-# `test_the_pipelines_own_output_no_longer_needs_the_merge` (the owl, merge OFF,
-# sews no adjacent same-thread blocks) was deleted 2026-11-20: it pinned
-# `keep_thin_strokes` OFF (and the other flags it names), and with that folded
-# into the code the owl plans `[..., 305, 305, ..., 12, 12, ...]` with the merge
-# off -- the pair of blocks the kept contrasting sub-floor regions come back as,
-# which the shipped merge (ON) folds. The claim it priced, that the re-snap's
-# own splits are consolidated upstream, was measured on the engine without it.
 
 # --- The non-adjacent half: _hoist_same_thread -----------------------------
 #
@@ -264,7 +271,7 @@ def test_a_one_point_run_still_has_geometry():
 
 
 @pytest.mark.usefixtures("source_line_grid")
-def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
+def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl(monkeypatch):
     """The whole safety argument, end to end: if the gate is right, reordering
     disjoint blocks cannot change what the design looks like. A changed render
     would mean the gate let through a reorder that moved a seam."""
@@ -281,7 +288,11 @@ def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
     # keeps its ground; the gate itself is flag-blind.
     # ... and to the engine before the 2026-09-10 colour-bundle flip
     # (PRE_FLIP), for the same reason: the four flags re-cone the owl's
-    # blocks and the plan the hoist argument needs is the pre-flip one.
+    # blocks and the plan the hoist argument needs is the pre-flip one. Two of
+    # the four (and four more colour switches) are folded into the code now, so
+    # `legacy_engine` patches back what their False paths did.
+    from tests.conftest import PRE_FLIP_FOLDED, legacy_engine
+    legacy_engine(monkeypatch, **PRE_FLIP_FOLDED)
     off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                        hoist_same_thread_margin_mm=0.0,
                                        subpixel_edges=False, **PRE_FLIP))[1]

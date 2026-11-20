@@ -12,7 +12,7 @@ def test_the_corpus_sweep_parses_its_config_overrides():
     that field set; a bool left as the string "False" would be truthy and
     silently measure the wrong arm."""
     from tools.cone_revisits import _overrides
-    assert _overrides(["merge_adjacent_same_thread=False",
+    assert _overrides(["keep_thin_strokes=False",
                        "target_width_mm=50", "edge_cap=none"]) == {
-        "merge_adjacent_same_thread": False, "target_width_mm": 50.0,
+        "keep_thin_strokes": False, "target_width_mm": 50.0,
         "edge_cap": "none"}

@@ -1,5 +1,5 @@
-"""`cfg.bind_resnap_all_classes` — the re-snap stops pulling in spools the
-palette never chose. DEFAULT OFF.
+"""The re-snap stops pulling in spools the palette never chose (the
+`bind_resnap_all_classes` switch, folded into the code 2026-11-20).
 
 `stage4_vectorize.revalidate_threads` binds its argmin to the selected palette
 on photo classes only (2026-08-23). Off that route it runs over the WHOLE
@@ -15,8 +15,8 @@ photo-class fixtures add none, which is the control: the binding works, and the
 lane real customer logo art routes to never got it.
 
 The invariant these tests pin is stated on the DESIGN's cone list, not on the
-row count: with the flag ON, no region may wear a spool outside the selection
-the palette handed the pass.
+row count: no region may wear a spool outside the selection the palette handed
+the pass.
 """
 
 import hashlib
@@ -32,11 +32,8 @@ from digitizer_core.pipeline import plan_stitches, run_stages
 from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
 from tests.conftest import own_thread_only
 
-# Two gradient fixtures with a measured escape (7 and 5 cones), one photo-class
-# fixture that already binds (must be byte-identical either way), and a flat
-# control.
+# Two gradient fixtures with a measured escape (7 and 5 cones).
 ESCAPERS = ["photo/screenshot_phone_ui_golke.jpg", "photo/drone_render.png"]
-CONTROLS = ["photo/photo_dof_meadow.png", "logo_alpha.png"]
 
 
 def _cfg(**kw) -> PipelineConfig:
@@ -44,7 +41,7 @@ def _cfg(**kw) -> PipelineConfig:
 
 
 class _Case(NamedTuple):
-    """Everything this file asks of one (fixture, flag) pipeline run — plain
+    """Everything this file asks of one fixture's pipeline run — plain
     immutable values, never the `PipelineResult`, because the cache below
     shares one object across every test that asks for the same case."""
     digest: tuple           # (sha20 of the emitted stitches, stitch count)
@@ -54,8 +51,8 @@ class _Case(NamedTuple):
 
 
 @lru_cache(maxsize=None)
-def _case(fixture: str, bind: bool) -> _Case:
-    """One pipeline run per (fixture, flag), reused by every test.
+def _case(fixture: str) -> _Case:
+    """One pipeline run per fixture, reused by every test.
 
     WHY THE CACHE. Written straight through this file ran `run_stages` 20-odd
     times over 8 distinct (fixture, flag) pairs. MASTER_SCOPE's "CI feedback
@@ -77,7 +74,7 @@ def _case(fixture: str, bind: bool) -> _Case:
         seen["palette"] = frozenset(kw.get("palette_indices") or ())
         return real(regions, p, cfg, **kw)
 
-    cfg = _cfg(**{**PRE_FLIP, "bind_resnap_all_classes": bind})   # the flag alone, over the pre-flip engine
+    cfg = _cfg(**PRE_FLIP)   # over the pre-flip engine
     pl.revalidate_threads = own_thread_only(probe, real)
     try:
         result = run_stages(TESTDATA / fixture, cfg)
@@ -107,55 +104,19 @@ def _digest(fixture: str, **kw) -> tuple:
     return hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords)
 
 
-def test_flag_defaults_on():
-    """Kent's ruling 2026-09-10: ON, as one of the four colour flags."""
-    assert PipelineConfig().bind_resnap_all_classes is True
-
-
 @pytest.mark.parametrize("fixture", ["photo/drone_render.png", "logo_alpha.png"])
-def test_the_shipped_engine_is_the_four_flags_on(fixture):
-    """No keyword at all against the four spelled out True, so a change to
-    any of the four defaults shows up as a difference rather than silently
+def test_the_shipped_engine_is_the_three_flags_on(fixture):
+    """No keyword at all against the three spelled out True, so a change to
+    any of the three defaults shows up as a difference rather than silently
     agreeing with itself. One escaper the bundle moves, one flat control."""
     assert _digest(fixture) == _digest(fixture, **BUNDLE_ON)
 
 
 @pytest.mark.parametrize("fixture", ESCAPERS)
 def test_on_closes_the_escape(fixture):
-    """The whole point: with the flag ON no region wears a spool the palette
-    never selected. Asserted as a set difference so the failure message names
-    the offending cones."""
-    case = _case(fixture, True)
+    """The whole point: no region wears a spool the palette never selected.
+    Asserted as a set difference so the failure message names the offending
+    cones."""
+    case = _case(fixture)
     assert case.palette, "fixture drift: no palette reached the re-snap"
     assert not (case.cones - case.palette), sorted(case.cones - case.palette)
-
-
-@pytest.mark.parametrize("fixture", ESCAPERS)
-def test_the_escape_is_really_there_with_the_flag_off(fixture):
-    """A control on the test above — without it, `test_on_closes_the_escape`
-    would still pass on a fixture that never escaped, and prove nothing."""
-    case = _case(fixture, False)
-    assert case.cones - case.palette, (
-        "no escape on this fixture any more; re-derive from "
-        "tools/resnap_escape.py rather than deleting the test")
-
-
-@pytest.mark.parametrize("fixture", CONTROLS)
-def test_a_photo_class_fixture_is_unaffected(fixture):
-    """`photo_dof_meadow` already binds, `logo_alpha` has nothing to escape
-    with — both must be byte-identical with the flag ON and OFF (over the
-    pre-flip engine, as every `_case` is), which is what says this change
-    reaches only the lane it is aimed at."""
-    assert _case(fixture, False).digest == _case(fixture, True).digest
-
-
-@pytest.mark.parametrize("fixture", ESCAPERS)
-def test_on_never_changes_a_shape_id_or_its_geometry(fixture):
-    """Threads only, never geometry — `revalidate_threads`' own invariant
-    (*"the polygon that came out of simplification is the one that sews
-    well"*). Compared as a shape_id -> WKT map, not two ordered lists:
-    `rehome_resnapped_regions` moves a re-snapped region between layers, so
-    the ORDER is expected to change and a positional comparison reads that as
-    a geometry change.
-    """
-    assert _case(fixture, True).geometry == _case(fixture, False).geometry

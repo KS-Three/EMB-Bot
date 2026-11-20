@@ -1,7 +1,7 @@
-"""`cfg.robust_region_colour` — the colour a SLIC+RAG region hands the
-palette: the plain mean (False, the pre-flip engine) or a robust centre of
-its Lab pixels (True, the shipped engine since 2026-09-10 — built OFF in
-PR #445 and flipped in the PR after on Kent's ruling). Plan
+"""The colour a SLIC+RAG region hands the palette: a robust centre of its Lab
+pixels (the shipped engine since 2026-09-10 — built OFF in PR #445, flipped in
+the PR after on Kent's ruling, folded into the code 2026-11-20; before that
+the plain mean). Plan
 `docs/superpowers/plans/2026-09-10-region-colour.md`; the loss it repairs
 is Bridge Bar's disc sewing Limelight for a Sun-yellow artwork (#442's test
 run, DOCTRINE 2026-09-10).
@@ -28,25 +28,19 @@ YELLOW = (251, 235, 65)      # Bridge Bar's disc, measured
 BLACK = (0, 0, 0)
 
 
-def test_default_on_and_the_radius_is_preflights_visible_threshold():
-    """DEFAULT ON since 2026-09-10 (Kent's ruling over the flip sheet and
-    the Bridge Bar render); False is the pre-flip engine byte for byte, and
-    the two tests after this one pin that."""
-    assert PipelineConfig().robust_region_colour is True
+def test_the_radius_is_preflights_visible_threshold():
     assert s2.ROBUST_REGION_RADIUS_DE00 == preflight.DELTA_E_VISIBLE == 5.0
     assert s2.ROBUST_REGION_STAT in ("median", "modal_mean")
 
 
-def test_off_is_the_pre_flip_expression_byte_for_byte():
+def test_the_mean_candidate_is_the_pre_flip_expression_byte_for_byte():
     """The RGB mean converted once — NOT the mean of the Lab pixels, which
     is a different number (Lab is not linear in RGB). The first cut of this
     seam averaged in Lab and the photo-lane golden caught it."""
     px = _pixels(YELLOW, 900, BLACK, 100)
-    got = s2._region_lab(px, PipelineConfig(robust_region_colour=False))
     old = rgb_to_lab(px.reshape(-1, 3).mean(axis=0, keepdims=True))[0]
-    assert np.array_equal(got, old)
     lab_mean = rgb_to_lab(px).mean(axis=0)
-    assert not np.allclose(got, lab_mean, atol=1e-6), "the two means must differ for this test to mean anything"
+    assert not np.allclose(old, lab_mean, atol=1e-6), "the two means must differ for this test to mean anything"
     assert np.array_equal(s2.region_colour_candidates(px)["mean"], old)
 
 
@@ -62,7 +56,7 @@ def test_a_minority_of_edge_pixels_moves_the_mean_and_not_the_robust_centres():
     assert de["mean"] > preflight.DELTA_E_VISIBLE
     assert de["median"] < 0.01
     assert de["modal_mean"] < 0.01
-    on = s2._region_lab(px, PipelineConfig(robust_region_colour=True))
+    on = s2._region_lab(px, PipelineConfig())
     assert np.array_equal(on, c[s2.ROBUST_REGION_STAT])
 
 
@@ -93,7 +87,6 @@ def test_the_median_side_wins_while_the_artwork_is_the_majority(n_cont):
 
 # --- the fixture the defect was found on ---------------------------------------
 
-import hashlib
 from pathlib import Path
 
 from digitizer_core.pipeline import digitize
@@ -120,55 +113,14 @@ def _cfg(**kw) -> PipelineConfig:
                           **{**_PRE_FLIP_ROUTE, **kw})
 
 
-def _digest(plan) -> str:
-    h = hashlib.sha1()
-    for b in plan.blocks:
-        h.update(str(b.thread_number).encode())
-        for run in b.runs:
-            h.update(str(len(run.points)).encode())
-            for x, y in run.points:
-                h.update(f"{x:.4f},{y:.4f};".encode())
-    return h.hexdigest()
-
-
 def _disc(result):
     """Bridge Bar's yellow disc: the largest region by area."""
     return max(result.regions, key=lambda r: float(r.area_mm2 or 0.0))
 
 
-@pytest.fixture(scope="module")
-def bridge_pair():
-    # The OFF arm is the PRE-FLIP ENGINE, which is what the test below reads
-    # it as and what #442's measurement was made on — so it also held
-    # `keep_thin_strokes` OFF (flipped ON by default 2026-09-13, Kent's
-    # ruling; folded into the code 2026-11-20, so no longer possible). With it on, Bridge Bar's JPEG ringing is kept as ~29 extra
-    # sub-floor regions, the disc's own region changes and the OFF arm sews
-    # `0713`, not the `6031` the loss was found as. `conftest.PRE_FLIP`'s
-    # posture; not spelled as PRE_FLIP because `robust_region_colour` is
-    # itself in that dict and this fixture is what prices it.
-    # `work_px_per_mm=None` on the OFF arm for the same reason (ON since
-    # 2026-10-01): traced at 8 px/mm the disc is another region again and
-    # the pre-flip arm sews `0704`.
-    return (digitize(BRIDGE, _cfg(robust_region_colour=False,
-                                  work_px_per_mm=None)),
-            digitize(BRIDGE, _cfg(robust_region_colour=True)))
-
-
-def test_on_is_the_shipped_engine_on_bridge_bar(bridge_pair):
-    """The default is the ON arm, byte for byte — and OFF is not it."""
-    (_, off_plan), (_, on_plan) = bridge_pair
-    _, default_plan = digitize(BRIDGE, _cfg())
-    assert _digest(on_plan) == _digest(default_plan)
-    assert _digest(off_plan) != _digest(default_plan)
-
-
-def test_the_shipped_engine_sews_the_discs_artwork_yellow(bridge_pair):
+def test_the_shipped_engine_sews_the_disc_in_the_artworks_yellow():
     """The loss #442 found, and its repair: the disc is 1.0 dE00 from Sun
-    and sewed Limelight because its mean is a colour no pixel carries.
-
-    The OFF arm's own spool (`6031`, Limelight, measured with
-    `keep_thin_strokes` held OFF) is no longer asserted: with that folded into
-    the code (2026-11-20) the OFF arm sews `0713` here, as the fixture's
-    comment records."""
-    (_off_r, _), (on_r, _) = bridge_pair
-    assert _disc(on_r).thread_number == DISC_SPOOL[s2.ROBUST_REGION_STAT]
+    and sewed Limelight (`6031`) when its palette colour was the mean, a
+    colour no pixel carries."""
+    result, _plan = digitize(BRIDGE, _cfg())
+    assert _disc(result).thread_number == DISC_SPOOL[s2.ROBUST_REGION_STAT]

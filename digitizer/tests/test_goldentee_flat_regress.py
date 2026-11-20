@@ -82,8 +82,7 @@ def test_stage0_routes_both_jobs_flat_on_and_gradient_off(slug):
 def _flat_stage3(slug: str):
     cfg = _cfg(slug)
     p = prep(_pixels(slug), cfg, design_class="flat")
-    if cfg.two_tone_snap:
-        two_tone.apply(p)
+    two_tone.apply(p)
     q = quantize(p, cfg)
     return cfg, p, q
 
