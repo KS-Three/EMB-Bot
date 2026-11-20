@@ -1306,8 +1306,13 @@ def resolve_overlaps(
                 # Counting the pull twice sewed the flag's third red 0.85 mm
                 # past its artwork, and the union left a hairline slit 55 mm
                 # into the stripe that forked its skeleton.
+                # An outline's body (`outline_fill_body`, tagged by
+                # `plan_stitches` under `cfg.seam_hold_skips_outline_bodies`)
+                # sews as a fill under its loop, with no rails: it keeps the
+                # fill's tongue (Ahora's gold O round its gear, 2026-11-19).
                 tongue = (max(0.0, overlap - pull)
                           if on_rails and getattr(cfg, "satin_seam_hold", False)
+                          and not r.meta.get("outline_fill_body")
                           else pull + overlap)
                 reach = (poly.buffer(tongue).intersection(later[L])
                          if tongue > 0 else Polygon())

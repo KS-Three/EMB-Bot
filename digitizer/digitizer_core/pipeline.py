@@ -2587,6 +2587,19 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
         # size, which the read needs), less what the customer turned off
         keyline_beans = {r.shape_id for r in stitched_regions if r.meta.get("hairline_outline")}
         stitched_regions = keyline_bean.sew_last(stitched_regions, keyline_beans)
+    # `cfg.seam_hold_skips_outline_bodies` (ON, 2026-11-19 regression repair):
+    # a body of an outline that sews is a plain FILL under its loop (stage 7's
+    # `outline_bodies`), never a satin, so `satin_seam_hold`'s tongue cut --
+    # which counts on satin rails carrying the pull under the later colour --
+    # must not reach it. Tagged here, where the outlines are known; stage 5
+    # reads the tag. Off: no region is touched.
+    if cfg.seam_hold_skips_outline_bodies and cfg.satin_seam_hold and art_outlines:
+        _sewn_ids = {r.shape_id for r in stitched_regions}
+        _body_ids = {bid for oid, bodies in art_outlines.items() if oid in _sewn_ids
+                     for bid, _hole, _w in bodies}
+        if _body_ids:
+            stitched_regions = [replace(r, meta={**r.meta, "outline_fill_body": True})
+                                if r.shape_id in _body_ids else r for r in stitched_regions]
     planned, overlap_warnings = resolve_overlaps(stitched_regions, fabric, cfg,
                                                  design_class=result.design_class,
                                                  hairline=hairline)
