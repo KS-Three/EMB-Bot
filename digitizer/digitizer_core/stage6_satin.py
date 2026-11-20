@@ -5074,7 +5074,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                   thin_arm_stop: bool = False,
                   tip_floor_cross: bool = False,
                   hairline_tier: bool = False,
-                  siblings: list | None = None) -> list[tuple[float, float]]:
+                  siblings: list | None = None,
+                  short_stitches: bool = True) -> list[tuple[float, float]]:
     """A stroke with Goldman corners (`Stroke.corners`) -> its members sewn as
     separate columns and laid end to end in chain order.
 
@@ -5140,7 +5141,8 @@ def _satin_joined(poly: Polygon, stroke: Stroke, half_mm: float,
                              # only the joined stroke's OUTER ends are free
                              # ends to read; an owner's corner end was laid
                              # square above, on its own 4-half-width line
-                             read_ends=(m == 0, m == len(edges_) - 2))
+                             read_ends=(m == 0, m == len(edges_) - 2),
+                             short_stitches=short_stitches)
         above = machine.SPLIT_SATIN_ABOVE_MM if split_above_mm is None else split_above_mm
         if parts is not None and len(parts) > n_before and n_before > n_start_joined:
             # The join stays ONE stroke in `parts` as well: this member's
@@ -5197,8 +5199,13 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                  tip_floor_cross: bool = False,
                  hairline_tier: bool = False,
                  siblings: list | None = None,
-                 read_ends: tuple[bool, bool] = (True, True)) -> list[tuple[float, float]]:
+                 read_ends: tuple[bool, bool] = (True, True),
+                 short_stitches: bool = True) -> list[tuple[float, float]]:
     """One stroke -> flat zigzag points (A1, B1, A2, B2, ...).
+
+    `short_stitches` (3D puff, 2026-11-19): False skips `_short_stitch_guard`,
+    so no penetration is retracted off its rail. True, the default, is
+    byte-identical to before the option.
 
     `parts` (2026-09-03), when a list is passed, additionally receives the
     stroke as PARTS in station order: `(kind, points, spine_slice, at_start,
@@ -5259,7 +5266,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                              rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                              rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                              junction_stack=junction_stack, cap_recentre=cap_recentre,
-                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross, hairline_tier=hairline_tier, siblings=siblings)
+                             tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross, hairline_tier=hairline_tier, siblings=siblings,
+                             short_stitches=short_stitches)
 
     if free_end_square and not stroke.closed:
         # A square cap or a slab sews square to it (see `_free_end_reading`).
@@ -5293,7 +5301,8 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                   max_width_mm=max_width_mm, fold_guard=fold_guard,
                   rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                   rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
-                  junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross)
+                  junction_stack=junction_stack, cap_recentre=cap_recentre, tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross,
+                  short_stitches=short_stitches)
         arm = Stroke(spine=raw, free_start=stroke.free_start, free_end=stroke.free_end,
                      closed=False, capped_start=stroke.capped_start, capped_end=stroke.capped_end,
                      tuck_under_start=stroke.tuck_under_start, tuck_under_end=stroke.tuck_under_end)
@@ -5527,7 +5536,10 @@ def satin_stroke(poly: Polygon, stroke: Stroke, half_mm: float,
                                   rail_held=rail_held, rail_keep=rail_keep,
                                   square_ends=cap_skew_inset,
                                   siblings=siblings)
-    crosses = _short_stitch_guard(rail_a, rail_b)
+    # `short_stitches=False` (3D puff, §3.6: a retracted penetration digs
+    # into the foam) keeps every penetration on its rail.
+    crosses = (_short_stitch_guard(rail_a, rail_b) if short_stitches
+               else list(zip(rail_a, rail_b)))
     if tip_floor_cross and not stroke.closed:
         n_before = len(crosses)
         crosses, spine = _tip_floor_extend(crosses, spine, stroke, poly, spacing_mm)
@@ -7022,7 +7034,8 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                          min_mm2: float = _JUNCTION_PATCH_MIN_MM2,
                          min_half_mm: float | None = None,
                          min_fill: float | None = None,
-                         satin_only: bool = False) -> list[StitchRun]:
+                         satin_only: bool = False,
+                         short_stitches: bool = True) -> list[StitchRun]:
     """`satin_patch_junctions = "satin"`: what `_uncovered_patches` found,
     each sewn as a satin COLUMN along its own long axis, in the order the
     finder returns them (largest first), each turned to end nearest the
@@ -7062,7 +7075,8 @@ def _junction_cover_runs(poly: Polygon, runs: list[StitchRun], shape_id: str,
                                 capped_start=True, capped_end=True)
                 pts = satin_stroke(patch, column, max(half, machine.SATIN_MIN_CROSS_MM / 2),
                                    None, split_above_mm, 0.0, spacing_mm, None,
-                                   max_width_mm=max_width_mm)
+                                   max_width_mm=max_width_mm,
+                                   short_stitches=short_stitches)
         except Exception:  # noqa: BLE001 -- an additive pass must never sink a shape
             pts = []
         if len(pts) >= 4:
@@ -7384,10 +7398,16 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                 counter_holes: list | None = None,
                 counter_clear_mm: float = 0.0,
                 short_column_underlay: bool = False,
+                short_stitches: bool = True,
                 _seams_closed: bool = False,
                 ) -> tuple[list[StitchRun], dict]:
     """One satin-classified shape -> runs in sew order, plus the same report
     contract `stitch_shape` uses, so stage 7 can treat the two identically.
+
+    `short_stitches` (3D puff, 2026-11-19): False turns `_short_stitch_guard`
+    off in every column this shape sews, junction covers included -- §3.6, a
+    retracted penetration digs into the foam. True, the default, is
+    byte-identical to before the option.
 
     `counter_holes` / `counter_clear_mm` (`cfg.open_cored_counters`,
     2026-10-19): the shape's cored counters (polygons; stage 3 kept them as
@@ -7572,7 +7592,8 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                      rail_comp_mm=rail_comp_mm, rail_comp_floor_mm=rail_comp_floor_mm,
                      rail_held=rail_held, rail_keep=rail_keep, cap_skew_inset=cap_skew_inset,
                      junction_stack=junction_stack, cap_recentre=cap_recentre,
-                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross, hairline_tier=hairline_tier, siblings=siblings)
+                     tip_caps=tip_caps, tip_corner_gate=tip_corner_gate, thin_arm_stop=thin_arm_stop, tip_floor_cross=tip_floor_cross, hairline_tier=hairline_tier, siblings=siblings,
+                     short_stitches=short_stitches)
         mixed = len(parts) > 1
         for kind, pts, piece, at_start, at_end in parts:
             if kind == stitches.SATIN and len(pts) < 4:
@@ -7842,7 +7863,7 @@ def satin_shape(poly: Polygon, shape_id: str, *, underlay_style: str,
                   else (_JUNCTION_PATCH_MIN_MM2, None, None, False))
         cover = _junction_cover_runs(poly, runs, shape_id, start_near,
                                      split_above_mm, spacing_mm, max_width_mm,
-                                     *floors)
+                                     *floors, short_stitches=short_stitches)
         if cover:
             # From one cover to the next and from the last to the shape's
             # first run the needle walks the unsewn web, needle down, the

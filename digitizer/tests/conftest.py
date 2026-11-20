@@ -1203,6 +1203,18 @@ PRE_FLIP.update(OFF_LINE_SINGLE_2026_11_18_OFF)
 # ON now"): `tests/test_thin_letters_after_ground.py`.
 THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF = {"thin_letters_after_ground": False}
 PRE_FLIP.update(THIN_LETTERS_AFTER_GROUND_2026_11_18_OFF)
+# `lettering_columns_sew_dropped_hairline` (Kent 2026-11-19, shown ART | BEFORE
+# | AFTER for every changed spot on the designs it moves: "Flip ON now"):
+# `tests/test_dropped_branch.py`.
+DROPPED_HAIRLINE_2026_11_19_OFF = {"lettering_columns_sew_dropped_hairline": False}
+PRE_FLIP.update(DROPPED_HAIRLINE_2026_11_19_OFF)
+# `underfill_keeps_thin_letters` and `dark_ink_line_one_lane` (Kent 2026-11-19,
+# shown ART | BEFORE | AFTER for every design each moves: "Flip ON now", both):
+# `tests/test_underfill_keeps_thin_letters.py`, `tests/test_dark_ink_line_one_lane.py`.
+UNDERFILL_THIN_LETTERS_2026_11_19_OFF = {"underfill_keeps_thin_letters": False}
+PRE_FLIP.update(UNDERFILL_THIN_LETTERS_2026_11_19_OFF)
+ONE_LANE_2026_11_19_OFF = {"dark_ink_line_one_lane": False}
+PRE_FLIP.update(ONE_LANE_2026_11_19_OFF)
 # `lettering_columns_cover_hops` (Kent 2026-11-17, "Flip ON anyway", over ROADMAP
 # gate 1: its tolerances are untested on cloth): `tests/test_column_cover_hops.py`.
 COVER_HOPS_2026_11_17_OFF = {"lettering_columns_cover_hops": False}

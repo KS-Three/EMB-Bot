@@ -56,7 +56,8 @@ def _hug(band, other_buffered) -> float:
     return float(band.exterior.intersection(other_buffered).length)
 
 
-def drop_keyline_fragments(regions, chart, mm_per_src_px: float | None = None) -> list[str]:
+def drop_keyline_fragments(regions, chart, mm_per_src_px: float | None = None,
+                           subpixel_darkest: bool = False) -> list[str]:
     """Remove orphan keyline fragments from `regions` in place. -> their shape ids."""
     ok = [i for i, r in enumerate(regions) if _poly(r)]
     bands = [i for i in ok if _width(regions[i].polygon) <= BAND_MAX_MM
@@ -67,6 +68,15 @@ def drop_keyline_fragments(regions, chart, mm_per_src_px: float | None = None) -
     darkest = min(float(chart.lab[regions[i].thread_index][0]) for i in ok)
     dark_cut = min(darkest + DARKEST_L_TOL, DARK_L_MAX)
     grown = {i: regions[i].polygon.buffer(TOUCH_MM) for i in bodies}
+
+    fringe: list[int] = []
+
+    def subpx(g) -> bool:
+        """`cfg.extra["keyline_fragment_subpixel"]`: thinner than the art can draw."""
+        from .sliver_prune import SLIVER_WIDTH_SRC_PX
+        return bool(subpixel_darkest and mm_per_src_px
+                    and _width(g) <= SLIVER_WIDTH_SRC_PX * mm_per_src_px)
+
     found: dict[tuple[int, int], list[tuple[int, float]]] = {}      # (host, thread) -> [(band, hug length)]
     for b in bands:
         g = regions[b].polygon
@@ -76,6 +86,15 @@ def drop_keyline_fragments(regions, chart, mm_per_src_px: float | None = None) -
                 if h != b and grown[h].intersects(g)]
         others = [(o, _hug(g, regions[o].polygon.buffer(TOUCH_MM))) for o in bands
                   if o != b and regions[o].polygon.distance(g) <= TOUCH_MM]
+        if subpx(g):
+            # `keyline_fragment_subpixel`: the fringe of a line may lie on
+            # another, wider BAND (the National Guard's white rim is 0.29 mm
+            # in the art): any wider shape of another thread can host it
+            wider = [(o, v) for o, v in others
+                     if regions[o].thread_index != regions[b].thread_index
+                     and _width(regions[o].polygon) > _width(g)]
+            hugs = hugs + wider
+            others = [t for t in others if t not in wider]
         if not hugs:
             continue
         host, on_host = max(hugs, key=lambda t: (t[1], -t[0]))
@@ -91,13 +110,30 @@ def drop_keyline_fragments(regions, chart, mm_per_src_px: float | None = None) -
             continue
         m = regions[b].meta
         if lb <= dark_cut and not m.get("color_cap_merged_from") and not m.get("rescued_small_shape"):
-            continue                       # the design's own darkest ink: drawn
+            # the design's own darkest ink: drawn. Unless
+            # `cfg.extra["keyline_fragment_subpixel"]` (built OFF 2026-11-19)
+            # and the band is thinner than the art can DRAW
+            # (`sliver_prune.SLIVER_WIDTH_SRC_PX`, 1.5 source pixels, the line
+            # the hairline-outline mark already holds): that is the raster's
+            # fringe of a keyline, whatever its ink. The National Guard seal
+            # at 90 mm: a hairline black keyline round the white rim traced as
+            # seven fragments 0.05-0.09 mm wide (0.5-1.0 source px); the two
+            # rescued ones went, the other five, in the design's black, each
+            # sewed a 1.5 mm satin dash on the rim.
+            if not subpx(g):
+                continue
         hole_rings = [LinearRing(h.coords).buffer(TOUCH_MM) for h in regions[host].polygon.interiors]
         in_holes = sum(float(g.exterior.intersection(r).length) for r in hole_rings)
         if in_holes > on_host - in_holes:
             continue                       # a band in a hole of the host: drawn
+        if subpx(g):
+            # no wrap test: a line thinner than the art can draw is fringe
+            # however much of the outline its pieces follow (the National
+            # Guard's seven cover about half the rim)
+            fringe.append(b)
+            continue
         found.setdefault((host, regions[b].thread_index), []).append((b, on_host))
-    drop: list[int] = []
+    drop: list[int] = list(fringe)
     for (host, _thread), rows in found.items():
         outline = regions[host].polygon.exterior.length
         if outline > 0 and sum(v for _b, v in rows) / outline < FRAGMENT_WRAP:

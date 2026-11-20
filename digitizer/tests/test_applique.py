@@ -1024,6 +1024,22 @@ def test_the_last_step_ends_rather_than_stopping():
     assert steps[-1]["action"] == "Design complete"
 
 
+def test_the_last_step_keeps_a_real_action():
+    """A design that ends on a stepped block (a puff satin) must still tell the
+    operator what that step needs; only the trailing ", then continue" goes."""
+    real = {"code": "PUFF", "label": "3D puff", "function": COLOR_CHANGE,
+            "action": "Tear away the excess foam, then continue", "flags": ["x"],
+            "material": "", "piece": "", "layers": [], "spm": None}
+    blk = StitchBlock(0, "1801", RED, [StitchRun(points=_sq(10, 0), kind="run")])
+    blk.step = real
+    plan = StitchPlan(palette=[], blocks=[
+        StitchBlock(0, "1801", RED, [StitchRun(points=_sq(-10, 0), kind="run")]), blk])
+    last = plan_steps(plan)[-1]
+    assert last["function"] == END
+    assert last["action"] == "Tear away the excess foam. Design complete."
+    assert last["flags"] == []
+
+
 def test_step_metadata_reaches_the_block_the_worksheet_reads():
     """§6.5: "The step boundary in the IR and the color-change record in the
     DST must be the same object." The worksheet reads blocks; if the action
