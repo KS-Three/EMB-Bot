@@ -264,7 +264,7 @@ def measure_image(image: Path, width_mm: float, row_mm: float | None) -> dict:
     # underlay (`fill_underlay_cross`) went in; both are folded into the code
     # now (flag consolidation), so this reads today's engine, not the
     # engine the instrument was calibrated on.
-    kw = {"target_width_mm": width_mm}
+    kw = {"target_width_mm": width_mm, "underlay": False}
     if row_mm is not None:
         kw["fill_row_mm"] = row_mm
     _result, plan = digitize(image, PipelineConfig(**kw))
