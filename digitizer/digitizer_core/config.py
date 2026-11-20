@@ -1227,11 +1227,14 @@ class PipelineConfig:
     # and the disc sewed as a starburst ring round it. ON, a region is kept
     # for contrast only when the source pixels also step across its boundary
     # by more than `merge_delta_e` (`stage3_segment.drawn_edge`); otherwise
-    # it goes to its host as a sliver does. No new number. Reaches every
-    # class that runs `pipeline`'s own `resolve_small_regions` call (the flag
-    # sweep moved photo fixtures too: 11 of 44, `docs/stage0-grain-needs-
-    # texture-2026-11-19.md` §7).
-    rescue_needs_drawn_edge: bool = False
+    # it goes to its host as a sliver does. No new number. Asked only of a
+    # region ONE neighbour encloses (nine tenths of its ring); Kent held the
+    # unscoped form OFF on its trims and Golden Tee's O. Reaches every class
+    # that runs `pipeline`'s own `resolve_small_regions` call. Enclosed form:
+    # 8 of 44 sweep designs move, sunset 16 fewer trims. FLIPPED ON 2026-11-19
+    # by Kent ("Flip ON (Recommended)") on the renders; OFF arm pinned in
+    # `tests/engine_2026_10_27.json` and `PRE_FLIP`.
+    rescue_needs_drawn_edge: bool = True
     # Dark thin strokes on a SHADED ground, read by lightness
     # (`thin_ink.find_dark_thin_ink`; gradient class only, the gate
     # `keep_thin_strokes` has). `keep_thin_strokes` reads the artwork with the
