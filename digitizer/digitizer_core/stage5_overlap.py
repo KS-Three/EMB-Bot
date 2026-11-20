@@ -319,9 +319,8 @@ def _shrink(poly, pull: float, axis_deg: float | None):
 
 
 def _explicit_fill_angle(region: Region, cfg: PipelineConfig) -> float | None:
-    """The angle a fill is told to sew at with the pro-angle keys off -- its
-    own, the global, the design angle -- or None (stage 6 picks its own).
-    `cfg.extra["fill_angle_pro_slant"]` prices its candidates against it."""
+    """The angle a fill is told to sew at with the pro-angle key off -- its
+    own, the global, the design angle -- or None (stage 6 picks its own)."""
     for a in (region.meta.get("fill_angle_deg"), cfg.fill_angle_deg,
               region.meta.get("design_angle_deg")):
         if a is not None:
@@ -362,11 +361,9 @@ def _comp_axis(region: Region, cfg: PipelineConfig, satin_max: float,
                                vote=satin_fill_vote(cfg),
                                hysteresis=satin_fill_hysteresis(cfg))):
         return None, True
-    pro = pro_offset_fill_angle(cfg, region.shape_id, poly=region.polygon,
-                                base_deg=_explicit_fill_angle(region, cfg))
+    pro = pro_offset_fill_angle(cfg, region.shape_id)
     if pro is not None:
-        # `cfg.extra["fill_angle_pro_offset"]` / `["fill_angle_pro_slant"]`
-        # (built OFF): stage 7's order.
+        # `cfg.extra["fill_angle_pro_offset"]` (built OFF): stage 7's order.
         return pro, False
     angle = region.meta.get("fill_angle_deg")
     if angle is not None:
@@ -515,8 +512,7 @@ def seam_row_angles(regions: list[Region], cfg: PipelineConfig, fabric: Fabric,
         explicit = (r.meta.get("fill_angle_deg") is not None
                     or cfg.fill_angle_deg is not None
                     or r.meta.get("design_angle_deg") is not None
-                    or pro_offset_fill_angle(cfg, r.shape_id, poly=r.polygon,
-                                             base_deg=_explicit_fill_angle(r, cfg)) is not None
+                    or pro_offset_fill_angle(cfg, r.shape_id) is not None
                     or directional)
         out[r.shape_id] = (a if explicit else
                            best_fill_angle_deg(_grow(r.polygon, pull, None), row_mm))
@@ -946,8 +942,7 @@ def _angle_is_free(r: Region, cfg: PipelineConfig) -> bool:
     """A fill told no angle of its own (the review's key, the global, the
     design angle, a pro offset): stage 6 picks one on what stage 5 hands it."""
     explicit = _explicit_fill_angle(r, cfg)
-    return explicit is None and pro_offset_fill_angle(cfg, r.shape_id, poly=r.polygon,
-                                                      base_deg=explicit) is None
+    return explicit is None and pro_offset_fill_angle(cfg, r.shape_id) is None
 
 
 #: the geometry flags in `cfg.extra` (comment at `GAP_SEWABLE_MM`): a pass

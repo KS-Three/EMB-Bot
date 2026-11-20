@@ -810,10 +810,8 @@ def find_cuts(poly: Polygon, W: float):
                or LineString([k[0], k[1]]).buffer(0.05).contains(seg) for k in kept):
             continue
         kept.append(cu)
-    if _APEX_PRO.get():     # `apex_pro` (built OFF): its own cut, in place of apex_cut's
+    if _APEX_PRO.get():     # `apex_pro` (built OFF): the pro's cut at a down-pointing V
         kept = _apex_pro_cuts(poly, W, kept, reflex, convex)
-    elif _APEX_CUT.get():
-        kept = _apex_cuts(poly, W, kept, reflex, convex)
     if _APEX_PRO_JOINTS.get():    # `apex_pro_joints` (built OFF): the N's joints, a flat A's band
         kept = _apex_pro_joint_cuts(poly, W, kept, reflex)
     if _FOLD_CAP_FLARED.get():    # `fold_cap_flared` (built OFF): a flared L corner capped, not folded
@@ -821,39 +819,6 @@ def find_cuts(poly: Polygon, W: float):
     return [k[:4] for k in kept], reflex, convex
 
 
-# `apex_cut` (`cfg.lettering_columns_apex_cut`, 2026-10-25, built OFF): where
-# two strokes meet at an acute tip -- the M's V, each of a W's three apexes,
-# a pointed A or N -- the professional sews the tip as ONE column whose
-# crosses run from one stroke's outer edge to the other's, and cuts the two
-# strokes off it along that cross. Read with one rule on both files
-# (`tools/letter_pieces.py` crosses, 2026-10-25: Becker MARINE at four
-# widths, MFab AND WELDING hat and LC, PROSEAL hat; the PR's table): through
-# every such tip zone he sews one piece, its crosses within 16 deg of the
-# line of text, spanning both strokes 1.0-2.4 W (7 mm at most). The
-# junction rules mitre the tip instead, from its inside corner (the crotch)
-# to its point -- two columns fanning into one seam, each crossing half the
-# stroke (the M's V, PROSEAL's A) -- or, past the mitre's 1.8 W reach (a W's
-# 2.3-3.2 W tips), leave it whole and the column pivots through it (30-89
-# deg off the line of text). ON (`_apex_cuts`): from the crotch toward the
-# tip, the first cross square to the apex's axis that spans both strokes
-# within `APEX_CROSS_W` stroke widths and `APEX_CROSS_MM` is a cut, the
-# crotch is joined to it along the axis, and the cut the rules took from
-# that crotch is dropped. A tip is the nearest convex corner along the
-# crotch's bisector on which the two strokes CLOSE, as a V does: on toward
-# it the cross shrinks -- halfway there to `APEX_CLOSE_MID` of the cut's,
-# four-fifths of the way to `APEX_CLOSE_FAR` (the tips he merges read
-# 0.44-0.68 and 0.17-0.50, PROSEAL's flat-topped A the 0.68 and 0.50; a
-# stroke's end, MARINE's slab corners and N foot, a crossbar's root
-# 0.73-0.94 or 0.53-0.90), or it holds its width to halfway and then
-# closes to `APEX_SHOULDER_FAR` (MARINE's M at 101.9 mm, whose V runs
-# between its stems' edges before its point: 1.02 and 0.34; the nearest
-# refused, 0.89 and 0.40) -- at a rate that puts the strokes
-# under `APEX_MAX_DEG` apart (an L corner is 90: MFab's square A, which he
-# folds -- `corner_fold`), and nothing past the cut is a junction (a
-# crossbar's root, an N's foot: no concave corner further than half a
-# stroke from the cut). Candidates, not fabric constants: layout, judged in
-# the preview (Kent, 2026-10-22).
-_APEX_CUT: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_cut", default=False)
 # `cfg.curve_chord_mm` (built None = OFF, `curve_chord_scope`): the longest
 # chord a clean curve of a piece keeps when its rails are built, and the
 # letter's outline as it came in, before `SIMPLIFY_MM` (the guard's trace).
@@ -957,36 +922,6 @@ def _neck_cuts(poly: Polygon, W: float, cuts: list, reflex: list) -> list:
     return out
 
 
-# `apex_guard` (`cfg.extra["lettering_columns_apex_guard"]`, 2026-11-14,
-# built OFF; read only while `apex_cut` is on). The corpus table
-# (`docs/apex-cut-corpus-2026-11-14.md`, 43 designs) found apex_cut better on
-# 10, worse on 4 and mixed on 1. Read tip by tip, the merged tips behind the
-# losses are of two kinds, and the gains are neither:
-# - a STROKE UNDER ONE SATIN CROSS (`machine.SATIN_MIN_CROSS_MM`): the
-#   0.18-0.19 mm white rings outline_lineart_logo's tagger took for letters.
-#   Merged, the ring's notches walked long bars across the black letter
-#   inside it. The gains' strokes are 0.69 mm and up.
-# - a cross the walk found only by SLIDING TO ITS LIMIT. The cut sits below
-#   the crotch (an "apex_stub") and the cross takes `APEX_GUARD_SHARE` or
-#   more of the limit (`APEX_CROSS_W` x W, or `APEX_CROSS_MM`). The walk
-#   stepped off the crotch until a cross first fitted, so the limit chose
-#   that cross, not the strokes closing: a stroke END, not a V. The losses
-#   read 0.96-1.00 of the limit: k_line's K foot and N, Drone's N top (two
-#   long stitches across the stem), mfab_lc's W middle apex and N tops,
-#   duotone's "2" foot, and_pizza's Z joints. The gains that slid read
-#   0.39-0.76 (Bridge's crossed blocks, duotone's N, Becker LC's M). The
-#   rest cut through the crotch itself (Becker's M, ProSeal's A and M), and
-#   most crosses there sit at 0.9-1.0 of the limit too, so the share alone
-#   separates nothing.
-# The guard refuses the crotch outright. It does not try the next tip, so a
-# refused letter cuts as it does OFF. Kept back with it: and_pizza's Z-joint
-# cure. Each Z's two joints are one shape turned 180 deg, and only the
-# top-right one fans, so what fans is the sewing order there, not the tip.
-# A candidate, not a fabric constant (gate 1): layout, judged by eye.
-_APEX_GUARD: contextvars.ContextVar[bool] = contextvars.ContextVar("apex_guard", default=False)
-APEX_GUARD_SHARE = 0.9
-
-
 # `rail_pair_bars` (`cfg.extra["lettering_columns_rail_pair_bars"]`,
 # 2026-11-14, built OFF): a piece whose outline is not coherent enough to
 # read an axis (`straight_axis`' 0.55) and whose spine bends is still a
@@ -1011,7 +946,7 @@ RAIL_PAIR_MIN_SHARE = 0.6
 @contextlib.contextmanager
 def rail_pair_bars_scope(on: bool):
     """`cfg.extra["lettering_columns_rail_pair_bars"]` for one plan, beside
-    `apex_cut_scope`. False sets nothing."""
+    `neck_cuts_scope`. False sets nothing."""
     if not on:
         yield
         return
@@ -1057,53 +992,9 @@ def _rail_pair_bar_axis(own, W: float):
 
 
 @contextlib.contextmanager
-def apex_guard_scope(on: bool):
-    """`cfg.extra["lettering_columns_apex_guard"]` for one plan, beside
-    `apex_cut_scope`. False sets nothing."""
-    if not on:
-        yield
-        return
-    token = _APEX_GUARD.set(True)
-    try:
-        yield
-    finally:
-        _APEX_GUARD.reset(token)
-
-
-def _apex_guard_refuses(recs: list, W: float) -> str | None:
-    """`apex_guard`: why this merged tip (`_apex_walk`'s records,
-    `_apex_pieces`) is refused, or None. A cut below the crotch carries an
-    "apex_stub"; one through it is two "apex" records and is not judged on
-    its share."""
-    from .machine import SATIN_MIN_CROSS_MM
-    if W < SATIN_MIN_CROSS_MM:
-        return "guard_hairline"
-    if any(r[2] == "apex_stub" for r in recs):
-        cross = sum(r[3] for r in recs if r[2] == "apex")
-        if cross >= APEX_GUARD_SHARE * min(APEX_CROSS_W * W, APEX_CROSS_MM):
-            return "guard_slid_to_limit"
-    return None
-
-
-@contextlib.contextmanager
-def apex_cut_scope(on: bool):
-    """`cfg.lettering_columns_apex_cut` for the length of one plan
-    (`pipeline.plan_stitches`): this module reads no config, and the
-    lane's call chain is not this flag's to change. False sets nothing."""
-    if not on:
-        yield
-        return
-    token = _APEX_CUT.set(True)
-    try:
-        yield
-    finally:
-        _APEX_CUT.reset(token)
-
-
-@contextlib.contextmanager
 def curve_chord_scope(chord_mm: float | None):
     """`cfg.curve_chord_mm` for the length of one plan
-    (`pipeline.plan_stitches`), as `apex_cut_scope`. None or 0 sets nothing."""
+    (`pipeline.plan_stitches`), as `neck_cuts_scope`. None or 0 sets nothing."""
     if not chord_mm or chord_mm <= 0.0:
         yield
         return
@@ -1221,7 +1112,7 @@ def _apex_walk(poly: Polygon, p, q, others, W: float, stems=(), at_crotch: bool 
         return _apex_refused("square")          # strokes meeting square or wider: an L, folded or mitred
     h0, h1 = h
     if (h1[0] - h0[0]) * a[1] - (h1[1] - h0[1]) * a[0] < 0:
-        h0, h1 = h1, h0                 # the tip on the cross's left: `_apex_tip_piece` reads the side
+        h0, h1 = h1, h0                 # the tip on the cross's left
     recs = _apex_pieces(p, t, m, h0, h1)
     for e in (h0, h1):
         for c in stems:
@@ -1311,46 +1202,6 @@ def _apex_cross(poly: Polygon, m, n, clips, far: float):
     return ((m[0] + n[0] * lo, m[1] + n[1] * lo), (m[0] + n[0] * hi, m[1] + n[1] * hi))
 
 
-def _apex_cuts(poly: Polygon, W: float, cuts: list, reflex, convex) -> list:
-    """`apex_cut`: each lone crotch with a tip across it (`_apex_tips`,
-    `_apex_walk`) gets the cross that joins its two strokes into one column
-    (notes above), in place of the cut the junction rules took from it.
-    `cuts` and the result are `find_cuts`' (p, q, rule, length, priority)
-    records."""
-    through = [c[k] for c in cuts if c[2] == "through" for k in (0, 1)]
-    drop, add = [], []
-    for r in reflex:
-        p = r["p"]
-        if any(math.hypot(p[0] - t[0], p[1] - t[1]) < 1e-6 for t in through):
-            continue
-        # each tip judged against the junction rules' own cuts: the W's three
-        # crotches share one height, and one tip's cross ends on the next crotch
-        mine = [c for c in cuts if math.hypot(c[0][0] - p[0], c[0][1] - p[1]) < 1e-6]
-        others = [c for c in cuts if c not in mine]
-        found = None
-        for q in _apex_tips(poly, p, r["bis"], convex, W):
-            found = _apex_walk(poly, p, q, others, W)
-            if found is not None:
-                stub = next((c for c in found if c[2] == "apex_stub"), None)
-                if stub is not None and stub[3] >= APEX_STEM_DEPTH * math.dist(p, q):
-                    # cut deep below the crotch: a V hanging between two
-                    # stems (the cross cannot fit until they end) is cut AT
-                    # it when the stems' edges, continued, bound its cross
-                    # (they are the junction rules' own cut at 101.9 mm)
-                    alt = _apex_walk(poly, p, q, others, W, _apex_stems(poly, W, p, reflex), True)
-                    found = alt if alt is not None else found
-                break
-        if found is not None and _APEX_GUARD.get():
-            why = _apex_guard_refuses(found, W)
-            if why is not None:     # this crotch cuts as it does OFF (comment at `_APEX_GUARD`)
-                _apex_refused(why)
-                found = None
-        if found is not None:
-            drop += mine
-            add += found
-    return [c for c in cuts if c not in drop] + add
-
-
 def _apex_stems(poly: Polygon, W: float, p, reflex) -> list:
     """`apex_cut`: the edges at the letter's other concave corners,
     continued into it (`find_cuts`' "ext" reading) -- where a stem's edge
@@ -1364,21 +1215,6 @@ def _apex_stems(poly: Polygon, W: float, p, reflex) -> list:
             if q is not None and math.dist(r["p"], q) >= 0.25 * W:
                 out.append((r["p"], q, "apex_stem", math.dist(r["p"], q), 1))
     return out
-
-
-def _apex_tip_piece(pc: Polygon, crosses) -> tuple | None:
-    """`apex_cut`: the apex cross (h0, h1) whose tip `pc` is -- the piece
-    on the cross's left holding all of it (each leg holds its own part).
-    -> the cross or None."""
-    rp = pc.representative_point()
-    edge = pc.boundary.buffer(0.02)
-    for h0, h1 in crosses:
-        ln = LineString([h0, h1])
-        if ln.intersection(edge).length < 0.9 * ln.length:
-            continue
-        if (h1[0] - h0[0]) * (rp.y - h0[1]) - (h1[1] - h0[1]) * (rp.x - h0[0]) > 0:
-            return h0, h1
-    return None
 
 
 def _apex_column(pc: Polygon, cross, cut_lines, pitch_mm: float, W: float) -> Column | None:
@@ -1435,7 +1271,7 @@ APEX_PRO_MIN_W_MM = 2.0
 @contextlib.contextmanager
 def apex_pro_scope(on: bool):
     """`cfg.extra["lettering_columns_apex_pro"]` for one plan, beside
-    `apex_cut_scope`. False sets nothing."""
+    `neck_cuts_scope`. False sets nothing."""
     if not on:
         yield
         return
@@ -3546,7 +3382,7 @@ def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
         return _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
     key = ("build_column", piece.wkb, _lines_key(cut_lines), float(W), float(pitch_mm),
            bool(mitre_ends), bool(rail_axis), _SMALL_BOLD.get(), _SMALL_BOLD_SIMPLIFY.get(),
-           _APEX_CUT.get(), _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get(), _BLOCK_BUTT.get(),
+           _CORNER_FOLD.get(), _RAIL_PAIR_BARS.get(), _BLOCK_BUTT.get(),
            _BLOCK_SMALL.get(), _R_BOWL.get(), _A_BAR.get(), _E_TOP.get(), _TOP_SLAB.get())
     if key not in memo:
         memo[key] = _build_column(piece, cut_lines, W, pitch_mm, mitre_ends, rail_axis)
@@ -4218,7 +4054,7 @@ class LetterCut:
 def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False,
                    mitre_ends: bool = False, judge=None, rail_axis: bool = False,
                    small_bold: bool = False, simplify_mm: float | None = None,
-                   corner_fold: bool = False, apex_cut: bool = False) -> LetterCut:
+                   corner_fold: bool = False) -> LetterCut:
     """See `_letter_columns`. `rail_axis` (`cfg.lettering_columns_rail_axis`):
     every straight piece of this letter reads its axis by `straight_axis`'s
     rail rule. False is the pre-flip cut, byte for byte.
@@ -4228,15 +4064,7 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
     cut's simplify floor instead of `SMALL_BOLD_SIMPLIFY_MM`.
     `corner_fold` (`cfg.lettering_columns_corner_fold`): the two columns
     either side of each L corner joined into one that folds round it
-    (`_fold_corners`). False is the cut as it is, byte for byte.
-    `apex_cut` (`cfg.lettering_columns_apex_cut`, which stage 7 sets for
-    the whole plan through `apex_cut_scope`): each acute tip one column,
-    cut off its strokes along the cross (`_apex_cuts`). False reads the
-    scope's."""
-    if apex_cut and not _APEX_CUT.get():
-        with apex_cut_scope(True):
-            return letter_columns(poly, pitch_mm, fold_cuts, mitre_ends, judge, rail_axis,
-                                  small_bold, simplify_mm, corner_fold)
+    (`_fold_corners`). False is the cut as it is, byte for byte."""
     if corner_fold:
         token = _CORNER_FOLD.set(True)
         try:
@@ -4323,9 +4151,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         # a letter with a stem-head butt or an E's slot cuts is a block letter:
         # its fanned pieces sew straight (`_butt_piece`)
         memo["block"] = bool(scuts) or bowl or bar_pt is not None or any(c[2] == "butt" for c in cuts)
-    if scuts and ((_APEX_CUT.get() and any(c[2] == "apex" for c in cuts))
-                  or any(c[2] == "apex_pro" for c in cuts)):      # `apex_pro`: the same reading
-        # `apex_cut`: a letter with an acute tip is no E or F. MARINE's M at
+    if scuts and any(c[2] == "apex_pro" for c in cuts):      # `apex_pro`
+        # a letter with an acute tip is no E or F. MARINE's M at
         # 95.7 mm read as one on its side past both guards in `slot_cuts`,
         # and its slab notch and V crotch then fanned (12 cross ends in one
         # hole at the crotch; his: one piece, 13 deg)
@@ -4378,7 +4205,6 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         if (len(pieces) == 3 and len(rest) == 2) or (slab_wkbs and len(rest) >= 2):    # the leg's crosses level, the pro's
             memo["bowl_axes"] = {**memo.get("bowl_axes", {}), max(rest, key=lambda g: g.centroid.y).wkb: (0.0, 1.0)}
     # a cut that only shaves off a scrap is not a junction: take it back out
-    apex = _APEX_CUT.get()
     while cuts:
         small = [g for g in pieces if g.area < 0.4 * W * W]
         # `apex_pro`: the leg its split line stops is often a sliver beside
@@ -4386,16 +4212,10 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
         small = [g for g in small if not any(
             k[2] in ("apex_pro", "apex_pro_cap", "apex_pro_foot") and LineString([k[0], k[1]]).intersection(g.buffer(0.02)).length > 0.5 * k[3]
             for k in cuts)]
-        if apex:
-            # `apex_cut`: a tip piece is small by nature, and its cross is the point
-            small = [g for g in small if not any(
-                k[2] == "apex" and LineString([k[0], k[1]]).intersection(g.buffer(0.02)).length > 0.5 * k[3]
-                for k in cuts)]
         if not small:
             break
         pc = min(small, key=lambda g: g.area)
         near = [k for k in cuts if LineString([k[0], k[1]]).intersection(pc.buffer(0.02)).length > 0.5 * k[3]
-                and not (apex and k[2] in ("apex", "apex_stub", "apex_stem"))
                 and k[2] not in ("apex_pro", "apex_pro_shoulder", "apex_pro_cap", "apex_pro_foot")]
         if not near:
             break
@@ -4432,8 +4252,7 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
             k = judge(out, poly)
             return (k[0], k[1] + k[2], 0) if knots_one else k
     columns, unsewn = [], []
-    apex_x = [(c[0], c[1]) for c in cuts if c[2] == "apex"] if apex else []
-    apro = [(c[0], c[1]) for c in cuts if c[2] == "apex_pro"]   # `apex_pro` (built OFF): none without it
+    apro =[(c[0], c[1]) for c in cuts if c[2] == "apex_pro"]   # `apex_pro` (built OFF): none without it
     acap = [(c[0], c[1]) for c in cuts if c[2] == "apex_pro_cap"]   # `apex_pro_joints` (built OFF): none without it
     for pc in pieces:
         if apro:
@@ -4443,13 +4262,6 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
                 continue
         if acap:
             col = _apex_pro_cap_column(pc, acap, cut_lines, pitch_mm, W)
-            if col is not None:
-                columns.append(col)
-                continue
-        if apex_x:
-            # `apex_cut`: a tip is one column as it stands -- no second look
-            tip = _apex_tip_piece(pc, apex_x)
-            col = _apex_column(pc, tip, cut_lines, pitch_mm, W) if tip is not None else None
             if col is not None:
                 columns.append(col)
                 continue

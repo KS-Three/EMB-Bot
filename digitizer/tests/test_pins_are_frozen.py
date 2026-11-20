@@ -44,7 +44,7 @@ from pathlib import Path
 import pytest
 
 from digitizer_core import PipelineConfig
-from digitizer_core.config import SMALL_TEXT_TRUE_SIZE
+from digitizer_core.config import RETIRED_FIELDS, SMALL_TEXT_TRUE_SIZE
 from tests.conftest import (ENGINE_2026_10_27, FLAT_GOLDEN_MD5, frozen_cfg,
                             read_engine_snapshot)
 
@@ -65,7 +65,6 @@ RIDES_DEFAULTS = {
     "test_sewout_card_bayhold_edgecap.py": "pins the card tool's stream; its arms are built in the tool",
     "test_sewout_card_lettering_arms.py": "pins the card tool's stream; its arms are built in the tool",
     # --- owned by a live lane: whichever PR lands second adapts ------------------------
-    "test_column_apex_cut.py": "live lane (apex cut / apex walk)",
     "test_keyline_loop_chain.py": "live lane (keyline_loop_chain)",
     "test_script_strokes.py": "live lane (script_strokes)",
     "test_small_text_grow_away.py": "the grow_away lane's own OFF/ON arms (flipped by #1127)",
@@ -148,7 +147,8 @@ def test_there_is_a_dated_snapshot():
 def test_a_snapshot_names_every_pipeline_config_field(path):
     snap = set(read_engine_snapshot(path.name))
     fields = {f.name for f in dataclasses.fields(PipelineConfig)}
-    missing, stale = sorted(fields - snap), sorted(snap - fields)
+    # a field flag consolidation removed stays named in the old file, which is never edited
+    missing, stale = sorted(fields - snap), sorted(snap - fields - RETIRED_FIELDS)
     assert not missing and not stale, (
         f"{path.name} lacks {missing} and names stale {stale}. A field that is not in the snapshot "
         "takes its LIVE default in every test that spreads it, which is how a flip moves a frozen "

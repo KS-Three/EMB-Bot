@@ -61,7 +61,7 @@ Step 2 (2026-10-12, docs/hairline-ground-2026-10-12.md), still under
   hair network near the truth because crossings absorb cells). `InkSource`
   carries the artwork's own pixels —
   native resolution when stage 1 upscaled, the way `stage4_vectorize`'s
-  native edge read and `_coverage_parts` get at them — and
+  native edge read gets at them — and
   `source_width_mm` integrates ink coverage across the stroke along the
   skeleton's normals. The traced width is the fallback when the source has
   no contrast edge there.

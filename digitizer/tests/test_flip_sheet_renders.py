@@ -200,8 +200,7 @@ def test_a_row_with_a_third_cell():
 def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
     from digitizer_core import PipelineConfig
     prs = {f: fsr.FLAGS[f]["pr"] for f in fsr.WAVE3}
-    assert prs == {"lettering_columns_apex_cut": 1088,
-                   "monoline_script_satin": 1063, "fill_section_travel": 1091}
+    assert prs == {"monoline_script_satin": 1063, "fill_section_travel": 1091}
     cfg = PipelineConfig()
     for f in fsr.WAVE3:
         assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f

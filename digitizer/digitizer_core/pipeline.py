@@ -1123,12 +1123,6 @@ def build_generation(
     # layers — and never touches user recolors (see its docstring).
     if cfg.rehome_resnapped:
         rehome_resnapped_regions(regions, list(q.thread_indices))
-    # `cfg.line_chain_one_thread` (built OFF 2026-11-11): one thread per
-    # connected drawn line, after the re-snap and the rehome it would
-    # otherwise be undone by and before the colour cap counts cones.
-    if cfg.line_chain_one_thread:
-        from . import line_chain
-        line_chain.apply(regions, p, cfg, chart_for(cfg), list(q.thread_indices))
 
     # "Colors (max N)" is a promise about what the machine will be threaded
     # with, and until now the SLIC+RAG lane did not keep it — see
@@ -2286,10 +2280,8 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # loop mitre's scope is the first). Read with getattr: the scope tests
     # hand this a stand-in result (None, a bare object).
     cfg = white_keyline_art.apply(cfg, getattr(result, "white_keyline_art", False))
-    # `cfg.lettering_columns_apex_cut` (built OFF): `outline_cut` reads no
-    # config, so the flag is set there for the length of this plan
-    from .outline_cut import apex_cut_scope
-    from .outline_cut import apex_guard_scope    # `cfg.extra["lettering_columns_apex_guard"]` (built OFF), the same way
+    # `outline_cut` reads no config, so each lettering switch is set there for
+    # the length of this plan
     from .column_lean import block_lean_scope
     from .column_lean import lean_flat_ends_scope   # `cfg.extra["lettering_columns_lean_flat_ends"]` (built OFF), the same way
     from .outline_cut import rail_pair_bars_scope   # `cfg.extra["lettering_columns_rail_pair_bars"]` (built OFF), the same way
@@ -2334,9 +2326,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     # new scope as one more `_enter(...)` line.
     with ExitStack() as _scopes:
         _enter = _scopes.enter_context
-        _enter(apex_cut_scope(cfg.lettering_columns_apex_cut))
         _enter(curve_chord_scope(cfg.curve_chord_mm))
-        _enter(apex_guard_scope(bool((cfg.extra or {}).get("lettering_columns_apex_guard"))))
         _enter(block_lean_scope(cfg.lettering_columns_block_lean))      # the four MARINE-match fields: ON since 2026-11-19, Kent's flip
         _enter(lean_flat_ends_scope(bool((cfg.extra or {}).get("lettering_columns_lean_flat_ends"))))
         _enter(rail_pair_bars_scope(bool((cfg.extra or {}).get("lettering_columns_rail_pair_bars"))))

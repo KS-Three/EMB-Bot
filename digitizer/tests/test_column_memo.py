@@ -60,7 +60,6 @@ FLAGS = [
     {"fold_cuts": True, "judge": _judge, "mitre_ends": True, "rail_axis": True},
     {"small_bold": True},
     {"small_bold": True, "simplify_mm": 0.1, "corner_fold": True},
-    {"apex_cut": True, "corner_fold": True, "fold_cuts": True, "judge": _judge},
 ]
 
 

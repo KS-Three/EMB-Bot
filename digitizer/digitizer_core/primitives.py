@@ -76,7 +76,7 @@ def read_primitive(poly: Polygon) -> tuple[str, Polygon] | None:
         # The traced vertices lie on the art's edge and the chords between
         # them sag inside it, so the area's own radius (sqrt(area / pi))
         # about the centroid came out short: a low-res cutout disc sat
-        # 0.07 mm inside its circle (`test_coverage_edges`, 0.02 allowed).
+        # 0.07 mm inside its circle (the since-retired `coverage_edges` test).
         cx, cy, r = _circle_fit(list(poly.exterior.coords)[:-1])
         circ = Point(cx, cy).buffer(r, CIRCLE_SEGMENTS // 4)
         if long_side / short_side < 1.15 and _fits(poly, circ, tol):

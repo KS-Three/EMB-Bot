@@ -20,7 +20,7 @@ from shapely.geometry import Point, Polygon
 
 from digitizer_core import PipelineConfig, pipeline
 from digitizer_core import outline_cut as oc
-from tests.test_column_apex_cut import LANE, LETTERS
+from tests._apex_letters import LANE, LETTERS
 
 
 def _poly(lab: str) -> Polygon:

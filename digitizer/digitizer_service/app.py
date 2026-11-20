@@ -37,6 +37,7 @@ from shapely.geometry import Polygon
 from starlette.concurrency import run_in_threadpool
 
 from digitizer_core.calibration import profile as calibration
+from digitizer_core.config import RETIRED_FIELDS
 from digitizer_core.fabrics import fabric_for_garment, get_fabric, normalize_profile
 from digitizer_core import PipelineConfig, __doc__ as core_doc  # noqa: F401
 from digitizer_core import legibility, machine, stage1_photo_prep, stage2_sam2_segment
@@ -731,6 +732,13 @@ def _validate_config_dict(data: dict, allowed_fields: set[str]) -> dict:
     """
     if not isinstance(data, dict):
         raise HTTPException(status_code=400, detail="config must be a JSON object.")
+    # A field flag consolidation removed (`config.RETIRED_FIELDS`) is dropped,
+    # not refused: an old client or script that still sends one gets its 200.
+    retired = sorted(set(data) & RETIRED_FIELDS)
+    if retired:
+        log.info("ignoring retired config field(s): %s", ", ".join(retired))
+        for key in retired:
+            del data[key]
     unknown = sorted(set(data) - allowed_fields)
     if unknown:
         raise HTTPException(

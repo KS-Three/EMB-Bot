@@ -17,7 +17,7 @@ from shapely.geometry import LineString, Point
 
 from digitizer_core import PipelineConfig, pipeline
 from digitizer_core import outline_cut as oc
-from tests.test_column_apex_cut import LANE, LETTERS, _v
+from tests._apex_letters import LANE, LETTERS, _v
 
 
 def _poly(lab: str):
@@ -27,8 +27,8 @@ def _poly(lab: str):
     return Polygon(v["exterior"], v["holes"])
 
 
-def _cut(poly, pro: bool, apex: bool = False):
-    with oc.apex_cut_scope(apex), oc.apex_pro_scope(pro):
+def _cut(poly, pro: bool):
+    with oc.apex_pro_scope(pro):
         return oc.letter_columns(poly, 0.4, **LANE)
 
 
