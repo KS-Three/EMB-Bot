@@ -218,6 +218,7 @@ RETIRED_FIELDS: frozenset[str] = frozenset({
     "bind_resnap_all_classes",
     "blend_fallback_underlay",
     "border_from_outline",
+    "border_from_outline_line_art_guard",
     "clip_parent_keeps_ink",
     "compact_solids_satin",
     "coverage_edges",
@@ -227,6 +228,7 @@ RETIRED_FIELDS: frozenset[str] = frozenset({
     "edge_cap_skip_bean_letters",
     "edge_cap_skip_lettering",
     "enclosed_alpha_hole_parts",
+    "enforce_color_cap",
     "fill_bridge_cut",
     "fill_travel_under_cover",
     "fill_turn_slant",
@@ -241,6 +243,8 @@ RETIRED_FIELDS: frozenset[str] = frozenset({
     "lettering_columns_icon_guard",
     "lettering_columns_ink_link",
     "lettering_columns_inside_connectors",
+    "lettering_columns_inside_stagger",
+    "lettering_columns_rail_axis",
     "lettering_columns_skip_blobs",
     "lettering_columns_small_bold",
     "lettering_columns_small_stem",
@@ -249,8 +253,11 @@ RETIRED_FIELDS: frozenset[str] = frozenset({
     "line_chain_one_thread",
     "merge_adjacent_same_thread",
     "merge_duplicate_cones",
+    "outline_loop_mitre",
     "rehome_resnapped",
     "resnap_hairline_never_lightens",
+    "resnap_mask_matches_grader",
+    "revalidate_small_shapes",
     "robust_region_colour",
     "satin_cap_recentre",
     "satin_corner_twigs",
@@ -274,12 +281,16 @@ RETIRED_FIELDS: frozenset[str] = frozenset({
     "small_shape_rescue",
     "small_solids_satin",
     "small_text_bay_mouth",
+    "small_text_cap_reach_edges",
     "snap_region_edges",
     "split_satin",
     "strip_letterbox",
     "subpixel_corner_runs",
     "subpixel_edges",
     "subpixel_edges_upscaled",
+    "text_cluster_counters_as_drawn",
+    "text_cluster_rescued_ink_link",
+    "text_cluster_wide_letters",
     "tie_in_off",
     "trim_bury_under_later",
     "two_tone_snap",
@@ -513,32 +524,6 @@ class PipelineConfig:
     # is Kent's.
     hair_regions_directional: bool = False
     max_colors: int = 12
-    # Make `max_colors` true on EVERY lane, not just the flat one. Default
-    # OFF and byte-identical off — it only ever runs when a design already
-    # exceeds the cap, which no flat-lane fixture does.
-    #
-    # `stage2_quantize` caps hard (largest populations kept, the rest merged
-    # into their closest match, COLOR_CAP_APPLIED emitted). The SLIC+RAG lane
-    # passes `max_k=max_colors` into k-medoids, which is a clustering
-    # parameter and not a cap, and the re-snap can pull further spools in on
-    # top. Since stage 0 routes SIX OF SEVEN real customer logos to gradient,
-    # the one control a customer has over thread count is enforced on the
-    # artwork type they do not have.
-    #
-    # Measured at the Studio's shipped default of 6 (`tools/color_cap.py`,
-    # 2026-09-07): 6 of 26 designs sew more cones than the slider promises and
-    # all six are gradient — flat 0/6, photo_scene 0/7, photo_subject 0/2 —
-    # worst `drone_render` at 22 cones and 21 colour stops against a promised
-    # 6. Every cone is a spool to buy and a manual re-thread on a
-    # single-needle machine, so this is a pricing promise, not a preference.
-    #
-    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle,
-    # `docs/colour-bundle-decision-2026-09-10.md`): at the Studio's 6 it takes
-    # 45 cones off five corpus designs and lands every real logo on exactly
-    # the promised number; the merges are visible (Golden Tee's GT letters
-    # lose their maroon edge at 6) and `COLOR_CAP_APPLIED` names them. False
-    # is the pre-flip engine byte for byte.
-    enforce_color_cap: bool = True
     # The cap above holds on the REGIONS at stage 4 and the SEWN design then
     # loads more cones (photo-style census 2026-10-27, item 3; the readings in
     # `docs/superpowers/specs/2026-10-29-colour-cap-sewn-design.md`). Two
@@ -2397,28 +2382,6 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False. Tests: `tests/test_inshape_piece_lift.py`.
     inshape_piece_lift: bool = True
-    # The rule's false positive (2026-10-25, #1078): a hairline DRAWING is
-    # not an outline. Bridge Bar's bowl-and-waves (0.8-1.0 mm black lines round
-    # yellow cells of the disc they sit on) reads as one, and ON sews each
-    # cell a 1.5 mm satin loop -- spikes fanned at the cells' tips -- while the
-    # drawing's own stroke ends, thinner than `machine.MIN_FILL_WIDTH_MM`,
-    # fall to a rest-fill that drops them (garment shows). ON, an outline that
-    # is a hairline AND leaves strokes beyond its loops
-    # (`art_outline.line_art_reading`, thresholds `machine.OUTLINE_LINE_ART_*`)
-    # is not one: the drawing sews as it did before `border_from_outline`
-    # (Bridge hat and LC byte-identical to the flag OFF), and its cells are
-    # free for another holder. A hairline that is a pure ring stays an outline:
-    # To-a-T Machine's 0.8 mm frame, which the pro widens to a 2.0-2.3 mm
-    # border. Census kappa 0.76 -> 0.85 (n 588, the five Bridge false
-    # positives gone, no true one lost); Becker, MFab, Fremont byte-identical.
-    # The pro's Bridge files carry no drawing (his art was redrawn without
-    # it), so this is our construction's limit, not his rule. Acts only with
-    # `border_from_outline`. Layout (ruling 2026-10-22: judged in the preview).
-    # **ON since 2026-10-25, Kent's flip** ("Flip it ON", from #1078's OFF | ON
-    # | ON+guard | pro renders of the bowl: spike rays 22 -> 1, pinholes 3 -> 1
-    # on the hat). False is the engine as it was, byte for byte;
-    # `tests/conftest.py` PRE_FLIP pins it False.
-    border_from_outline_line_art_guard: bool = True
     # A HAIRLINE keyline is not a border (built OFF 2026-11-13, Kent: "Build
     # guard, OFF"). The rule above widens every outline to at least
     # `machine.OUTLINE_WIDTH_MM`'s 1.5 mm; that floor was read off outlines
@@ -3323,22 +3286,6 @@ class PipelineConfig:
     # fremont's and golden_tee's letters stand 0.06-0.07 mm inside shipped's
     # reach, which is unsewn. False is the pre-flip construction, byte for byte.
     lettering_columns: bool = True
-    # Under `lettering_columns`, a short straight bar takes its RAILS'
-    # direction (2026-10-20, `outline_cut.straight_axis` / `_rail_pair_axis`).
-    # Proseal at the pro's 85.9 mm hat width: the E's middle arm (4.5 x 2.2
-    # mm, ends leaning with the italic) read 0.44 outline coherence against
-    # the 0.55 bar, fell back to the spine's chord -- which runs acute corner
-    # to acute corner -- and sewed its crosses at 77.6 deg beside the top
-    # and bottom arms' 90.0: an angle change inside one letter. Synthetic
-    # 3.5-4.5 mm bars leaning 8-20 deg read 10-22 deg off. ON, a piece that
-    # took the chord fallback (whose straightness gate is unchanged) runs
-    # along its two longest own sides when they are parallel within the
-    # upright snap's 7 deg and on opposite sides of the stroke -- and only
-    # where the chord is more than those 7 deg off them (Proseal's L stem,
-    # 5.1 off, keeps its chord; only the E arm moves there). No sewn
-    # constant: a direction, not a width or a pitch. False is the pre-flip
-    # lane, byte for byte. Tests: `tests/test_column_rail_axis.py`.
-    lettering_columns_rail_axis: bool = True
     # Under `lettering_columns_text_lean`, the BARS of an italic word cross
     # along the word's stems (2026-10-25, `column_lean.italic_bar`). Read per
     # cross on ProSeal's italic PROSEAL (`tools/italic_cross.py`, the pro's
@@ -3407,29 +3354,6 @@ class PipelineConfig:
     # `tests/conftest.py` PRE_FLIP and `tests/engine_2026_10_27.json` pin it
     # False.
     lettering_columns_corner_fold_apex_side: bool = True
-    # Under `lettering_columns`, the INSIDE of every pivot -- an L fold's
-    # corner (`lettering_columns_corner_fold`), an S's curl, a bowl -- is
-    # sewn the way the professional's files sew it (2026-10-23, built OFF;
-    # `columns._inside_stagger`, in place of `_short_stitch_guard`). Read
-    # with one rule on his hat DSTs and ours (Fremont, Drone, MFab, Proseal,
-    # Becker; `tools/inside_stagger.py`): his full-length inner ends walk
-    # ~0.3 mm per pair along the inner edge and almost never share a hole
-    # (2-5 re-entries per band), and about one cross in three is shortened
-    # by ~20% of its length. The guard shortens every other crowded cross
-    # by 35% (capped 0.6 mm) and leaves the full ones in one hole (16-79
-    # re-entries per band, 28-56% of the long steps under 0.1 mm). ON: a
-    # crowded penetration (under `SATIN_SHORT_STITCH_AT_MM` from the one
-    # before it on its rail) is pulled `columns.STAGGER_SHORT_FRAC` (20%) of
-    # its cross, never two in a row (two in five); where a rail's ends pile
-    # into one hole the full-length ones are spaced along the rail's course
-    # round the pile, `STAGGER_WALK_MM` apart where the corner has room
-    # (`columns._inside_stagger`). Layout, judged
-    # in the preview (Kent, 2026-10-22). ON by default since 2026-10-24
-    # (Kent, the flip sheet; same-hole re-entries per zone Becker 1.14 ->
-    # 0.60, Fremont 0.37 -> 0.34, MFab 0.29 -> 0.17, the pro 0.11 / 0.16 /
-    # 0.22). False is the guard, byte for byte.
-    # Tests: `tests/test_column_inside_stagger.py`.
-    lettering_columns_inside_stagger: bool = True
     # The M's V sewn as the pro sews it (`outline_cut._APEX_PRO`, 2026-11-14,
     # #1526; built OFF as `cfg.extra["lettering_columns_apex_pro"]`). At a
     # down-pointing V the right-hand leg owns the point -- level crosses from
@@ -4084,32 +4008,6 @@ class PipelineConfig:
     # Fremont, unsewn here. 1.45 by default since 2026-10-23 (the flip
     # sheet's arm); None is the off arm.
     small_text_cap_bold_scale: float | None = 1.45
-    # With `small_text_cap_letter_gap_mm`: the re-set reaches the two kinds
-    # of small line it refused as `no_room` (2026-10-24, L8; census
-    # `tools/small_text_floor_census.py`). Across the paired jobs the pro
-    # sews NO line under ~4 mm as drawn, as a run or not at all: ProSeal's
-    # "SPRAY FOAM + COATINGS" goes 3.0 -> 4.55 mm satin on the 86 mm hat and
-    # 2.6 -> 4.0 on the 75 mm beanie, inside the same design height (63.3
-    # against our 63.1 mm). Ours stayed a 3 mm bean line under the re-set,
-    # for reasons this fixes: (1) the design's EDGE is tested against the
-    # letters, not their `CLEAR_MM` halo, and gives way by half the line's
-    # growth -- a line on the bottom edge could never fit, at any growth
-    # (the pro's sews 0.6 mm past it); the halo still clears every shape;
-    # (2) a letter-sized shape standing on the line's band INSIDE its span
-    # joins the line whatever its thread, as `_join_line_ends` already does
-    # past either end -- ProSeal's A of SPRAY traces in a thread of its own
-    # and blocked its own line; (3) clusters of one line whose hulls overlap
-    # are placed as one (the beanie's COATINGS is two interleaved clusters),
-    # and words of one line keep a sewn letter gap apart, not two halos.
-    # Measured: ProSeal hat tagline 3.15 mm bean -> 4.35-4.45 satin (pro
-    # 4.55), beanie 2.8 -> 3.65-3.7 (pro 4.0); Fremont and Drone DSTs
-    # byte-identical. Geometry, not fabric: where the letters go. Tests:
-    # `tests/test_small_text_reach_edges.py`. **ON since 2026-10-24, Kent's
-    # flip** from the wave-2 flip sheet; it acts only while the re-set
-    # (`small_text_cap_letter_gap_mm`) is set, so with that None it changes
-    # nothing. False: the re-set as #1029 built it, byte for byte;
-    # `tests/conftest.py` PRE_FLIP pins it False.
-    small_text_cap_reach_edges: bool = True
     # The re-set grows a line AWAY from its near neighbour, widened by its
     # traced stroke (`small_text._traced_stroke` / `_near_side` /
     # `_grow_away`, W4-04, #1113; built OFF 2026-10-26 as
@@ -4221,60 +4119,6 @@ class PipelineConfig:
     # True (`SMALL_TEXT_TRUE_SIZE`, Kent WoK 56: the flip carries its own
     # 65 mm THE fix); an explicit True or False wins over the switch.
     small_text_keep_stray_lines: bool | None = None
-    # The one-ink link (`textcluster._same_ink`, CIEDE2000 20 on the job's
-    # chart) in the text tagger's FIRST round too, the rescued door
-    # (`textcluster.detect_text_clusters`, 2026-10-15). That round linked on
-    # size alone (`SIMILARITY_RATIO` 0.5), so one rescued letter of a word
-    # could join another word in another ink. Fremont at 80 mm, Kent's Hat
-    # job: THE's black E traces at 2.19 mm2, under the 2.25 mm2 small-shape
-    # floor, and is the word's one rescued letter. It joined the tan 1895
-    # (heights 2.62 / 1.66, strokes 0.39 / 0.21, 5.7 mm apart: every term
-    # within 0.5), the restore step stripped it as a stray, and T and H
-    # alone could not make a three-member cluster: T and H went to the
-    # Column lane as crossing satin and the E to the run rescue, a garbled
-    # THE one millimetre under the clean one at 81 mm (where the E is
-    # 2.25 mm2, not rescued, and enters by the letter door with its word).
-    # True: round 1 refuses a link across inks, as round 2 always has; THE
-    # forms its own cluster and sews as bean letters, 14,897 / 46 ->
-    # 14,812 / 43, EST, 1895 and the tagline unchanged shape for shape
-    # (`tools/fremont_triage.run_arm` at 80 mm). A link can only be refused
-    # in that round, never added, so a rescued cluster in one ink is
-    # unchanged; a letter freed from a mixed cluster goes to the second
-    # round and may rejoin its line (the 3 mm tagline crop: EAT STAY PLAY
-    # read as one line of 11 instead of 6 + 3 with two letters held by the
-    # separator bars). Geometry, not fabric: no sew-out settles which shapes
-    # are a line. False: the pre-flip engine, byte for byte. Tests:
-    # `tests/test_textcluster.py`.
-    text_cluster_rescued_ink_link: bool = True
-    # The text tagger's LETTER door measures a glyph's stroke on the glyph
-    # as drawn: the traced polygon with every enclosed rescued speck of
-    # another ink punched back in as a hole (`textcluster._as_drawn`). Stage
-    # 4 fills a counter under its hole floor (`min_detail_mm`^2 / 4, 0.56
-    # mm2) into the letter and the counter survives only as a rescued speck
-    # of the ground's ink, so a small sans A traces as a near-solid triangle
-    # whose stroke CV (0.556 / 0.596 on Proseal's tagline at 85.9 mm, Kent
-    # 2026-10-20) fails `LETTER_STROKE_CV_MAX` 0.55 and the A sews as a satin
-    # blob beside its bean line-mates. Read as drawn the same A's are 0.29 /
-    # 0.32. Only the measurement moves; no bound changes. False: the door as
-    # it was, byte for byte (`PRE_FLIP`). Tests: `tests/test_textcluster.py`.
-    text_cluster_counters_as_drawn: bool = True
-    # A wide letter never reaches the Column lane: the text tagger's letter
-    # door refuses anything wider than `textcluster.ASPECT_RATIO_MAX` 1.4
-    # times its height. MFab's W of WELDING at 104.9 mm hits it twice: its
-    # right vertex touches the E's foot through the keyline, so W and E trace
-    # as ONE region (17.5 x 6.9 mm, aspect 2.55), and the W alone, with its
-    # long lead-in arm, is still 1.58. Under the photo path the A and N of
-    # AND touch the same way, which leaves the D short of a line of three and the
-    # whole word untagged. ON (2026-10-23, built OFF): such a region beside
-    # a line it could join is cut at every neck under a quarter of its own
-    # stroke (`textcluster._neck_split`), the pieces replacing it only when
-    # every one is tagged; and a glyph up to `WIDE_LETTER_ASPECT_MAX` 1.8 is
-    # adopted by a line it links to (`_adopt_wide`), never making one.
-    # Segmentation and tagging, not fabric: layout, judged in the preview.
-    # ON by default since 2026-10-24 (Kent, the flip sheet; MFab moves,
-    # Fremont and Becker byte-identical). False: neither is called, byte
-    # for byte. Tests: `tests/test_wide_letters.py`.
-    text_cluster_wide_letters: bool = True
     # Two more ways a letter misses the text tagger, both on MFab's AND
     # WELDING (read per letter at the pro's widths, rembg on). The hat's I
     # and N of WELDING touch at a neck under 0.08 mm and trace as ONE region
@@ -5621,97 +5465,7 @@ class PipelineConfig:
     # the tatami patch appended last, byte for byte.
     satin_patch_junctions: bool | str = False
 
-    # Let stage 4's thread re-validation reach the shapes preflight condemns.
-    # `stage4_vectorize.revalidate_threads` re-snaps a thread that drifted off
-    # its colour during outline simplification, gated on
-    # `THREAD_REVALIDATE_MIN_PX = 200`. `preflight._MIN_COLOR_PIXELS` is 50 —
-    # so a shape of 50-199 px is scored and BLOCKED by preflight and can never
-    # be corrected by stage 4. ON, the re-ask uses preflight's floor instead,
-    # so the two agree on what is measurable.
-    #
-    # Measured 2026-09-06 (`tools/revalidate_floor.py`, MASTER_SCOPE 28): on
-    # `screenshot_phone_ui_golke` the pass refuses 12 shapes, all 12 in that
-    # band, 7 of which would change answer under the function's own estimator
-    # and its own 3.0 dE improvement gate — worst 177 px, `0111 Whale` at
-    # 32.7 dE00 where `0015 White` scores 1.4. Across the seven fixtures
-    # THREAD_MATCH_POOR grades F, refusals are 0/0/0/4/7 against
-    # `logo_bridge_bar` 63 and `screenshot_phone_ui` 12.
-    #
-    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle), as
-    # one half of a pair with `resnap_mask_matches_grader`: the mask shrinks a
-    # footprint below the 200 px floor, so alone it declines the shape; the
-    # lowered floor lets it act, and together they move chrome and meadow
-    # D -> C where neither does alone. The estimator does not need the extra
-    # pixels (a median over 50 per-pixel dE00 is sound, and
-    # THREAD_REVALIDATE_MIN_IMPROVEMENT_DE00 is the real churn guard). False
-    # is the pre-flip engine byte for byte.
-    revalidate_small_shapes: bool = True
 
-    # Score the thread re-validation on the SAME pixels the grader uses.
-    # `stage4_vectorize.revalidate_threads` and
-    # `preflight._region_color_errors` claim the same estimator and have it —
-    # both take the median of the per-pixel CIEDE2000 — but they do not share
-    # a MASK. Preflight erodes the polygon raster one pixel and drops
-    # `p.bg_mask` ("to keep anti-alias halo pixels from dragging a flat color
-    # toward the background"); `_region_footprint` is a bare `cv2.fillPoly`
-    # and does neither. ON, the re-snap applies preflight's two operations,
-    # hairline fallback included, and the pixel floor counts the MASKED set —
-    # a floor that admits a shape on halo pixels and then scores it on three
-    # real ones is not measuring what it thinks.
-    #
-    # Measured 2026-09-07 (`tools/spool_remedy.py --masks`, MASTER_SCOPE 28):
-    # on `logo_gaulke_roofing`'s `Se6eddd27` (0.58 mm2 at 16.1 px/mm) the two
-    # masks are 247 px against 54 and disagree by **52.2 dE00 on one
-    # polygon**. Stage 4's set is BIMODAL — 103 near-black + 65 near-white —
-    # so its median makes `3971 Silver` the chart-wide argmin at 11.4 while
-    # the region's own core is near-black and scores that same Silver 63.6.
-    # The re-snap picks a thread on pixels the grader refuses, and the grader
-    # then condemns the thread the re-snap picked. It is the same failure
-    # `_region_color_errors`' docstring calls this instrument's original sin
-    # ("the per-channel median of a bimodal pool is a colour almost no pixel
-    # carries"), fixed on preflight's side 2026-08-11 and never inherited
-    # here.
-    #
-    # It accounts for TWO of the three F-wall blocks that survive excess
-    # scoring — `gaulke` and `bridge_bar`; `screenshot` is the floor above
-    # (both footprints pick `0015` either way). **And it needs that floor
-    # flag to finish either one.** Masking out the halo SHRINKS the footprint,
-    # so a shape the raw raster floated over `THREAD_REVALIDATE_MIN_PX = 200`
-    # drops under it — gaulke 247 -> 54 px, bridge_bar 240 -> 156 — and this
-    # flag alone therefore declines both re-snaps rather than improving them.
-    # Gaulke's F 4 -> D 46 is the value of DECLINING a wrong re-snap, not of
-    # making a better one. Measured: bridge_bar moves only under
-    # mask + `revalidate_small_shapes` (`6156` -> `5866`, 21.3 -> 16.2, one
-    # more block on that fixture); on gaulke that pair is byte-identical to
-    # this flag alone, because the palette has collapsed and `1375` is no
-    # longer loaded for the small-shape rule to offer.
-    #
-    # "MATCHES" is a claim, so it carries its residual — and as of 2026-09-12
-    # the residual is ZERO on the fixture it was named for. The gap used to be
-    # real: `_region_footprint` rounds mm->px and `_region_color_errors`
-    # TRUNCATED, so the two rasters differed by up to a pixel at a vertex
-    # before either mask was applied (measured 2026-09-07: 80 px out of
-    # 557,046 on gaulke, 99.99% IoU; zero on `logo_alpha`, where every vertex
-    # happened to sit on a pixel centre). `subpixel_edges` made the vertices
-    # fractional and blew that up to 98.8% / 97.5%, so preflight was changed
-    # to ROUND the same way on 2026-09-09 — see `_region_color_errors`' own
-    # `to_px`. Re-measured 2026-09-12 over every non-enclosed region on
-    # gaulke: **553,014 / 553,014 px, exactly 100% IoU, 0 px disagreeing.**
-    #
-    # Two corrections to what this comment used to say, both worth keeping so
-    # nobody re-derives them: the alignment did NOT have to touch
-    # `tag_enclosed_background` (that pass does not share `_region_footprint`
-    # — it carries its own inline `_mm_ring_to_px`, which already rounded), and
-    # it was done on preflight's side, not stage 4's, so `_region_footprint`
-    # is untouched. `tests/test_resnap_mask_matches_grader.py::
-    # test_the_flagged_mask_really_matches_the_graders` still asserts only
-    # `> 0.999` rather than equality: 100% is measured on gaulke, not proved
-    # for every fixture, and a rasteriser tie-break is not worth a brittle pin.
-    #
-    # DEFAULT ON since 2026-09-10 (Kent's ruling on the colour bundle), the
-    # other half of the pair with `revalidate_small_shapes` above. False is
-    # the pre-flip engine byte for byte.
-    resnap_mask_matches_grader: bool = True
 
     # Score `THREAD_MATCH_POOR` on the GRADIENT lane the way the photo route
     # has been scored since 2026-08-24: on EXCESS over the best spool the
@@ -6355,28 +6109,6 @@ class PipelineConfig:
     # floats, and whether buried travel shows): Kent's flip, after a
     # sew-out. Off, byte-identical. Tests: `tests/test_cut_every_jump.py`.
     cut_every_jump: bool = False
-    # A satin loop round a letter -- `enclosed_white_keyline`'s keyline loops
-    # and `border_from_outline`'s outline loops (`stage6_border.keyline_runs`)
-    # -- keeps its far rail at the satin pitch through the letter's convex
-    # corners, as the professional's keyline and outline satin do
-    # (2026-10-25, built OFF; `stage6_border._pivot_ring`). The loop casts
-    # each cross along a normal smoothed over half its width either side, so
-    # through a corner its far ends spread 1.1 mm apart where the pro's sit
-    # 0.4 mm apart: the spikes on MFab's white keyline at every M-FAB corner
-    # (#1059, #1065). The pro's corner is the same round arc, not a mitre
-    # (far ends 1.00 widths from the corner on MFab's keyline, 1.12 on
-    # Becker's outline; a mitre point is 1.43 / 1.55) -- the name is the
-    # brief's. ON: crosses put between any two whose far ends part by more
-    # than `LOOP_PIVOT_GAP` steps on a convex turn, one per step of the far
-    # rail; the near ends' pile short-stitched. Layout, judged in the preview
-    # (Kent, 2026-10-22). ON by default since Kent's flip on the wave-3 flip
-    # sheet, 2026-10-26: "Outline corners pivot" ("For all art. The satin
-    # loop round a letter turns its corners with tightly packed stitches, as
-    # the pro does, instead of fanning into spikes"). False is the loop as it
-    # was, byte for byte (`PRE_FLIP`). Set for a plan by
-    # `stage6_border.loop_mitre_scope`.
-    # Tests: `tests/test_outline_loop_mitre.py`.
-    outline_loop_mitre: bool = True
     # `keyline_loop_chain` (BUILT OFF 2026-10-26, `docs/keyline-loop-chain-2026-10-26.md`):
     # a keyline / outline band's loops (`stage6_border.keyline_runs`) chained
     # as the pro chains them: each loop starts, and so ends, where it comes

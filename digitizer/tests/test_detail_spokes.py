@@ -43,7 +43,7 @@ from digitizer_core.threads import chart_for, rgb_to_lab
 from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
 
 from .conftest import (FLAT_GOLDEN_MD5, PRE_FLIP, RECIPE_2026_10_27, LETTERING_2026_10_24_OFF, TESTDATA,
-                       ROPE_BAND_2026_11_17_OFF, WAVE3_2026_10_26_OFF)
+                       ROPE_BAND_2026_11_17_OFF)
 
 
 def test_flag_defaults_on_since_kents_flip_and_the_floor_scales_from_the_pros():
@@ -422,8 +422,8 @@ def test_a_mark_whose_host_sewed_nothing_sews_last():
 # capped. A red names the host, its SIMD and IPP's path, and junit.xml records
 # them on every run; `test_test_environment_caps_ipp_at_avx2` is the tripwire
 # that separates "the cap did not take" from "the engine changed".
-FREMONT_80_OFF_COUNTS = (14786, 44)     # re-captured 2026-11-19 with the satin construction flags folded in (was (14824, 43))
-FREMONT_80_OFF_MD5 = "a302cd07b7e645995f25f013cf49a837"         # IPP l9 (AVX2), every host
+FREMONT_80_OFF_COUNTS = (14795, 44)     # re-captured 2026-11-20 with outline_loop_mitre folded in (was (14786, 44), 2026-11-19)
+FREMONT_80_OFF_MD5 = "d9b5467daf1829a3b0889b91f9390b57"         # IPP l9 (AVX2), every host
 STAR_MM = (1.28, -12.02)        # the star's centre, design mm, y down
 
 
@@ -484,7 +484,6 @@ def fremont_off():
 def _run_fremont_off(ft):
     return ft.run_arm("main", 80.0, None, preflight=False,
                       overrides={"detail_spokes": False, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
-                                 **WAVE3_2026_10_26_OFF,    # fine bars moves Fremont's separators
                                  **RECIPE_2026_10_27,        # the recipe sews its ground under them
                                  **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
                                  **TEXT_GAPS_2026_11_15_OFF, **ROPE_BAND_2026_11_17_OFF,
@@ -504,7 +503,6 @@ def fremont_on():
 def _run_fremont_on(ft):
     return ft.run_arm("main", 80.0, None, preflight=False,
                       overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
-                                 **WAVE3_2026_10_26_OFF,
                                  **RECIPE_2026_10_27,      # as the OFF arm: this prices the spokes
                                  **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
                                  **TEXT_GAPS_2026_11_15_OFF, **ROPE_BAND_2026_11_17_OFF,

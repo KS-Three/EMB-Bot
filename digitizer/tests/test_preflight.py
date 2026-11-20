@@ -21,7 +21,6 @@ from digitizer_core import machine
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off where a test prices another flag
 from tests.conftest import PRE_FLIP
 from tests.conftest import FLIP_2026_10_26  # and the 2026-10-26 two (bay mouth, white sewn)
-from tests.conftest import WAVE3_2026_10_26_OFF
 from tests.conftest import TEXT_GAPS_2026_11_15_OFF  # the six 2026-11-15 text/gap flips
 from tests.conftest import RECIPE_2026_10_27  # the white-keyline recipe on every job, pinned off likewise
 
@@ -906,7 +905,7 @@ def test_bridges_script_sews_its_gaps_closed_at_80mm_and_the_finding_says_where_
     # ... and before the six 2026-11-15 text/gap flips: with them the
     # small-lettering finding carries a resolution note (CI, 2026-11-15)
     c = PipelineConfig(target_width_mm=80.0, garment_id="left_chest", max_colors=6, **FLIP_2026_10_23,
-                       **WAVE3_2026_10_26_OFF, stage0_scale_relative_grad=False,
+                       stage0_scale_relative_grad=False,
                        **TEXT_GAPS_2026_11_15_OFF)
     result, plan = digitize(path, c)
     report = run_preflight(result, plan, c, image=path)

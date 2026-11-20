@@ -240,8 +240,8 @@ def test_band_round_a_hole_too_short_to_loop_is_not_a_stroke():
     assert fill < machine.OUTLINE_LINE_ART_FILL_SHARE
     assert today >= machine.OUTLINE_LINE_ART_DROP_FRAC     # OFF: line art
     assert ringed < 1e-9                                   # ON: keyline
-    off = PipelineConfig(border_from_outline_line_art_guard=True)
-    on = PipelineConfig(border_from_outline_line_art_guard=True, photo_enclosed_rim=True)
+    off = PipelineConfig()
+    on = PipelineConfig(photo_enclosed_rim=True)
     assert find_art_outlines(regs, off) == {}
     assert list(find_art_outlines(regs, on)) == ["Souter"]
 
@@ -251,7 +251,7 @@ def test_a_drawing_stays_line_art_with_the_rim_on():
     # ends running away from every hole
     from tests.test_outline_line_art_guard import BOWL, CELL, _pair
     from digitizer_core.art_outline import find_art_outlines
-    on = PipelineConfig(border_from_outline_line_art_guard=True, photo_enclosed_rim=True)
+    on = PipelineConfig(photo_enclosed_rim=True)
     assert find_art_outlines(_pair(BOWL, CELL), on) == {}
 
 

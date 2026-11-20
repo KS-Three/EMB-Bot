@@ -164,7 +164,7 @@ def find_art_outlines(regions, cfg=None, *,
     with stroke >= `machine.OUTLINE_BODY_RATIO` x band, exactly as before."""
     regions = list(regions)
     if line_art_guard is None:
-        line_art_guard = bool(getattr(cfg, "border_from_outline_line_art_guard", False))
+        line_art_guard = True
     frame_guard = bool(getattr(cfg, "outline_frame_guard", False))
     if group_decide is None and getattr(cfg, "group_consistent_outline_body", False):
         from .group_consistency import outline_body_decider

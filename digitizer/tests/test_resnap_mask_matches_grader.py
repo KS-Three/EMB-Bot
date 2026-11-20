@@ -1,9 +1,8 @@
-"""`cfg.resnap_mask_matches_grader` — the re-snap and the grader score the same
-pixels. DEFAULT ON since 2026-09-10 (Kent's colour-bundle ruling; this line
-said OFF until 2026-09-12, which `test_flag_defaults_on` had already
-contradicted). Every arm below still prices the flag ALONE over the pre-flip
-engine — `conftest.PRE_FLIP` — because that is the engine the numbers in this
-docstring were measured on.
+"""`resnap_mask_matches_grader` — the re-snap and the grader score the same
+pixels. ON since 2026-09-10 (Kent's colour-bundle ruling), and folded into the
+code 2026-11-19: the switch is gone, so there is no OFF arm to price against.
+What stays is the ON behaviour, over `conftest.PRE_FLIP`. The OFF numbers in
+this docstring were measured on the engine as it stood.
 
 `stage4_vectorize.revalidate_threads` and `preflight._region_color_errors`
 claim the same estimator and have it: both take the median of the per-pixel
@@ -39,7 +38,6 @@ bridge_bar 240 -> 156. What the flag buys on gaulke is therefore the value of
 DECLINING a wrong re-snap, not of making a better one, which is what the
 tests below pin.
 """
-import threading
 from functools import lru_cache
 
 import cv2
@@ -52,21 +50,23 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage4_vectorize import _region_footprint
 from digitizer_core.threads import chart_for
 
-from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA, pre_flip_module_gen
+from .conftest import BUNDLE_ON, PRE_FLIP, PRE_FLIP_FOLDED, TESTDATA, legacy_engine
 
 
 # The numbers in this file were read on the engine before six colour switches were
 # folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
-# held them False. `legacy_engine` patches their False paths back for the module.
-pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
+# held them False. `legacy_engine` patches their False paths back for the module --
+# but not the mask's own (this file prices the mask ON) nor `small`/`cap`, which the
+# rows below were never read without (they passed untouched after the fold).
+@pytest.fixture(autouse=True, scope="module")
+def pre_flip_module():
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, **PRE_FLIP_FOLDED)
+        yield
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The region the flag exists for, and the spool the unmasked footprint picks.
 BLOCKED_SHAPE = "Se6eddd27"
-# A flat fixture and a photo fixture, neither of which has the halo problem —
-# the controls that say "byte-identical off" is a claim about the SHIPPED
-# default, not an artifact of testing one design.
-CONTROLS = ["logo_alpha.png", "photo/photo_dof_meadow.png"]
 
 
 def _cfg(**kw) -> PipelineConfig:
@@ -74,12 +74,12 @@ def _cfg(**kw) -> PipelineConfig:
 
 
 @lru_cache(maxsize=None)
-def _run(fixture: str, on: bool):
-    """One pipeline run per (fixture, flag). Cached for the reason
+def _run(fixture: str):
+    """One pipeline run per fixture. Cached for the reason
     `test_bind_resnap_all_classes` records: CI runners are 2-core, so a
     straight-through file pays for every repeated `digitize`."""
     art = TESTDATA / fixture
-    result, plan = digitize(art, _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on}))   # the flag alone, over the pre-flip engine
+    result, plan = digitize(art, _cfg(**PRE_FLIP))
     coords = tuple(
         (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
         for _b, run in plan.iter_runs() for x, y in run.points)
@@ -87,79 +87,11 @@ def _run(fixture: str, on: bool):
     return coords, threads, result, plan
 
 
-def test_flag_defaults_on():
-    """Kent's ruling 2026-09-10: ON, as one half of the pair with
-    `revalidate_small_shapes` in the colour bundle."""
-    assert PipelineConfig().resnap_mask_matches_grader is True
-
-
-class _CountingCv2:
-    """`stage4_vectorize`'s `cv2` global, with `erode` counted.
-
-    Swapped in with `monkeypatch.setattr(V, "cv2", ...)`, so it scopes to that
-    module alone — patching `cv2.erode` on the shared module would also count
-    preflight's and stage 1's erosions and prove nothing about this guard.
-    """
-
-    def __init__(self, real):
-        self._real = real
-        self._me = threading.get_ident()
-        self.erodes = 0
-
-    def __getattr__(self, name):          # fillPoly, connectedComponents, ...
-        return getattr(self._real, name)
-
-    def erode(self, *a, **kw):
-        # This test's own thread only: the swap is module-global, and the
-        # service's job-pool thread can be eroding for another test's job
-        # (see `conftest.own_thread_only`).
-        if threading.get_ident() == self._me:
-            self.erodes += 1
-        return self._real.erode(*a, **kw)
-
-
-@pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
-def test_off_the_masking_code_never_executes(fixture, monkeypatch):
-    """The off-path claim as an EXECUTION fact, not an output comparison.
-
-    Every other test here prices what the flag DOES. This one prices what it
-    does not do, and it is the assertion the "byte-identical when off"
-    convention actually rests on: two runs that happen to produce the same
-    stitches are weak evidence (a fixture can simply have no shape the mask
-    would move), while zero executions of the new code is proof, on any
-    fixture, that the off path runs the pre-flag instruction stream.
-
-    It works because `cv2.erode` is called in exactly ONE place in
-    `stage4_vectorize` — inside `if grader_mask:` — so the count IS the
-    guard. If someone later adds an unguarded erosion to that module this
-    test fails, which is the right answer: the off path would no longer be
-    the engine every `_run(fixture, False)` baseline in this file assumes.
-    """
-    import digitizer_core.stage4_vectorize as V
-
-    seen = {}
-    for on in (False, True):
-        shim = _CountingCv2(cv2)
-        monkeypatch.setattr(V, "cv2", shim)
-        digitize(TESTDATA / fixture,
-                 _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on}))
-        monkeypatch.undo()
-        seen[on] = shim.erodes
-
-    assert seen[False] == 0, (
-        f"{fixture}: stage 4 eroded {seen[False]}x with the flag OFF — the "
-        "guard leaks, so 'off is the pre-flip engine' is no longer true")
-    assert seen[True] > 0, (
-        f"{fixture}: the flag is ON and stage 4 never eroded, so this test "
-        "is not actually watching the guarded call site")
-
-
 @pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
 def test_the_shipped_engine_is_the_four_flags_on(fixture):
     """No keyword at all against the four colour flags spelled out True, so a
     change to any of the four defaults shows up as a difference. The flag's
-    own price of admission -- OFF over the pre-flip engine is that engine --
-    is what every `_run(fixture, False)` below stands on."""
+    own price of admission."""
     def coords(cfg):
         _, plan = digitize(TESTDATA / fixture, cfg)
         return tuple((round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
@@ -170,7 +102,7 @@ def test_the_shipped_engine_is_the_four_flags_on(fixture):
 def test_the_two_masks_really_do_disagree_on_this_region():
     """The premise, pinned. If this stops failing to differ, the flag has
     nothing to fix and the rest of this file proves nothing."""
-    _, _, result, plan = _run(GAULKE, False)
+    _, _, result, plan = _run(GAULKE)
     art = TESTDATA / GAULKE
     p = pf.prep(art, _cfg())
     reg = next(r for r in result.regions if r.shape_id == BLOCKED_SHAPE)
@@ -213,7 +145,7 @@ def test_the_flagged_mask_really_matches_the_graders(fixture):
     a proved property of every raster, and pinning a rasteriser tie-break
     would make this test fail for a reason that is not what it watches.
     """
-    _, _, result, _ = _run(fixture, False)
+    _, _, result, _ = _run(fixture)
     p = pf.prep(TESTDATA / fixture, _cfg())
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0
@@ -248,84 +180,61 @@ def test_the_flagged_mask_really_matches_the_graders(fixture):
     assert iou > 0.999, f"{fixture}: masks agree on only {iou:.4%} of pixels"
 
 
-def test_on_the_resnap_stops_choosing_silver_for_near_black_artwork():
-    """The behaviour the flag buys, stated on the SEWN thread rather than on a
+def test_the_resnap_does_not_choose_silver_for_near_black_artwork():
+    """The behaviour the mask buys, stated on the SEWN thread rather than on a
     grade: `THREAD_MATCH_POOR` grades per thread on its worst patch, so a
-    grade is not evidence here (DOCTRINE, and yardstick-disagreements row 1)."""
-    _, off_threads, _, _ = _run(GAULKE, False)
-    _, on_threads, on_result, _ = _run(GAULKE, True)
-    assert off_threads.get(BLOCKED_SHAPE) == "3971", (
-        "premise: the shipped engine sews Silver here")
+    grade is not evidence here (DOCTRINE, and yardstick-disagreements row 1).
+    (Before the mask the shipped engine sewed Silver `3971` here.)"""
+    _, on_threads, _, _ = _run(GAULKE)
     assert on_threads.get(BLOCKED_SHAPE) != "3971", (
         "with the grader's mask the re-snap must not pick Silver for artwork "
         "its own core reads as near-black")
 
 
-def _shape_delta_e(on: bool) -> float:
+def _shape_delta_e() -> float:
     art = TESTDATA / GAULKE
-    _, _, result, plan = _run(GAULKE, on)
-    cfg = _cfg(**{**PRE_FLIP, "resnap_mask_matches_grader": on})
+    _, _, result, plan = _run(GAULKE)
+    cfg = _cfg(**PRE_FLIP)
     p = pf.prep(art, cfg)
     rows = pf._region_color_errors(p, result, plan, cfg)
     mine = [r for r in rows
             if str(r["shape_id"]).split(" shade ")[0] == BLOCKED_SHAPE]
-    assert mine, f"{BLOCKED_SHAPE} must still be scored (flag {on})"
+    assert mine, f"{BLOCKED_SHAPE} must still be scored"
     return max(r["delta_e"] for r in mine)
 
 
-def test_on_the_graders_own_score_for_that_shape_improves():
-    """End to end, in the instrument that condemned it — and stated at the
-    size it actually is.
+def test_the_graders_own_score_for_that_shape_is_improved():
+    """End to end, in the instrument that condemned it -- at the size it
+    actually is.
 
-    **It does not fully clear, and an earlier draft of this test asserted it
-    would.** Measured 2026-09-07: 63.6 -> **16.7** dE00, still over
-    `DELTA_E_CLEARLY_DIFFERENT`. The reason is the next test: with the halo
+    **It does not fully clear.** Measured 2026-09-07: 63.6 (no mask) ->
+    **16.7** dE00, still over `DELTA_E_CLEARLY_DIFFERENT`. With the halo
     pixels gone the re-snap DECLINES this region, so it keeps stage 2's
-    `4174`, and the design's cone list has collapsed to three — `1375 Dark
+    `4174`, and the design's cone list has collapsed to three -- `1375 Dark
     Charcoal`, which sits 5.0 dE00 from this artwork, is no longer loaded for
-    the small-shape rule to offer. `revalidate_small_shapes` does not rescue
-    it either (byte-identical to this arm on gaulke), for the same reason.
+    the small-shape rule to offer.
     """
-    off, on = _shape_delta_e(False), _shape_delta_e(True)
-    assert off > 60.0, f"premise: the shipped engine earns {off:.1f}, not >60"
-    assert on < off / 3, f"63.6 -> {on:.1f}: the flag did not reach it"
+    on = _shape_delta_e()
+    assert on < 63.6 / 3, f"63.6 -> {on:.1f}: the mask did not reach it"
     # Pinned as a KNOWN RESIDUAL, not as a target. If this starts passing,
     # something reached the shape and this file should say what.
     assert on > pf.DELTA_E_CLEARLY_DIFFERENT, (
-        f"{on:.1f} dE00 — the shape now CLEARS; update this test and the "
+        f"{on:.1f} dE00 -- the shape now CLEARS; update this test and the "
         "residual recorded in MASTER_SCOPE 28")
 
 
-def test_the_halo_pixels_were_inventing_cones():
+def test_the_halo_pixels_no_longer_invent_cones():
     """The effect that is bigger than one shape, and the reason the shape
     itself only gets halfway.
 
-    MASTER_SCOPE 15's "resnap escape" — the pass adds 34 cones corpus-wide,
-    25 outside the selected palette — has a second cause besides the missing
-    palette binding `bind_resnap_all_classes` treats: the argmin is being run
-    on halo pixels, so it goes looking for a spool that matches a colour the
-    artwork does not contain. On gaulke the shipped engine re-snaps its way to
-    `1375 Dark Charcoal` and `3971 Silver`; with the grader's mask neither is
-    reached at all.
+    MASTER_SCOPE 15's "resnap escape" has a second cause besides the missing
+    palette binding `bind_resnap_all_classes` treats: the argmin was run on
+    halo pixels, so it went looking for a spool that matches a colour the
+    artwork does not contain. On gaulke the unmasked engine re-snapped its way
+    to `1375 Dark Charcoal` and `3971 Silver`; with the grader's mask neither
+    is reached at all.
     """
-    _, off_threads, off_result, _ = _run(GAULKE, False)
-    _, on_threads, on_result, _ = _run(GAULKE, True)
-    off = {r.thread_number for r in off_result.regions}
+    _, _, on_result, _ = _run(GAULKE)
     on = {r.thread_number for r in on_result.regions}
-    assert "3971" in off and "1375" in off, "premise: the escape happens"
     assert not (on & {"3971", "1375"}), (
         f"still escaping to {sorted(on & {'3971', '1375'})}")
-    assert len(on) < len(off), f"{len(off)} -> {len(on)} cones"
-
-
-def test_the_flag_never_grows_the_cone_set():
-    """The rule `bind_resnap_all_classes` learned the hard way: a re-snap that
-    pulls in a new spool makes the operator load a cone the plan never named,
-    and each new spool is another row `THREAD_MATCH_POOR` scores."""
-    for fixture in (GAULKE, *CONTROLS):
-        _, _, off_result, _ = _run(fixture, False)
-        _, _, on_result, _ = _run(fixture, True)
-        off = {r.thread_number for r in off_result.regions}
-        on = {r.thread_number for r in on_result.regions}
-        assert len(on) <= len(off), (
-            f"{fixture}: {len(off)} -> {len(on)} cones")

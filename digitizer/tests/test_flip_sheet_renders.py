@@ -114,7 +114,9 @@ def test_summary_table_lists_every_row(tmp_path):
 
 def test_a_flag_with_a_base_has_its_own_off_arm():
     assert fsr.off_arm("enclosed_white_keyline") == "enclosed_white_keyline__off"
-    assert fsr.off_arm("lettering_columns_inside_stagger") == "off"
+    # a flag with no base diffs against bare `off` (`tie_in_off`, which this line
+    # used, and `lettering_columns_inside_stagger` were folded into the code)
+    assert fsr.off_arm("sew_enclosed_white") == "off"
     assert fsr.arm_sets("enclosed_white_keyline__off") == {"sew_enclosed_white": True}
     assert fsr.arm_sets("off") == {}
     assert fsr.arm_sets("enclosed_white_keyline")["enclosed_white_keyline"] is True
@@ -134,9 +136,7 @@ def test_off_cells_are_cached_per_engine_and_on_cells_are_not(tmp_path):
 
 def test_wave_one_flags_are_on_the_sheet():
     prs = {f: s["pr"] for f, s in fsr.FLAGS.items()}
-    assert prs["lettering_columns_inside_stagger"] == 1058
     assert prs["enclosed_white_keyline"] == 1059
-    assert prs["text_cluster_wide_letters"] == 1060
     for f in prs:
         assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f
 
@@ -160,7 +160,6 @@ def test_wave_two_flags_are_on_the_sheet():
     prs = {f: s["pr"] for f, s in fsr.FLAGS.items()}
     assert prs["monoline_script_satin"] == 1063
     assert prs["silhouette_underfill"] == 1064
-    assert prs["small_text_cap_reach_edges"] == 1066
     for f in prs:
         assert fsr.FLAGS[f]["metric"] in fsr.METRICS, f
 
@@ -170,9 +169,6 @@ def test_flags_with_one_base_share_one_off_arm():
     # is diffed against that one OFF, digitized once per fixture
     assert fsr.off_arm("silhouette_underfill") == "white_sewn__off"
     assert fsr.arm_sets("white_sewn__off") == {"sew_enclosed_white": True, "enclosed_white_keyline": True}
-    # the reach flag acts only under #1029's re-set: its OFF is that set, without the flag
-    off = fsr.arm_sets(fsr.off_arm("small_text_cap_reach_edges"))
-    assert off == fsr.FLAGS["small_text_set"]["sets"] and "small_text_cap_reach_edges" not in off
     for f, spec in fsr.FLAGS.items():
         if spec.get("base"):
             # ON differs from its OFF: a key the base lacks, or (a flag already ON by
@@ -200,18 +196,18 @@ def test_sub_1mm_counts_short_stitches_and_resets_at_a_cut():
 
 @pytest.mark.usefixtures("fabric_flags")
 def test_a_row_with_a_third_cell():
-    # d2 | d2 + panels | d2 + panels + mitre | pro (#1094): the third cell is its own arm,
+    # OFF | ON | ON + bean ink | pro (#1080): the third cell is its own arm,
     # cached like ON (never per engine), its sets the row's ON plus what it adds
-    assert fsr.also_arm("silhouette_underfill_panels") == "silhouette_underfill_panels__mitre"
+    assert fsr.also_arm("text_cluster_part_touching") == "text_cluster_part_touching__bean_ink"
     assert fsr.also_arm("tie_in_off") is None
-    sets = fsr.arm_sets("silhouette_underfill_panels__mitre")
-    on = fsr.FLAGS["silhouette_underfill_panels"]["sets"]
-    assert {k: v for k, v in sets.items() if k not in on} == {"outline_loop_mitre": True}
-    assert not fsr.is_off("silhouette_underfill_panels__mitre")
+    sets = fsr.arm_sets("text_cluster_part_touching__bean_ink")
+    on = fsr.FLAGS["text_cluster_part_touching"]["sets"]
+    assert {k: v for k, v in sets.items() if k not in on} == {"bean_ink_outlined_letters": True}
+    assert not fsr.is_off("text_cluster_part_touching__bean_ink")
     row = {"on": {"stitches": 1, "trims": 2, "about": "x"}, "also": {"stitches": 3, "trims": 4, "about": "y"},
-           "also_label": "ON + MITRE"}
+           "also_label": "ON + BEAN INK"}
     assert fsr._sides(row) == ("off", "on", "also", "pro")
-    assert fsr._fmt_on(row).endswith("ON + MITRE: 3 st / 4 tr / y")
+    assert fsr._fmt_on(row).endswith("ON + BEAN INK: 3 st / 4 tr / y")
     assert fsr._sides({"on": {}}) == ("off", "on", "pro")
 
 
@@ -238,8 +234,7 @@ def test_wave_three_flags_are_on_the_sheet_and_off_on_main():
     assert "small_text_bay_mouth" not in fsr.FLAGS       # folded into the code 2026-11-20
     # ... and the two Kent flipped from this sheet, 2026-10-26, and the two from wave 5,
     # 2026-10-27: off the list, rows kept, ON
-    for f in ("outline_loop_mitre", "text_cluster_part_touching",
-              "lettering_columns_italic_lean"):
+    for f in ("text_cluster_part_touching", "lettering_columns_italic_lean"):
         assert f not in fsr.WAVE3 and f in fsr.FLAGS and getattr(cfg, f) is True, f
     # ... and the four the white-keyline recipe took to every job, 2026-10-27
     # (Kent: "Every job (Recommended)"): off the list, rows kept, ON
@@ -258,7 +253,7 @@ def test_every_flag_has_a_kind():
 
 
 def test_bridge_is_a_wave_three_fixture():
-    for f in ("outline_loop_mitre", "silhouette_underfill_rim", "fill_section_travel"):
+    for f in ("silhouette_underfill_rim", "fill_section_travel"):
         assert {"bridge_hat", "bridge_lc"} <= set(fsr.flag_fixtures(f, None)), f
 
 
@@ -310,9 +305,6 @@ def test_wave_five_rows_are_layout_flags_each_asked_or_labelled():
     asked = [f for f, s in fsr.W5.items() if s["ask"]]
     assert asked == ["lettering_columns_italic_lean", "fill_section_travel",
                      "bean_ink_outlined_letters", "text_cluster_part_touching"]
-    # ruled ON from renders on 2026-10-26 and flipped by #1121: shown, not asked again
-    for f in ("outline_loop_mitre",):
-        assert not fsr.W5[f]["ask"] and "ruled ON" in fsr.W5[f]["label"], f
     # the detection pass on fa3150de: the trio's DST is OFF's byte for byte on all ten white jobs
     # off MFab, so the three keyline switches act nowhere a render could show; their one row is
     # the trio's, shown, and none of the three is asked
@@ -400,12 +392,12 @@ def test_gate_three_reads_bare_thread_at_the_instruments_band():
 
 @pytest.mark.usefixtures("fabric_flags")
 def test_an_asked_flag_that_raises_bare_thread_is_not_asked():
-    sheet = {"outline_loop_mitre": {"ask": True}, "monoline_script_satin": {"ask": False, "label": "HELD"}}
+    sheet = {"fine_bars_satin": {"ask": True}, "monoline_script_satin": {"ask": False, "label": "HELD"}}
     off = {"bare_mm": {"0.20": 0.0, "0.25": 0.0, "0.30": 0.0}}
     up = {"bare_mm": {"0.20": 0.5, "0.25": 0.5, "0.30": 0.5}}
     clear = [{"bare": fsr.bare_rise(off, off)}]
-    assert fsr.ask_status("outline_loop_mitre", clear, sheet)[0] == "ask"
-    assert fsr.ask_status("outline_loop_mitre", [{"bare": fsr.bare_rise(off, up)}], sheet)[0] == "gate3"
+    assert fsr.ask_status("fine_bars_satin", clear, sheet)[0] == "ask"
+    assert fsr.ask_status("fine_bars_satin", [{"bare": fsr.bare_rise(off, up)}], sheet)[0] == "gate3"
     cls, text = fsr.ask_status("monoline_script_satin", clear, sheet)
     assert cls == "shown" and "HELD" in text
     assert fsr.ask_status("tie_in_off", clear, sheet) == ("", "")

@@ -178,14 +178,11 @@ def test_ink_link_tags_the_stray_and_is_lettering_then_refuses_it():
 
 
 @functools.lru_cache(maxsize=None)
-def _case_regions(case, rescued_link=True, pre_flip_route=False):
+def _case_regions(case):
     """(regions, settings, labelled letter ids or None) for a corpus case at
     its labelled settings, from ONE `run_stages` (the ink link's tag pass only
     writes a key; every guard here is read in `is_lettering`), shared by every
     census test in this process.
-    `rescued_link` is the text tagger's `text_cluster_rescued_ink_link`
-    (ON since 2026-10-15); False is the pre-flip tagger, whose rescued round
-    linked on size alone, the population the screenshot census was read on.
     The phantom-blend dissolve is held OFF (ON since Kent's 2026-10-20 flip,
     item 46; folded into the code 2026-11-20, `legacy_engine` patches its False
     path back): the hand labels are shape ids read on the engine without it,
@@ -193,29 +190,20 @@ def _case_regions(case, rescued_link=True, pre_flip_route=False):
     `speck_prune` is held OFF for the same reason (ON since Kent's tick,
     2026-11-16): a pruned speck's pixels join the shape round it, which
     moves Golden Tee's S643e40d2 and the screenshot's captures off the ids
-    and sizes the census was read on.
-    `pre_flip_route`: the stage-0 flip and the flat soft-edge cure held OFF
-    (`PRE_FLIP`), scored against the labels as read on that route
-    (`lines_pre_flip_route` where the ids moved with the flip)."""
+    and sizes the census was read on."""
     import json
     from tools.thin_strokes import REAL_ART
-    from tests.conftest import PRE_FLIP
     rel, width, garment = REAL_ART[case]
     base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
-    if pre_flip_route:
-        base.update({k: PRE_FLIP[k] for k in ("stage0_scale_relative_grad",
-                                              "flat_page_fringe_soft_ramp", "flat_ramp_blend_dissolve")})
     from tests.conftest import legacy_engine
     with pytest.MonkeyPatch.context() as mp:
         legacy_engine(mp, dissolve=True)
-        res = run_stages(TESTDATA / rel, PipelineConfig(**base,
-                                                        text_cluster_rescued_ink_link=rescued_link,
-                                                        speck_prune=False))
+        res = run_stages(TESTDATA / rel, PipelineConfig(**base, speck_prune=False))
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
     letters = None
     if lab:
-        lines = lab.get("lines_pre_flip_route", lab["lines"]) if pre_flip_route else lab["lines"]
+        lines = lab["lines"]
         letters = frozenset(s for v in lines.values() for s in v)
         if not letters <= {r.shape_id for r in res.regions}:
             letters = None                       # stale labels: not scored
@@ -246,13 +234,13 @@ def _guards_neutralised(regions, *, blob=False, ink=False, icon=False):
                 r.meta["lettering_ink_stray"] = v
 
 
-def _guard_census(case, guard="ink", rescued_link=True, pre_flip_route=False):
+def _guard_census(case, guard="ink"):
     """(regions, labelled letter ids or None, refused ids): the shapes
     `is_lettering` admits with `guard` ("ink" or "icon") neutralised and
     refuses with it live. The ink link is read with the blob and icon guards
     neutralised too, as it was censused before they were folded in; the icon
     guard is read with the blob guard and the ink link live."""
-    regions, base, letters = _case_regions(case, rescued_link, pre_flip_route)
+    regions, base, letters = _case_regions(case)
     cfg = PipelineConfig(**base)
     held = dict(blob=True, icon=True) if guard == "ink" else {}
     with _guards_neutralised(regions, **held):
@@ -301,10 +289,10 @@ def test_ink_link_sees_the_screenshot_icons_once_the_text_clusters_are_one_ink()
     rescued round linked on size alone and had carried Silver (0308, dE 73
     from the text's Black) and grey (dE 40) pieces -- every one on the hand
     labels' ignore list -- into its text clusters, so a "text letter" existed
-    in every icon ink. With `text_cluster_rescued_ink_link` those pieces are
-    no text, each cluster is one ink, and the link sees the icons: house-only,
-    icon-coloured, none a labelled letter, #881's three captures among them.
-    The pre-flip reading is kept as the arm it was measured on."""
+    in every icon ink. With the tagger's rescued-round ink link (folded into
+    the code 2026-11-19) those pieces are no text, each cluster is one ink,
+    and the link sees the icons: house-only, icon-coloured, none a labelled
+    letter, #881's three captures among them."""
     regions, letters, refused = _guard_census("screenshot")
     assert letters, "screenshot's hand labels went stale: re-read the census"
     assert refused and not (refused & letters)
@@ -314,11 +302,6 @@ def test_ink_link_sees_the_screenshot_icons_once_the_text_clusters_are_one_ink()
         assert not by_id[sid].meta.get("text_candidate")
     if SCREENSHOT_CAPTURES <= set(by_id):
         assert SCREENSHOT_CAPTURES <= refused
-    # The pre-flip tagger's arm is read on the pre-flip route it was measured on
-    # (Kent 2026-11-07, "Accept the plan (Recommended)" on #1301's bucket (c); docs/stage0-scale-relative-bucket-c-2026-11-06.md, rows 5-6); the live arm above on the new labels.
-    _regions, _letters, refused_pre = _guard_census("screenshot", rescued_link=False,
-                                                    pre_flip_route=True)
-    assert refused_pre == set(), "the pre-flip tagger's clusters hid the icons from the link"
 
 
 # --- the icon guard (`lettering_columns_icon_guard`, folded in 2026-11-20) --
@@ -384,25 +367,11 @@ def test_icon_guard_judges_house_only_shapes():
 
 
 def test_icon_guard_refuses_the_screenshot_captures_and_no_letter():
-    """Read on the pre-flip tagger's clusters (`rescued_link=False`), the
-    population the census was taken on: there the ink link cannot see the
-    captures (see `test_ink_link_sees_the_screenshot_icons_...`), so the icon
-    guard is what refuses them. On the live tagger the ink link refuses them
-    first, and the icon guard's own refusals are judged the same way."""
-    regions, letters, refused = _guard_census("screenshot", "icon", rescued_link=False,
-                                              pre_flip_route=True)   # rows 5-6, see above
-    assert letters, "screenshot's hand labels went stale: re-read the census"
-    assert not (refused & letters)
-    by_id = {r.shape_id: r for r in regions}
-    for sid in refused:                            # every refusal is house-only
-        assert by_id[sid].meta.get("lettering_group")
-        assert not by_id[sid].meta.get("text_candidate")
-    big = [s for s in refused
-           if 4.0 <= max(by_id[s].polygon.bounds[2] - by_id[s].polygon.bounds[0],
-                         by_id[s].polygon.bounds[3] - by_id[s].polygon.bounds[1]) <= 6.5]
-    assert len(big) >= 3                           # the three 4.5-6 mm captures
-    if SCREENSHOT_CAPTURES <= set(by_id):
-        assert SCREENSHOT_CAPTURES <= refused
+    """On the live tagger the ink link refuses the captures first, and the
+    icon guard's own refusals are judged the same way: house-only, no
+    labelled letter. (The pre-flip tagger arm, where the link could not see
+    the captures and the icon guard refused them, went with the switch
+    `text_cluster_rescued_ink_link`, folded 2026-11-19.)"""
     regions, letters, refused = _guard_census("screenshot", "icon")
     assert letters and not (refused & letters)
     by_id = {r.shape_id: r for r in regions}

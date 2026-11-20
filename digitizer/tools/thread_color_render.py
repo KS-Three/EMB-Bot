@@ -53,8 +53,7 @@ def _bgr(rgb) -> tuple[int, int, int]:
     return (int(b), int(g), int(r))
 
 
-def _run(art: Path, width_mm: float, garment: str, on: bool,
-         flag="revalidate_small_shapes"):
+def _run(art: Path, width_mm: float, garment: str, on: bool, flag):
     """A/B any boolean `PipelineConfig` flag, not just the one this was
     written for. Generalised 2026-09-07 for `enforce_color_cap`; passing the
     name rather than copying the file keeps ONE renderer, so a fix to the
@@ -176,7 +175,7 @@ def _tiles(art: Path, changed, off, on, out_dir: Path, width_mm: float,
 
 def render(fixture: str, width_mm: float, garment: str, out_dir: Path,
            px_per_mm: float, zoom: bool,
-           flag: str = "revalidate_small_shapes") -> int:
+           flag: str) -> int:
     art = TESTDATA / fixture
     cfg_a, res_a, plan_a = _run(art, width_mm, garment, False, flag)
     cfg_b, res_b, plan_b = _run(art, width_mm, garment, True, flag)
@@ -228,12 +227,11 @@ def main() -> int:
     ap.add_argument("--px-per-mm", type=float, default=14.0)
     ap.add_argument("--zoom", action="store_true",
                     help="crop to the changed shapes instead of the design")
-    ap.add_argument("--flag", action="append", dest="flags",
+    ap.add_argument("--flag", action="append", dest="flags", required=True,
                     help="the boolean PipelineConfig flag to A/B; repeat it "
-                         "to flip several together (default "
-                         "revalidate_small_shapes)")
+                         "to flip several together")
     a = ap.parse_args()
-    flags = a.flags or ["revalidate_small_shapes"]
+    flags = a.flags
     return render(a.fixture, a.width, a.garment, a.out, a.px_per_mm, a.zoom,
                   flags if len(flags) > 1 else flags[0])
 

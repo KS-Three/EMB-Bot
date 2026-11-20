@@ -35,8 +35,9 @@ and Drone's hold no letter. No new constant. A pre-pass only when a candidate
 exists: a design with no enclosed background holding a hole pays nothing.
 
 THE RECIPE (`RECIPE`): `silhouette_underfill`, `sew_enclosed_white`,
-`enclosed_white_keyline`, `silhouette_underfill_panels`, `outline_loop_mitre`
-and `silhouette_underfill_rim` -- the five switches of #1094's flip sheet plus
+`enclosed_white_keyline`, `silhouette_underfill_panels` and
+`silhouette_underfill_rim` -- the switches of #1094's flip sheet (its fifth,
+`outline_loop_mitre`, is folded into the code since 2026-11-19) plus
 the under-fill's rim (#1096) -- and, from Kent's ruling of 2026-10-26 on the
 wave-3 flip sheet ("MFab extras into the gate"), `keyline_fold_slivers` and
 `skip_covered_shapes` (#1102) and `cfg.extra["absorb_fragments"]` (#1100,
@@ -61,7 +62,7 @@ from dataclasses import replace
 from shapely.geometry import Polygon
 
 RECIPE = ("silhouette_underfill", "sew_enclosed_white", "enclosed_white_keyline",
-          "silhouette_underfill_panels", "outline_loop_mitre", "silhouette_underfill_rim",
+          "silhouette_underfill_panels", "silhouette_underfill_rim",
           "keyline_fold_slivers", "skip_covered_shapes", "keyline_loop_chain")
 #: the recipe's `cfg.extra` keys (Kent 2026-10-26: "MFab extras into the gate")
 RECIPE_EXTRA = ("absorb_fragments",)

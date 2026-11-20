@@ -320,7 +320,7 @@ def test_page_side_halo_is_returned_to_the_background():
 
 @pytest.fixture(scope="module")
 def bridge_pair():
-    from tests.conftest import PRE_FLIP_FOLDED, legacy_engine
+    from tests.conftest import PRE_FLIP_COLOUR, legacy_engine
 
     def run(on: bool):
         # PRE_FLIP: the dissolve flag alone, over the engine it was measured
@@ -342,7 +342,7 @@ def bridge_pair():
             target_width_mm=80.0, max_colors=6, satin=True,
             garment_id="left_chest", work_px_per_mm=None, **PRE_FLIP)
         with pytest.MonkeyPatch.context() as mp:
-            legacy_engine(mp, **{**PRE_FLIP_FOLDED, "dissolve": not on})
+            legacy_engine(mp, **{**PRE_FLIP_COLOUR, "dissolve": not on})
             return digitize(BRIDGE, cfg)
     return run(False), run(True)
 

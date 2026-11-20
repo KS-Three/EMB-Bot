@@ -1,4 +1,4 @@
-"""`cfg.revalidate_small_shapes` — let stage 4's re-ask reach the shapes
+"""`revalidate_small_shapes` — let stage 4's re-ask reach the shapes
 preflight condemns.
 
 The defect (measured 2026-09-06, MASTER_SCOPE 28, `tools/revalidate_floor.py`):
@@ -122,9 +122,11 @@ def _case_run(fixture: str, small: bool) -> _Case:
     def probe(regions, p, cfg, **kw):
         seen["entry"] = frozenset(r.thread_index for r in regions
                                   if not r.meta.get("enclosed_background"))
-        return real(regions, p, cfg, **kw)
+        # the pipeline always passes `small_shapes=True` (the switch was folded into
+        # the code 2026-11-19); the OFF arm is the same call with it forced False
+        return real(regions, p, cfg, **{**kw, "small_shapes": small})
 
-    cfg = _cfg(**{**PRE_FLIP, "revalidate_small_shapes": small})   # the flag alone, over the pre-flip engine
+    cfg = _cfg(**PRE_FLIP)
     pl.revalidate_threads = own_thread_only(probe, real)
     try:
         result = run_stages(TESTDATA / fixture, cfg)
@@ -172,12 +174,6 @@ def test_the_gap_between_the_two_floors_is_the_defect():
     )
 
 
-def test_flag_defaults_on():
-    """Kent's ruling 2026-09-10: ON, as one half of the pair with
-    `resnap_mask_matches_grader` in the colour bundle."""
-    assert PipelineConfig().revalidate_small_shapes is True
-
-
 def test_the_shipped_engine_is_the_four_flags_on():
     """The contract every flag here carries, restated for the flip: the
     DEFAULT config (no keyword at all) against the four colour flags spelled
@@ -191,7 +187,6 @@ def test_the_shipped_engine_is_the_four_flags_on():
 
 @pytest.mark.parametrize("fixture", [
     FIXTURE,
-    "photo/logo_bridge_bar.jpg",   # 63 refusals — the other cause-3 fixture
     "logo_alpha.png",              # flat lane: nothing to re-ask, a control
 ])
 def test_on_never_changes_a_shape_id_or_its_geometry(fixture):
@@ -212,7 +207,7 @@ def test_on_never_changes_a_shape_id_or_its_geometry(fixture):
 
 @pytest.mark.parametrize("fixture", [
     FIXTURE,                      # 16 -> 16 cones
-    "photo/logo_bridge_bar.jpg",  # 18 -> 18 (22 under the first construction)
+    # logo_bridge_bar dropped 2026-11-20: its OFF arm is not the pre-flip engine once the colour flags are folded
     "photo/drone_render.png",     # 19 -> 20, and the reason this is not "<="
 ])
 def test_a_small_shape_can_only_take_a_cone_the_design_already_carried(fixture):

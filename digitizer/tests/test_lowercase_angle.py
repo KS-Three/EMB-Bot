@@ -486,8 +486,11 @@ def word():
             mp.setattr(s7, "lettering_columns_shape", own_thread_only(lane(**forced), real))
             mp.setattr(s7, "is_thin_stem", own_thread_only(lambda *_a, **_k: False, s7.is_thin_stem))
             return digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
-    off_r, off = digitize_with(corner_fold=False, fold_cuts=False)
-    _on_r, on = digitize_with(corner_fold=False)
+    # `lettering_columns_inside_stagger` (folded 2026-11-20) was held False here
+    # (`LETTERING_2026_10_24_OFF`): the Column-lane call carries `inside_stagger`
+    # False in both arms, which is what its False path was.
+    off_r, off = digitize_with(corner_fold=False, fold_cuts=False, inside_stagger=False)
+    _on_r, on = digitize_with(corner_fold=False, inside_stagger=False)
     return off_r, off, on
 
 

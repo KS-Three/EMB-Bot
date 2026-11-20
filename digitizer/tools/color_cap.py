@@ -25,7 +25,6 @@ default: the slider read **"Colors (max 6)"** and the design came back
 This counts that gap over the whole corpus. It changes nothing.
 
     .venv/bin/python -m tools.color_cap            # as shipped
-    .venv/bin/python -m tools.color_cap --enforce  # with cfg.enforce_color_cap
 """
 from __future__ import annotations
 
@@ -42,12 +41,11 @@ def main(argv: list[str]) -> int:
     from tools.corpus_scorecard import FIXTURES
 
     args = [a for a in argv if not a.startswith("--")]
-    enforce = "--enforce" in argv
     cap = int(args[0]) if args else STUDIO_DEFAULT_MAX_COLORS
     rows, over = [], 0
     for fx in FIXTURES:
         cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                             max_colors=cap, enforce_color_cap=enforce)
+                             max_colors=cap)
         try:
             result, plan = digitize(TESTDATA / fx, cfg)
         except Exception as exc:                          # pragma: no cover
@@ -63,8 +61,7 @@ def main(argv: list[str]) -> int:
             over += 1
         rows.append((fx, lane, cones, stops, capped))
 
-    print(f'Studio slider: "Colors (max {cap})"   '
-          f'cfg.enforce_color_cap={enforce}\n')
+    print(f'Studio slider: "Colors (max {cap})"\n')
     print(f"{'fixture':40} {'class':14} {'cones':>5} {'stops':>5}  cap fired")
     print("-" * 82)
     for fx, lane, cones, stops, capped in sorted(rows, key=lambda r: -r[2]):

@@ -27,16 +27,13 @@ from shapely.geometry import LineString, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, machine
-from digitizer_core.art_outline import find_art_outlines, line_art_reading
+from digitizer_core.art_outline import find_art_outlines, line_art_reading, outline_width_mm
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.pipeline import _art_outlines
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import PlannedRegion
 from digitizer_core.stage7_sequence import sequence
-from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, FLIP_2026_10_23, PRE_FLIP
-
-#: the guard OFF: the engine before Kent's flip
-GUARD_OFF = PRE_FLIP["border_from_outline_line_art_guard"]
+from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF, FLIP_2026_10_23
 
 #: Bridge's bowl, roughly: a 16 x 6 mm cell inside a 0.9 mm hairline, the
 #: drawing's two tips and one wave stroke running on past it
@@ -56,17 +53,19 @@ KEY = FACE.buffer(2.0, join_style=2).difference(FACE)
 # the outline rule ON and OFF, the frame ON) pinned an engine without `tie_in_off`,
 # `fill_turn_slant` and `fill_underlay_cross`; since 2026-11-20 (flag fold B5) the same three arms
 # are computed in-process: the bowl with no outlines handed to the sequencer (the rule off, which
-# is no longer a switch: B4 folded `border_from_outline`), the bowl and the frame with the guard OFF.
+# is no longer a switch: B4 folded `border_from_outline`), the bowl and the frame with the guard OFF
+# (no longer a switch either: the guard is unconditional, so the unguarded arm reads the art's
+# outlines through `find_art_outlines(..., line_art_guard=False)`).
 def _bowl_off():
     return _md5(_plan(BOWL, CELL, outlines=False))
 
 
 def _bowl_on_unguarded():
-    return _md5(_plan(BOWL, CELL, border_from_outline_line_art_guard=GUARD_OFF))
+    return _md5(_plan(BOWL, CELL, guard=False))
 
 
 def _frame_on_unguarded():
-    return _md5(_plan(FRAME, FIELD, border_from_outline_line_art_guard=GUARD_OFF))
+    return _md5(_plan(FRAME, FIELD, guard=False))
 
 
 def _region(sid, poly, thread, layer, **meta):
@@ -78,16 +77,28 @@ def _pair(outline, body):
     return [_region("Sbody", body, 0, 0), _region("Souter", outline, 1, 1)]
 
 
-def _plan(outline, body, *, outlines=True, **cfg_kw):
+def _unguarded_outlines(regions, cfg):
+    """`pipeline._art_outlines` with the line-art guard off."""
+    by_id = {r.shape_id: r for r in regions}
+    out = {}
+    for oid, bodies in find_art_outlines(regions, cfg, line_art_guard=False).items():
+        width = outline_width_mm(by_id[oid], [(by_id[bid], hole) for bid, hole in bodies])
+        out[oid] = [(bid, hole, width) for bid, hole in bodies]
+    return out or None
+
+
+def _plan(outline, body, *, outlines=True, guard=True, **cfg_kw):
     """The body (layer 0) then its outline (layer 1), both sewn. `outlines=False`
-    hands the sequencer no art outlines: the engine without the outline rule."""
+    hands the sequencer no art outlines: the engine without the outline rule.
+    `guard=False` reads them with the line-art guard off."""
     b, o = _pair(outline, body)
     planned = [PlannedRegion(region=b, polygon=body, sew_index=0),
                PlannedRegion(region=o, polygon=outline, sew_index=1)]
     # the md5s predate the 2026-10-23 flips (conftest): pinned off
     cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **FLAG_ENDS_SEAM_2026_11_17_OFF, **cfg_kw})
+    read = _art_outlines if guard else _unguarded_outlines
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
-                         art_outlines=_art_outlines([b, o], cfg) if outlines else None)
+                         art_outlines=read([b, o], cfg) if outlines else None)
     return [r for blk in blocks for r in blk.runs]
 
 
@@ -99,17 +110,15 @@ def _md5(runs) -> str:
     return h.hexdigest()
 
 
-def test_flag_default_is_on_and_the_thresholds_are_the_census_gaps():
-    # Kent's flip 2026-10-25 ("Flip it ON", from #1078's bowl renders)
-    assert PipelineConfig().border_from_outline_line_art_guard is True
-    assert GUARD_OFF is False
+def test_the_thresholds_are_the_census_gaps():
+    # the guard is always on (Kent's flip 2026-10-25, folded into the code 2026-11-19)
     assert machine.OUTLINE_LINE_ART_FILL_SHARE == 0.5
     assert machine.OUTLINE_LINE_ART_DROP_FRAC == 0.02
 
 
 def test_the_bowl_reads_as_line_art():
     b, o = _pair(BOWL, CELL)
-    found = find_art_outlines([b, o])
+    found = find_art_outlines([b, o], line_art_guard=False)
     fill_share, dropped = line_art_reading(o, [(b, h) for _bid, h in found["Souter"]])
     assert fill_share < machine.OUTLINE_LINE_ART_FILL_SHARE
     assert dropped >= machine.OUTLINE_LINE_ART_DROP_FRAC
@@ -118,7 +127,7 @@ def test_the_bowl_reads_as_line_art():
 def test_a_hairline_ring_is_not_line_art():
     # Machine's frame: as thin as the bowl, but every bit of it rings its body
     b, o = _pair(FRAME, FIELD)
-    found = find_art_outlines([b, o])
+    found = find_art_outlines([b, o], line_art_guard=False)
     fill_share, dropped = line_art_reading(o, [(b, h) for _bid, h in found["Souter"]])
     assert fill_share < machine.OUTLINE_LINE_ART_FILL_SHARE
     assert dropped == 0.0
@@ -126,18 +135,19 @@ def test_a_hairline_ring_is_not_line_art():
 
 def test_a_keyline_is_not_line_art():
     b, o = _pair(KEY, FACE)
-    found = find_art_outlines([b, o])
+    found = find_art_outlines([b, o], line_art_guard=False)
     fill_share, _dropped = line_art_reading(o, [(b, h) for _bid, h in found["Souter"]])
     assert fill_share > 0.9
 
 
 def test_guard_drops_the_drawing_and_keeps_the_frame_and_the_keyline():
-    cfg = PipelineConfig(border_from_outline_line_art_guard=True)
+    cfg = PipelineConfig()
     assert find_art_outlines(_pair(BOWL, CELL), cfg) == {}
     assert find_art_outlines(_pair(BOWL, CELL), line_art_guard=True) == {}
-    assert find_art_outlines(_pair(BOWL, CELL))                    # guard off: an outline
+    assert find_art_outlines(_pair(BOWL, CELL), line_art_guard=False)   # guard off: an outline
     for outline, body in ((FRAME, FIELD), (KEY, FACE)):
-        assert find_art_outlines(_pair(outline, body), cfg) == find_art_outlines(_pair(outline, body))
+        assert find_art_outlines(_pair(outline, body), cfg) == find_art_outlines(
+            _pair(outline, body), line_art_guard=False)
 
 
 def test_guard_off_rings_the_bowl():
@@ -151,10 +161,10 @@ def test_the_default_sews_the_drawing_as_before_border_from_outline():
 
 
 def test_guard_on_sews_the_drawing_as_the_engine_did_before_the_flag():
-    on = _plan(BOWL, CELL, border_from_outline_line_art_guard=True)
+    on = _plan(BOWL, CELL)
     assert _md5(on) == _bowl_off()
 
 
 def test_guard_on_leaves_a_ringed_frame_bordered():
-    on = _plan(FRAME, FIELD, border_from_outline_line_art_guard=True)
+    on = _plan(FRAME, FIELD)
     assert _md5(on) == _frame_on_unguarded()

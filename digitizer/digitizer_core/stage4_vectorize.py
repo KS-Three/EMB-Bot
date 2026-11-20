@@ -984,7 +984,6 @@ def revalidate_threads(regions: list[Region], p: Prep,
     # It was a flag, then a default, because the phase-4 spec pinned the flat
     # and gradient lanes byte-for-byte and this moved their goldens (folded
     # into the code 2026-11-20).
-    grader_mask = bool(cfg.resnap_mask_matches_grader)
     allowed: np.ndarray | None = palette_only
     # The cone list an operator actually loads for this design, snapshotted
     # BEFORE the loop mutates any of it. This — not `palette_only` — is what a
@@ -1025,30 +1024,28 @@ def revalidate_threads(regions: list[Region], p: Prep,
             continue
         # The footprint over the polygon's own box, not the frame (2026-11-11,
         # speed only; `_region_footprint_window`). One clear pixel of margin
-        # under `grader_mask`, for the erosion. Everything below reads the
+        # for the erosion. Everything below reads the
         # same pixels in the same raster order as the frame-sized mask gave.
-        win = _region_footprint_window(r, shape, cx, cy, p.px_per_mm,
-                                       pad=1 if grader_mask else 0)
+        win = _region_footprint_window(r, shape, cx, cy, p.px_per_mm, pad=1)
         if win is None:
             continue        # wholly off the frame: no pixel, under any floor
         wy0, wx0, fp = win
         wy1, wx1 = wy0 + fp.shape[0], wx0 + fp.shape[1]
-        if grader_mask:
-            not_bg = ~p.bg_mask[wy0:wy1, wx0:wx1]
-            # Preflight's two operations, in its order and with its fallback.
-            # A bare `fillPoly` hands this function the anti-alias halo AND
-            # the background either side of a thin shape, and the median of
-            # that bimodal set is a colour almost no pixel carries — the same
-            # failure `_region_color_errors`' docstring calls this
-            # instrument's original sin. Measured on `logo_gaulke_roofing`'s
-            # `Se6eddd27`: 247 px against preflight's 54, 103 near-black plus
-            # 65 near-white, and `3971 Silver` reads 11.4 dE00 here and 63.6
-            # there — a 52.2 dE00 gap on one polygon.
-            eroded = cv2.erode(fp.astype(np.uint8), np.ones((3, 3), np.uint8))
-            sel = (eroded > 0) & not_bg
-            if not sel.any():
-                sel = fp & not_bg   # hairline shape: erosion ate it
-            fp = sel
+        not_bg = ~p.bg_mask[wy0:wy1, wx0:wx1]
+        # Preflight's two operations, in its order and with its fallback.
+        # A bare `fillPoly` hands this function the anti-alias halo AND
+        # the background either side of a thin shape, and the median of
+        # that bimodal set is a colour almost no pixel carries — the same
+        # failure `_region_color_errors`' docstring calls this
+        # instrument's original sin. Measured on `logo_gaulke_roofing`'s
+        # `Se6eddd27`: 247 px against preflight's 54, 103 near-black plus
+        # 65 near-white, and `3971 Silver` reads 11.4 dE00 here and 63.6
+        # there — a 52.2 dE00 gap on one polygon.
+        eroded = cv2.erode(fp.astype(np.uint8), np.ones((3, 3), np.uint8))
+        sel = (eroded > 0) & not_bg
+        if not sel.any():
+            sel = fp & not_bg   # hairline shape: erosion ate it
+        fp = sel
         n = int(fp.sum())
         # `n` is now the pixels that will actually be SCORED, and it feeds TWO
         # decisions below, deliberately: the `min_px` floor here, and

@@ -4326,7 +4326,7 @@ def sequence(
                     underlay_style=satin_underlay, start_near=entry,
                     end_near=exit_near,
                     inside_connectors=True,
-                    inside_stagger=cfg.lettering_columns_inside_stagger,
+                    inside_stagger=True,
                     ink=ink_source, drawn_width=cfg.script_strokes_drawn_width,
                     cover_hops=cfg.lettering_columns_cover_hops,
                     pull_by_stroke=(pull_by_stroke_for(fabric, bool(cfg.script_strokes_pull_by_stroke))
@@ -4402,12 +4402,11 @@ def sequence(
                     end_near=exit_near,
                     **({"counter_clear_mm": _clear} if _clear > 0 else {}),
                     **({"counter_holes": _cored} if _cored else {}),
-                    # `lettering_columns_fold_cuts`, `lettering_columns_square_ends`
-                    # (folded in)
+                    # `lettering_columns_fold_cuts`, `lettering_columns_square_ends`,
+                    # `lettering_columns_rail_axis` (folded in)
                     fold_cuts=True,
                     square_ends=True,
-                    # `cfg.lettering_columns_rail_axis` (default ON, 2026-10-20): same rule
-                    **({"rail_axis": True} if cfg.lettering_columns_rail_axis else {}),
+                    rail_axis=True,
                     # `lettering_columns_small_bold` (folded in): a letter under
                     # 5 mm only (`_small`)
                     **({"small_bold": True} if _small else {}),
@@ -4449,9 +4448,9 @@ def sequence(
                     # a pointed slot's tip folds too; off, today's call
                     **({"corner_fold_apex_side": True}
                        if cfg.lettering_columns_corner_fold_apex_side else {}),
-                    # `cfg.lettering_columns_inside_stagger` (default OFF, 2026-10-23):
-                    # the pro's inside at a pivot; off, today's call
-                    **({"inside_stagger": True} if cfg.lettering_columns_inside_stagger else {}),
+                    # `lettering_columns_inside_stagger` (folded in): the pro's
+                    # inside at a pivot
+                    inside_stagger=True,
                     # `lettering_columns_text_lean` (folded in): the word's house
                     # cross (`satin_angle_deg`, the house pass; else the design's
                     # `satin_angle_deg`) on every straight column it can span --
@@ -5564,7 +5563,7 @@ def sequence(
     # blocks. Before the adjacent merge, so a folded band joins the block of
     # the cone it lands on.
     fold_warnings: list[dict] = []
-    if getattr(cfg, "color_cap_sewn", False) and cfg.enforce_color_cap:
+    if getattr(cfg, "color_cap_sewn", False):
         art_blocks, folded = fold_stray_cones(
             art_blocks, {pr.region.thread_index for pr in planned},
             int(cfg.max_colors), chart_for(cfg))
@@ -6248,7 +6247,7 @@ def sequence(
     # a chart cone of its own after the artwork pass above (the edge cap and
     # the hairline strands sew loaded cones already). A no-op at or under
     # the budget, which is every design the first pass settled.
-    if getattr(cfg, "color_cap_sewn", False) and cfg.enforce_color_cap:
+    if getattr(cfg, "color_cap_sewn", False):
         blocks, folded = fold_stray_cones(
             blocks, {pr.region.thread_index for pr in planned},
             int(cfg.max_colors), chart_for(cfg))

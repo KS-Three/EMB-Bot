@@ -209,7 +209,7 @@ def measure_cmd(args) -> int:
     for s in slugs:
         regions = _regions(json.loads((cache / s / "ours.json").read_text(encoding="utf-8")))
         by_id = {r.shape_id: r for r in regions}
-        for o, bodies in find_art_outlines(regions).items():
+        for o, bodies in find_art_outlines(regions, line_art_guard=False).items():
             fill, dropped = line_art_reading(by_id[o], [(by_id[b], h) for b, h in bodies])
             art = (fill < machine.OUTLINE_LINE_ART_FILL_SHARE
                    and dropped >= machine.OUTLINE_LINE_ART_DROP_FRAC)
@@ -219,10 +219,37 @@ def measure_cmd(args) -> int:
 
 
 # ------------------------------------------------------------ OFF / ON proof
+def _plan_with_guard(result, cfg, guard: bool):
+    """`plan_stitches` with the line-art guard `guard`. The guard is no longer
+    a config switch (it is unconditional since 2026-11-20), so the unguarded
+    arm patches `pipeline._art_outlines` to read the art's outlines with
+    `line_art_guard=False`."""
+    from unittest import mock
+    from digitizer_core import pipeline
+    from digitizer_core.art_outline import find_art_outlines, outline_width_mm
+    from digitizer_core.pipeline import plan_stitches
+    if guard:
+        return plan_stitches(result, cfg)
+
+    def unguarded(regions, cfg, source_pixels=None):
+        if source_pixels is not None and getattr(source_pixels, "design_ramp", None) is not None:
+            from digitizer_core.stage6_blend import region_rides_design_ramp
+            regions = [r for r in regions
+                       if not region_rides_design_ramp(r.polygon, source_pixels)]
+        by_id = {r.shape_id: r for r in regions}
+        out = {}
+        for oid, bodies in find_art_outlines(regions, cfg, line_art_guard=False).items():
+            width = outline_width_mm(by_id[oid], [(by_id[b], h) for b, h in bodies])
+            out[oid] = [(b, h, width) for b, h in bodies]
+        return out or None
+
+    with mock.patch.object(pipeline, "_art_outlines", unguarded):
+        return plan_stitches(result, cfg)
+
+
 def digitize_cmd(args) -> int:
     from tools import border_census as bc
     from tools import pro_pair as pp
-    from digitizer_core.pipeline import plan_stitches
     row = next(r for r in bc.PAIRS if r[0] == args.slug)
     pro, art = bc.find_pair(*row[:3])
     # --width when the pro's file is out of reach (Drive unmounted): his
@@ -230,9 +257,8 @@ def digitize_cmd(args) -> int:
     width = args.width if args.width else pp.pro_counts(pro)["width_mm"]
     extra = json.loads(args.extra) if args.extra else {}
     d = pp.digitize(art, width, row[3], extra)
-    from dataclasses import replace
     # the rule is in the engine since 2026-10-24: the baseline arm is the unguarded rule
-    plan_off = plan_stitches(d.result, replace(d.cfg, border_from_outline_line_art_guard=False))
+    plan_off = _plan_with_guard(d.result, d.cfg, False)
     bc.write_ours(Path(args.off) / args.slug, args.slug, row[3], width, pro, art, d.result, plan_off, d.secs)
     import pickle
     (Path(args.off) / args.slug / "result.pkl").write_bytes(
@@ -242,7 +268,7 @@ def digitize_cmd(args) -> int:
     for tag, out, guard in (("on", args.on, False), ("guard", args.guard, True)):
         if out is None:
             continue
-        plan = plan_stitches(d.result, replace(d.cfg, border_from_outline_line_art_guard=guard))
+        plan = _plan_with_guard(d.result, d.cfg, guard)
         bc.write_ours(Path(out) / args.slug, args.slug, row[3], width, pro, art, d.result, plan, d.secs)
         plans.append((tag, plan))
     for tag, plan in plans:
@@ -255,12 +281,9 @@ def replan_cmd(args) -> int:
     """Plan a `digitize` run's pickled result again with the flag ON (stage 7
     only, seconds rather than minutes) into --on."""
     import pickle
-    from dataclasses import replace
     from tools import border_census as bc
-    from digitizer_core.pipeline import plan_stitches
     k = pickle.loads((Path(args.off) / args.slug / "result.pkl").read_bytes())
-    plan = plan_stitches(k["result"], replace(k["cfg"],
-                                              border_from_outline_line_art_guard=args.line_art_guard))
+    plan = _plan_with_guard(k["result"], k["cfg"], args.line_art_guard)
     bc.write_ours(Path(args.on) / args.slug, args.slug, k["garment"], k["width"], k["pro"], k["art"],
                   k["result"], plan, k["secs"])
     print(args.slug, "on:", sum(len(r.points or []) for _b, r in plan.iter_runs()), "points")

@@ -704,8 +704,7 @@ def census_pair(slug: str, data: dict, labels: dict) -> dict:
     pre = data["pre_tag"]
     pre_by_id = {r.shape_id: r for r in pre}
     replay = replay_text_door(pre, chart,
-                              counters_as_drawn=bool(getattr(cfg, "text_cluster_counters_as_drawn", True)),
-                              rescued_ink_link=bool(getattr(cfg, "text_cluster_rescued_ink_link", True)))
+                              counters_as_drawn=True, rescued_ink_link=True)
     misses = []
     for r in scored:
         sid = r.shape_id

@@ -96,7 +96,6 @@ BASE = {
     "small_text_cap_letter_gap_mm": 0.25,
     "small_text_cap_bold_scale": 1.45,
     "border_by_size": True,
-    "small_text_cap_reach_edges": True,
 }
 
 #: arm -> (label, the two fabric flags, both always pinned), in tooth order

@@ -56,7 +56,6 @@ TESTDATA = ROOT / "testdata"
 # merely close. `all` is the combination nobody had measured.
 ARMS: dict[str, dict] = {
     "off": {},
-    "resnap_small": {"revalidate_small_shapes": True},
     "satin_stroke": {"satin_per_stroke": True},
     "satin_patch": {"satin_patch_junctions": True},
     # Added 2026-09-09 (item 5 PR 2). The same holes as `satin_patch`, sewn
@@ -87,87 +86,19 @@ ARMS: dict[str, dict] = {
     # into the fewest columns in total; non-lettering satin gets the lean
     # rule. Priced here because it moves every flat-lane fill at once.
     "design_angle": {"design_angle": True},
-    # Added 2026-09-07. `revalidate_threads` scored its argmin on a raw
-    # `cv2.fillPoly` footprint while the grader erodes and drops the
-    # background, so on a thin shape the re-snap chose a thread for the
-    # anti-alias halo — `logo_gaulke_roofing`'s `Se6eddd27` reads 11.4 dE00
-    # there and 63.6 in preflight. A sixth parked flag belongs in the sheet
-    # that exists to price parked flags.
-    "resnap_mask": {"resnap_mask_matches_grader": True},
-    # Added 2026-09-10 (item 8). The colour cap landed the day this sheet was
-    # published and was priced by `tools/color_cap.py` on its own; a decision
-    # on the colour flags as ONE set needs it here, beside the other four,
-    # on the same tree.
-    "color_cap": {"enforce_color_cap": True},
     # --- combinations -------------------------------------------------------
     # `all` answers "flip everything"; nobody flips everything. These are the
     # combinations someone would actually ship, and the reason they are arms
     # rather than arithmetic is the header above: a combination is not the sum
     # of its rows, and this sheet's OWN recommendation was three flags nobody
     # had run together.
-    "rec3": {
-        "revalidate_small_shapes": True,
-        "satin_patch_junctions": True,
-    },
     "rec4": {
-        "revalidate_small_shapes": True,
         "satin_patch_junctions": True,
         "satin_per_stroke": True,
-    },
-    # The matched pair, isolated. `resnap_mask_matches_grader` shrinks the
-    # footprint below `THREAD_REVALIDATE_MIN_PX = 200`, so on its own it makes
-    # the re-snap DECLINE regions rather than improve them; the lowered floor
-    # is what lets it act. `rec4_mask` contains both but also three other
-    # flags, so it cannot price this pair — this arm can.
-    "mask_small": {
-        "resnap_mask_matches_grader": True,
-        "revalidate_small_shapes": True,
-    },
-    # `rec4` plus the sixth flag. The sheet's recommendation was measured
-    # before `resnap_mask_matches_grader` existed, and a combination is not
-    # the sum of its rows — the whole thesis of this tool. Both flags touch
-    # the thread assignment (one lowers the re-snap's floor, one changes the
-    # pixels it reads), so this pair in particular could not be inferred.
-    "rec4_mask": {
-        "revalidate_small_shapes": True,
-        "satin_patch_junctions": True,
-        "satin_per_stroke": True,
-        "resnap_mask_matches_grader": True,
-    },
-    # Every parked flag at once, including the sixth. `all` predates
-    # `resnap_mask_matches_grader` and deliberately keeps its five-flag
-    # meaning so its published row stays comparable; this is the honest
-    # "flip everything" arm now. Added because the sheet twice had to say the
-    # six-flag combination was unmeasured, and that is a gap the tool can
-    # close rather than a caveat the reader should carry.
-    "all6": {
-        "revalidate_small_shapes": True,
-        "satin_per_stroke": True,
-        "satin_patch_junctions": True,
-        "resnap_mask_matches_grader": True,
     },
     "all": {
-        "revalidate_small_shapes": True,
         "satin_per_stroke": True,
         "satin_patch_junctions": True,
-    },
-    # The colour bundle (quality review 2026-09-08 item 8, measured
-    # 2026-09-10): the flags that each fix a piece of "cones and stops
-    # the customer did not ask for".
-    "colour4": {
-        "enforce_color_cap": True,
-        "resnap_mask_matches_grader": True,
-        "revalidate_small_shapes": True,
-    },
-    # 2026-09-10: Kent flipped the four ON by default on the decision sheet,
-    # so `off` now IS `colour4` and the four colour singles above flip a flag
-    # that is already True -- byte-identical to `off`, and kept so the
-    # published rows stay nameable. This arm is the pre-flip engine, the
-    # baseline the decision was priced against.
-    "off4": {
-        "enforce_color_cap": False,
-        "resnap_mask_matches_grader": False,
-        "revalidate_small_shapes": False,
     },
     # 2026-10-02: `keep_counters` — a letter's counter on a coloured ground
     # stays a hole instead of being absorbed by the small-region floor
@@ -181,25 +112,15 @@ ARMS: dict[str, dict] = {
 SINGLES = [a for a, kw in ARMS.items() if len(kw) == 1]
 
 # Item 1 (the real-logo lane) would route real logos to the FLAT lane, and
-# which colour flags that makes moot is a fact about lanes. These two arms
+# which colour flags that makes moot is a fact about lanes. These arms
 # measure it by proxy -- `forced_class=flat`, which is NOT item 1 (it drops
 # the thin strokes item 1 lands with) but answers the one question asked
 # here: does the bundle still have work to do on the flat lane? They live
 # outside ARMS so `forced_class` never counts as a "single" in the
-# interaction tables, and `report` reads `flat_colour4` against `flat_off`,
-# never against `off`. Run them by name: `--arm flat_off --arm flat_colour4`.
+# interaction tables, and `report` reads each proxy against `flat_off`,
+# never against `off`. Run them by name: `--arm flat_off`.
 PROXIES: dict[str, dict] = {
     "flat_off": {"forced_class": "flat"},
-    "flat_colour4": {"forced_class": "flat", **ARMS["colour4"]},
-    "flat_off4": {"forced_class": "flat", **ARMS["off4"]},
-    # The singles on the flat lane too (2026-09-10): `flat_colour4` took 28
-    # cones off five forced-flat logos, which the lane story said could not
-    # happen (the flat lane caps hard; every counted re-snap escape was on
-    # the gradient lane) -- so WHICH flag still has work there is a
-    # measurement, not a docstring.
-    "flat_color_cap": {"forced_class": "flat", **ARMS["color_cap"]},
-    "flat_resnap_mask": {"forced_class": "flat", **ARMS["resnap_mask"]},
-    "flat_resnap_small": {"forced_class": "flat", **ARMS["resnap_small"]},
 }
 
 
