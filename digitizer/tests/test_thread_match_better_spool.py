@@ -34,22 +34,13 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import PRE_FLIP, PRE_FLIP_FOLDED, TESTDATA, legacy_engine
+from .conftest import PRE_FLIP, TESTDATA, pre_flip_module_gen
 
 
-# The numbers in this file were read on the engine before the colour switches were
+# The numbers in this file were read on the engine before six colour switches were
 # folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
-# held them False. `legacy_engine` patches their False paths back for the module,
-# `small=True` included (`revalidate_small_shapes`, folded with the colour bundle):
-# its lowered re-snap floor re-asks the 50-199 px patch the PHOTO fixture's one
-# excess-yardstick warn rode, and BRIDGE's 6156 finding names the same spool
-# either way (pinned below). `resnap_mask_matches_grader` has no patchable False
-# path (an inline erosion), so TINY is read on the masked engine: see SEVERITY.
-@pytest.fixture(autouse=True, scope="module")
-def pre_flip_module():
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, **PRE_FLIP_FOLDED, small=True)
-        yield
+# held them False. `legacy_engine` patches their False paths back for the module.
+pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
 
 TINY = "photo/logo_gaulke_roofing.png"      # 4 cones, the 63.6 -> 58.6 case
 BRIDGE = "photo/logo_bridge_bar.jpg"        # 8 cones, the 21.3 -> 10.3 case
@@ -77,16 +68,7 @@ PHOTO = "photo/photo_dof_meadow.png"        # photo route: must be untouched
 # shape's thread is judged, as a warn, under this file's unfloored read.
 # Not this file's change and not a rescoring — the same finding mechanism on
 # a different polygon (scope-history 2026-09-18, the flip's addendum).
-#
-# RE-PINNED 2026-11-20 with `resnap_mask_matches_grader` folded into the code
-# (always on): TINY (1, 1) -> (1, 0). The mask is the fix for the very finding
-# TINY existed for: the re-snap no longer reads gaulke's anti-alias halo, so it
-# never escapes to `3971 Silver`, and the 63.6 dE00 block that named `1375` is
-# gone (measured: one block left, `4174 Charcoal` 16.5 dE00 on `Se6eddd27`, which
-# names nothing closer). Not a rescoring and not this file's change. The premise
-# "the gradient lane names a loaded spool" moved to BRIDGE, where it was always
-# the second row of the table above (6156 Olive 21.3 -> 1375, 10.3 closer).
-SEVERITY = {TINY: (1, 0), BRIDGE: (2, 2), PHOTO: (0, 1)}   # (block, warn)
+SEVERITY = {TINY: (1, 1), BRIDGE: (2, 2), PHOTO: (0, 1)}   # (block, warn)
 
 
 @lru_cache(maxsize=None)
@@ -140,18 +122,15 @@ def test_no_severity_moves_anywhere(fixture):
 
 
 def test_the_gradient_lane_now_names_a_loaded_spool():
-    """`bridge_bar`'s 6156 Olive sits 21.3 dE00 off its shape, and the already
-    loaded `1375 Dark Charcoal` is 10.3 closer. Before this change the finding
-    told the operator to go buy thread. (This was `gaulke_roofing`'s 3971 -> 1375,
-    58.6 closer, until the resnap mask was folded into the code 2026-11-20 and
-    stopped choosing Silver there: see SEVERITY.)"""
-    named = [f for f in _findings(BRIDGE)
+    """`gaulke_roofing` carries only four cones, and one of them is 58.6 dE00
+    closer than the one the plan assigned. Before this change the finding told
+    the operator to go buy thread."""
+    named = [f for f in _findings(TINY)
              if (f["extra"] or {}).get("better_spool")]
-    assert len(named) == 1, [f["message"] for f in _findings(BRIDGE)]
+    assert len(named) == 1, [f["message"] for f in _findings(TINY)]
     extra = named[0]["extra"]
-    assert extra["thread_number"] == "6156"
     assert extra["better_spool"] == "1375"
-    assert extra["excess_delta_e"] == pytest.approx(10.3, abs=0.15)
+    assert extra["excess_delta_e"] == pytest.approx(58.6, abs=0.15)
     assert "already loaded for this design" in named[0]["message"]
 
 

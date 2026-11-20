@@ -1133,7 +1133,7 @@ BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
 
 
 def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=False,
-                  bind=False, two_tone=False, strip=False, thin=False, small=False):
+                  bind=False, two_tone=False, strip=False, thin=False, small=False, cap=False, mask=False):
     """The engine as it was before seven colour switches were folded into the
     code (2026-11-20, `docs/flag-history/tier-b3-colour.md`), for a test whose
     PREMISE is the engine one of their False paths made. Each patch is exactly
@@ -1153,7 +1153,12 @@ def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=F
       small        `revalidate_small_shapes` (folded 2026-11-20, `docs/flag-history/tier-b3-colour.md`):
                    the re-snap keeps its 200 px floor (`THREAD_REVALIDATE_MIN_PX`), so a
                    shape of 50-199 px is condemned by preflight and never re-asked.
-                   Not in `PRE_FLIP_FOLDED`: only the files that name it opt in.
+      cap          `enforce_color_cap` (folded 2026-11-20, same doc): "Colors (max N)" is not
+                   enforced on the SLIC lane (`pipeline.enforce_color_cap` is not called)
+      mask         `resnap_mask_matches_grader` (folded 2026-11-20, same doc): the re-snap scores
+                   the raw footprint, anti-alias halo and background included (gaulke's
+                   3971 Silver escape). The erosion was inline, so this zeroes the background
+                   mask and makes `cv2.erode` an identity inside `revalidate_threads` only.
     """
     import numpy as np
 
@@ -1185,6 +1190,39 @@ def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=F
                 kw["palette_indices"] = None
             return real(regions, p, cfg, **kw)
         patch(pl, "revalidate_threads", unbound)
+    if cap:
+        patch(pl, "enforce_color_cap", lambda *a, **kw: [])
+    if mask:
+        # `resnap_mask_matches_grader` False: the re-snap scored the raw `fillPoly`
+        # footprint, halo and background included. The mask was an inline erosion plus
+        # a background drop in `revalidate_threads`, so inside that call (this thread
+        # only) the background mask is all False and `cv2.erode` hands its input back.
+        import copy
+        import threading
+
+        import digitizer_core.stage4_vectorize as s4
+        real_cv2, real_rv_mask, me = s4.cv2, pl.revalidate_threads, threading.get_ident()
+        inside = threading.local()
+
+        class _Cv2:
+            def __getattr__(self, name):
+                return getattr(real_cv2, name)
+
+            def erode(self, src, *a, **kw):
+                if getattr(inside, "on", False) and threading.get_ident() == me:
+                    return src
+                return real_cv2.erode(src, *a, **kw)
+
+        def unmasked(regions, p, *a, **kw):
+            q = copy.copy(p)
+            q.bg_mask = np.zeros_like(p.bg_mask)
+            inside.on = True
+            try:
+                return real_rv_mask(regions, q, *a, **kw)
+            finally:
+                inside.on = False
+        mp.setattr(s4, "cv2", _Cv2())
+        patch(pl, "revalidate_threads", unmasked)
     if small:
         real_rv = pl.revalidate_threads      # read AFTER `bind`, so the two compose
         patch(pl, "revalidate_threads",
@@ -1205,6 +1243,12 @@ def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=F
 #: The seven the old `PRE_FLIP` held False (everything but `design_ramp`, which it never pinned).
 PRE_FLIP_FOLDED = dict(robust=True, snap=True, dissolve=True, bind=True, two_tone=True, strip=True,
                        thin=True)
+#: ... plus the colour bundle's other three (`enforce_color_cap`, `revalidate_small_shapes`,
+#: `resnap_mask_matches_grader`), folded 2026-11-20 with the rest of tier A. `PRE_FLIP` held all
+#: of them False, so the three helpers below (`on_the_pre_flip_engine`, `pre_flip_module_gen`,
+#: `pre_flip_engine`) put them back. Not `PRE_FLIP_FOLDED` itself: `test_revalidate_small_shapes`
+#: prices `small` ON against OFF and `test_resnap_mask_matches_grader` prices the mask ON.
+PRE_FLIP_COLOUR = {**PRE_FLIP_FOLDED, "cap": True, "small": True, "mask": True}
 
 
 def legacy_lettering(mp, *, small_bold=True, corner_fold=True, text_lean=True):
@@ -1239,33 +1283,33 @@ def legacy_lettering_module_gen():
 
 def on_the_pre_flip_engine(fn):
     """Run one function (a test, or a cached helper a module's tests share) with
-    `legacy_engine(**PRE_FLIP_FOLDED)` in force, then put everything back."""
+    `legacy_engine(**PRE_FLIP_COLOUR)` in force, then put everything back."""
     import functools
 
     @functools.wraps(fn)
     def wrapper(*args, **kwargs):
         with pytest.MonkeyPatch.context() as mp:
-            legacy_engine(mp, **PRE_FLIP_FOLDED)
+            legacy_engine(mp, **PRE_FLIP_COLOUR)
             return fn(*args, **kwargs)
     return wrapper
 
 
 def pre_flip_module_gen():
-    """A whole module on the pre-flip engine (`legacy_engine(**PRE_FLIP_FOLDED)`),
+    """A whole module on the pre-flip engine (`legacy_engine(**PRE_FLIP_COLOUR)`),
     module-scoped so its other module-scoped fixtures and `lru_cache`d runs see
     it too. In the module: `pre_flip_module = pytest.fixture(autouse=True,
     scope="module")(pre_flip_module_gen)`."""
     with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, **PRE_FLIP_FOLDED)
+        legacy_engine(mp, **PRE_FLIP_COLOUR)
         yield
 
 
 @pytest.fixture
 def pre_flip_engine(monkeypatch):
-    """`legacy_engine(**PRE_FLIP_FOLDED)`: for a module whose numbers were read
+    """`legacy_engine(**PRE_FLIP_COLOUR)`: for a module whose numbers were read
     with the six folded colour switches False (they were in `PRE_FLIP` until
     2026-11-20). Opt in with `pytestmark = pytest.mark.usefixtures("pre_flip_engine")`."""
-    legacy_engine(monkeypatch, **PRE_FLIP_FOLDED)
+    legacy_engine(monkeypatch, **PRE_FLIP_COLOUR)
 
 
 @pytest.fixture

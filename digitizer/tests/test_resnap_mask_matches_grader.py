@@ -50,13 +50,19 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage4_vectorize import _region_footprint
 from digitizer_core.threads import chart_for
 
-from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA, pre_flip_module_gen
+from .conftest import BUNDLE_ON, PRE_FLIP, PRE_FLIP_FOLDED, TESTDATA, legacy_engine
 
 
 # The numbers in this file were read on the engine before six colour switches were
 # folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
-# held them False. `legacy_engine` patches their False paths back for the module.
-pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
+# held them False. `legacy_engine` patches their False paths back for the module --
+# but not the mask's own (this file prices the mask ON) nor `small`/`cap`, which the
+# rows below were never read without (they passed untouched after the fold).
+@pytest.fixture(autouse=True, scope="module")
+def pre_flip_module():
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, **PRE_FLIP_FOLDED)
+        yield
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The region the flag exists for, and the spool the unmasked footprint picks.
