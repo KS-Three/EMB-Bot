@@ -105,7 +105,6 @@ BASE = {
     "border_by_size": True,
     "enclosed_alpha_hole_parts": True,
     "lettering_columns_corner_fold": True,
-    "small_text_cap_reach_edges": True,
 }
 
 #: arm -> (label, the two fabric flags, both always pinned), in tooth order

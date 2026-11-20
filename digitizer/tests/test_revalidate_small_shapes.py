@@ -1,4 +1,4 @@
-"""`cfg.revalidate_small_shapes` — let stage 4's re-ask reach the shapes
+"""`revalidate_small_shapes` — let stage 4's re-ask reach the shapes
 preflight condemns.
 
 The defect (measured 2026-09-06, MASTER_SCOPE 28, `tools/revalidate_floor.py`):
@@ -111,9 +111,11 @@ def _case(fixture: str, small: bool) -> _Case:
     def probe(regions, p, cfg, **kw):
         seen["entry"] = frozenset(r.thread_index for r in regions
                                   if not r.meta.get("enclosed_background"))
-        return real(regions, p, cfg, **kw)
+        # the pipeline always passes `small_shapes=True` (the switch was folded into
+        # the code 2026-11-19); the OFF arm is the same call with it forced False
+        return real(regions, p, cfg, **{**kw, "small_shapes": small})
 
-    cfg = _cfg(**{**PRE_FLIP, "revalidate_small_shapes": small})   # the flag alone, over the pre-flip engine
+    cfg = _cfg(**PRE_FLIP)
     pl.revalidate_threads = own_thread_only(probe, real)
     try:
         result = run_stages(TESTDATA / fixture, cfg)
@@ -159,12 +161,6 @@ def test_the_gap_between_the_two_floors_is_the_defect():
         "if stage 4's floor ever drops to preflight's, this flag is redundant "
         "and MASTER_SCOPE 28 should be closed rather than this test loosened"
     )
-
-
-def test_flag_defaults_on():
-    """Kent's ruling 2026-09-10: ON, as one half of the pair with
-    `resnap_mask_matches_grader` in the colour bundle."""
-    assert PipelineConfig().revalidate_small_shapes is True
 
 
 def test_the_shipped_engine_is_the_four_flags_on():

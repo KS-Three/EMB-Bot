@@ -94,7 +94,6 @@ ARMS: dict[str, dict] = {
     # against the pro's 304. (The stems' own back stitching is already
     # there: a centre run and a ladder zigzag under every one; the pro's
     # crosshatch is denser, not different in kind.)
-    "split_off": {"split_satin": False},
     # The built-OFF sitting (2026-10-03): the flags that sat finished and
     # unjudged -- MASTER_SCOPE "Waiting on Kent" 19 and 21, and #602 -- on
     # one page, with `split_off` above carried over from its own unjudged

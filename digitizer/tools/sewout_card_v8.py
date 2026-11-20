@@ -130,7 +130,6 @@ PIN = {
     "small_text_cap_min_stroke_mm": 0.85,
     "small_text_cap_letter_gap_mm": 0.25,
     "small_text_cap_bold_scale": 1.45,
-    "small_text_cap_reach_edges": True,
     "small_text_bay_mouth": True,
     "small_text_reset_grow_away": True,
     "lettering_columns_small_bold": True,

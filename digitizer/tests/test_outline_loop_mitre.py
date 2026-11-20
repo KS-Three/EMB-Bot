@@ -69,12 +69,6 @@ def _max_step(seq) -> float:
     return max(math.dist(a, b) for a, b in zip(seq, seq[1:]))
 
 
-def test_flag_is_on_by_default():
-    # Kent's flip on the wave-3 flip sheet 2026-10-26: "Outline corners pivot"
-    assert PipelineConfig().outline_loop_mitre is True
-    assert PRE_FLIP["outline_loop_mitre"] is False
-
-
 def test_the_scope_sets_the_flag_and_puts_it_back():
     assert sb._LOOP_MITRE.get() is False
     with sb.loop_mitre_scope(True):
@@ -84,14 +78,13 @@ def test_the_scope_sets_the_flag_and_puts_it_back():
         assert sb._LOOP_MITRE.get() is False
 
 
-def test_a_plan_sets_the_flag_from_its_config(monkeypatch):
+def test_a_plan_always_sets_the_flag(monkeypatch):
+    # the switch was folded into the code 2026-11-19 (Kent's flip 2026-10-26)
     from digitizer_core import pipeline
     seen = []
     monkeypatch.setattr(pipeline, "_plan_stitches", lambda _r, _c: seen.append(sb._LOOP_MITRE.get()))
-    pipeline.plan_stitches(object(), PipelineConfig(outline_loop_mitre=PRE_FLIP["outline_loop_mitre"]))
-    pipeline.plan_stitches(object(), PipelineConfig(outline_loop_mitre=True))
-    pipeline.plan_stitches(object(), PipelineConfig())          # the default: ON
-    assert seen == [False, True, True]
+    pipeline.plan_stitches(object(), PipelineConfig())
+    assert seen == [True]
     assert sb._LOOP_MITRE.get() is False
 
 

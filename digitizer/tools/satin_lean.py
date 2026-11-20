@@ -59,12 +59,11 @@ from digitizer_core.textcluster import _lettering_groups  # noqa: E402
 CASES = {
     "fremont": ("photo/logo_hotel_fremont.webp",
                 dict(target_width_mm=80.0, max_colors=3, forced_class="flat",
-                     border="off", satin_house_fourfold=True)),
+                     border="off")),
     "enthusiast": ("photo/enthusiast_logo.png",
-                   dict(target_width_mm=93.0, garment_id="left_chest",
-                        satin_house_fourfold=True)),
+                   dict(target_width_mm=93.0, garment_id="left_chest")),
     "drone": ("photo/drone_render.png",
-              dict(target_width_mm=80.0, satin_house_fourfold=True)),
+              dict(target_width_mm=80.0)),
     "becker": ("becker_marine_logo.png", dict(target_width_mm=80.0)),
     "gaulke": ("photo/logo_gaulke_roofing.png", dict(target_width_mm=80.0)),
 }

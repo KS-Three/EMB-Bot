@@ -1104,7 +1104,7 @@ def build_generation(
         regions, p, cfg,
         palette_indices=list(q.thread_indices),
         design_class=classification.class_,
-        small_shapes=cfg.revalidate_small_shapes,
+        small_shapes=True,
     )
     # Defect 16's remainder (2026-08-31): a re-snapped region joins the layer
     # that declares its new cone, so one spool sews at one position and the
@@ -1124,22 +1124,21 @@ def build_generation(
     # must survive a re-plan identically. A new field would have to be added
     # to the dataclass, its copy, and every construction site for no
     # behavioural difference.
-    if cfg.enforce_color_cap:
-        # A flood hole the garment rule will stitch is sewn area, so its cone
-        # competes for a slot (`garment_sews_enclosed`, the same verdict the
-        # stitched default reads in `finish_generation`). Off / no garment /
-        # alpha: False, the ranking the cap shipped with.
-        resnap_warnings = list(resnap_warnings) + enforce_color_cap(
-            regions, chart_for(cfg), cfg.max_colors,
-            count_enclosed=(garment_sews_enclosed(p, cfg)[0]
-                            or bool(cfg.sew_enclosed_white)),
-            least_loss=cfg.color_cap_least_loss)
-        # `cfg.color_cap_fuse_split_tones` (built OFF 2026-11-18): a letter
-        # the palette cut in two tones, both folded onto one spool by the cap,
-        # sews as one shape, and the text taggers below see the whole letter.
-        if cfg.color_cap_fuse_split_tones:
-            from . import cap_fuse
-            cap_fuse.apply(regions)
+    # A flood hole the garment rule will stitch is sewn area, so its cone
+    # competes for a slot (`garment_sews_enclosed`, the same verdict the
+    # stitched default reads in `finish_generation`). No garment / alpha:
+    # False, the ranking the cap shipped with.
+    resnap_warnings = list(resnap_warnings) + enforce_color_cap(
+        regions, chart_for(cfg), cfg.max_colors,
+        count_enclosed=(garment_sews_enclosed(p, cfg)[0]
+                        or bool(cfg.sew_enclosed_white)),
+        least_loss=cfg.color_cap_least_loss)
+    # `cfg.color_cap_fuse_split_tones` (built OFF 2026-11-18): a letter
+    # the palette cut in two tones, both folded onto one spool by the cap,
+    # sews as one shape, and the text taggers below see the whole letter.
+    if cfg.color_cap_fuse_split_tones:
+        from . import cap_fuse
+        cap_fuse.apply(regions)
 
     # `cfg.cap_merged_layer_home` (ON since 2026-11-18, Kent's flip; built OFF as a `cfg.extra` key; the prime
     # grader's Golden Tee: "black outline stitches pile over the yellow/orange
@@ -1207,11 +1206,11 @@ def build_generation(
     # link between ordinary glyphs (`textcluster._same_ink`): a word is sewn
     # in one colour, and the regions' `thread_index` values name THIS job's
     # chart, not the default one. `rescued_ink_link`: the same link in the
-    # rescued round (Fremont's THE at 80 mm, `cfg.text_cluster_rescued_ink_link`).
+    # rescued round (Fremont's THE at 80 mm).
     detect_text_clusters(regions, p, chart=chart_for(cfg),
-                         rescued_ink_link=bool(cfg.text_cluster_rescued_ink_link),
-                         counters_as_drawn=bool(cfg.text_cluster_counters_as_drawn),
-                         **({"wide_letters": True} if cfg.text_cluster_wide_letters else {}),
+                         rescued_ink_link=True,
+                         counters_as_drawn=True,
+                         wide_letters=True,
                          **({"part_touching": True} if cfg.text_cluster_part_touching else {}),
                          **({"mixed_caps": True} if cfg.text_cluster_mixed_caps else {}),
                          **({"nest_guard": True} if cfg.text_cluster_nest_guard else {}),
@@ -1266,7 +1265,7 @@ def build_generation(
                            min_stroke_mm=cfg.small_text_cap_min_stroke_mm,
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
                            bold_scale=cfg.small_text_cap_bold_scale,
-                           **({"reach_edges": True} if cfg.small_text_cap_reach_edges else {}),
+                           reach_edges=True,
                            # each bay's mouth kept open (W3-02, ON since 2026-10-26):
                            # False, the call as it was word for word
                            **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
@@ -1390,7 +1389,7 @@ def build_generation(
     if cfg.lettering_words:
         from .words import word_groups
         house_groups = word_groups(regions)
-    set_lettering_house_angle(regions, p, fourfold=cfg.satin_house_fourfold,
+    set_lettering_house_angle(regions, p, fourfold=True,
                               from_line=cfg.satin_house_from_line,
                               anchor=cfg.satin_house_anchor, groups=house_groups)
     # The Column lane's ink link (`cfg.lettering_columns_ink_link`, default
@@ -1678,7 +1677,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # colour nobody knows) while any area sews under it; the artwork competes
     # for the rest. OFF: nothing here runs, byte for byte.
     late_cap_warnings: list[dict] = []
-    if cfg.color_cap_sewn and cfg.enforce_color_cap:
+    if cfg.color_cap_sewn:
         ids = {r.shape_id for r in regions}
         protected = {int(ov["thread_index"]) for sid, ov in shape_overrides.items()
                      if sid in ids and (ov or {}).get("thread_index") is not None}
@@ -1998,16 +1997,12 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
         return out
 
     chart = chart_for(cfg)
-    # `thread_indices` is stage 2's memory of what each layer WAS. With
-    # `cfg.layer_palette_from_regions` ON each layer's cone is elected from
-    # its own regions instead, which is the only way `palette[i]` can be
-    # true about layer i after a pass moves a region's thread without
-    # moving the region — see `stage3_segment.layer_palette_threads`.
-    # OFF is stage 2's list, byte for byte, and the election never runs.
-    palette_threads = (
-        layer_palette_threads(regions, thread_indices, shape_overrides)
-        if cfg.layer_palette_from_regions else thread_indices
-    )
+    # `thread_indices` is stage 2's memory of what each layer WAS. Each
+    # layer's cone is elected from its own regions instead, which is the only
+    # way `palette[i]` can be true about layer i after a pass moves a
+    # region's thread without moving the region — see
+    # `stage3_segment.layer_palette_threads`.
+    palette_threads = layer_palette_threads(regions, thread_indices, shape_overrides)
     palette = [_cone(chart, t) for t in palette_threads]
 
     # The palette is per LAYER; a region's thread is per REGION, and
@@ -2287,7 +2282,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
     from .end_overlap import end_overlap_scope, junction_align_scope
     from .patch_merge import patch_merge_scope
     from .hairline_leave import hairline_leave_scope
-    from .stage6_border import loop_mitre_scope  # `cfg.outline_loop_mitre` (built OFF), the same way
+    from .stage6_border import loop_mitre_scope  # the outline loop mitre scope, the same way
     from .stage6_border import loop_chain_scope   # `cfg.keyline_loop_chain` (built OFF), the same way
     # `cfg.extra["fill_section_travel"]` (built OFF 2026-10-25): stage 6's
     # fill reads it from here, so a `stitch_shape` call outside a plan is the
@@ -2343,7 +2338,7 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         # `cfg.extra["lettering_columns_through_last"]` (built OFF 2026-11-19), the same way
         _enter(through_last_scope(bool((cfg.extra or {}).get("lettering_columns_through_last"))))
         _enter(fill_section_travel.enabled(cfg))
-        _enter(loop_mitre_scope(cfg.outline_loop_mitre))
+        _enter(loop_mitre_scope(True))
         _enter(loop_chain_scope(cfg.keyline_loop_chain))
         _enter(cut_exposed_scope(cfg.fill_bridge_cut_exposed))
         _enter(seam_order_scope(cfg.fill_seam_order))

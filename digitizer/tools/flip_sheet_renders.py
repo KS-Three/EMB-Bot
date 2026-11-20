@@ -188,12 +188,6 @@ FLAGS: dict[str, dict] = {
         "kind": "FABRIC",
         "sets": {"satin_underlay_short_columns": True}, "metric": "short_bare", "xray": True,
         "about": "satin columns under 5 mm sewn bare", "pr": 1044},
-    "lettering_columns_inside_stagger": {
-        "sets": {"lettering_columns_inside_stagger": True}, "metric": "stagger",
-        "about": "satin inner ends landing in a hole already used (pivot zones found)", "pr": 1058,
-        "note": "Alone against OFF. PR #1058's headline pairs it with lettering_columns_corner_fold "
-                "(OFF on main); its fold -> fold+stagger same-hole counts are Fremont 16 -> 13, "
-                "MFab 27 -> 8 (pro 5 and 4)."},
     "enclosed_white_keyline": {
         "base": {"sew_enclosed_white": True},
         "sets": {"sew_enclosed_white": True, "enclosed_white_keyline": True},
@@ -203,25 +197,12 @@ FLAGS: dict[str, dict] = {
                 "keyline OFF and ON adds the keyline; the bare engine is not the comparison. "
                 "PR #1059 was still open when rendered: run from a local merge of its branch "
                 "with main (not committed anywhere)."},
-    "text_cluster_wide_letters": {
-        "sets": {"text_cluster_wide_letters": True}, "metric": "tagged",
-        "about": "shapes the text tagger put in a line (the Column lane's input)", "pr": 1060,
-        "note": "The pro has no tags to count; its row is the DST's own stitches and trims."},
     "small_text_set": {
         "sets": {"small_text_cap_mm": 4.0, "small_text_cap_max_width_scale": 1.05,
                  "small_text_cap_min_stroke_mm": 0.85, "small_text_cap_letter_gap_mm": 0.25,
                  "small_text_cap_bold_scale": 1.45, "lettering_columns_small_bold": True},
         "metric": "letter_height", "about": "median small-letter height, mm", "pr": 1029},
     # ---- wave 2 (2026-10-24)
-    "small_text_cap_reach_edges": {
-        "base": dict(_SMALL_TEXT_SET), "base_name": "small_text_set",
-        "sets": {**_SMALL_TEXT_SET, "small_text_cap_reach_edges": True},
-        "fixtures": ["proseal_hat", "proseal_beanie", "hotel_fremont_hat"],
-        "metric": "small_lines", "about": "small lines: built, sewn height mm (census reader)",
-        "pr": 1066,
-        "note": "Acts only under #1029's re-set, so OFF is the re-set set (small_text_set) and ON "
-                "adds this flag. PR #1066: ProSeal hat tagline 3.15 mm bean -> 4.35/4.45 satin "
-                "(pro 4.55), beanie 2.8 -> 3.65/3.7 (pro 4.0); Fremont and Drone byte-identical."},
     "monoline_script_satin": {
         "sets": {"monoline_script_satin": True}, "fixtures": ["tires_hat_3d"],
         "metric": "sub_1mm", "about": "stitches under 1 mm (whole design)", "pr": 1063,
@@ -266,26 +247,10 @@ FLAGS: dict[str, dict] = {
         "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_panels": True},
         "fixtures": ["mfab_hat", "mfab_lc"],
         "metric": "white_under_1mm", "about": "white stitches (under 1 mm)", "pr": 1094,
-        "also": {"name": "mitre", "label": "ON + MITRE",
-                 "sets": {"silhouette_underfill": True, **_WHITE_SEWN,
-                          "silhouette_underfill_panels": True, "outline_loop_mitre": True}},
         "note": "OFF is arm d2 (under-fill + white sewn + keyline). ON: AND WELDING and LLC ride "
                 "a closed white panel -- not merged into the black, sewn after the white (black, "
-                "white, black), white loops only round the M-FAB bodies. ON + MITRE adds "
-                "`outline_loop_mitre` (#1093): the whole recipe. Same rembg pin as above."},
+                "white, black), white loops only round the M-FAB bodies. Same rembg pin as above."},
     # ---- wave 3 (2026-10-25)
-    "border_from_outline_line_art_guard": {
-        "base": {"border_from_outline": True},
-        "sets": {"border_from_outline": True, "border_from_outline_line_art_guard": True},
-        "fixtures": ["bridge_hat", "bridge_lc", "becker_hat_small"],
-        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1078,
-        "note": "Acts only with border_from_outline (ON since #1070), so OFF is today's engine. "
-                "PR #1078: Bridge's bowl drawing stops reading as an outline -- hat and LC sew "
-                "byte-identical to border_from_outline OFF; bowl window spike rays 22 -> 1 (hat), "
-                "21 -> 1 (LC), garment pinholes at the anchor 2 -> 0 (hat). Becker, MFab, Fremont "
-                "byte-identical. The pro's Bridge art carried no drawing: nothing of his to "
-                "compare in the bowl. Bridge's pro files are on G:; set PRO_PARITY_ROOT when it "
-                "is unmounted."},
     "silhouette_underfill_rim": {
         "base": {"silhouette_underfill": True, **_WHITE_SEWN}, "base_name": "d2",
         "sets": {"silhouette_underfill": True, **_WHITE_SEWN, "silhouette_underfill_rim": True},
@@ -331,14 +296,6 @@ FLAGS: dict[str, dict] = {
                 "hollow; ON + BEAN INK adds `bean_ink_outlined_letters` (#1128), which sews it "
                 "satin. The hat's plan does not move under bean ink (#1128), so its third cell is "
                 "left out."},
-    "outline_loop_mitre": {
-        "sets": {"outline_loop_mitre": True},
-        "fixtures": ["becker_hat_large", "becker_hat_small", "bridge_hat", "bridge_lc"],
-        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1093,
-        "note": "The border_from_outline loops (ON on main) keep their far rail at the satin pitch "
-                "through a letter's convex corners: the pro's corner is a round pivot, not a mitre "
-                "(far ends 1.00 W out; ours OFF 1.1 mm apart at the corner, his 0.4). Bridge's art "
-                "outline is guarded out (#1078), so Bridge should read no change."},
     "keyline_fold_slivers": {
         # wave 5: no base. White sews by default since #1112. On MFab-type art the gate sews
         # this switch ON by itself since #1122 (with skip and absorb), so an MFab cell is OFF
@@ -534,8 +491,8 @@ FLAGS: dict[str, dict] = {
 
 #: The wave-3 sheet (2026-10-26): the flags its run and report carry. The bay mouth left
 #: it when #1112 flipped it ON; its row stays, for the OFF | ON | pro of that PR.
-# `outline_loop_mitre` and `fine_bars_satin` left it when Kent flipped them ON,
-# 2026-10-26 ("Outline corners pivot", "Fine bars as satin"); their rows stay.
+# `fine_bars_satin` left it when Kent flipped it ON,
+# 2026-10-26 ("Fine bars as satin"); its row stays.
 # `text_cluster_part_touching` and `lettering_columns_italic_lean` left it when Kent
 # flipped them ON from the wave-5 sheet, 2026-10-27; their rows stay.
 #: (`silhouette_underfill_rim`, `keyline_fold_slivers`, `skip_covered_shapes` and
@@ -564,8 +521,6 @@ W5: dict[str, dict] = {
     "fill_section_travel": {"ask": True},
     "bean_ink_outlined_letters": {"ask": True},
     "text_cluster_part_touching": {"ask": True},
-    "outline_loop_mitre": {"ask": False, "label": "Kent ruled ON 2026-10-26 (\"Outline corners "
-                           "pivot\"); flipped ON by #1121. Wave 3's cells only"},
     "fine_bars_satin": {"ask": False, "label": "Kent ruled ON 2026-10-26 (\"Fine bars as satin\"); "
                         "flipped ON by #1121. Wave 3's cells only"},
     "monoline_script_satin": {"ask": False, "label": "HELD by Kent 2026-10-24 (#1070); with "
@@ -1921,8 +1876,8 @@ def inline_html(rows: list[dict], renders: Path, date: str = DATE,
 def w5_intro(base_sha: str | None) -> list[str]:
     """The wave-5 sheet's opening lines: what OFF is, and what it is not."""
     return [f"OFF is main's engine (<code>{base_sha or '-'}</code>): <code>sew_enclosed_white</code> "
-            "and <code>small_text_bay_mouth</code> ON (#1112), <code>fine_bars_satin</code> and "
-            "<code>outline_loop_mitre</code> ON (#1121), <code>small_text_reset_grow_away</code> "
+            "and <code>small_text_bay_mouth</code> ON (#1112), <code>fine_bars_satin</code> "
+            "ON (#1121), <code>small_text_reset_grow_away</code> "
             "ON (#1113, #1127), <code>script_strokes</code> ON (#1136), and MFab's recipe turning "
             "ON by itself on MFab hat and LC (#1115) with the three keyline switches (#1122) and "
             "the loop chain (#1134) inside it. Every "

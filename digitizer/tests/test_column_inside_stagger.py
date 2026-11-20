@@ -87,15 +87,10 @@ def _same_hole(ends, window: int = 8, eps: float = 0.1) -> int:
 
 # --- the flag -------------------------------------------------------------------------
 
-def test_flag_is_on_by_default():
-    # Kent 2026-10-24, the flip sheet
-    assert PipelineConfig().lettering_columns_inside_stagger is True
-
-
-def test_stage7_wires_the_flag_and_nothing_else():
+def test_stage7_always_passes_inside_stagger():
     src = (Path(__file__).resolve().parent.parent / "digitizer_core" / "stage7_sequence.py").read_text(
         encoding="utf-8")
-    assert '**({"inside_stagger": True} if cfg.lettering_columns_inside_stagger else {})' in src
+    assert "inside_stagger=True," in src
 
 
 def test_off_never_reaches_the_new_code(drone, monkeypatch):

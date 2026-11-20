@@ -72,17 +72,15 @@ def exposure(plan) -> dict:
 
 
 def main(argv: list[str]) -> None:
-    off = "--off" in argv
     names = [a for a in argv if not a.startswith("--")] or list(SHORT)
     for name in names:
         rel, kw = SHORT.get(name, (name, {}))
         t0 = time.time()
         _result, plan = digitize(ROOT / "testdata" / rel,
-                                 PipelineConfig(target_width_mm=80.0,
-                                                fill_travel_under_cover=not off, **kw))
+                                 PipelineConfig(target_width_mm=80.0, **kw))
         e = exposure(plan)
         pct = 100.0 * e["exposed_mm"] / max(e["travel_mm"], 1e-9)
-        print(f"{name:12s} {'off' if off else 'on ':3s} t={time.time() - t0:5.1f}s "
+        print(f"{name:12s} on  t={time.time() - t0:5.1f}s "
               f"st={plan.stats.stitch_count:6d} trims={plan.stats.trims:3d} "
               f"fill={e['fill_mm']:7.0f}mm travel={e['travel_runs']:3d}/{e['travel_mm']:6.1f}mm "
               f"EXPOSED={e['exposed_runs']:3d}/{e['exposed_mm']:6.1f}mm ({pct:.0f}%)")
