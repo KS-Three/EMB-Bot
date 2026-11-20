@@ -174,7 +174,7 @@ def test_help_is_cheap():
 
 def _md5(fixture: str, **kw) -> str:
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, **FLOW_2026_11_19_OFF, **kw))
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False, **kw))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     return hashlib.md5(json.dumps(coords).encode()).hexdigest()

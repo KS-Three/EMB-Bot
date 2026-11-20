@@ -49,7 +49,7 @@ from digitizer_core.pipeline import (build_generation, finish_generation,
                                      plan_stitches)
 from digitizer_core.stage6_satin import strip_splits
 from digitizer_core.stitches import strip_ties
-from tests.conftest import TESTDATA
+from tests.conftest import FLOW_2026_11_19_OFF, TESTDATA
 
 FIXTURE = TESTDATA / "photo" / "enthusiast_logo.png"
 WIDTH_MM, GARMENT = 80.0, "left_chest"
@@ -78,7 +78,9 @@ def _sewn(**kw):
 def sewn():
     """One digitize of the engine the hole was found on -- the crown cover
     OFF -- shared by the instrument tests."""
-    return _sewn(satin_crown_cover=False)
+    # `FLOW_2026_11_19_OFF` too: `read_primitives` shrinks the apex hole this
+    # instrument test was measured on (0.97 -> 0.67 mm2, smaller, not worse)
+    return _sewn(satin_crown_cover=False, **FLOW_2026_11_19_OFF)
 
 
 def test_the_shipped_engine_closes_the_apex(sewn):

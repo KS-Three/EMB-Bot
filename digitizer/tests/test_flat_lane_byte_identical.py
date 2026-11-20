@@ -43,9 +43,11 @@ reproduced both old entries on this machine before the capture
 stays the platform red.
 
 **2026-11-19, `satin_rect_lock_in_column` and `read_primitives` ON (Kent: "satin_rect_lock_in_column
-(Recommended), read_primitives"):** `_snapshot` pins both OFF (`conftest.FLOW_2026_11_19_OFF`):
-this golden is about the flat lane's geometry, and they move logo_alpha, logo_whitebg and (via
-read_primitives) region polygons; their own arithmetic is pinned in `tests/test_flow_followups.py`.
+(Recommended), read_primitives"), exception TAKEN:** the `logo_whitebg.png` and `logo_alpha.png`
+entries were re-captured (`tools/recapture_flat_lane_key.py`, `ribbon_curve.png` unmoved as the control):
+the green bar's tail lock now retraces its last cross (whitebg 5427 -> 5425, alpha 6104 -> 6101) and
+the discs and bars read as ideal shapes. Their arithmetic: `tests/test_flow_followups.py`.
+`enthusiast_logo` stays the platform red.
 
 **Exception TAKEN 2026-11-19, `satin_rectangles` ON (Kent 2026-11-19, "Flip ON
 (Recommended)", shown his flag and the 9 of 44 sweep runs it moves):** the
@@ -373,7 +375,6 @@ import pytest
 from digitizer_core import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import FLOW_2026_11_19_OFF
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 GOLDEN = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))
@@ -392,7 +393,7 @@ def _snapshot(name: str) -> dict:
     # of geometry it does not touch (`tests/test_sew_enclosed_white.py`).
     result, plan = digitize(TESTDATA / name,
                             PipelineConfig(target_width_mm=80.0, edge_cap="none",
-                                           sew_enclosed_white=False, **FLOW_2026_11_19_OFF))
+                                           sew_enclosed_white=False))
     return {
         "shape_ids": sorted(r.shape_id for r in result.regions),
         "areas_mm2": sorted(round(r.area_mm2, 4) for r in result.regions),

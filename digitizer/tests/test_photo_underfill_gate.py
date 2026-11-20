@@ -34,7 +34,8 @@ LOGO_PINS = {
     # whitebg re-pinned 2026-11-16: `satin_push_keeps_gaps` 0.5 (Kent's flip) narrows one satin cross 0.6 mm
     # and again 2026-11-17: the flag ends/seam trio (Kent's flip) insets every free satin end
     # and 2026-11-19: `satin_rectangles` (Kent's flip) sews the green bar as a rectangle
-    "logo_whitebg.png": ("flat", "eb790bbdf64c5a320a4cde9b4e38fbb4", 6625),
+    # and 2026-11-19: `satin_rect_lock_in_column` + `read_primitives` (Kent's flip) lock the bar's tail inside its column
+    "logo_whitebg.png": ("flat", "766c1ef04d54637a5eb222ee4bedd5c6", 6623),
     "photo/gradient_ramp_linear.png": ("gradient", "06bad7d0e0d1c4acd342b87fa28169ff", 10938),
 }
 
