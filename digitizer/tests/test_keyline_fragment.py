@@ -117,3 +117,54 @@ def test_a_band_wider_than_a_hairline_in_the_art_is_drawn():
     thin = lambda: [letter(), ink(), _r("bar", box(1, 10, 4, 10.4), DARK)]
     assert drop_keyline_fragments(thin(), CHART, mm_per_src_px=0.4 / 15) == []          # 15 px
     assert drop_keyline_fragments(thin(), CHART, mm_per_src_px=0.4 / 1.5) == ["bar"]    # 1.5 px
+
+
+# --- `cfg.extra["keyline_fragment_subpixel"]` (built OFF 2026-11-19) ---------
+# The National Guard seal at 90 mm: a hairline black keyline round the white
+# rim traced as seven fragments 0.05-0.09 mm wide (0.5-1.0 source px). They
+# are the design's darkest ink, the rim they lie on is itself a 0.29 mm band,
+# and together they follow about half of it, so three conditions kept them and
+# each sewed a 1.5 mm satin dash. ON, a band thinner than the art can draw
+# (`sliver_prune.SLIVER_WIDTH_SRC_PX` source pixels) is fringe whatever its
+# ink, its host's width, or how much of the outline its pieces follow.
+MM_PER_PX = 0.1
+
+
+def _rim_seal():
+    rim = _r("rim", box(0, 0, 60, 0.3), LIGHT)                          # a 0.3 mm light band
+    frags = [_r(f"f{i}", box(2 + 14 * i, 0.3, 12 + 14 * i, 0.36), BLACK) for i in range(4)]   # 0.06 mm
+    body = _r("body", box(0, -30, 60, 0), MID)
+    return [rim, body, *frags]
+
+
+def test_subpixel_fragments_in_the_darkest_ink_stay_without_the_flag():
+    regs = _rim_seal()
+    assert drop_keyline_fragments(regs, CHART, mm_per_src_px=MM_PER_PX) == []
+
+
+def test_subpixel_fragments_go_with_the_flag_whatever_ink_host_or_wrap():
+    regs = _rim_seal()
+    out = drop_keyline_fragments(regs, CHART, mm_per_src_px=MM_PER_PX, subpixel_darkest=True)
+    assert sorted(out) == ["f0", "f1", "f2", "f3"]
+    assert sorted(r.shape_id for r in regs) == ["body", "rim"]
+
+
+def test_a_darkest_ink_band_the_art_can_draw_still_stays_with_the_flag():
+    regs = [letter(), _r("s", box(1, -0.4, 4, 0), BLACK)]                # 0.4 mm = 4 source px
+    assert drop_keyline_fragments(regs, CHART, mm_per_src_px=MM_PER_PX, subpixel_darkest=True) == []
+
+
+def test_the_flag_needs_the_arts_scale():
+    regs = _rim_seal()
+    assert drop_keyline_fragments(regs, CHART, subpixel_darkest=True) == []
+
+
+def test_a_subpixel_band_in_a_hole_of_its_host_still_stays():
+    ring = _r("ring", box(0, 0, 20, 20).difference(box(5, 5, 15, 15)), LIGHT)
+    line = _r("line", box(5, 5, 15, 5.06), BLACK)
+    regs = [ring, line]
+    assert drop_keyline_fragments(regs, CHART, mm_per_src_px=MM_PER_PX, subpixel_darkest=True) == []
+
+
+def test_the_subpixel_flag_is_off_by_default():
+    assert not (PipelineConfig().extra or {}).get("keyline_fragment_subpixel")

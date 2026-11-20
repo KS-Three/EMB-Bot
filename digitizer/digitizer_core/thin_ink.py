@@ -740,7 +740,34 @@ def thin_letters_after_ground(regions):
 DARK_INK_BEAN_MAX_WIDTH_MM = 1.5 * machine.SATIN_MIN_CROSS_MM
 
 
-def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> int:
+#: `cfg.extra["dark_ink_bean_by_core"]` (built OFF 2026-11-19): with
+#: `by_width`, a group beans when the median CORE width of its strokes --
+#: twice the radius of the largest circle inside each
+#: (`shapely.maximum_inscribed_circle`) -- is under this: room for two
+#: minimum satin crosses. Mean width (2 x area / perimeter) reads a serif
+#: letter by its serifs and a star by its points: the Nevada seal's bold
+#: ring letters and solid stars read 0.51 mm and sewed as one-line runs;
+#: their core reads 1.18. Census 2026-11-19, 143 groups over 101 designs:
+#: no gap in either measure; NOAA 0.66, FEMA 0.57, the thin pen-line groups
+#: 0.27-0.73 stay bean. A layout threshold judged from renders.
+DARK_INK_BEAN_MAX_CORE_MM = 2.0 * machine.SATIN_MIN_CROSS_MM
+#: ... and only a group of at least this many strokes is read by its core:
+#: a ring line of lettering. Smaller groups keep the mean width. Same sweep:
+#: every clear gain was a ring line of 36-65 strokes (SEC 36, Florida 40,
+#: Court of Federal Claims 53, Agriculture 55, Nevada 65); every design that
+#: read worse was a group of 14 or fewer (Fish & Wildlife 14, the Hotel
+#: Fremont patch's EAT | STAY | PLAY 6, Energy Star 2, House and OPM 1).
+#: Nothing between 15 and 36: the middle of that gap.
+DARK_INK_CORE_MIN_STROKES = 24
+
+
+def _core_width_mm(poly) -> float:
+    import shapely
+    return 2.0 * float(shapely.maximum_inscribed_circle(poly, 0.01).length)
+
+
+def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False,
+                  by_core: bool = False) -> int:
     """`cfg.dark_ink_bean`: the dark read's strokes sew as a bean ON their
     ground, the way the reference digitizer sews a drawn line
     (`bean_rule`). Each `meta["dark_ink"]` region gets its polygon's
@@ -764,7 +791,13 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> i
     WIDTH. The strokes on one ground in one thread are a group; the group's
     median mean width (2 x area / perimeter) under
     `DARK_INK_BEAN_MAX_WIDTH_MM` beans every member, at or over it none,
-    whatever the contrast. Ground, spines and keys as above."""
+    whatever the contrast. Ground, spines and keys as above.
+
+    `by_core` (`cfg.extra["dark_ink_bean_by_core"]`, read only with
+    `by_width`): the group's median CORE width (`_core_width_mm`) against
+    `DARK_INK_BEAN_MAX_CORE_MM` instead, for a group of at least
+    `DARK_INK_CORE_MIN_STROKES` strokes; a smaller group keeps the mean
+    width. False: as before."""
     from shapely.geometry import Polygon
 
     from .beanletters import BEAN_LETTER_KEY
@@ -775,6 +808,7 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> i
     group_bean: dict = {}
     if by_width:
         widths: dict = {}
+        means: dict = {}
         for r in regions:
             if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
                     or not isinstance(r.polygon, Polygon)):
@@ -783,9 +817,17 @@ def bean_dark_ink(regions, by_width: bool = False, innermost: bool = False) -> i
             if g is None or r.polygon.length <= 0:
                 continue
             widths.setdefault((g.shape_id, r.thread_index), []).append(
-                2.0 * float(r.polygon.area) / float(r.polygon.length))
-        group_bean = {k: float(np.median(v)) < DARK_INK_BEAN_MAX_WIDTH_MM
-                      for k, v in widths.items()}
+                _core_width_mm(r.polygon) if by_core
+                else 2.0 * float(r.polygon.area) / float(r.polygon.length))
+            if by_core:
+                means.setdefault((g.shape_id, r.thread_index), []).append(
+                    2.0 * float(r.polygon.area) / float(r.polygon.length))
+        group_bean = {}
+        for k, v in widths.items():
+            if by_core and len(v) >= DARK_INK_CORE_MIN_STROKES:
+                group_bean[k] = float(np.median(v)) < DARK_INK_BEAN_MAX_CORE_MM
+            else:
+                group_bean[k] = float(np.median(means.get(k, v))) < DARK_INK_BEAN_MAX_WIDTH_MM
     tagged = 0
     for r in regions:
         if (not r.meta.get("dark_ink") or str(r.meta.get("tier", "auto")).lower() != "auto"
@@ -843,19 +885,110 @@ def settle_dark_ink_bean(regions) -> int:
     return kept
 
 
+#: `cfg.extra["dark_ink_line_one_lane"]` (built OFF 2026-11-19): on a line
+#: one lane gave half its letters, the shape ids it moved, for reports.
+ONE_LANE_KEY = "dark_ink_line_one_lane"
+
+
+def one_lane_per_line(regions) -> int:
+    """`cfg.dark_ink_line_one_lane` (built OFF 2026-11-19, ON the same day,
+    Kent's flip), before
+    `settle_dark_ink_bean`: a line of lettering sews in ONE lane. The text
+    reader's line (`text_cluster_id`, one thread) whose letters are part
+    bean (`bean_dark_ink`) and part not takes the lane its OWN median mean
+    width (2 x area / perimeter) names against `DARK_INK_BEAN_MAX_WIDTH_MM`,
+    the gate `bean_dark_ink(by_width=True)` reads per ground.
+
+    The NSA seal at 90 mm: the white ring carries two lines, the bold
+    "NATIONAL SECURITY AGENCY" (median 0.98 mm) and the thin "UNITED STATES
+    OF AMERICA" (0.68). The dark read tagged 14 of the top line's 22
+    letters; judged per GROUND, both lines together fell under the gate, so
+    those 14 sewed as thin beans and their 8 untagged mates as bold satin:
+    one line, two weights. The GAO seal: three lines split the same way.
+
+    Over the gate, the line's beans drop their spines and sew with their
+    mates. Under it, the mates take spines (their skeleton, as
+    `bean_dark_ink` makes them) and the ground their bean mates name --
+    only when that ground is ANOTHER thread's: the Merchant Marine seal's
+    black letters named the black keyline ring round the whole seal, and
+    beaned onto it with `underfill_keeps_thin_letters` four of them were
+    lost. A shape the review pinned to a tier is never moved. Returns the shapes
+    moved; nothing mixed, nothing touched."""
+    from collections import Counter
+    from statistics import median
+
+    from shapely.geometry import Polygon
+
+    from .beanletters import BEAN_LETTER_KEY
+    from .shapefield import build_shape_field
+    from .textcluster import _skeleton_chains_mm
+
+    by_id = {r.shape_id: r for r in regions}
+    lines: dict = {}
+    for r in regions:
+        tc = r.meta.get("text_cluster_id")
+        if (tc and isinstance(r.polygon, Polygon) and r.polygon.length > 0
+                and r.meta.get("stitched", True)
+                and str(r.meta.get("tier", "auto")).lower() == "auto"):
+            lines.setdefault((tc, r.thread_index), []).append(r)
+    moved = 0
+    for members in lines.values():
+        bean = [r for r in members if r.meta.get(BEAN_LETTER_KEY)]
+        if not bean or len(bean) == len(members):
+            continue
+        width = median(2.0 * r.polygon.area / r.polygon.length for r in members)
+        if width >= DARK_INK_BEAN_MAX_WIDTH_MM:
+            for r in bean:
+                r.meta.pop(BEAN_LETTER_KEY, None)
+                r.meta.pop(DARK_INK_GROUND_KEY, None)
+                r.meta[ONE_LANE_KEY] = "column"
+                moved += 1
+            continue
+        grounds = Counter(r.meta.get(DARK_INK_GROUND_KEY) for r in bean
+                          if r.meta.get(DARK_INK_GROUND_KEY))
+        if not grounds:
+            continue
+        ground = grounds.most_common(1)[0][0]
+        g = by_id.get(ground)
+        if g is None or g.thread_index == members[0].thread_index:
+            continue
+        for r in members:
+            if r.meta.get(BEAN_LETTER_KEY):
+                continue
+            field = build_shape_field(r.polygon)
+            spines = _skeleton_chains_mm(field) if field is not None else []
+            if not spines:
+                continue
+            r.meta[BEAN_LETTER_KEY] = spines
+            r.meta[DARK_INK_GROUND_KEY] = ground
+            r.meta["dark_ink"] = True
+            r.meta[ONE_LANE_KEY] = "bean"
+            moved += 1
+    return moved
+
+
 #: On a bean stroke `ink_after_ground` moved ONLY because of
 #: `cfg.extra["dark_ink_ground_innermost"]`: the shape id of the ground it now
 #: sews after. Stage 5 pins that ground's fill angle and no other. Internal.
 REORDERED_KEY = "dark_ink_ground_reordered"
 
 
-def ink_after_ground(regions, innermost: bool = False):
+def ink_after_ground(regions, innermost: bool = False, other_thread: bool = False):
     """`cfg.dark_ink_bean`, at plan time: a bean stroke (`bean_dark_ink`)
     whose ground (`_ground_of`) sews in the same or a later layer moves to
     a layer of its own right after the ground's -- the shape
     `silhouette_underfill` gives a rider -- because stage 5 sews a ground
     through only under a LATER bean letter. Regions as copies, renumbered;
-    nothing to move: the input list itself."""
+    nothing to move: the input list itself.
+
+    `other_thread` (`cfg.underfill_keeps_thin_letters`, ON since Kent's flip; built OFF
+    2026-11-19): a stroke's ground is a shape of ANOTHER thread when one
+    covers it; its own thread's only when none does. The Merchant Marine
+    seal's black ring letters named the black under-fill (the keyline ring,
+    whose outline covers the whole seal) as their ground and sewed right
+    after it, under the white disc. The Agriculture seal's grey strokes on a
+    grey band have no other ground: refused one outright, they stayed ahead
+    of their band and a cream patch beside it went bare. False: as before."""
     from dataclasses import replace
 
     from .beanletters import BEAN_LETTER_KEY
@@ -867,11 +1000,16 @@ def ink_after_ground(regions, innermost: bool = False):
     to: dict[str, tuple] = {}
     reordered: dict[str, str] = {}      # stroke id -> the ground `innermost` alone found for it
     for b in ink:
-        g = _ground_of(b, grounds, innermost)
+        mine = grounds
+        if other_thread:
+            others = [g_ for g_ in grounds if g_.thread_index != b.thread_index]
+            if _ground_of(b, others, innermost) is not None:
+                mine = others
+        g = _ground_of(b, mine, innermost)
         if g is not None and g.meta["layer"] >= b.meta["layer"]:
             to[b.shape_id] = ("ink", g.meta["layer"], b.thread_index)
             if innermost:
-                plain = _ground_of(b, grounds)
+                plain = _ground_of(b, mine)
                 if plain is None or plain.meta["layer"] < b.meta["layer"]:
                     # only the innermost reading moved this stroke: stage 5's
                     # angle pin is for its ground and no other (`REORDERED_KEY`)
