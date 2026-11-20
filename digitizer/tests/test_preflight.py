@@ -2295,13 +2295,7 @@ def test_a_dropped_limb_is_reported_and_names_its_shape(monkeypatch):
     # 2026-09-29, Kent's pick): on the artwork polygon the unguarded prune
     # keeps the tab's stem at 150 mm as well, so the injection has nothing to
     # drop and the finding is, again correctly, not raised.
-    # ... and without the crown cover (`satin_crown_cover`, ON since Kent's
-    # 2026-10-02 flip): it is the junction cover with its gate removed, so it
-    # sews the dropped tab the same way and the finding is, a third time
-    # correctly, not raised.
-    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False,
-            satin_junction_stack=False, satin_rail_comp=False,
-            satin_crown_cover=False)
+    c = cfg(target_width_mm=150.0, max_colors=6, subpixel_edges=False)
     result, plan_ = digitize(art, c)
     report = run_preflight(result, plan_, c, image=art)
 
@@ -2345,65 +2339,6 @@ def test_the_bracket_tab_the_check_found_is_now_sewn():
     # silence here would mean asserting the check stays blind to a defect
     # this repo has measured three separate ways.
     assert report["metrics"]["uncovered_hole_mm2"] < 6.0
-
-
-def test_the_letter_apex_is_reported_now_that_the_erosion_is_gone():
-    """Kent's pick 2026-09-30: *"make preflight see these holes."*
-
-    MASTER_SCOPE defect 49 — ENTHUSIAST's **A** sews its tapered apex bare
-    under `satin_rail_comp` — was measured three separate ways before this
-    check could see any of it: `bare_anatomy --all-thread` 1.93 mm²,
-    `dropped_elements`' `uncov` 0.97 mm², and a `stitchviz` render of the
-    thread path (`tests/test_apex_is_real.py`). Preflight read **0.00 mm²**.
-
-    Not because of the 5.0 mm² floor — with the floor at zero it still read
-    0.00. The 0.4 mm erosion removed it (a cliff exactly at the shipped
-    value: 0.80 mm² at every erosion from 0.1 to 0.3) and the 0.5 mm cell
-    could not resolve it. Both are gone; a thickness and a compactness test
-    refuse the rim they were standing in for.
-
-    Pinned as a FLOOR on what the check can see, and on WHERE. A build that
-    closes the apex turns this red, and that is the signal to close defect 49
-    and rewrite this test — not to loosen it.
-
-    **That build shipped: `satin_crown_cover`, ON since Kent's 2026-10-02
-    flip.** What the CHECK can see is still pinned here, on the engine the
-    hole was found on (the cover OFF); the last lines pin that the shipped
-    engine leaves less of it.
-    """
-    art = TESTDATA / "photo/enthusiast_logo.png"
-    # `lettering_columns=False` (ON by default since Kent's 2026-10-12 flip):
-    # the apex hole is the skeleton tier's; the Column lane builds the A from
-    # its outline.
-    # ... and before the flag ends/seam trio (ON since 2026-11-17, Kent): with
-    # it the apex hole reads 1.1 mm2 against the 1.2 floor below (CI run
-    # 44158966435). This pins the CHECK, on the engine it was built on.
-    from tests.conftest import FLAG_ENDS_SEAM_2026_11_17_OFF
-    c = cfg(target_width_mm=80.0, max_colors=6, satin_crown_cover=False,
-            lettering_columns=False, **FLAG_ENDS_SEAM_2026_11_17_OFF)
-    result, plan_ = digitize(art, c)
-    report = run_preflight(result, plan_, c, image=art)
-    m = report["metrics"]
-
-    found = _uncovered(report)
-    assert found is not None, "the apex is invisible again"
-    assert found["severity"] == "info"           # info since 2026-10-05 (#630); was a warn, never a block
-    # Measured 2026-09-30: 27 patches, 2 holes, worst 1.56 mm2 (the apex) and
-    # 1.00 mm2 (a gap between two letters). Rendered before this landed:
-    # docs/renders/uncovered-floor-2026-09-30/enthusiast.png
-    assert m["uncovered_holes"] >= 1, m["uncovered_holes"]
-    assert m["uncovered_hole_mm2"] >= 1.2, m["uncovered_hole_mm2"]
-    # and it names a shape a person can go and look at
-    assert found["extra"]["shapes"], found["extra"]
-
-    # Defect 49, closed: the shipped engine sews the apex.
-    shipped = cfg(target_width_mm=80.0, max_colors=6)
-    assert shipped.satin_crown_cover is True
-    result_on, plan_on = digitize(art, shipped)
-    m_on = run_preflight(result_on, plan_on, shipped, image=art)["metrics"]
-    assert m_on["uncovered_hole_mm2"] < m["uncovered_hole_mm2"], (
-        m["uncovered_hole_mm2"], m_on["uncovered_hole_mm2"])
-    assert m_on["uncovered_holes"] <= m["uncovered_holes"]
 
 
 def test_a_clean_fixture_leaves_no_artwork_uncovered():

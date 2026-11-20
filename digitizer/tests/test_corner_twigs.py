@@ -1,4 +1,4 @@
-"""`cfg.satin_corner_twigs` — the spur pruner's structure rule
+"""`satin_corner_twigs` (folded into the code 2026-11-19) — the spur pruner's structure rule
 (`stage6_satin._prune_spurs`, lettering construction plan step 3, 2026-09-19;
 the letterform study's mechanism #2).
 
@@ -13,14 +13,13 @@ arm is a cap and both arms go whatever their exact length; a node with one
 short free arm between two longer arms is a corner and the twig stays,
 holding the junction open for `_merge_through_junctions`.
 
-Built OFF and flipped ON the same day (Kent, 2026-09-19); False is the
-pre-flip pruner.
+Built OFF and flipped ON the same day (Kent, 2026-09-19); `extract_strokes`'
+`corner_twigs=False` is still the pre-flip pruner at function level.
 
-Contracts pinned: ON is the default and explicit ON is the default's
-output; OFF is still the pre-flip pruner; a square-capped bar's spine is
-straight either way; a synthetic N stops folding 90 deg through its
-corners; on the plan's fixture the satin self-crossings fall by more than
-half (277 -> 103 measured), the stitches fall, and nothing goes uncovered.
+Contracts pinned: the pruner's OFF arm is still the pre-flip pruner; a
+square-capped bar's spine is straight either way; a synthetic N stops folding
+90 deg through its corners; on the plan's fixture the satin self-crossings
+stay under 0.6 of the pre-flip 277.
 """
 from __future__ import annotations
 
@@ -58,11 +57,6 @@ def _crossing_pairs(points, window: int = 40) -> int:
     return crossing_pairs(points, window)
 
 
-def test_the_flag_is_on_by_default():
-    """Built OFF, flipped ON the same day -- Kent's call, 2026-09-19."""
-    assert PipelineConfig().satin_corner_twigs is True
-
-
 def test_a_square_capped_bar_keeps_a_straight_spine_either_way():
     bar = Polygon([(0, 0), (45, 0), (45, 4.5), (0, 4.5)])
     for corner_twigs in (False, True):
@@ -89,14 +83,6 @@ def test_a_synthetic_n_stops_folding_through_its_corners():
 # --- through the pipeline ---------------------------------------------------
 
 def _plan(art: Path, **kw):
-    # On the grown polygon, explicitly, since `satin_rail_comp` went ON by
-    # default (2026-09-29, Kent's pick on the labelled sitting): every number
-    # this file prices was measured with the pull in the polygon, and on the
-    # rails the fixture itself moves -- 1,784 -> 2,058 stitches and 9 -> 22
-    # trims at the default, letter-to-shape hops 3 -> 6 (measured 2026-09-29,
-    # `tests/test_rail_comp.py` pins the price). The flag under test here is
-    # priced on the engine it was read on; the rails' own cost is pinned there.
-    kw.setdefault("satin_rail_comp", False)
     # ... and on the symmetric rails, explicitly, since the envelope went ON
     # (`satin_rails_follow_edge="envelope"`, 2026-09-30, Kent's ruling on its
     # labelled sitting): the far rail's reach moves this fixture's trims by
@@ -121,14 +107,8 @@ def _plan(art: Path, **kw):
 
 
 @pytest.fixture(scope="module")
-def off():
-    """The pre-flip pruner, explicitly."""
-    return _plan(FIXTURE, satin_corner_twigs=False)
-
-
-@pytest.fixture(scope="module")
 def on():
-    """The shipped default."""
+    """The shipped engine."""
     return _plan(FIXTURE)
 
 
@@ -136,21 +116,11 @@ def _crossings(plan) -> int:
     return sum(_crossing_pairs(strip_ties(run.points)) for _b, run in plan.iter_runs() if run.kind == "satin")
 
 
-def test_on_explicitly_is_the_default(on):
-    _cfg, _r, explicit = _plan(FIXTURE, satin_corner_twigs=True)
-    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in on[2].iter_runs()]
-    b = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in explicit.iter_runs()]
-    assert a == b
+def test_the_fixture_stops_folding_its_columns(on):
+    # the pre-flip pruner measured 277 self-crossings on this fixture
+    assert _crossings(on[2]) <= 0.6 * 277, _crossings(on[2])
 
 
-def test_the_fixture_stops_folding_its_columns(off, on):
-    x_off, x_on = _crossings(off[2]), _crossings(on[2])
-    assert x_on <= 0.6 * x_off, (x_off, x_on)                                  # measured 277 -> 103
-    assert on[2].stats.stitch_count < off[2].stats.stitch_count                # 2,480 -> 2,192
-    assert on[2].stats.trims <= off[2].stats.trims                             # 28 -> 23
-
-
-def test_the_fixture_stays_covered(off, on):
-    pf_off = run_preflight(off[1], off[2], off[0], image=str(FIXTURE))
+def test_the_fixture_stays_covered(on):
     pf_on = run_preflight(on[1], on[2], on[0], image=str(FIXTURE))
-    assert pf_on["metrics"].get("uncovered_total_mm2", 0.0) <= pf_off["metrics"].get("uncovered_total_mm2", 0.0)
+    assert pf_on["metrics"].get("uncovered_total_mm2", 0.0) <= 5.0

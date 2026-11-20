@@ -248,7 +248,7 @@ def run_fixture(slug: str, out: Path, pro_root: Path, ppm_crop: float = 40.0) ->
     res: dict = {"fixture": slug, "art": art.name, "width_mm": width, "garment": garment}
     plans = {}
     letters: set[str] = set()
-    for arm, extra in (("off", {}), ("on", {FLAG: True})):
+    for arm, extra in (("off", {}), ("on", {})):   # the flag is folded in (2026-11-19): both arms are the shipped engine
         t = time.time()
         cache = out / f"{slug}_{arm}.plan.pkl"
         if cache.exists():

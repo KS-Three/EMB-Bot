@@ -1,4 +1,4 @@
-"""`cfg.satin_lettering_split` — split, never fill, for lettering
+"""`satin_lettering_split` (folded into the code 2026-11-19) — split, never fill, for lettering
 (`stage7_sequence._satin_ceiling_for`, lettering construction plan step 4,
 2026-09-19; Kent's 2026-09-11 rule for the browser lettering engine, applied
 on the traced path).
@@ -14,11 +14,11 @@ shape that is not lettering keeps `machine.satin_ceiling_mm`.
 Fixtures: the plan's MARINE (`manga_impact`) traced at 127.4 mm, the size
 where 14 of the trace's 15 regions and all but one of its six letters fell
 to tatami (the route review's "127 mm collapse"), committed with its
-renders. Contracts pinned: OFF (the default) is the shipped engine; the
-helper lifts the ceiling for a text member only and only under the flag;
-ON, every letter sews satin, no letter carries a fill run, the stitches
-fall, the uncovered artwork does not grow, and the regions that are not
-lettering keep their tiers. The cost the flag exposes -- a bold letter's
+renders. Contracts pinned: the helper lifts the ceiling for a text member
+only; every letter sews satin and no letter carries a fill run. (The OFF
+arm's own contrasts -- stitches fall, the other regions keep their tiers,
+the xfail on the crown holes -- went with the flag; the crown holes are
+`satin_crown_cover`'s, `tests/test_crown_cover.py`.) The cost the flag exposes -- a bold letter's
 junction ball sewn as one fanning column (the R: 311 self-crossing pairs)
 -- is DOCTRINE 2026-09-09's "a junction blob is not a column" and is
 recorded in scope-history, not pinned here.
@@ -49,20 +49,8 @@ def _region(text: bool) -> Region:
                   area_mm2=poly.area, meta=meta)
 
 
-def test_the_flag_is_on_by_default():
-    """Built OFF, kept OFF on the R's fanning junction ball, then flipped ON
-    the same day once `satin_junction_stack` took the fold out of the R and
-    the split-satin density finding proved to be the instrument (Kent's
-    calls, 2026-09-19). False is the pre-flip engine, pinned below."""
-    assert PipelineConfig().satin_lettering_split is True
-    assert PipelineConfig(satin_lettering_split=False).satin_lettering_split is False
-
-
-def test_the_helper_lifts_the_ceiling_for_lettering_only_under_the_flag():
+def test_the_helper_lifts_the_ceiling_for_lettering_only():
     cap = machine.SATIN_MAX_WIDTH_MM
-    off = PipelineConfig(satin_lettering_split=False)
-    assert _satin_ceiling_for(_region(True), off, cap) == (cap, off.satin_per_stroke, bool(off.wide_columns))
-    assert _satin_ceiling_for(_region(False), off, cap) == (cap, off.satin_per_stroke, bool(off.wide_columns))
     on = PipelineConfig()
     assert _satin_ceiling_for(_region(True), on, cap) == (math.inf, True, True)
     assert _satin_ceiling_for(_region(False), on, cap) == (cap, on.satin_per_stroke, bool(on.wide_columns))
@@ -99,104 +87,14 @@ def _tiers(plan) -> dict[str, set]:
 
 
 @pytest.fixture(scope="module")
-def off():
-    """The pre-flip engine, explicitly."""
-    assert FIXTURE.exists(), FIXTURE
-    return _plan(FIXTURE, satin_lettering_split=False)
-
-
-@pytest.fixture(scope="module")
 def on():
-    """The default since the flip."""
+    """The shipped engine."""
     return _plan(FIXTURE)
 
 
-def test_on_explicitly_is_the_default(on):
-    _cfg, _r, explicit = _plan(FIXTURE, satin_lettering_split=True)
-    a = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in on[2].iter_runs()]
-    b = [(str(run.kind), run.shape_id, [tuple(p) for p in run.points]) for _b, run in explicit.iter_runs()]
-    assert a == b
-
-
-def test_off_the_wide_word_falls_to_tatami(off):
-    _cfg, result, plan = off
-    letters = [r.shape_id for r in result.regions if r.meta.get("text_candidate")]
-    tiers = _tiers(plan)
-    assert len(letters) >= 5
-    assert sum(1 for s in letters if stitches.FILL in tiers.get(s, set())) >= len(letters) - 1   # 5 of 6 measured
-
-
-def test_on_every_letter_sews_satin_and_none_carries_a_fill(on):
+def test_every_letter_sews_satin_and_none_carries_a_fill(on):
     _cfg, result, plan = on
     letters = [r.shape_id for r in result.regions if r.meta.get("text_candidate")]
     tiers = _tiers(plan)
     assert letters
     assert all(tiers.get(s) == {stitches.SATIN} for s in letters), {s: tiers.get(s) for s in letters}
-
-
-def test_on_the_shapes_that_are_not_lettering_keep_their_tiers(off, on):
-    letters = {r.shape_id for r in on[1].regions if r.meta.get("text_candidate")}
-    t_off, t_on = _tiers(off[2]), _tiers(on[2])
-    others = (set(t_off) | set(t_on)) - letters
-    assert others
-    assert {s: t_off.get(s) for s in others} == {s: t_on.get(s) for s in others}
-
-
-def test_on_the_word_sews_fewer_stitches(off, on):
-    """The half of the old `..._and_nothing_goes_bare` that is still true.
-    9,642 -> 7,753 when measured; 9,600 -> 7,168 on 2026-09-30."""
-    assert on[2].stats.stitch_count < off[2].stats.stitch_count
-
-
-@pytest.mark.xfail(strict=True, reason=(
-    "MEASURED 2026-09-30, not a flaky pin: the split leaves 22.9 mm2 of bare "
-    "artwork in 11 holes where the fill lane leaves none. NOT a case for "
-    "reverting the flip -- `lost_frac` reads 0.2688 fill against 0.1800 "
-    "split -- but 11 crowns to close. MASTER_SCOPE defect 50."))
-def test_on_the_word_goes_bare_where_the_fill_lane_did_not(off, on):
-    """`satin_lettering_split` ON leaves holes the fill lane did not.
-
-    This assertion rode inside `..._and_nothing_goes_bare` and passed for one
-    reason only: `ARTWORK_UNCOVERED` had a 5.0 mm2 floor sitting above the
-    largest patch it could resolve anywhere, so BOTH arms read 0.0 and the
-    comparison could not fail. Measured on the 0.25 mm grid with no erosion
-    (2026-09-30), MARINE at 127.4 mm:
-
-        split OFF   9,600 stitches    5 patches,  0 holes,   0.0 mm2
-        split ON    7,168 stitches   43 patches, 11 holes,  22.9 mm2
-                                     worst 4.31 mm2 @0.75 mm half, fill 0.44
-
-    Rendered before this was written: the holes are at the crowns of curved
-    letters and between letter parts, where the split columns stop short of
-    the artwork — cloth, not a coverage-model artefact.
-
-    **Left as a strict xfail rather than loosened**, because the flag is a
-    shipped default (Kent's flip, 2026-09-19) and these holes are real. It
-    goes green the day the construction closes them, and that is the signal
-    to delete the xfail.
-
-    **Read the next paragraph before treating this as an argument against the
-    flag.** On `lost_frac` -- the metric that killed the 2026-09-30 apex
-    widening, and the one DOCTRINE says to price a lettering change on -- the
-    split is a large WIN, not a loss:
-
-        fill    0.2688  =  unsewn 0.0000  +  overshoot 0.2688
-        split   0.1800  =  unsewn 0.0102  +  overshoot 0.1699
-
-    The fill arm is 100% overshoot and spills more thread outside the artwork
-    than the split leaves bare. A first draft of this docstring read the
-    coverage number alone and framed the flip as the problem; that is the
-    exact error DOCTRINE's "Coverage is not the metric a customer sees" was
-    written about, the same day, by the same session.
-
-    **Neither built rail cure closes these** (measured 2026-09-30):
-    `satin_rails_follow_edge="envelope"` is inert on them -- 11 holes and
-    22.9 mm2 unchanged for +399 stitches, because a crown is narrower than
-    its +-`_ENVELOPE_WINDOW` stations, which is the design limit its own test
-    pins on a synthetic bulge -- and `True` takes 11 -> 9 holes and 22.9 ->
-    18.1 mm2 while pushing `lost_frac` 0.1800 -> 0.1937. Closing them needs a
-    construction that does not spend the split's advantage.
-    """
-    pf_off = run_preflight(off[1], off[2], off[0], image=str(FIXTURE))
-    pf_on = run_preflight(on[1], on[2], on[0], image=str(FIXTURE))
-    assert pf_on["metrics"].get("uncovered_total_mm2", 0.0) <= pf_off["metrics"].get("uncovered_total_mm2", 0.0)

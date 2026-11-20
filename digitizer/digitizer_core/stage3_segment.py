@@ -77,7 +77,7 @@ class RegionMask:
     frame_shape: tuple[int, int]     # (H, W) of the frame it belongs to
     layer: int                       # index into Quant.thread_indices
     source: str = "classical"
-    # Admitted by the dot rung over a stem (`cfg.small_dot_rung_lettering`);
+    # Admitted by the dot rung over a stem (`small_dot_rung_lettering (folded in)`);
     # stages 4 and 7 extend the rung only to such a region when scoped.
     dot_rung: bool = False
     # Kept as a cored counter (`cfg.open_cored_counters`, `cored_counters`):
@@ -247,7 +247,7 @@ def _bbox(mask: np.ndarray) -> tuple[int, int, int, int] | None:
 # along one edge.
 ENCLOSED_PROTECT_OVERLAP = 0.6
 
-# `cfg.small_dot_rung_lettering`: an i/j stem under a dot, in dot heights
+# `small_dot_rung_lettering (folded in)`: an i/j stem under a dot, in dot heights
 # (gap, minimum height) and dot widths (the span of its top `_STEM_MIN_DOTS`
 # dot heights), and how solid that band's rows are. Classification
 # candidates, read off the letter's shape -- not physical constants. The
@@ -793,7 +793,7 @@ def resolve_small_regions(
     # keep getting it. Missing this gate silently broke SAM2's
     # no-usable-regions fallback, which drives four sub-floor blobs with
     # rescue OFF and expects every one to drop.
-    # `chain_rescue` is the LANE gate, separate from `cfg.small_shape_rescue`
+    # `chain_rescue` is the LANE gate, separate from `small_shape_rescue (folded in)`
     # (the user-facing opt-out). The photo segmenters pass False: measured
     # 2026-08-21 on `photo/summit_badge.png`, chaining there moves stage 2 from
     # 34 regions/12 threads to 46/15 and triples the palette's worst excess
@@ -805,7 +805,7 @@ def resolve_small_regions(
     # not by deleting this argument.
     chained = _chained_small_regions(
         regions, areas, boxes, small, min_area_px, height, width, page_fringe
-    ) if (cfg.small_shape_rescue and chain_rescue) else set()
+    ) if chain_rescue else set()
     if chained:
         small = [i for i in small if i not in chained]
     # `cfg.tiny_detail_keep` (built OFF 2026-11-14): a detail made of
@@ -813,8 +813,7 @@ def resolve_small_regions(
     # whole when the pieces together clear the run floors
     # (`_compound_details`). Off, or with no layer colours: as before.
     compound: list[int] = []
-    if (getattr(cfg, "tiny_detail_keep", False) and layer_lab is not None and cfg.small_shape_rescue
-            and cfg.small_dot_rung):
+    if getattr(cfg, "tiny_detail_keep", False) and layer_lab is not None:
         small, compound = _compound_details(
             regions, areas, boxes, small, keep, layer_lab,
             machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2, machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm,
@@ -823,7 +822,7 @@ def resolve_small_regions(
     # built OFF 2026-11-14): a thin stroke of the
     # hosts' own ink, broken into crumbs, that bridges two of them on the
     # page is kept whole (`_stroke_bridges`). Off: as before.
-    if getattr(cfg, "stroke_bridge_keep", False) and layer_lab is not None and cfg.small_shape_rescue:
+    if getattr(cfg, "stroke_bridge_keep", False) and layer_lab is not None:
         small, bridges = _stroke_bridges(
             regions, areas, boxes, small, keep, layer_lab,
             machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2, machine.RUN_MIN_LOOP_MM * px_per_mm)
@@ -847,13 +846,11 @@ def resolve_small_regions(
     # never rescue what geometry would then reject silently.
     noise_area_px = machine.RUN_MIN_AREA_MM2 * px_per_mm ** 2
     loop_floor_px = machine.RUN_MIN_LOOP_MM * px_per_mm
-    # `cfg.small_dot_rung` (default ON, 2026-10-20): the run tier sews a ring down to
+    # `small_dot_rung (folded in)` (default ON, 2026-10-20): the run tier sews a ring down to
     # the dot rung's own floor, so the proxy admits down to it too.
-    dot_floor_px = (machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm
-                    if cfg.small_dot_rung else None)
-    # `cfg.small_dot_rung_lettering` (default ON, 2026-10-20): the rung admits only a
+    dot_floor_px = machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm
+    # `small_dot_rung_lettering` (folded in, 2026-10-20): the rung admits only a
     # dot with a stem under it (`has_stem_below`).
-    dot_scope = bool(cfg.small_dot_rung and cfg.small_dot_rung_lettering)
     keep_contrast = bool(cfg.keep_thin_strokes) and layer_lab is not None
 
     def drawn_edge(i: int, win, sub: np.ndarray, halo: np.ndarray, host: int) -> bool:
@@ -878,7 +875,7 @@ def resolve_small_regions(
                       and layer_lab is None and lab_img is not None)
     # `cfg.detail_spokes` (default OFF): needs the regions' colours, from
     # either source `colour()` reads; with neither, nothing is a mark.
-    spokes_on = bool(cfg.detail_spokes and cfg.small_shape_rescue
+    spokes_on = bool(cfg.detail_spokes
                      and (layer_lab is not None or lab_img is not None))
 
     def clears_run_floors(i: int, box) -> bool:
@@ -886,11 +883,11 @@ def resolve_small_regions(
         thread's own visual weight, and a perimeter (2*max(w, h), a lower
         bound) long enough for the bean run to close a loop."""
         box_h, box_w = box[2] - box[0], box[3] - box[1]
-        return bool(cfg.small_shape_rescue and areas[i] >= noise_area_px
+        return bool(areas[i] >= noise_area_px
                     and 2 * max(box_h, box_w) >= loop_floor_px)
 
     def clears_dot_rung(i: int, box, halo, win) -> bool:
-        """`cfg.small_dot_rung`: a perimeter lower bound at the dot rung's
+        """`small_dot_rung (folded in)`: a perimeter lower bound at the dot rung's
         floor, for a part that stands on its own (an i dot on its ground).
         The bound is the larger of the proxy above and the isoperimetric one,
         2 * sqrt(pi * area) -- still never more than the real ring, and exact
@@ -898,8 +895,7 @@ def resolve_small_regions(
         tenths ringed by other SMALL regions is a hole in a small glyph (the
         8's counter): it is the glyph's own ring that sews it, and keeping it
         as a shape of its own would lay ground-coloured thread in the hole."""
-        if dot_floor_px is None or not (cfg.small_shape_rescue
-                                        and areas[i] >= noise_area_px):
+        if not areas[i] >= noise_area_px:
             return False
         box_h, box_w = box[2] - box[0], box[3] - box[1]
         if max(2 * max(box_h, box_w), 2.0 * math.sqrt(math.pi * areas[i])) < dot_floor_px:
@@ -914,7 +910,7 @@ def resolve_small_regions(
             on_small += int((halo & regions[j].window(wy0, wx0, wy1, wx1)).sum())
         if on_small * 10 >= ring_px * 9:
             return False
-        return (not dot_scope or has_stem_below(i, box)
+        return (has_stem_below(i, box)
                 or (tittle_on and tittle_of_word(i, box, halo, win)))
 
     # `cfg.lone_glyph_keep` (ON since 2026-11-15, Kent's tick): a tittle over a
@@ -922,7 +918,7 @@ def resolve_small_regions(
     # segmenters pass `chain_rescue=False`, and `pipeline` turns the flag off
     # for a photo class quantised on the classical route -- a photo's specks
     # sit inside big same-colour regions everywhere.
-    tittle_on = bool(dot_scope and chain_rescue and getattr(cfg, "lone_glyph_keep", False))
+    tittle_on = bool(chain_rescue and getattr(cfg, "lone_glyph_keep", False))
 
     def ring_owner(i: int, halo, win) -> int | None:
         """The one full-size region of ANOTHER colour holding nine tenths of
@@ -999,7 +995,7 @@ def resolve_small_regions(
         return lab_img[y0:y1, x0:x1][regions[j].crop].mean(axis=0)
 
     def has_stem_below(i: int, box) -> bool:
-        """`cfg.small_dot_rung_lettering`: is there an i/j stem under this
+        """`small_dot_rung_lettering (folded in)`: is there an i/j stem under this
         dot? A region of the same colour (CIE76 within `cfg.merge_delta_e`)
         whose top sits below the dot by at most `_STEM_GAP_DOTS` dot heights
         and that is at least `_STEM_MIN_DOTS` dot heights tall, whose top
@@ -1143,7 +1139,7 @@ def resolve_small_regions(
         floors = clears_run_floors(i, box)
         by_rung = not floors and clears_dot_rung(i, box, halo, (wy0, wx0, wy1, wx1))
         clears = floors or by_rung
-        if by_rung and dot_scope:
+        if by_rung:
             regions[i].dot_rung = True
         if best is None:
             # No neighbour to absorb into: this is isolated artwork, and the

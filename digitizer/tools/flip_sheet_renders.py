@@ -174,20 +174,10 @@ FLAGS: dict[str, dict] = {
     "trim_bury_under_later": {
         "sets": {"trim_bury_under_later": True}, "metric": "under_later",
         "about": "trims whose hop later thread covers", "pr": 1030},
-    "compact_solids_satin": {
-        "sets": {"compact_solids_satin": True}, "metric": "rings",
-        "about": "edge-cap rings (plan roles)", "pr": 1040},
-    "small_solids_satin": {
-        "sets": {"small_solids_satin": True}, "metric": "rings",
-        "about": "edge-cap rings (plan roles)", "pr": 1023},
     "tie_in_off": {
         "kind": "FABRIC",
         "sets": {"tie_in_off": True}, "metric": "locks",
         "about": "run starts that lock", "pr": 1042},
-    "satin_underlay_short_columns": {
-        "kind": "FABRIC",
-        "sets": {"satin_underlay_short_columns": True}, "metric": "short_bare", "xray": True,
-        "about": "satin columns under 5 mm sewn bare", "pr": 1044},
     "lettering_columns_inside_stagger": {
         "sets": {"lettering_columns_inside_stagger": True}, "metric": "stagger",
         "about": "satin inner ends landing in a hole already used (pivot zones found)", "pr": 1058,
@@ -296,16 +286,6 @@ FLAGS: dict[str, dict] = {
                 "loop at 1.75 mm after its fill, in its colour. The pro: MFab one closed column "
                 "1.94 (hat) / 1.86 (LC), Fremont the white ground's edge in two passes at "
                 "1.39-1.73. Becker's letter host gets none (its ring is the satin)."},
-    "fine_bars_satin": {
-        "sets": {"fine_bars_satin": True},
-        "fixtures": ["machine_hat", "hotel_fremont_hat", "precision_drone", "mfab_lc", "mfab_hat",
-                     "bridge_hat", "bridge_lc"],
-        "metric": "run_shapes", "about": "shapes sewn as a plain run ring (plan roles)", "pr": 1101,
-        "note": "Free-standing thin ink bars under the area floor: To a T's speed rules, Fremont's "
-                "separators, the drone's AND DRONE rule, MFab's LLC hairline. The pro satins each; "
-                "ours rings them OFF. Gate-1 caveat (config.py): no width, pull or density moves, "
-                "but whether a ~1 mm bar holds on a cap is the sew-out question small_solids_satin "
-                "already carries -- Kent flipped that one from renders on 10-23 with the same caveat."},
     # ---- wave-3 flips (2026-10-26, Kent: bay mouth "Flip ON", white "A ... alone", "Flip,
     # but prove it first"). Both are ON by default from this PR, so OFF pins both False.
     "wave3_flips": {
@@ -566,8 +546,6 @@ W5: dict[str, dict] = {
     "text_cluster_part_touching": {"ask": True},
     "outline_loop_mitre": {"ask": False, "label": "Kent ruled ON 2026-10-26 (\"Outline corners "
                            "pivot\"); flipped ON by #1121. Wave 3's cells only"},
-    "fine_bars_satin": {"ask": False, "label": "Kent ruled ON 2026-10-26 (\"Fine bars as satin\"); "
-                        "flipped ON by #1121. Wave 3's cells only"},
     "monoline_script_satin": {"ask": False, "label": "HELD by Kent 2026-10-24 (#1070); with "
                               "script_strokes ON (#1136) Tires' script word never reaches it"},
     "silhouette_underfill_rim": {"ask": False, "label": "ON on MFab via #1115; elsewhere waits on "

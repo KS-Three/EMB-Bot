@@ -247,7 +247,7 @@ def _actual_tier(region, c: PipelineConfig) -> str:
     satin_max = c.satin_max_width_mm or SATIN_MAX_WIDTH_MM
     if is_satin_candidate(region.polygon, satin_max):
         return "satin"
-    if c.small_shape_rescue and region.area_mm2 < c.min_detail_mm ** 2:
+    if region.area_mm2 < c.min_detail_mm ** 2:
         return "run"
     return "fill"
 

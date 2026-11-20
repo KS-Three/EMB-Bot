@@ -112,7 +112,6 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent)
                        # re-fits the upscaled outline the cap rings
                        outline_redraw_k=PRE_FLIP["outline_redraw_k"],
-                       satin_lettering_split=False,
                        # ...and the Column lane (`lettering_columns`, ON since
                        # Kent's 2026-10-12 flip): it sews becker's MARINE
                        # letters from their outline, so the edge-cap budget

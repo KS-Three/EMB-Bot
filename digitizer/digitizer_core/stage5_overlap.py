@@ -1042,12 +1042,12 @@ def resolve_overlaps(
     # a fill with no angle of its own keeps the angle it sewed at (`_off_angles`)
     pinned = (_off_angles(regions, fabric, cfg, design_class, hairline)
               if along or keep_gaps or keep_inlets else {})
-    # `cfg.satin_rail_comp` (2026-09-09): a satin-tier shape keeps its
+    # `satin_rail_comp` (folded in, 2026-09-09): a satin-tier shape keeps its
     # artwork polygon here and takes the pull on its rails in stage 6. The
     # tier is read with the same call directional comp uses, for the same
     # reason -- compensation must not be able to flip it. Widened lettering
     # is exempt: its column IS the grown polygon (see `sewn_footprint`).
-    rail_comp = bool(getattr(cfg, "satin_rail_comp", False)) and pull > 0
+    rail_comp = pull > 0
     satin_max = satin_ceiling_mm(cfg)
     axis_by_id: dict[str, float | None] = {}
     satin_by_id: dict[str, bool] = {}

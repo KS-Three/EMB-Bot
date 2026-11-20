@@ -58,15 +58,6 @@ def region(poly: Polygon, sid: str = "S0", layer: int = 0) -> Region:
 
 
 def planned_for(poly: Polygon, directional: bool, fabric=PIQUE, **kw):
-    # On the polygon-growth path, explicitly, since `satin_rail_comp` went ON
-    # by default (2026-09-29, Kent's pick): every reading in this file is of
-    # the pull that stage 5 grows INTO the polygon and stage 6 then sews --
-    # `column_of` hands `satin_shape` stage 5's polygon and nothing else. On
-    # the rails the polygon is the artwork and the pull is stage 7's to pass
-    # (`rail_comp_mm`), so through this harness a bar reads no overhang at
-    # all and its caps stop at the artwork. That hand-off, and the cutback it
-    # owes, are pinned in `tests/test_rail_comp.py`.
-    kw.setdefault("satin_rail_comp", False)
     c = PipelineConfig(overlap_mm=0.25, directional_comp=directional, **kw)
     planned, _ = resolve_overlaps([region(poly)], fabric, c)
     return planned[0], c

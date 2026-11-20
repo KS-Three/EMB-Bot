@@ -51,7 +51,7 @@ def run():
     # `lettering_columns` likewise held at its pre-flip `False` (ON since Kent's
     # 2026-10-12 flip): the lane sews the MARINE letters as columns, not fill,
     # so the exposed bridges this census needs are not there.
-    cfg = PipelineConfig(target_width_mm=80.0, satin_lettering_split=False,
+    cfg = PipelineConfig(target_width_mm=80.0,
                          work_px_per_mm=None, lettering_columns=False)
     result, plan = digitize(ART, cfg)
     return result, plan, cfg

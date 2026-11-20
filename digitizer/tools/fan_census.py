@@ -76,8 +76,6 @@ ARMS: dict[str, dict] = {
     "both": {"satin_join_square": True, "lettering_columns": True},
     # defect 59's cure (2026-10-08): a tip must land on a convex corner
     "corner_gate": {"satin_tip_corner_gate": True},
-    # the null gate, for what the corner gate keeps: no tip caps at all
-    "tipcaps_off": {"satin_tip_caps": False},
 }
 ORDER = ["becker", "bridge", "gaulke", "drone", "enthusiast", "fremont", "tires"]
 

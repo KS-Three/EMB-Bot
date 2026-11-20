@@ -148,8 +148,7 @@ def _becker_coverage(monkeypatch, guard: bool) -> tuple[float, float]:
     # Column lane cuts Becker's letters from their outline and never reaches
     # the skeleton tier's fold guard, so the guard's reading needs the tier.
     cfg = PipelineConfig(target_width_mm=_FOLD_WIDTH_MM, wide_columns=True,
-                         satin_corner_twigs=False, satin_junction_stack=False,
-                         satin_rail_comp=False, satin_rails_follow_edge=False,
+                         satin_rails_follow_edge=False,
                          letterform_priors_k=None, lettering_columns=False,
                          # ... and an EIGHTH, 2026-10-27: the white-keyline recipe on every
                          # job sews Becker's band as a ground under the letters (more layers

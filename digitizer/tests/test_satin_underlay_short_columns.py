@@ -1,4 +1,5 @@
-"""`cfg.satin_underlay_short_columns` (2026-10-22, built OFF): the centre run
+"""`satin_underlay_short_columns` (2026-10-22, built OFF, ON since 2026-10-23,
+folded into the code 2026-11-19): the centre run
 the pro puts under his short satin columns, under ours.
 
 Read on his 27 job DSTs with `tools/pro_satin_underlay.py` (the 3D puff
@@ -8,10 +9,9 @@ bare two ways -- a shape whose artwork extent is under
 `machine.SATIN_UNDERLAY_MIN_EXTENT_MM` sews every column bare (stage 7, law
 50's first rung), and a stroke whose spine is under
 `machine.UNDERLAY_STITCH_MM` gets no run (`stage6_satin._stroke_underlay`).
-Underlay is a physical constant (ROADMAP gate 1), so the flag waits on a
-sew-out and Kent's flip; OFF is the engine byte for byte, and the OFF md5
-pins elsewhere (`test_detail_spokes.FREMONT_80_OFF_MD5`,
-`test_column_small_bold.OFF_LANE_MD5`) are what guard that.
+Underlay is a physical constant (ROADMAP gate 1). The emitters keep their
+`short_columns` argument, so the function-level tests below still read both
+arms; the pipeline always passes it.
 """
 from __future__ import annotations
 
@@ -37,10 +37,6 @@ def _underlay(runs):
 
 def _length(r) -> float:
     return sum(math.dist(a, b) for a, b in zip(r.points, r.points[1:]))
-
-
-def test_default_is_on_since_2026_10_23():
-    assert PipelineConfig().satin_underlay_short_columns is True
 
 
 def test_off_a_2mm_column_sews_bare_and_on_it_carries_a_centre_run():
@@ -96,24 +92,16 @@ def _plan(**cfg_kw):
     return [r for b in blocks for r in b.runs]
 
 
-def test_a_small_shape_keeps_the_fabric_s_underlay_only_under_the_flag():
+def test_a_small_shape_keeps_the_fabric_s_underlay():
     assert machine.SATIN_UNDERLAY_MIN_EXTENT_MM == 5.0, "the rung this test is written against"
-    off = _plan(satin_underlay_short_columns=False)
-    on = _plan(satin_underlay_short_columns=True)
-    assert [r.points for r in on] == [r.points for r in _plan()], "ON is the default since 2026-10-23"
-    assert stitches.SATIN in {r.kind for r in off}, "the letter is satin to begin with"
-    assert not _underlay(off), "law 50's first rung: a 4 mm shape sews bare"
-    assert _underlay(on), "ON: the structured cap's centre run goes under it"
-    sat_on = [stitches.strip_ties(r.points) for r in on if r.kind == stitches.SATIN]
-    sat_off = [stitches.strip_ties(r.points) for r in off if r.kind == stitches.SATIN]
-    assert len(sat_on) == len(sat_off) == 1
-    # the same crosses (the lock legs move to the run that now leads in),
-    # entered at the end the run leaves it at, so reversed
-    assert sat_on[0] in (sat_off[0], sat_off[0][::-1]), "the satin does not move"
+    on = _plan()
+    assert stitches.SATIN in {r.kind for r in on}, "the letter is satin to begin with"
+    assert _underlay(on), "the structured cap's centre run goes under a 4 mm shape (law 50's rung lifted)"
+    assert len([r for r in on if r.kind == stitches.SATIN]) == 1
 
 
 def test_underlay_off_still_means_none():
-    assert not _underlay(_plan(satin_underlay_short_columns=True, underlay=False))
+    assert not _underlay(_plan(underlay=False))
 
 
 # --- the Column lane's own floor ------------------------------------------

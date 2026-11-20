@@ -85,7 +85,6 @@ SITTINGS: dict[str, dict] = {
                  "area_weighted": {"classify_area_weighted": True},
                  "design_angle": {"design_angle": True},
                  "rails_follow_edge": {"satin_rails_follow_edge": True},
-                 "rail_comp": {"satin_rail_comp": True},
                  "wide_columns": {"wide_columns": True},
                  "lettering_column": {"lettering_min_column_mm": 1.0},
                  "phantom_dissolve": {"dissolve_phantom_blends": True},
@@ -100,7 +99,7 @@ SITTINGS: dict[str, dict] = {
                      "arms": {"split_7mm": {"split_satin_above_mm": 7.0},
                               "rails_symmetric": {"satin_rails_follow_edge": False}}},
     # README: main 28c893e3 plus `satin_crown_cover` ON (63c56ffa, then local to its lane)
-    "off-flags-1003": {"tree": "82c9838d", "base": {"satin_crown_cover": True},
+    "off-flags-1003": {"tree": "82c9838d", "base": {},
                        "arms": {"cap_recentre": {"satin_cap_recentre": True},
                                 "bean_letters": {"bean_letter_max_stroke_mm": 1.0},
                                 "split_off": {"split_satin": False}}},

@@ -1,5 +1,6 @@
-"""`cfg.small_dot_rung_lettering` (built OFF 2026-10-15): the dot rung
-(`cfg.small_dot_rung`, itself OFF) scoped to lettering. PR #939's catch was
+"""`small_dot_rung_lettering` (built OFF 2026-10-15, ON 2026-10-20, folded into
+the code 2026-11-19): the dot rung (`small_dot_rung`, folded with it) scoped to
+lettering. PR #939's catch was
 that stage 3 cannot tell an i dot from a photo speck; with no tagger at
 stage 3, the scope is geometric -- a part is admitted through the rung only
 over a SAME-COLOUR stem (`stage3_segment.has_stem_below`). The rung's numbers
@@ -8,9 +9,8 @@ and `machine.RUN_MIN_LOOP_MM` are untouched (ROADMAP gate 1);
 
 Pinned here: stage 3 keeps a dot over its stem and drops a speck (no stem, a
 stem of another colour, a block too wide to be a stem, no colour known); the
-scope is inert without the rung; the synthetic i/j words' dots all sew with
-the scope at 60 and 80 mm, byte-identical to the rung alone; and the OFF and
-rung-ON-without-scope paths are byte-identical (md5).
+synthetic i/j words' dots all sew at 60 and 80 mm; and the flat-lane goldens
+stay byte-identical (md5).
 """
 from __future__ import annotations
 
@@ -27,11 +27,9 @@ from digitizer_core.threads import rgb_to_lab
 from .conftest import FLAT_GOLDEN_MD5, TESTDATA
 
 
-def test_flag_defaults_on_and_the_rung_is_untouched():
-    """Both ON since 2026-10-20 (Kent's flip of the rung, scoped: PR #991
+def test_the_rung_is_untouched():
+    """Both shipped ON 2026-10-20 (Kent's flip of the rung, scoped: PR #991
     showed the unscoped rung burying Fremont's Wisconsin star)."""
-    cfg = PipelineConfig()
-    assert cfg.small_dot_rung_lettering is True and cfg.small_dot_rung is True
     assert machine.RUN_MIN_LOOP_MM == 2.2
     assert machine.DOT_RUNG_STITCH_MM == 0.45 and machine.DOT_RUNG_PASSES == 3
     assert machine.DOT_RUNG_MIN_LOOP_MM == pytest.approx(1.35)
@@ -71,8 +69,8 @@ def _scene(stem_layer: int = 1, stem_width: int = 18, panel: bool = True):
             RegionMask.from_full(stem, stem_layer), RegionMask.from_full(speck, 1)]
 
 
-def _kept(regions, *, rung=True, scope=True, colours=True, lab_img=None):
-    cfg = PipelineConfig(small_dot_rung=rung, small_dot_rung_lettering=scope)
+def _kept(regions, *, colours=True, lab_img=None):
+    cfg = PipelineConfig()
     kept, _w = resolve_small_regions(regions, cfg, PX,
                                      layer_lab=rgb_to_lab(RGB) if colours else None,
                                      lab_img=lab_img)
@@ -89,21 +87,9 @@ def test_the_scene_is_in_the_rungs_band():
     assert regions[2].area >= (PipelineConfig().min_detail_mm * PX) ** 2   # the stem is full size
 
 
-def test_rung_on_without_scope_keeps_dot_and_speck_alike():
-    """The rung as #939 built it: unchanged by this flag."""
-    _panel, dot, _stem, speck = _kept(_scene(), scope=False)
-    assert dot and speck
-
-
 def test_scope_keeps_the_dot_and_drops_the_speck():
     _panel, dot, stem, speck = _kept(_scene())
     assert dot and stem and not speck
-
-
-def test_scope_is_inert_without_the_rung():
-    for scope in (False, True):
-        _panel, dot, _stem, speck = _kept(_scene(), rung=False, scope=scope)
-        assert not dot and not speck
 
 
 def test_a_stem_of_another_colour_is_no_stem():
@@ -132,8 +118,6 @@ def test_a_nub_that_widens_is_no_stem():
 
 def test_no_colour_known_admits_nothing():
     """On no ground (so the dot is not absorbed either way), with no colour."""
-    _g, dot, _stem, speck = _kept(_scene(panel=False), scope=False, colours=False)
-    assert dot and speck                                     # the rung alone keeps both
     _g, dot, _stem, speck = _kept(_scene(panel=False), colours=False)
     assert not dot and not speck
 
@@ -159,23 +143,22 @@ def _word_cases(tmp_path):
     return [c for c in dot_cases(tmp_path) if c[0].split()[-1] == WORD]
 
 
-def test_the_word_dots_all_sew_with_the_scope_as_with_the_rung(tmp_path):
+def test_the_word_dots_all_sew(tmp_path):
     import tools.small_dot_rung as sdr
     cases = _word_cases(tmp_path)
     assert len(cases) == 2                                     # 80 and 60 mm
     real = sdr.dot_cases
     sdr.dot_cases = lambda _tmp: cases
     try:
-        on, scope = sdr.dots("on", tmp_path), sdr.dots("scope", tmp_path)
+        scope = sdr.dots("scope", tmp_path)
     finally:
         sdr.dot_cases = real
-    for a, b in zip(on, scope):
-        assert a["dots_in_art"] == b["dots_in_art"] == 4
+    for b in scope:
+        assert b["dots_in_art"] == 4
         assert b["dots_sewn"] == 4 and b["dropped_small_shapes"] == 0
-        assert b["md5"] == a["md5"]
 
 
-# --- OFF, and the rung without the scope, are byte-identical --------------------------
+# --- the goldens stay byte-identical ---------------------------------------------------
 
 GOLDEN_MD5 = FLAT_GOLDEN_MD5
 
@@ -185,13 +168,11 @@ def _md5(coords) -> str:
 
 
 @pytest.mark.parametrize("fixture", sorted(GOLDEN_MD5))
-@pytest.mark.parametrize("rung,scope", [(False, True), (True, False), (True, True)])
-def test_goldens_are_byte_identical_in_every_arm(fixture, rung, scope):
+def test_goldens_are_byte_identical(fixture):
     golden = json.loads((TESTDATA / "flat_lane_golden.json").read_text(encoding="utf-8"))[fixture]
     assert _md5(golden["stitch_coords"]) == GOLDEN_MD5[fixture]
     _result, plan = digitize(TESTDATA / fixture,
-                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False,
-                                            small_dot_rung=rung, small_dot_rung_lettering=scope))
+                             PipelineConfig(target_width_mm=80.0, edge_cap="none", sew_enclosed_white=False))
     coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
               for _, r in plan.iter_runs() for x, y in r.points]
     assert _md5(coords) == GOLDEN_MD5[fixture]

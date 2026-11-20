@@ -580,17 +580,6 @@ PRE_FLIP["keep_thin_strokes"] = False
 # across two fixtures to keep a number green would have been the
 # fit-to-output move this repo's doctrine warns about.
 PRE_FLIP["strip_letterbox"] = False
-# `satin_rail_comp` joined the flipped set 2026-09-29 (Kent's pick on the
-# labelled sitting, `docs/kent-review-2026-09-28.md`), for the reason every
-# entry above gives: ON, a satin-tier shape keeps its artwork polygon in
-# stage 5 and takes the fabric's pull on its rails in stage 6, so every satin
-# column's crosses, caps, underlay and trims move -- and an arm measured
-# before that day was measured on the grown polygon. Measured at the flip:
-# left ON, 29 tests across 14 files moved (`docs/kent-review-2026-09-28.md`,
-# "Outcome"); none of them reads this dict, so the entry is the posture, kept
-# for the next test that prices a colour flag on a satin fixture. A test that
-# is ABOUT the rails is `tests/test_rail_comp.py` and names the flag itself.
-PRE_FLIP["satin_rail_comp"] = False
 # `stage0_texture_gate` joined the flipped set 2026-10-28 (built ON, Kent's
 # "ON by default (Recommended)"), for the reason every entry above gives: ON,
 # an opaque photograph or steep-ramp raster that read `gradient` on the grain
@@ -822,9 +811,6 @@ FLIP_2026_10_23 = {
     "fill_turn_slant": False,
     "trim_bury_under_later": False,
     "tie_in_off": False,
-    "small_solids_satin": False,
-    "compact_solids_satin": False,
-    "satin_underlay_short_columns": False,
     "fill_underlay_cross": False,
     "small_text_cap_mm": None,
     "small_text_cap_max_width_scale": None,
@@ -893,8 +879,6 @@ PRE_FLIP["lettering_columns_small_stem"] = False
 # its rails, not its spine's chord, so an italic wordmark's arms move. False
 # is the pre-flip lane. The tests ABOUT it are `tests/test_column_rail_axis.py`.
 PRE_FLIP["lettering_columns_rail_axis"] = False
-PRE_FLIP["small_dot_rung"] = False
-PRE_FLIP["small_dot_rung_lettering"] = False
 # The photo lane's phantom-blend dissolve (defect 27; Kent banked it OFF
 # 2026-09-04 and flipped it ON 2026-10-20, MASTER_SCOPE item 46, on PR
 # #1003's pricing): a merged label that is mostly boundary and a blend of its
@@ -957,16 +941,14 @@ FLIP_2026_10_30 = {"fill_bridge_cut_exposed": False, "fill_seam_order": False,
 FLIP_2026_10_26 = {"small_text_bay_mouth": False, "sew_enclosed_white": False,
                    "small_text_reset_grow_away": False, "script_strokes": False}
 PRE_FLIP.update(FLIP_2026_10_26)
-# `fine_bars_satin` (#1101) and `outline_loop_mitre` (#1059's loops, built
-# 2026-10-25), Kent's flips on the wave-3 flip sheet 2026-10-26: "Fine bars
-# as satin" and "Outline corners pivot". False is the engine before the
-# flip; the tests ABOUT them are `tests/test_fine_bars_satin.py` and
-# `tests/test_outline_loop_mitre.py`.
-PRE_FLIP["fine_bars_satin"] = False
+# `outline_loop_mitre` (#1059's loops, built 2026-10-25), Kent's flip on the
+# wave-3 flip sheet 2026-10-26: "Outline corners pivot" (`fine_bars_satin`,
+# the sheet's other flip, was folded into the code 2026-11-19). False is the
+# engine before the flip; the test ABOUT it is `tests/test_outline_loop_mitre.py`.
 PRE_FLIP["outline_loop_mitre"] = False
-#: The two, OFF: for a test that pins a number either flip moved but that is
+#: The one, OFF: for a test that pins a number the flip moved but that is
 #: ABOUT something else (spread into a PipelineConfig).
-WAVE3_2026_10_26_OFF = {k: PRE_FLIP[k] for k in ("fine_bars_satin", "outline_loop_mitre")}
+WAVE3_2026_10_26_OFF = {k: PRE_FLIP[k] for k in ("outline_loop_mitre",)}
 # Kent's flips on the wave-5 flip sheet 2026-10-27 (#1140):
 # `bean_ink_outlined_letters` (#1128) with `text_cluster_part_touching` ("Both
 # ON (Recommended)": each alone leaves a letter of MFab LC's AND hollow) and

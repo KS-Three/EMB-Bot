@@ -193,7 +193,7 @@ def marine() -> Path:
 # ... and on the skeleton tier: the Column lane (`lettering_columns`, ON by
 # default since Kent's 2026-10-12 flip) sews MARINE's letters with its own
 # Euler walk, so the skeleton walk this file prices needs the lane held off.
-PRE_TWIGS = dict(satin_corner_twigs=False, lettering_columns=False)
+PRE_TWIGS = dict(lettering_columns=False)
 
 
 def _plan(art: Path, **kw):

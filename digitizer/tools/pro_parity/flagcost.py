@@ -65,9 +65,6 @@ FLAGS: dict[str, object] = {
     "fill_turn_slant": False,
     "trim_bury_under_later": False,
     "tie_in_off": False,
-    "small_solids_satin": False,
-    "compact_solids_satin": False,
-    "satin_underlay_short_columns": False,
     "fill_underlay_cross": False,
     "small_text_cap_mm": None,
     "small_text_cap_max_width_scale": None,
@@ -80,8 +77,6 @@ FLAGS: dict[str, object] = {
     "detail_spoke_scale": None,             # 2026-10-20, Kent: "Star is too big" (half)
     "subpixel_corner_runs": False,          # 2026-10-20, Kent's flip (item 41)
     "lettering_columns_small_stem": False,  # 2026-10-20, Kent's flip (item 52)
-    "small_dot_rung": False,                # 2026-10-20, Kent's flip (item 52)
-    "small_dot_rung_lettering": False,      # 2026-10-20, flipped with the rung
     "clip_keep_pieces": False,              # 2026-10-20, Kent's flip (item 46, after the halo lever)
     "dissolve_phantom_blends": False,       # 2026-10-20, Kent's flip (item 46, PR #1003)
     "detail_spokes": False,                 # 2026-10-16, Kent's flip ("ON, tightened")

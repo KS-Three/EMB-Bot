@@ -66,10 +66,6 @@ def rescued():
                     PipelineConfig(target_width_mm=80.0, garment_id="left_chest", bean_only_lines=False))
 
 
-def test_rescue_is_the_default():
-    assert PipelineConfig().small_shape_rescue is True
-
-
 def test_small_isolated_text_sews_instead_of_vanishing(rescued):
     """THE defect: sub-detail letters with no neighbour to absorb into were
     dropped outright, and a whole line of a customer's logo vanished."""
@@ -115,25 +111,6 @@ def test_noise_below_thread_weight_still_drops_and_is_reported(rescued):
     # ... and the reportable one still fires the honest drop warning.
     dropped = next(w for w in plan.warnings if w["code"] == DROPPED_SMALL_SHAPES)
     assert dropped["count"] == 1, "the 1.0 mm dot is genuinely dropped artwork"
-
-
-def test_rescue_off_restores_the_old_drop():
-    """The escape hatch: small_shape_rescue=False must reproduce the old
-    behaviour exactly — shapes dropped, warned, and no run stitches anywhere."""
-    result, plan = digitize(
-        _subline_image(),
-        PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
-                       small_shape_rescue=False))
-    assert len(result.regions) == 1, "only the wordmark survives without rescue"
-    # The design-silhouette cap also emits `kind="run"` (its bean tier), and
-    # it is ON by default since 2026-09-11 — a different pass on different
-    # geometry, so it is excluded by shape_id rather than by turning the cap
-    # off, which would stop this test exercising the shipped engine.
-    assert not [r for _b, r in plan.iter_runs()
-                if r.kind == "run" and r.shape_id != "__edge_cap__"]
-    dropped = next(w for w in plan.warnings if w["code"] == DROPPED_SMALL_SHAPES)
-    assert dropped["count"] == 7, "six bars and the dot, all reportable-sized"
-    assert SMALL_SHAPES_AS_RUN not in {w["code"] for w in plan.warnings}
 
 
 def test_sub_detail_glyphs_survive_simplification():
@@ -303,12 +280,6 @@ def test_a_shape_no_tier_can_stitch_sews_its_outline():
         planned, fabric, PipelineConfig(satin=False, underlay=False))
     assert {r.kind for b in blocks for r in b.runs} >= {"run"}
     assert SMALL_SHAPES_AS_RUN in {w["code"] for w in warnings}
-
-    blocks_off, warnings_off = sequence(
-        planned, fabric,
-        PipelineConfig(satin=False, underlay=False, small_shape_rescue=False))
-    assert not blocks_off, "without rescue this shape produced nothing"
-    assert SHAPE_NOT_STITCHED in {w["code"] for w in warnings_off}
 
 
 def test_run_outline_is_a_closed_bean_circuit():

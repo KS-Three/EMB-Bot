@@ -59,22 +59,6 @@ def _cfg(**kw) -> PipelineConfig:
     # wants the cover to cost thread; the finding is still cleared either
     # way. The cover is priced on the rails it was measured on.
     kw.setdefault("satin_rails_follow_edge", False)
-    # `satin_corner_twigs` held OFF for the same reason (Kent's 2026-09-19
-    # flip): the corner rule re-decomposes the arms the cover patches, and on
-    # Becker at 80 mm the satin cover then clears the finding at a net -1
-    # stitch (6,528 -> 6,527) instead of adding thread -- the mechanism is
-    # measured on the decomposition it was built on.
-    kw.setdefault("satin_corner_twigs", False)
-    # `satin_junction_stack` held OFF too (Kent's 2026-09-19 flip, the same
-    # day): its part C composes this very cover under the arms by default,
-    # so OFF and ON would sew the same cover and this file's contrast -- the
-    # cover alone against no cover -- would read nothing.
-    kw.setdefault("satin_junction_stack", False)
-    # `satin_crown_cover` held OFF as well (Kent's 2026-10-02 flip): it IS this
-    # cover with the junction gate removed, on every satin shape, so with it ON
-    # the "off" arm already sews the cover and the contrast reads nothing --
-    # the same reason as the stack above.
-    kw.setdefault("satin_crown_cover", False)
     # ... and on the skeleton tier: the Column lane (`lettering_columns`, ON
     # by default since Kent's 2026-10-12 flip) sews the letters this file's
     # tatami patch lies under, from their outline, with no patch to fire.

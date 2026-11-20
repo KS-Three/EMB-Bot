@@ -54,14 +54,6 @@ TOL_MM = 0.35
 # --- the fixture ------------------------------------------------------------
 
 def _run(**kw):
-    # On the grown polygon, explicitly, since `satin_rail_comp` went ON by
-    # default (2026-09-29, Kent's pick on the labelled sitting): every number
-    # this file prices was measured with the pull in the polygon, and on the
-    # rails the fixture itself moves -- 1,784 -> 2,058 stitches and 9 -> 22
-    # trims at the default, letter-to-shape hops 3 -> 6 (measured 2026-09-29,
-    # `tests/test_rail_comp.py` pins the price). The flag under test here is
-    # priced on the engine it was read on; the rails' own cost is pinned there.
-    kw.setdefault("satin_rail_comp", False)
     # Same for `satin_rails_follow_edge`, "envelope" by default since #567
     # (2026-09-30, Kent's pick). The envelope lowers BOTH arms' uncovered
     # area but the capped arm more -- 16.8 -> 13.9 OFF, 17.6 -> 16.7 ON
@@ -69,11 +61,6 @@ def _run(**kw):
     # against +4.8% here, while its absolute ON figure still improves. The
     # envelope's own price belongs to its own tests, not to this flag's.
     kw.setdefault("satin_rails_follow_edge", False)
-    # And `satin_crown_cover`, ON by default since Kent's 2026-10-02 flip: it
-    # sews the wedges no stroke claims, which is the uncovered area and the
-    # stitch count this file's two arms are compared on. The cover's own price
-    # is pinned in `tests/test_crown_cover.py`.
-    kw.setdefault("satin_crown_cover", False)
     # And on the skeleton tier: the Column lane (`lettering_columns`, ON by
     # default since Kent's 2026-10-12 flip) takes the letters ahead of the
     # edge cap this file prices. Its own cap behaviour is pinned in
@@ -244,27 +231,6 @@ def _cap_block(plan):
         if any(r.shape_id == "__edge_cap__" for r in b.runs):
             return b
     return None
-
-
-def test_a_fill_sewn_text_candidate_keeps_its_cap():
-    """A 20 mm-wide "letter" fills (over the satin ceiling), and its rows
-    end in open air at its edge — the defect the cap exists for. ON is
-    byte-identical to OFF, cap included.
-
-    Pinned on `satin_lettering_split=False`: since step 4 flipped ON
-    (2026-09-19) a text candidate never fills by default — it splits as
-    satin — so the fill-sewn letter this test is about exists only on the
-    pre-flip engine. The case is still real there and the cap still owes it.
-    Likewise `lettering_columns=False` (ON by default since 2026-10-12): the
-    Column lane would sew this "letter" as a column, not a fill."""
-    slab = [_region(_bar(20, 30), "T", 3, 0, {"text_candidate": True})]
-    off = _plan_for(slab, edge_cap_skip_lettering=False, satin_lettering_split=False,
-                    lettering_columns=False)
-    on = _plan_for(slab, satin_lettering_split=False, lettering_columns=False)
-    kinds = {str(r.kind) for b in off.blocks for r in b.runs if r.shape_id == "T"}
-    assert str(stitches.FILL) in kinds, kinds
-    assert _cap_block(off) is not None, "a lone fill should be capped"
-    assert _points(on) == _points(off)
 
 
 def test_a_design_with_no_lettering_is_untouched():

@@ -93,7 +93,6 @@ def run(tmp_path_factory, word, small_stem, guard=False):
                          **FLIP_2026_10_23, **EDGE_WALK_2026_11_14_OFF,
                          lettering_columns_square_ends=False,
                          lettering_columns_inside_connectors=False,
-                         small_dot_rung=False,
                          lettering_columns_small_stem=small_stem,
                          **LETTERING_2026_10_24_OFF,        # the 2026-10-24 flips, as pinned
                          **GROUP_2026_11_14_OFF,

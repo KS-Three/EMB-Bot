@@ -455,11 +455,10 @@ def _md5(plan) -> str:
 
 @pytest.fixture(scope="module")
 def word():
-    # The small stem and the scoped dot rung (ON 2026-10-20, Kent) re-walk
-    # the e beside the i, which moves its one 45-degree fold; the fold-cut
-    # arms were measured without them (conftest.PRE_FLIP).
+    # The small stem (ON 2026-10-20, Kent) re-walks the e beside the i, which
+    # moves its one 45-degree fold; the fold-cut arms were measured without
+    # it (conftest.PRE_FLIP).
     kw = dict(target_width_mm=80.0, forced_class="flat", lettering_columns_small_stem=False,
-              small_dot_rung=False, small_dot_rung_lettering=False,
               **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,     # nor with the 2026-10-23/24 flips
               **EDGE_WALK_2026_11_14_OFF,     # nor edge-walk (ON 2026-11-14): one more trim on the word
               **TEXT_GAPS_2026_11_15_OFF)     # nor the six 2026-11-15 text/gap flips

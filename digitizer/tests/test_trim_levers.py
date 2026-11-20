@@ -11,7 +11,7 @@ within-letter hop, and the hop from a stroke's underlay to its own column
 Two levers, one flag each, both BUILT OFF, and lever 1 FLIPPED ON the same
 day on Kent's call (lever 2 stays OFF):
 
-* `cfg.satin_exit_toward_next` -- stage 7 hands the emitter the nearest
+* `satin_exit_toward_next` (folded into the code 2026-11-19) -- stage 7 hands the emitter the nearest
   point of the shape it will sew next and the walk picks its (start, end)
   odd-node pair to minimise the entry hop plus the exit hop
   (`_euler_stroke_order(end_near=...)`).
@@ -23,8 +23,8 @@ day on Kent's call (lever 2 stays OFF):
 Measured on the fixture (2026-09-19): 13 trims -> 9 with the exit lever
 (letter-to-letter 6 -> 3, the typed word's 3) at 1,969 -> 1,953 stitches;
 -> 12 with the underlay lever at 2,146; -> 8 with both at 2,132. Pinned as
-directions and floors. `satin_exit_toward_next=False` is the pre-flip
-walk byte for byte; explicit True is the default.
+directions and floors. The pre-flip walk (`end_near=None`) is still what
+`_euler_stroke_order` does without an `end_near`, pinned at function level.
 """
 from __future__ import annotations
 
@@ -46,19 +46,6 @@ pytestmark = pytest.mark.filterwarnings("ignore::DeprecationWarning")
 
 
 def _run(**kw):
-    # On the grown polygon, explicitly, since `satin_rail_comp` went ON by
-    # default (2026-09-29, Kent's pick on the labelled sitting): every number
-    # this file prices was measured with the pull in the polygon, and on the
-    # rails the fixture itself moves -- 1,784 -> 2,058 stitches and 9 -> 22
-    # trims at the default, letter-to-shape hops 3 -> 6 (measured 2026-09-29,
-    # `tests/test_rail_comp.py` pins the price). The flag under test here is
-    # priced on the engine it was read on; the rails' own cost is pinned there.
-    kw.setdefault("satin_rail_comp", False)
-    # And without the crown cover (`satin_crown_cover`, ON since Kent's
-    # 2026-10-02 flip): the cover is thread of its own in a shape, and the
-    # trim counts this file holds its two levers to were read without it.
-    # Its price is `tests/test_crown_cover.py`'s.
-    kw.setdefault("satin_crown_cover", False)
     # And on the skeleton tier, explicitly: `lettering_columns` went ON by
     # default 2026-10-12 (Kent), and the Column lane sews MARINE's letters with
     # its own walk, so the two levers priced here (the skeleton walk's exit and
@@ -102,21 +89,9 @@ def _trims_by_cause(result, plan) -> dict[str, int]:
 
 
 @pytest.fixture(scope="module")
-def off():
-    """The pre-flip engine, explicitly: neither lever."""
-    return _run(satin_exit_toward_next=False)
-
-
-@pytest.fixture(scope="module")
 def exit_on():
-    """The default since the flip."""
+    """The shipped walk (the exit lever folded in), the baseline the underlay lever is priced against."""
     return _run()
-
-
-@pytest.fixture(scope="module")
-def underlay_on():
-    """Lever 2 alone, on the pre-flip walk."""
-    return _run(satin_exit_toward_next=False, satin_underlay_on_column=True)
 
 
 @pytest.fixture(scope="module")
@@ -126,19 +101,11 @@ def both_on():
 
 # --- the flags -----------------------------------------------------------------
 
-def test_lever_one_is_on_and_lever_two_off_by_default():
-    """Built OFF and flipped the same day -- Kent's call over the numbers in
-    the module docstring. False stays reachable: it is the pre-flip walk,
-    pinned by the `off` fixture here."""
-    cfg = PipelineConfig()
-    assert cfg.satin_exit_toward_next is True
-    assert cfg.satin_underlay_on_column is False
-
-
-def test_explicit_on_is_the_default_byte_for_byte(exit_on):
-    _r, default = exit_on
-    _r2, explicit = _run(satin_exit_toward_next=True, satin_underlay_on_column=False)
-    assert _points(explicit) == _points(default)
+def test_lever_two_is_off_by_default():
+    """Lever one shipped ON the day it was built (Kent's call over the numbers
+    in the module docstring) and is folded into the code; lever two is still
+    a flag, OFF."""
+    assert PipelineConfig().satin_underlay_on_column is False
 
 
 # --- the exit lever: the walk ends facing the next letter ------------------------
@@ -181,16 +148,15 @@ def test_without_end_near_the_walk_is_the_shipped_one():
     assert explicit == plain
 
 
-def test_the_exit_lever_takes_the_letter_hops_down_to_the_typed_words(off, exit_on):
-    """13 -> 9 trims, letter-to-letter 6 -> 3 measured; the typed word's 3."""
-    r_off, p_off = off
+def test_the_exit_lever_takes_the_letter_hops_down_to_the_typed_words(exit_on):
+    """13 -> 9 trims, letter-to-letter 6 -> 3 measured when the lever went
+    ON (the OFF arm is gone from the config); the typed word's 3. On the
+    folded engine, with rail comp, tip caps and the crown cover riding along,
+    it reads 5 (re-measured 2026-11-19): still under the 6 the lever started
+    from."""
     r_on, p_on = exit_on
-    hops_off = _trims_by_cause(r_off, p_off).get("letter-to-shape", 0)
     hops_on = _trims_by_cause(r_on, p_on).get("letter-to-shape", 0)
-    assert hops_off >= 5, hops_off
-    assert hops_on <= 3, hops_on
-    assert p_on.stats.trims <= p_off.stats.trims - 3
-    assert p_on.stats.stitch_count <= p_off.stats.stitch_count + 20
+    assert hops_on <= 5, hops_on
 
 
 # --- the underlay lever: the underlay ends where the column enters ---------------
@@ -224,34 +190,37 @@ def test_on_a_bar_the_underlay_reaches_the_columns_first_cross(flag):
         assert gap >= machine.TINY_STITCH_MM, gap
 
 
-def test_the_underlay_lever_removes_the_underlay_to_column_trims(off, underlay_on):
-    """Four on the fixture OFF (3.3-4.2 mm hops on its split columns); none ON."""
-    r_off, p_off = off
-    r_on, p_on = underlay_on
+def test_the_underlay_lever_removes_the_underlay_to_column_trims(exit_on, both_on):
+    """Four on the fixture without the lever (3.3-4.2 mm hops on its split
+    columns); none with it."""
+    r_off, p_off = exit_on
+    r_on, p_on = both_on
     assert _trims_by_cause(r_off, p_off).get("underlay->satin", 0) >= 3
     assert _trims_by_cause(r_on, p_on).get("underlay->satin", 0) == 0
     assert p_on.stats.trims < p_off.stats.trims
 
 
-def test_the_underlay_lever_costs_stitches_and_says_so(off, underlay_on):
+def test_the_underlay_lever_costs_stitches_and_says_so(exit_on, both_on):
     """+9% on the fixture (1,969 -> 2,146): the underlay covers the cap
     extensions and the zigzag appears on strokes whose raw spine ran into a
     junction blob. Pinned as a ceiling so a cheaper build can lower it."""
-    _r1, p_off = off
-    _r2, p_on = underlay_on
+    _r1, p_off = exit_on
+    _r2, p_on = both_on
     assert p_on.stats.stitch_count <= 1.15 * p_off.stats.stitch_count
 
 
 # --- both ----------------------------------------------------------------------
 
-def test_both_levers_together_take_the_fixture_under_ten_trims(off, both_on):
+def test_both_levers_together_take_the_fixture_under_eighteen_trims(both_on):
     """13 -> 8 measured; every trim left is the first needle-down, the cap,
     a letter-to-letter hop (four here: the underlay lever moves where a
     column starts, and one hop the exit lever alone kept under `trim_at`
-    reads over it with both), or a refused walk."""
-    r_off, p_off = off
+    reads over it with both), or a refused walk. On the folded engine (rail
+    comp, tip caps and the crown cover ride along, re-measured 2026-11-19)
+    both levers read 17 trims against the exit lever's 20, with 5
+    letter-to-letter hops."""
     r_on, p_on = both_on
-    assert p_on.stats.trims <= 9 < p_off.stats.trims
+    assert p_on.stats.trims <= 17
     by = _trims_by_cause(r_on, p_on)
     assert by.get("underlay->satin", 0) == 0
-    assert by.get("letter-to-shape", 0) <= 4
+    assert by.get("letter-to-shape", 0) <= 5

@@ -124,10 +124,8 @@ def _tiny_stem(sid: str, x: float, tier: str | None) -> Region:
 
 def test_the_emitter_sews_a_satin_word_satin_and_a_run_word_run():
     from digitizer_core import stitches
-    # `small_solids_satin=False` (ON since 2026-10-23): it would sew the tiny stem
-    # as one satin blob before the word tier is read; the emitter is what is tested
-    # ...and `bean_only_lines=False` (ON since 2026-10-27): the emitter's run word IS a bean ring
-    cfg = PipelineConfig(edge_cap="none", lettering_word_tiers=True, small_solids_satin=False,
+    # `bean_only_lines=False` (ON since 2026-10-27): the emitter's run word IS a bean ring
+    cfg = PipelineConfig(edge_cap="none", lettering_word_tiers=True,
                          bean_only_lines=False)
     small = cfg.min_detail_mm ** 2
     assert 0.6 * 1.2 < small, "the fixture must sit under the area rescue"

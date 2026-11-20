@@ -556,18 +556,21 @@ def test_no_usable_regions_after_the_floor_degrades_to_none_with_a_reason(monkey
     Unlike the sibling empty-regions test below, this drives real,
     non-trivial regions (region_blobs.png's own quadrant blobs, tens of
     thousands of px each) all the way through `resolve_small_regions`'s
-    real absorb-or-drop loop: `min_detail_mm=50.0` puts the floor
-    (`(50 * 7.15) ** 2 ~= 127,806 px²`) comfortably above every blob's own
-    area (the biggest measures ~61,819 px²), and `small_shape_rescue=False`
-    means a floor-filtered region with no `keep`-list neighbor to absorb
-    into (there isn't one — nothing starts above this floor) has nowhere
-    else to survive, so every region provably drops rather than merges into
-    something else. This is what actually empties `kept` here — `regions`
-    itself is non-empty going in, unlike the sibling test."""
+    real absorb-or-drop loop: `min_detail_mm=50.0` puts the sewable floor
+    above every blob's own area, and `target_width_mm=0.5` (a deliberately
+    absurd scale, ~1,140 px/mm) puts the run-tier rescue's own area and loop
+    floors above them too -- `small_shape_rescue` is always on since it was
+    folded into the code (2026-11-19), so a blob over the run floors would
+    now be rescued as a run instead of dropped. A floor-filtered region with
+    no `keep`-list neighbor to absorb into (there isn't one -- nothing starts
+    above this floor) and under the run floors has nowhere else to survive,
+    so every region provably drops rather than merges into something else.
+    This is what actually empties `kept` here -- `regions` itself is
+    non-empty going in, unlike the sibling test."""
     s2 = _available(monkeypatch)
     monkeypatch.setattr(s2.subprocess, "run", _fake_worker(_quadrant_labels))
 
-    p, cfg = _prepped(min_detail_mm=50.0, small_shape_rescue=False)
+    p, cfg = _prepped(min_detail_mm=50.0, target_width_mm=0.5)
     quant, reason = s2.sam2_segment_seam(p, cfg)
     assert quant is None
     assert reason is not None
