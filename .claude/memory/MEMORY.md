@@ -69,10 +69,8 @@ the OLDEST lines whole to the archive.
 - [Logo batch 4](logo-batch-4-2026-11-18.md) — Commerce ring text; `thin_letters_after_ground` ON 11-18 (#1685)
 - [Logo batch 5](logo-batch-5-2026-11-18.md) — Peace Corps R; `lettering_columns_sew_dropped_branch` OFF
 - [Logo batch 6](logo-batch-6-2026-11-18.md) — overview only; lines half bold, half thin
-- [Logo batch 7](logo-batch-7-2026-11-18.md) — overview only; ATF ring text lost
 - [Logo batch 8](logo-batch-8-2026-11-19.md) — Merchant Marine + NSA fixes flipped ON 11-19
 - [Logo batch 9](logo-batch-9-2026-11-19.md) — state seals; Nevada ring text, Wyoming sashes
-- [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ruled ON 11-15, pending); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [Logo batch 7](logo-batch-7-2026-11-18.md) — overview only; ATF ring text lost; thin_letters flipped ON
 - [Lone glyphs](lone-glyphs-2026-11-14.md) — cursive i-dot drops at stage 3, `lone_glyph_keep` keeps it (ON #1588, logos only); Jakarta's a at 70.9 = re-set no_room; Ahora's teeth stay under the ring
 - [MARINE match](marine-match-2026-11-18.md) — pro construction per letter in numbers; r_bowl, block_butt_small, a_bar, block_lean ON since Kent 11-19 ("Flip all four ON"); R counter held by a 0.5 mm inset read from his file (sew-out row 15)
@@ -104,7 +102,6 @@ the OLDEST lines whole to the archive.
 - [Scorecard recapture 11-12](scorecard-recapture-2026-11-12.md) — ruler 292418a8 -> ffefc3b1, run 43253187536: 10/20/8/10/4 -> 8/20/6/10/8, mean 71.9 -> 68.7 FELL; flag-off CI arms name #1301, #1263, #1329, #1378; 1 row part unattributed
 - [Second digitize timing](second-digitize-timing-2026-11-13.md) — 11-12's 44 s = laptop contention (same run 19 -> 55 s as load moved); Cancel held the worker 1.4-5.5 s: seams added in neck splits, letterform priors, keyline -> 0.2 s
 - [Shaped outline gear](shaped-outline-gear-2026-11-13.md) — `border_from_outline_follow_shape` ON (Kent 11-16): gear laid out from its OUTER edge, ring read off a chord
-- [Small bowls](small-bowls-2026-11-14.md) — Bukit's beyondcoal bowls lost in the cross floor; `lettering_columns_ring_floor` widens a ring's thin crosses (o 0.70 -> 1.00 cover); ticked ON 11-15, pending
 - [Small bowls](small-bowls-2026-11-14.md) — Bukit's beyondcoal bowls lost in the cross floor; `lettering_columns_ring_floor` widens a ring's thin crosses (o 0.70 -> 1.00 cover); ON #1583, kept in #1659 revert
 - [Small marks](small-marks-2026-11-14.md) — Bukit's 0.5 mm dots (stage 3) and neon (R) gaps (stage 1); pro's smallest block 1.0 mm = gate 1; tiny_detail_keep stays OFF, tiny run marks not built (Kent 11-15)
 - [Small-text hand-over](small-text-handover-2026-11-14.md) — ProSeal's 4.01 mm cap line fell between restore and re-set; retrace 0.9-1.25 caps at true size; Kent 11-15 "Flip both ON", ON #1565
