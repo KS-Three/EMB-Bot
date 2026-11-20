@@ -16,8 +16,9 @@ today's defects and the installer; (2) new embroidery projects since September;
 — test-suite speed first, then geometry libraries, then signing and update
 facts.
 
-Method: desk research only. Nothing was installed, run, or downloaded except
-the DIS5K terms PDF. **[V]** = read from the primary source (LICENSE file,
+Method: desk research only for §1–§7. Nothing was installed, run, or
+downloaded except the DIS5K terms PDF. The one exception is the ZigZag bench
+in §8 (Kent's go-ahead). **[V]** = read from the primary source (LICENSE file,
 package metadata, vendor page, repo file) on 2026-11-20. **[V2]** = also
 re-checked by the session that wrote this doc. **[U]** = not verified.
 
@@ -33,7 +34,7 @@ worth running.
 | A | The background-removal model we ship may carry non-commercial training-data terms | Licence risk | Kent (possibly a lawyer) |
 | B | The frozen Windows app does not bundle rembg, but background removal defaults ON and DOCTRINE makes rembg a deploy requirement | Product gap + a wrong doc line | Kent |
 | C | filum has shipped releases — its 11-06 benchmark trigger fired | Benchmark row | Kent (queued 11-06, §8 item 2) |
-| D | ZigZag: new, Apache-2.0 lettering engine with real traction | Benchmark row + readable reference | Kent |
+| D | ZigZag: new, Apache-2.0 lettering engine with real traction | Benchmark row + readable reference | **Benched 11-20 (§8): on a raster it fills everything, kappa 0.01 vs ours 0.36** |
 
 Everything else is a refreshed watch row or a well-evidenced negative (§3–§6).
 
@@ -226,10 +227,59 @@ no recommendation:
 
 Gap 1 is corrected in this PR. Gaps 2 and 3 are left for a scope-refresh lane.
 
-## 8. Not checked
+## 8. Bench: ZigZag on the 18 tripwire jobs (run 2026-11-20)
+
+Kent 11-20: "Yes, bench both". ZigZag ran here; filum is Kent's to export
+from its GUI (unsigned installer, GUI only), using the list in the gitignored
+`scratch_bench/filum/EXPORT-LIST.txt`.
+
+**How it ran.** ZigZag 0.1.6 Linux build (SHA256 matched the published sum),
+inside the WSL box. Its CLI cannot size a raster: it fits every image to 80 mm
+(`TraceOptions::default`, `src/trace.rs`), and it ignores both a PNG's DPI and
+an SVG-embedded image. So the jobs were driven through its headless MCP server
+(`zigzag-studio --mcp-stdio`): `trace_image` at the pro's width, `set_document`
+with a 300×300 hoop and `hat_order` on hat_front jobs, `export` as DST. All
+other settings are ZigZag's defaults. Every file came out at 0.98–1.01× the
+pro's width. Ours was re-digitized on main `f08dee8` (the 11-04 figures were
+stale). Scored with `python -m tools.bench_free_digitizers` (chance-corrected
+kappas only, gate 4). The DSTs and renders stay in gitignored `scratch_bench/`.
+
+| Median over 18 jobs | ours | ZigZag (default) | ZigZag (white kept) |
+|---|---|---|---|
+| stitch-type kappa vs pro | 0.36 | 0.01 | 0.04 |
+| direction kappa vs pro | 0.37 | 0.25 | 0.32 |
+| stitches vs pro | — | 0.67× | 1.5× |
+| needle-up mm vs pro | — | 2.09× | 3.49× |
+| trims vs pro | — | +22 | +40 |
+| jobs where its stitch-type kappa ≥ ours | — | 1 of 18 | 1 of 18 |
+
+**What the eye says** (renders art | ours | ZigZag | pro):
+
+- **By default it sews only the dark ink and leaves every white area bare.**
+  Becker's white letters, Toat Machine's white field: unsewn. That is most of
+  its low stitch count. Its dark shapes are clean and faithful to the art
+  (MARINE, the Toat lettering). Edges look tidy at full-panel scale.
+- **Keeping white (`remove_background: false`) sews the page too**: the
+  background around the logo becomes a fill field. So neither arm is a fair
+  "white letters sewn" comparison, and the default arm is the row to quote.
+- **Its raster path is fill-everything.** Stitch-type kappa about 0 in both
+  arms. Traced shapes come out as fills, and the satin column engine that made
+  it look like a lettering peer applies to typed text and SVG strokes, not to a
+  traced raster. On a raster it sits beside Nuizu as a "tracer plus fill"
+  floor, not beside the Column lane.
+- On the drone photo it posterizes to 106 colour changes and 325 trims (pro: 59
+  trims).
+
+**Verdict.** No change to what we build. Of the measured free engines, ZigZag
+has the cleanest traced outlines, with no construction decisions on a raster.
+The real lettering comparison is its *text* tool against our lettering lane
+on the same OFL font. That would be a separate bench, not run here.
+
+## 9. Not checked
 
 DUTS / SA-1B / PP-OCRv3-detector training-data terms; PP-OCRv3 speed on Kent's
 laptop or on logo art; fresh per-test durations (JUnit zips not downloaded);
 shapely 2.2 speed or golden drift; whether ZigZag's Windows zip includes the
-CLI; filum's and ZigZag's output quality (nothing installed); Brother's EULA
+CLI; filum's output quality (waiting on Kent's GUI exports); ZigZag's text tool
+against our lettering lane; Brother's EULA
 terms for the PE-DESIGN reference files; Codeberg.
