@@ -157,8 +157,8 @@ def test_the_cover_sews_first_in_its_shape_and_only_satin():
     assert not mixed, f"the cover put tatami inside a satin shape: {mixed}"
 
 
-@pytest.fixture(autouse=True)
-def _without_the_phantom_blend_dissolve(monkeypatch):
+@pytest.fixture(autouse=True, scope="module")
+def _without_the_phantom_blend_dissolve():
     """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
     item 46; folded into the code 2026-11-20): MARINE reads the gradient lane, and with the dissolve ON the cover's
     `lost_frac` gate reads 0.1955 -> 0.1968 (CI 2026-10-20).
@@ -166,4 +166,6 @@ def _without_the_phantom_blend_dissolve(monkeypatch):
     `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
     what the switch's False path did."""
     from tests.conftest import legacy_engine
-    legacy_engine(monkeypatch, dissolve=True)
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        yield

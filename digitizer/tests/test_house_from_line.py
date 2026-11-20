@@ -175,8 +175,8 @@ def test_a_group_with_no_line_of_text_still_fails_open(refused_run):
     assert tc._cluster_house_angle_deg(group[:1], fourfold=True, from_line=True) is None
 
 
-@pytest.fixture(autouse=True)
-def _without_the_phantom_blend_dissolve(monkeypatch):
+@pytest.fixture(autouse=True, scope="module")
+def _without_the_phantom_blend_dissolve():
     """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
     item 46; folded into the code 2026-11-20): this file (and `tests/test_house_anchor.py`, which runs through
     it) reads the gradient lane, and with the dissolve ON the letters' house
@@ -185,4 +185,6 @@ def _without_the_phantom_blend_dissolve(monkeypatch):
     `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
     what the switch's False path did."""
     from tests.conftest import legacy_engine
-    legacy_engine(monkeypatch, dissolve=True)
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        yield

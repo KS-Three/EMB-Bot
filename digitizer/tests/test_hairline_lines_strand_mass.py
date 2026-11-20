@@ -219,3 +219,16 @@ def test_owl_breast_and_bristles_hold():
     assert mass["beak_bristles"] == test["beak_bristles"] == 5
     assert mass["elsewhere"] >= test["elsewhere"]
     assert census["exempt_mass"]["dark"] == 0
+
+
+@pytest.fixture(autouse=True, scope="module")
+def _without_the_phantom_blend_dissolve():
+    """The md5 pins above predate the phantom-blend dissolve (ON since Kent's
+    2026-10-20 flip, item 46; folded into the code 2026-11-20), which moves the
+    drawn mane's `mane_lines` stream (`451c0177...` with it and `clip_keep_pieces`
+    on, CI 2026-10-20). `legacy_engine` patches back what the switch's False path
+    did, so the pins are still read on the engine they were taken on."""
+    from tests.conftest import legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        yield
