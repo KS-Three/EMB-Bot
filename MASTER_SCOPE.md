@@ -17,7 +17,7 @@ session's handoff (Kent's rule, memory `next-work-from-main-not-handoffs`).
 08-16 parity baseline (42.5) and the metric's 75-84 pro-vs-pro ceiling.
 *(confirmed 2026-11-19 — memory index)*
 
-**Last updated:** 2026-11-19 (3D puff recorded in area 3; Kent's 11-16 to 11-19 flips as entry 81; entry 80 resolved; against main `df50b217`; not a re-read of every area). **This file is current state only, under a
+**Last updated:** 2026-11-20 (entry 81 extended through Kent's 11-19 flips; entry 82 added for flag consolidation, the flip queue and the OFF-flag census; against main `713660bf`, PRs #1709 to #1732; not a re-read of every area). **This file is current state only, under a
 27,000-word budget** (rule 4 below — Kent replaced the old line budget with it
 on 2026-09-14). Its three companions: standing rulings, rejected approaches,
 corrections and session-costing traps live in [`DOCTRINE.md`](DOCTRINE.md);
@@ -471,8 +471,18 @@ about the facts.
    | 11-18 | `cap_merged_layer_home`, `shadow_to_page` | #1681 |
    | 11-18 | `lettering_columns_block_butt`; `thin_letters_after_ground` | #1684; #1685 |
    | 11-19 | `lettering_columns_r_bowl`, `_block_butt_small`, `_a_bar`, `_block_lean` | #1689 |
+   | 11-19 | `satin_rectangles` (Kent's Flag.webp at 113.5 mm: stripe ends square to 0.04 mm; 9 of 44 runs move); `satin_stars` | #1712; #1717 |
+   | 11-19 | `lettering_columns_absorb_unsewn` (a small bold letter's unsewn pieces merge into its column); `stage0_grain_needs_texture` (an opaque small logo no longer reads as photo on its anti-aliased edge: 2 of 44 move, MFab hat now sews the flat route) | #1714; #1720 |
+   | 11-19 | `rescue_needs_drawn_edge`, enclosed specks only (8 of 44 move; the sunset's sky specks 106 to 90 trims) | #1723 |
+   | 11-19 | `seam_hold_skips_outline_bodies` — a REGRESSION REPAIR: #1641 (`satin_seam_hold`) cost Ahora's gear its fill tongue; byte-identical to the hold OFF again | #1722 |
+   | 11-19 | `lettering_columns_sew_dropped_hairline` (17 of 82 designs change), `underfill_keeps_thin_letters`, `dark_ink_line_one_lane`; `keyline_fragment_subpixel` built OFF | #1687 |
+   | 11-19 | `satin_overlap_run`, `outline_loop_split_shared`, `lettering_columns_e_top_arm`, `_top_slab` (review pack) | #1728 |
+   | 11-19 | `lettering_columns_through_last`, held OFF first for lifting the chaining bare thread 4.28 to 4.54 mm; flipped once the walk-in leg was fixed, benchmark back to 4.28 mm | #1729 |
+   | 11-19 | `satin_rect_lock_in_column`, `read_primitives` (a rectangle within 0.5 deg snaps to the axes; circles are least-squares) | #1725 |
 
-   Each OFF arm is pinned in `tests/conftest.py` `PRE_FLIP`. Not sewn. Ruled ON 11-16 but not landed: `lettering_columns_judge_entry_free` and `_reading_order` (`cfg.extra`, OFF; the flip failed CI on real faults). Per-flag notes: `.claude/memory/MEMORY.md`.
+   Each OFF arm is pinned in `tests/conftest.py` `PRE_FLIP`. Not sewn. Ruled ON 11-16 but not landed: `lettering_columns_judge_entry_free` and `_reading_order` (`cfg.extra`, OFF; the flip failed CI on real faults). Per-flag notes: `.claude/memory/MEMORY.md`. *(confirmed 2026-11-20 — PR titles and bodies on main `713660bf`; not re-read against `config.py`)*
+
+82. **Flag consolidation is under way: the ON flags fold into the code, byte-identical, and a flip queue and an OFF-flag census sit beside it.** **Audit** (`docs/flag-audit-2026-11-19.md`): 342 switches sorted into fold, delete, keep and ask tiers; 95 of the 192 ON flags flipped after the 2026-10-27 snapshot. **Landed on main:** plumbing (`RETIRED_FIELDS`, the snapshot and the service ignore retired keys with a 200, `tools.fold_check` md5s the 44 sweep jobs) and **tier D deleted, 6 flags** on Kent's "Delete all six" (`coverage_edges`, `line_chain_one_thread`, `resnap_hairline_never_lightens`, `lettering_columns_apex_cut`, `fill_angle_pro_slant`, `lettering_columns_apex_guard`; #1724); **tier A, 9 of 20** (`split_satin`, `satin_house_fourfold`, `fill_travel_under_cover`, `layer_palette_from_regions`, `satin_cap_recentre`, `satin_outer_rail_pitch`, `satin_join_square`, `satin_slab_serifs`, `satin_free_end_square`; #1730); **fold B1, 16 satin construction flags** (`satin_crown_cover`, `satin_rail_comp`, `satin_tip_caps`, `satin_lettering_split`, `small_dot_rung` and eleven more; #1726). Each fold deletes the field, passes True where the code read it and moves the flag's history to `docs/flag-history/`. **Not landed here:** the other 11 tier-A flags need test re-pins, and the rest of tier B; both are in sibling sessions, so do not read them as folded. **Names in older entries above (5, 19, 30, 37, 38, 49, 50, 52, 73, 74) now name folded or deleted fields;** the rulings stand, the switch is gone, and `PipelineConfig` is the live list. **Flip queue** (`docs/flip-queue/queue.json`, pictures under `docs/renders/flip-queue-2026-11-20/`): `dark_ink_bean_by_core` moved 0 of 44 runs (no pair to show); `photo_enclosed_rim` moved 1 of 44 (`summit_badge`, 1,427 stitches fewer, ground edge only; its MFab target is byte-identical). Neither is flipped. **OFF-flag census** (`docs/off-flag-census-2026-11-20.md`, measure only): of 105 built-OFF flags swept over the 44 placements at `1089931d`, 38 move no stitch alone; with prerequisites ON 10 of them move and 28 stay dead (11 of the dead sit in audit tier H, no ruling; 7 in tier F, gate 1). Zero here means no change on those 44, not no use: a report-only or lane-unreached flag reads 0. Re-sweep before quoting a row in a flip. *(measured 2026-11-20 — `docs/off-flag-census-2026-11-20.md`; confirmed 2026-11-20 — PRs #1724, #1726, #1730, #1731, #1732 commit messages)*
 
 ## Cross-cutting issues
 
