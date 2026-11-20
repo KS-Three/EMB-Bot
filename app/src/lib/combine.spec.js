@@ -393,3 +393,104 @@ test("a span that does not describe its own design abandons the whole index", as
   b.runs = [{ ...b.runs[0], i0: -1 }];                            // before the start
   expect("runs" in combineDesigns([a, b])).toBe(false);
 });
+
+// ---- operator steps across a combine (R15) --------------------------------
+//
+// A digitized puff design carries `steps` (one per colour row) and its puff
+// blocks are operator stops. Combining must carry the steps, never fold a
+// same-thread neighbour into or out of a stepped block, and keep every span's
+// `block` naming the row it sews in, so `steps[run.block].code` finds puff.
+
+function puffDesign() {
+  // Two black blocks, tack-down then puff, as `plan_to_design` shapes them.
+  const sq = (x) => [
+    { x, y: 0, type: "stitch" }, { x: x + 20, y: 0, type: "stitch" },
+    { x: x + 20, y: 20, type: "stitch" }, { x, y: 20, type: "stitch" },
+  ];
+  const stitches = [...sq(0), { x: 0, y: 20, type: "trim" }, { x: 0, y: 20, type: "color" },
+    ...sq(40), { x: 0, y: 0, type: "end" }];
+  const base = { flags: [], material: "", piece: "", layers: [], spm: null, thread: "1801", rgb: [20, 20, 20] };
+  return {
+    stitches,
+    colors: [{ r: 20, g: 20, b: 20, name: "1801 Black" }, { r: 20, g: 20, b: 20, name: "1801 Black" }],
+    runs: [
+      { i0: 0, i1: 3, kind: "run", shape: "S1", role: "", block: 0 },
+      { i0: 6, i1: 9, kind: "satin", shape: "S1", role: "", block: 1 },
+    ],
+    steps: [
+      { ...base, code: "PUFF_TACKDOWN", label: "Puff outline", index: 1, stitches: 4,
+        action: "Stop: lay 3 mm puff foam over the outline, then continue", function: "color_change" },
+      { ...base, code: "PUFF", label: "3D puff", index: 2, stitches: 4,
+        action: "Tear away the excess foam. Design complete.", function: "end" },
+    ],
+  };
+}
+
+test("steps are carried, and a stepped block never merges with a same-thread neighbour", async () => {
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const a = letteringDesign("A", garment, { rgb: [20, 20, 20] });
+  const b = letteringDesign("B", garment, { rgb: [20, 20, 20], offsetYMm: -15 });
+  const combined = combineDesigns([a, puffDesign(), b]);
+
+  // Same thread throughout, yet no merge across either side of the puff.
+  expect(combined.colors).toHaveLength(4);
+  expect(combined.steps.map((s) => s.code)).toEqual(["COLOR", "PUFF_TACKDOWN", "PUFF", "COLOR"]);
+  expect(combined.steps.map((s) => s.index)).toEqual([1, 2, 3, 4]);
+  // The puff's own last row is mid-stream now: a stop, keeping its instruction.
+  expect(combined.steps[2].function).toBe("color_change");
+  expect(combined.steps[2].action).toBe("Tear away the excess foam");
+  expect(combined.steps[3]).toMatchObject({ code: "COLOR", function: "end", action: "Design complete" });
+  // A synthesized row has plan_steps' shape.
+  expect(Object.keys(combined.steps[0]).sort()).toEqual(Object.keys(puffDesign().steps[0]).sort());
+  // Stitch counts are per row, off the combined records.
+  expect(combined.steps.reduce((n, s) => n + s.stitches, 0)).toBe(combined.stitchCount);
+  expect(combined.steps[1].stitches).toBe(4);
+
+  // Every span names its own row: the puff's two spans find their steps.
+  expectPartition(combined);
+  const puffSpans = combined.runs.filter((s) => s.shape === "S1");
+  expect(puffSpans.map((s) => combined.steps[s.block].code)).toEqual(["PUFF_TACKDOWN", "PUFF"]);
+  const aSpans = combined.runs.filter((s) => s.i1 < puffSpans[0].i0);
+  expect(aSpans.length).toBeGreaterThan(0);
+  expect(aSpans.every((s) => combined.steps[s.block].code === "COLOR")).toBe(true);
+});
+
+test("a puff design last keeps its tear-away ahead of Design complete", async () => {
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const a = letteringDesign("A", garment, { rgb: [200, 20, 20] });
+  const combined = combineDesigns([a, puffDesign()]);
+  expect(combined.steps.map((s) => s.function)).toEqual(["color_change", "color_change", "end"]);
+  expect(combined.steps[0].action).toBe("Change thread to Color 1");
+  expect(combined.steps[2].action).toBe("Tear away the excess foam. Design complete.");
+  expect(combined.runs.filter((s) => s.shape === "S1").map((s) => s.block)).toEqual([1, 2]);
+});
+
+test("same-thread COLOR rows still merge when steps are carried", async () => {
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const a = letteringDesign("A", garment, { rgb: [20, 20, 20] });
+  const b = letteringDesign("B", garment, { rgb: [20, 20, 20], offsetYMm: -15 });
+  b.steps = [{ code: "COLOR", label: "Thread Color 1", action: "Design complete", function: "end",
+    flags: [], material: "", piece: "", layers: [], spm: null, thread: "Color 1", rgb: [20, 20, 20] }];
+  const combined = combineDesigns([a, b]);
+  expect(combined.colors).toHaveLength(1);
+  expect(combined.steps).toHaveLength(1);
+  expect(combined.steps[0]).toMatchObject({ code: "COLOR", function: "end", action: "Design complete" });
+  expect(combined.steps[0].stitches).toBe(combined.stitchCount);
+});
+
+test("no input with steps -> no steps key, output unchanged", async () => {
+  const { combineDesigns } = await import("./combine.js");
+  const { EMB } = await import("./emb.js");
+  const garment = EMB.getGarment("left_chest");
+  const combined = combineDesigns([
+    letteringDesign("A", garment, { rgb: [200, 20, 20] }),
+    letteringDesign("B", garment, { rgb: [20, 20, 200], offsetYMm: -15 }),
+  ]);
+  expect("steps" in combined).toBe(false);
+});

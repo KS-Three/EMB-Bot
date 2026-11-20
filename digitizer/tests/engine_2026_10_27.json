@@ -420,5 +420,7 @@
  "lettering_columns_absorb_unsewn": false,
  "seam_hold_skips_outline_bodies": false,
  "satin_rect_lock_in_column": false,
- "read_primitives": false
+ "read_primitives": false,
+ "puff": false,
+ "puff_mode": "all"
 }

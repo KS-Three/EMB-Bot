@@ -59,7 +59,7 @@ const PIPELINE_CONFIG_FIELDS = [
   "forced_class", "edge_cap", "is_photographic", "garment_rgb", "crop",
   "stitch_width_auto", "detect_photographic", "faces_route_flat", "fabric_profile",
   "sew_enclosed_white", "sew_enclosed_counters", "sew_enclosed_rgb",
-  "bevel_ring_fold",
+  "bevel_ring_fold", "puff", "puff_mode",
 ];
 
 test("buildDigitizeConfig sends the stored thread-brand preference and the project garment, in service field names", async () => {
@@ -3144,5 +3144,90 @@ describe("deletedFromStitches", () => {
     const { deletedFromStitches } = await import("./digitizer.js");
     const bare = { colors: result.colors, stitches: result.stitches };
     expect(deletedFromStitches({ result: bare, review, deletedShapeIds: ["s1"], appliedEdits: null })).toEqual([]);
+  });
+});
+
+describe("3D puff in the digitize config, the shape overrides and the warning text", () => {
+  it("omits puff and puff_mode when puff is off", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    const cfg = buildDigitizeConfig({}, {});
+    expect("puff" in cfg).toBe(false);
+    expect("puff_mode" in cfg).toBe(false);
+    // a stale puff_mode alone must not leak either
+    expect("puff_mode" in buildDigitizeConfig({ params: { puff: false, puff_mode: "select" } }, {})).toBe(false);
+  });
+
+  it("sends puff and the mode when on, and the mode defaults to all", async () => {
+    const { buildDigitizeConfig } = await import("./digitizer.js");
+    expect(buildDigitizeConfig({ params: { puff: true, puff_mode: "select" } }, {}))
+      .toMatchObject({ puff: true, puff_mode: "select" });
+    expect(buildDigitizeConfig({ params: { puff: true } }, {}))
+      .toMatchObject({ puff: true, puff_mode: "all" });
+    for (const k of Object.keys(buildDigitizeConfig({ params: { puff: true } }, {}))) {
+      expect(PIPELINE_CONFIG_FIELDS).toContain(k);
+    }
+  });
+
+  it("is part of the cache key, so toggling puff or its mode re-digitizes", async () => {
+    const { buildDigitizeConfig, configKey } = await import("./digitizer.js");
+    const off = configKey(buildDigitizeConfig({}, {}));
+    const all = configKey(buildDigitizeConfig({ params: { puff: true, puff_mode: "all" } }, {}));
+    const sel = configKey(buildDigitizeConfig({ params: { puff: true, puff_mode: "select" } }, {}));
+    expect(new Set([off, all, sel]).size).toBe(3);
+  });
+
+  it("canonicalShapeEdits keeps a boolean puff override and drops anything else", async () => {
+    const { canonicalShapeEdits } = await import("./digitizer.js");
+    const out = canonicalShapeEdits({
+      shapeOverrides: { a: { puff: true }, b: { puff: false }, c: { puff: null }, d: { puff: "yes" } },
+    });
+    expect(out.shape_overrides).toEqual({ a: { puff: true }, b: { puff: false } });
+  });
+
+  it("reviewFromJob carries puff_eligible/puff_reason, and null when the job ran without puff", async () => {
+    const { reviewFromJob } = await import("./digitizer.js");
+    const rv = reviewFromJob({
+      shapes: [
+        { shape_id: "a", puff_eligible: true, puff_reason: "" },
+        { shape_id: "b", puff_eligible: false, puff_reason: "too thin for foam (2.0 mm)" },
+        { shape_id: "c" },
+      ],
+    });
+    expect(rv.shapes[0]).toMatchObject({ puffEligible: true, puffReason: "" });
+    expect(rv.shapes[1]).toMatchObject({ puffEligible: false, puffReason: "too thin for foam (2.0 mm)" });
+    expect(rv.shapes[2]).toMatchObject({ puffEligible: null, puffReason: "" });
+  });
+
+  it("with puff OFF, stored puff overrides never reach the config or the cache key", async () => {
+    const { buildDigitizeConfig, configKey } = await import("./digitizer.js");
+    const ticked = { params: { puff: false }, shapeOverrides: { a: { puff: true }, b: { puff: true, border: "bean" } } };
+    const plain = { params: { puff: false }, shapeOverrides: { b: { border: "bean" } } };
+    expect(buildDigitizeConfig(ticked, {})).toEqual(buildDigitizeConfig(plain, {}));
+    expect(configKey(buildDigitizeConfig(ticked, {}))).toBe(configKey(buildDigitizeConfig(plain, {})));
+    // only puff ticks: no shape_overrides key at all
+    const only = { params: { puff: false }, shapeOverrides: { a: { puff: true } } };
+    expect(buildDigitizeConfig(only, {})).toEqual(buildDigitizeConfig({ params: { puff: false } }, {}));
+    // switched back on, the stored tick is sent again
+    const on = buildDigitizeConfig({ params: { puff: true, puff_mode: "select" }, shapeOverrides: { a: { puff: true } } }, {});
+    expect(on.shape_overrides).toEqual({ a: { puff: true } });
+  });
+
+  it("has customer text for both puff warnings", async () => {
+    const { describeWarnings } = await import("./digitizer.js");
+    const [a, b, c] = describeWarnings([
+      { code: "PUFF_SHAPE_INELIGIBLE", message: "ENGINE", shape_id: "S3", reason: "too thin for foam (2.0 mm)" },
+      { code: "PUFF_NONE_ELIGIBLE", message: "ENGINE", count: 2 },
+      { code: "PUFF_SHAPE_INELIGIBLE", message: "ENGINE", shape_id: "S4", reason: "could not be measured" },
+    ]);
+    expect(a.text).toBe("A shape is too thin for foam (2.0 mm), so it sews flat.");
+    expect(a.text).not.toContain("S3");
+    expect(b.text).toBe("No shape in this design can be puffed (puff needs satin columns 3–11 mm wide), so it sews flat.");
+    expect(c.text).toBe("A shape can't be puffed (could not be measured), so it sews flat.");
+  });
+
+  it("both puff warnings are notes the customer can act on: shape one asks, none-eligible asks", async () => {
+    const { ATTENTION_WARNINGS } = await import("./digitizer.js");
+    expect(ATTENTION_WARNINGS.has("PUFF_NONE_ELIGIBLE")).toBe(true);
+    expect(ATTENTION_WARNINGS.has("PUFF_SHAPE_INELIGIBLE")).toBe(true);
   });
 });
