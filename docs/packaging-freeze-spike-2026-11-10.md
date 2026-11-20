@@ -66,8 +66,13 @@ pruned: the ffmpeg DLL alone is 29 MB the engine has no known use for.
   venv. Step 4 needs a version written at build time, and the git probe
   switched off when frozen.
 - **`background_removal` and `sam2` read `false`.** Their isolated venvs are
-  not bundled. Both are default OFF, and SAM2 is post-v1 by the 2026-08-11
-  ruling, so this is the intended v1 shape, not a regression.
+  not bundled. SAM2 is default OFF and post-v1 by the 2026-08-11 ruling.
+  **Background removal is NOT default OFF** (corrected 2026-11-20):
+  `photo_prep_background_removal` is `True` and DOCTRINE makes rembg a deploy
+  requirement, so the frozen app runs the no-cutout lane on every photo,
+  unlike the venv. Kent 2026-11-20: parked until launch is near, together
+  with the model's training-data licence question
+  (`docs/external-repo-sourcing-2026-11-20.md` §2).
 - **Two build warnings**, neither with an effect on these fixtures: hidden
   imports `tzdata` and `scipy.special._cdflib` not found.
 
