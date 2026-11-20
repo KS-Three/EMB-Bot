@@ -976,19 +976,22 @@ def _puff_facts(region, cfg, regions=()) -> dict:
     when its own size is in the band, so the Studio does not grey it out."""
     if cfg is None or not getattr(cfg, "puff", False):
         return {}
-    from digitizer_core.stage6_puff import (letter_part_anchor, letter_part_eligible,
+    from digitizer_core.stage6_puff import (letter_part_eligible, letter_part_host,
                                             puff_column, puff_eligible)
 
-    def can_puff(r):
-        ok, _why = puff_eligible(r, cfg)
-        return ok and puff_column(r, cfg)
+    def column_facts(r):
+        ok, why = puff_eligible(r, cfg)
+        if ok and not puff_column(r, cfg):
+            ok, why = False, "not a column shape"
+        return ok, why
 
     try:
-        ok, why = puff_eligible(region, cfg)
-        if ok and not puff_column(region, cfg):
-            ok, why = False, "not a column shape"
-        if not ok and letter_part_anchor(region, regions, can_puff) is not None:
-            ok, why = letter_part_eligible(region)
+        ok, why = column_facts(region)
+        host = letter_part_host(region, regions) if not ok else None
+        if host is not None:
+            host_ok, host_why = column_facts(host)
+            ok, why = (letter_part_eligible(region) if host_ok
+                       else (False, f"its letter can't be puffed: {host_why}"))
     except Exception:  # a review row must never fail the job
         return {"puff_eligible": False, "puff_reason": "could not be measured"}
     return {"puff_eligible": bool(ok), "puff_reason": "" if ok else why}

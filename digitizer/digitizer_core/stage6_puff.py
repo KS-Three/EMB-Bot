@@ -96,13 +96,9 @@ def letter_part_anchor(region, others, puffs):
     return host if host is not None and puffs(host) else None
 
 
-def letter_part_host(region, others):
-    """The letter `region` is a detached part of, or None: the nearest
-    non-ground stitched shape in `others`, on the same thread, the gap
-    within PUFF_LETTER_PART_GAP_FACTOR of the part's widest diameter. The
-    ground is never a neighbour (it surrounds everything) and never a host."""
-    if not is_letter_part(region):
-        return None
+def _nearest(region, others):
+    """The nearest non-ground stitched shape to `region` in `others`. The
+    ground is never a neighbour: it surrounds everything."""
     near, gap = None, math.inf
     for o in others:
         if o is region or o.meta.get("enclosed_background") \
@@ -111,10 +107,49 @@ def letter_part_host(region, others):
         d = region.polygon.distance(o.polygon)
         if d < gap:
             near, gap = o, d
-    if near is None or near.thread_index != region.thread_index:
+    return near
+
+
+def _over_or_under(part, host) -> bool:
+    """A tittle or accent sits OVER or UNDER its letter: the vertical strip
+    through the central half of the part's width (design frame; letters are
+    upright there) crosses the host. Half, not the full width, so an italic
+    tittle offset by up to 3/4 of its width still qualifies while a period
+    or bullet beside a letter -- nothing of the host under its centre --
+    does not. A geometry tolerance, not a physical constant."""
+    from shapely.geometry import box as _box
+    x0, _y0, x1, _y1 = part.polygon.bounds
+    cx, q = (x0 + x1) / 2.0, (x1 - x0) / 4.0
+    hb = host.polygon.bounds
+    strip = _box(cx - q, min(hb[1], _y0) - 1.0, cx + q, max(hb[3], _y1) + 1.0)
+    return strip.intersects(host.polygon)
+
+
+def letter_part_host(region, others):
+    """The letter `region` is a detached part of, or None. The host is never
+    itself a letter part (no chaining along a row of dots): it is the
+    nearest non-ground shape, or -- one intermediate at most, so an umlaut's
+    second dot reaches its letter through the first -- that nearest part's
+    own nearest shape. The host is on the same thread, within
+    PUFF_LETTER_PART_GAP_FACTOR of the part's widest diameter, the part sits
+    over or under it (`_over_or_under`), and where both carry a
+    `text_cluster_id` the ids match."""
+    if not is_letter_part(region):
+        return None
+    host = _nearest(region, others)
+    if host is not None and is_letter_part(host):
+        host = _nearest(host, [o for o in others if o is not region])
+        if host is not None and is_letter_part(host):
+            return None
+    if host is None or host.thread_index != region.thread_index:
+        return None
+    a, b = region.meta.get("text_cluster_id"), host.meta.get("text_cluster_id")
+    if a is not None and b is not None and a != b:
         return None
     limit = machine.PUFF_LETTER_PART_GAP_FACTOR * _max_inscribed_diameter_mm(region.polygon)
-    return near if gap <= limit else None
+    if region.polygon.distance(host.polygon) > limit:
+        return None
+    return host if _over_or_under(region, host) else None
 
 
 def letter_part_eligible(region) -> tuple[bool, str]:
@@ -631,12 +666,14 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
         host = by_region.get(id(host_r)) if host_r is not None else None
         if host is None or id(host) in satins:
             continue
-        runs, reason = column_puff(host)
-        if runs:
-            satins[id(host)] = runs
-            pending.pop(id(host), None)
-        elif id(host) not in pending:
-            pending[id(p)] = (p, f"its letter can't be puffed: {reason}")
+        if id(host) in pending:  # wanted, tried above, refused
+            reason = pending[id(host)][1]
+        else:
+            runs, reason = column_puff(host)
+            if runs:
+                satins[id(host)] = runs
+                continue
+        pending[id(p)] = (p, f"its letter can't be puffed: {reason}")
 
     # Letter -> part: in either mode, a detached part of a puffed letter
     # (`letter_part_anchor`) puffs with it. Repeated so a part can join

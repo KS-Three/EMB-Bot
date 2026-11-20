@@ -804,3 +804,62 @@ def test_ticking_the_dot_of_an_unpuffable_letter_leaves_both_flat():
     hits = [w for w in warnings if w["code"] == PUFF_SHAPE_INELIGIBLE]
     assert len(hits) == 1 and hits[0]["shape_id"] == "DOT"
     assert hits[0]["reason"].startswith("its letter can't be puffed: too thin for foam")
+
+
+# --- R18 review fixes: no chaining, placement guard ------------------------
+
+@pytest.mark.parametrize("layout", ["beside", "above"])
+def test_letter_spread_never_chains_along_a_row_of_dots(layout):
+    """A row of five dots never walks dot-to-dot into the puff: at most the
+    nearest joins (beside the stem, none -- a dot beside is no tittle)."""
+    if layout == "beside":
+        dots = [Point(6.5 + 5.5 * k, 10).buffer(2.0, 64) for k in range(5)]
+    else:
+        # 3 mm apart, so D0's nearest is the stem (2.5 mm), not D1.
+        dots = [Point(2, 24.5 + 7.0 * k).buffer(2.0, 64) for k in range(5)]
+    planned = [_PPlanned(STEM, 20, 0, "STEM", puff=True)] + [
+        _PPlanned(d, 20, k + 1, f"D{k}") for k, d in enumerate(dots)]
+    for mode in ("all", "select"):
+        blocks, _w, _rem = _run_puff_pass(planned, puff_mode=mode)
+        joined = _puff_ids(blocks) - {"STEM"}
+        assert joined <= {"D0"}, (mode, layout, joined)
+        if layout == "above":
+            assert joined == {"D0"}
+
+
+def test_umlaut_second_dot_joins_through_the_first():
+    u = box(0, 0, 12, 4)                       # a stand-in letter body
+    d1 = Point(3, 7).buffer(2.0, 64)
+    d2 = Point(8.5, 7).buffer(2.0, 64)         # nearest the first dot
+    planned = [_PPlanned(u, 20, 0, "U", puff=True),
+               _PPlanned(d1, 20, 1, "D1"), _PPlanned(d2, 20, 2, "D2")]
+    blocks, _w, _rem = _run_puff_pass(planned, puff_mode="select")
+    assert _puff_ids(blocks) == {"U", "D1", "D2"}
+
+
+PERIOD = Point(7, 2).buffer(2.0, 64)    # just right of the stem's foot
+
+
+def test_period_beside_a_letter_does_not_join():
+    planned = [_PPlanned(STEM, 20, 0, "STEM"), _PPlanned(PERIOD, 20, 1, "DOT")]
+    blocks, _w, remaining = _run_puff_pass(planned, puff_mode="all")
+    assert _puff_ids(blocks) == {"STEM"}
+    planned = [_PPlanned(STEM, 20, 0, "STEM"), _PPlanned(PERIOD, 20, 1, "DOT", puff=True)]
+    blocks, _w, remaining = _run_puff_pass(planned, puff_mode="select")
+    assert blocks == []
+
+
+def test_letter_part_other_text_cluster_does_not_join():
+    planned = [_PPlanned(STEM, 20, 0, "STEM", puff=True, text_cluster_id="T1"),
+               _PPlanned(DOT, 20, 1, "DOT", text_cluster_id="T2")]
+    blocks, _w, _rem = _run_puff_pass(planned, puff_mode="select")
+    assert _puff_ids(blocks) == {"STEM"}
+
+
+def test_dot_of_a_wanted_unpuffable_letter_names_the_letter():
+    thin = box(1, 0, 3, 20)
+    dot = Point(2, 22.5).buffer(2.0, 64)
+    planned = [_PPlanned(thin, 20, 0, "STEM"), _PPlanned(dot, 20, 1, "DOT")]
+    _b, warnings, _rem = _run_puff_pass(planned, puff_mode="all")
+    why = {w["shape_id"]: w["reason"] for w in warnings if w["code"] == PUFF_SHAPE_INELIGIBLE}
+    assert why["DOT"].startswith("its letter can't be puffed: too thin for foam")

@@ -2167,3 +2167,18 @@ def test_puff_facts_dot_eligible_when_its_letter_can_puff():
     assert _puff_facts(dot, c, [stem, dot]) == {"puff_eligible": True, "puff_reason": ""}
     assert _puff_facts(dot, c, [dot])["puff_eligible"] is False
     assert _puff_facts(dot, PipelineConfig(), [stem, dot]) == {}
+
+
+def test_puff_facts_dot_of_unpuffable_letter_names_the_letter():
+    from types import SimpleNamespace
+
+    from shapely.geometry import Point, box
+
+    from digitizer_core import PipelineConfig
+    from digitizer_service.app import _puff_facts
+    stem = SimpleNamespace(shape_id="STEM", polygon=box(1, 0, 3, 20), thread_index=20, meta={})
+    dot = SimpleNamespace(shape_id="DOT", polygon=Point(2, 22.5).buffer(2.0, 64),
+                          thread_index=20, meta={})
+    out = _puff_facts(dot, PipelineConfig(puff=True), [stem, dot])
+    assert out["puff_eligible"] is False
+    assert out["puff_reason"].startswith("its letter can't be puffed: too thin for foam")
