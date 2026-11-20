@@ -815,10 +815,6 @@ PRE_FLIP["bean_letter_bay_hold"] = None
 # was measured without them. The small-text set is the sheet's exact
 # `small_text_set` arm: the four cap values AND `lettering_columns_small_bold`.
 FLIP_2026_10_23 = {
-    "fill_turn_slant": False,
-    "trim_bury_under_later": False,
-    "tie_in_off": False,
-    "fill_underlay_cross": False,
     "small_text_cap_mm": None,
     "small_text_cap_max_width_scale": None,
     "small_text_cap_min_stroke_mm": None,
@@ -902,11 +898,6 @@ PRE_FLIP["dissolve_phantom_blends"] = False
 # the other pieces drop. The tests ABOUT it are
 # `tests/test_clip_keep_pieces.py`.
 PRE_FLIP["clip_keep_pieces"] = False
-# The edge cap leaves a bean letter alone (2026-10-20, Proseal's two A's):
-# a text member sewn as bean runs gives the silhouette nothing, so no cap
-# rings its pull-grown polygon. False is the pre-flip cap. The tests ABOUT it
-# are in `tests/test_edge_cap.py`.
-PRE_FLIP["edge_cap_skip_bean_letters"] = False
 # Kent's wave-2 flips (2026-10-24, from the flip sheet of PR #1069), for the
 # reason every entry above gives. `border_from_outline` (#1065): an art outline
 # sews as one satin loop per body at the outline's width, its bodies as fills.

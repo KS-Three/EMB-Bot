@@ -46,7 +46,7 @@ def _plain(poly, shape_id, style):
     return stitch_shape(
         poly, shape_id, angle_deg=None, row_mm=machine.FILL_ROW_MM,
         stitch_mm=machine.FILL_STITCH_MM, underlay_style=style,
-        trim_at_mm=machine.TRIM_AT_MM, slant_turns=PipelineConfig().fill_turn_slant)[0]
+        trim_at_mm=machine.TRIM_AT_MM, slant_turns=True)[0]
 
 
 def _kinds(runs) -> list[str]:
@@ -145,8 +145,8 @@ def test_stage7_hands_the_blend_tier_the_fabrics_fill_underlay(monkeypatch):
                          blend_fallback_underlay=True, stage0_scale_relative_grad=False)
     plan, handed, fallback_ids = _blend_calls(monkeypatch, cfg)
     from digitizer_core.fabrics import fill_underlay_for
-    # the preset's own underlay, or the cross pass under `fill_underlay_cross` (ON since 2026-10-23)
-    assert set(handed) == {fill_underlay_for(fabric_for(cfg), cfg.fill_underlay_cross)}
+    # the preset's own underlay, or the cross pass (folded in, ON since 2026-10-23)
+    assert set(handed) == {fill_underlay_for(fabric_for(cfg), True)}
     assert fallback_ids
     assert _underlay_stitches(plan, fallback_ids) > 0
 

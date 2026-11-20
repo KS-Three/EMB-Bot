@@ -2732,7 +2732,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                         **({"keyline_beans": keyline_beans}
                                            if keyline_beans is not None else {}))
 
-    # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
+    # Beanie knockdown: a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.
     if knockdown.applies(cfg):
         kd, _kd_report = knockdown.knockdown_block(

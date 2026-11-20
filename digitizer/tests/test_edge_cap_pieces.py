@@ -65,24 +65,15 @@ def test_each_stretch_sews_in_the_thread_beside_it():
         assert (mean < 0) == (t == 3)
 
 
-def test_off_restores_the_single_block():
-    plan = plan_for(BOTH, edge_cap_follow_adjacent=False)
-    assert len({t for t, _ in cap_runs(plan)}) == 1
-    assert all(r.piece == "" for _, r in cap_runs(plan))
-
-
 def test_every_stretch_has_a_unique_cap_id():
     ids = [r.piece for _, r in cap_runs(plan_for(BOTH))]
     assert ids and all(i.startswith(CAP_PIECE_PREFIX) for i in ids)
     assert len(ids) == len(set(ids))
 
 
-def test_a_one_colour_edge_is_one_block_of_the_emitters_own_runs():
+def test_a_one_colour_edge_is_one_block():
     on = plan_for(ONE)
-    off = plan_for(ONE, edge_cap_follow_adjacent=False)
-    a = [(t, r.points, r.jump, r.trim) for t, r in cap_runs(on)]
-    b = [(t, r.points, r.jump, r.trim) for t, r in cap_runs(off)]
-    assert a == b
+    assert len({t for t, _ in cap_runs(on)}) == 1
     assert all(r.piece.startswith(CAP_PIECE_PREFIX) for _, r in cap_runs(on))
 
 

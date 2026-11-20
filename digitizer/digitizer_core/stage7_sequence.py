@@ -3305,7 +3305,7 @@ def sequence(
         if cfg.shade_palette_demand and palette_spools:
             shade_palette = sorted(set(shade_palette) | set(palette_spools))
     class_fill_underlay = (_PHOTO_FILL_UNDERLAY if photo
-                           else fill_underlay_for(fabric, cfg.fill_underlay_cross))
+                           else fill_underlay_for(fabric, True))
     underlay_style = (cfg.underlay_style or class_fill_underlay) if cfg.underlay else "none"
     satin_underlay = ((_PHOTO_SATIN_UNDERLAY if photo else fabric.satin_underlay)
                       if cfg.underlay else "none")
@@ -4309,10 +4309,10 @@ def sequence(
                     angle_deg=_fill_angle_for(p, cfg, group_fill), row_mm=row_mm,
                     stitch_mm=stitch_mm, underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at, under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry, density_boost=cfg.fill_density_boost)
                 if runs:
                     report["outline_body"] = 1
@@ -4956,10 +4956,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="crosshatch",
                 )
@@ -4990,10 +4990,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="wave",
                 )
@@ -5017,10 +5017,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="chevron",
                 )
@@ -5042,10 +5042,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="brick",
                 )
@@ -5065,10 +5065,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     technique="fur",
                     seed=cfg.seed,
@@ -5179,10 +5179,10 @@ def sequence(
                     underlay_style=eff_underlay_style,
                     trim_at_mm=trim_at,
                     under_cover=True,
-                    cut_bridges=cfg.fill_bridge_cut,
+                    cut_bridges=True,
                     underlay_all_pieces=cfg.underlay_all_pieces,
                     sewn_paths_only=cfg.fill_order_sewn_paths,
-                    slant_turns=cfg.fill_turn_slant,
+                    slant_turns=True,
                     start_near=entry,
                     density_boost=cfg.fill_density_boost,
                 )
@@ -5586,10 +5586,9 @@ def sequence(
         # leaves are offered to the burying pass below.
         if cfg.skip_covered_shapes:
             _skip_covered_shapes(art_blocks, trim_at)
-        # `cfg.trim_bury_under_later` (built OFF): before the ties, which
+        # Bury the cut hops later thread covers: before the ties, which
         # lock every cut that is left.
-        if cfg.trim_bury_under_later:
-            _bury_trims_under_later(art_blocks)
+        _bury_trims_under_later(art_blocks)
         for _b in art_blocks:
             _apply_ties(_b.runs, **tie_kw)
     blocks.extend(art_blocks)
@@ -5658,26 +5657,24 @@ def sequence(
         # its sewn polygon joins the cover and no cap sample stands on it.
         # The gate's published saving and cover then include it, which is
         # what they measure: what the cap was told not to sew.
-        if cfg.edge_cap_skip_lettering:
-            _letters = _satin_lettering_cover(cap_sewn, blocks, cfg)
-            if _letters is not None:
-                cap_omit = (_letters if cap_omit is None
-                            else unary_union([cap_omit, _letters]))
-        # A bean letter's outline is not an edge either (2026-10-20, see
-        # `cfg.edge_cap_skip_bean_letters`): it sewed its ink's centre
+        _letters = _satin_lettering_cover(cap_sewn, blocks, cfg)
+        if _letters is not None:
+            cap_omit = (_letters if cap_omit is None
+                        else unary_union([cap_omit, _letters]))
+        # A bean letter's outline is not an edge either (2026-10-20): it
+        # sewed its ink's centre
         # lines, and its polygon -- pull-grown in stage 5, since a bean
         # letter is not a satin column -- is not what it laid. Its polygon
         # joins the cover exactly as a satin letter's does; the silhouette
         # itself is untouched, so every other ring samples as it did.
-        if cfg.edge_cap_skip_bean_letters:
-            _beans = _bean_letter_ids(cap_sewn, blocks)
-            if _beans:
-                _bean_cover = unary_union([p.polygon for p in cap_sewn
-                                           if p.shape_id in _beans
-                                           and p.polygon is not None
-                                           and not p.polygon.is_empty])
-                cap_omit = (_bean_cover if cap_omit is None
-                            else unary_union([cap_omit, _bean_cover]))
+        _beans = _bean_letter_ids(cap_sewn, blocks)
+        if _beans:
+            _bean_cover = unary_union([p.polygon for p in cap_sewn
+                                       if p.shape_id in _beans
+                                       and p.polygon is not None
+                                       and not p.polygon.is_empty])
+            cap_omit = (_bean_cover if cap_omit is None
+                        else unary_union([cap_omit, _bean_cover]))
         c_runs, c_report = silhouette_cap(
             silhouette,
             "__edge_cap__",
@@ -5706,17 +5703,16 @@ def sequence(
             # the detail layer below and every artwork block above get.
             c_runs[0].jump = True
             c_runs[0].trim = True
-            # Per-stretch colour (cfg.edge_cap_follow_adjacent): decided on
+            # Per-stretch colour: decided on
             # the bare runs, BEFORE ties, so each block's ties are laid on its
             # own run ends. A one-colour edge is still one block, its runs the
             # emitter's own, so that case sews exactly what it did before.
             c_blocks = None
-            if cfg.edge_cap_follow_adjacent:
-                _pieces = _cap_follow_pieces(c_runs, cap_sewn, cfg)
-                if _pieces is not None:
-                    c_blocks = {}
-                    for t, piece, _mid in _pieces:
-                        c_blocks.setdefault(t, []).append((piece, _mid))
+            _pieces = _cap_follow_pieces(c_runs, cap_sewn, cfg)
+            if _pieces is not None:
+                c_blocks = {}
+                for t, piece, _mid in _pieces:
+                    c_blocks.setdefault(t, []).append((piece, _mid))
             if c_blocks is None:
                 _apply_ties(c_runs)
             else:
@@ -5728,10 +5724,10 @@ def sequence(
             # predictable from the design's size, it scales with how
             # fragmented the silhouette is, so the only honest thing is to
             # measure it on THIS design and say so.
-            # ...net of the start locks `cfg.tie_in_off` (ON since 2026-10-23)
-            # strips at the end of this function, so the bill is what the cap
+            # ...net of the start locks stage 7 strips at the end of this
+            # function (`drop_tie_ins`), so the bill is what the cap
             # SEWS, dropped or applied (`test_edge_cap_budget`'s identities).
-            _cap_st = sum(len(r.points) - (r.tie_in_pts if cfg.tie_in_off else 0)
+            _cap_st = sum(len(r.points) - r.tie_in_pts
                           for r in (c_runs if c_blocks is None else
                                     [it[0] for its in c_blocks.values()
                                      for it in its]))
@@ -5742,8 +5738,7 @@ def sequence(
             # because the budget decision below has to happen before the
             # append, not after it.)
             _art_st = sum(b.stitch_count for b in blocks)
-            if cfg.tie_in_off:
-                _art_st -= sum(r.tie_in_pts for b in blocks for r in b.runs)
+            _art_st -= sum(r.tie_in_pts for b in blocks for r in b.runs)
             _percent = round(100.0 * _cap_st / _art_st, 1) if _art_st else 0.0
             cap_over_budget = _art_st > 0 and _percent > EDGE_CAP_BUDGET_PCT
             cap_dropped = cap_over_budget and _over_budget_action(cfg) == "drop"
@@ -6100,7 +6095,7 @@ def sequence(
         warnings.append(
             warn(
                 LONG_JUMPS_TRIMMED,
-                # "is lifted", not "had to be": with `cfg.fill_bridge_cut` a
+                # "is lifted", not "had to be": with the bridge cut a
                 # lift can be the engine's CHOICE -- a route existed and a cut
                 # was cheaper than thread on top of finished fill.
                 f"The thread is lifted {jumps} time"
@@ -6147,11 +6142,9 @@ def sequence(
                 count=border_narrow,
             )
         )
-    # `cfg.tie_in_off` (ON by default since 2026-10-23): strip the run-start
-    # locks. The cap's bill above was counted net of them (`_cap_st`), so the
-    # readout is what the cap sews either way.
-    if cfg.tie_in_off:
-        stitches.drop_tie_ins(blocks)
+    # Strip the run-start locks. The cap's bill above was counted net of them
+    # (`_cap_st`), so the readout is what the cap sews either way.
+    stitches.drop_tie_ins(blocks)
     if cap_cost is not None:
         warnings.append(
             warn(
@@ -6248,13 +6241,12 @@ def sequence(
         # `cfg.extra["bury_step_fine"]` (built OFF 2026-11-06): this pass's
         # thread tests at `_BURY_STEP_FINE_MM` instead of `_BURY_STEP_MM`.
         _cut_or_bury_jumps(blocks, tie_kw.get("small_letters"), cut_every_jump_step_mm(cfg))
-    # `cfg.tie_in_off` (built OFF): after `cut_every_jump`, so a cut that
+    # After `cut_every_jump`, so a cut that
     # pass adds loses its tie-in too (`stitches.tie_in` records it in
     # `tie_in_pts`) -- no run start is locked, even after a cut. It only
     # strips leading lock points; the sew order the pass above read is
     # unchanged.
-    if cfg.tie_in_off:
-        stitches.drop_tie_ins(blocks)
+    stitches.drop_tie_ins(blocks)
     # The same fold once more over the finished list: the detail layer picks
     # a chart cone of its own after the artwork pass above (the edge cap and
     # the hairline strands sew loaded cones already). A no-op at or under

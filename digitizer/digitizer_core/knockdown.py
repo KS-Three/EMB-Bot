@@ -25,9 +25,10 @@ So the block is sewn in the cone nearest `cfg.garment_rgb`, and when the
 garment colour is unknown there is no knockdown: a design-coloured one would
 sew a visible 2 mm halo round the logo, which is worse than none.
 
-`cfg.beanie_knockdown`, and only ever for `garment_id == "beanie"`. Built
-OFF and flipped ON by Kent on 2026-10-21 over the renders: like backing, it
-is the engine's call per garment, not the customer's. The three constants
+Only ever for `garment_id == "beanie"`. Built OFF and flipped ON by Kent on
+2026-10-21 over the renders, and folded into the code since (the field is
+gone): like backing, it is the engine's call per garment, not the
+customer's. The three constants
 below are the professional's, read from his files and not sewn here.
 """
 from __future__ import annotations
@@ -76,7 +77,7 @@ SHAPE_ID = "knockdown"
 
 
 def applies(cfg) -> bool:
-    return bool(getattr(cfg, "beanie_knockdown", False)) and cfg.garment_id == GARMENT
+    return cfg.garment_id == GARMENT
 
 
 def badge_border(shapes, satin_ids) -> Polygon | None:

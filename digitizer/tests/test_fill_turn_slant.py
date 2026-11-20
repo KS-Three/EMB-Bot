@@ -1,4 +1,4 @@
-"""`cfg.fill_turn_slant` (built OFF 2026-10-21): fill rows turn on a slant.
+"""`fill_turn_slant` (built OFF 2026-10-21, ON since 2026-10-23, folded into the code): fill rows turn on a slant.
 
 The settings audit (`docs/settings-vs-pro-2026-10-21.md` row 24) found our
 fill rows step straight across into the next row -- one row spacing, 0.10-
@@ -58,8 +58,7 @@ def _digest(runs) -> str:
     return h.hexdigest()
 
 
-def test_default_is_on_since_2026_10_23_and_off_is_the_old_call():
-    assert PipelineConfig().fill_turn_slant is True
+def test_off_is_the_old_call():
     for poly in (_BOX, _DISC, _HOLED):
         clear_fill_reorder_memo()
         old, _ = stitch_shape(poly, "S1", angle_deg=30.0, row_mm=ROW, stitch_mm=STITCH,
@@ -215,7 +214,7 @@ def test_the_config_reaches_every_fill_call_site():
     root = Path(sf.__file__).parent
     s7 = (root / "stage7_sequence.py").read_text(encoding="utf-8")
     sb = (root / "stage6_blend.py").read_text(encoding="utf-8")
-    assert s7.count("slant_turns=cfg.fill_turn_slant") == \
+    assert s7.count("slant_turns=True") == \
         s7.count("sewn_paths_only=cfg.fill_order_sewn_paths") == 7
-    assert sb.count("slant_turns=cfg.fill_turn_slant") == \
+    assert sb.count("slant_turns=True") == \
         sb.count("sewn_paths_only=cfg.fill_order_sewn_paths") == 2

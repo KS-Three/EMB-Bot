@@ -46,7 +46,7 @@ def test_base_carries_the_ruled_flips_never_the_fabric_flags():
     """Every arm pins both fabric flags itself, so a later default flip of
     either changes nothing on the card."""
     assert not set(c7.BASE) & set(c7.FABRIC_FLAGS)
-    assert c7.BASE["small_text_cap_mm"] == 4.0 and c7.BASE["fill_underlay_cross"] is True
+    assert c7.BASE["small_text_cap_mm"] == 4.0 and "fill_underlay_cross" not in c7.BASE  # folded
 
 
 def test_the_committed_cuts_carry_each_arms_flag_set():

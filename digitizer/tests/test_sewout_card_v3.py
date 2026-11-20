@@ -134,7 +134,8 @@ def test_regenerated_readback_numbers(card, committed):
     old = committed
     assert new["colour_changes_file"] == new["colour_changes_plan"] == old["colour_changes_file"] == 2
     assert [s["thread"] for s in new["stops"]] == [s["thread"] for s in old["stops"]] == ["dark", "light", "dark"]
-    assert new["max_needle_stitch_mm"] == pytest.approx(old["max_needle_stitch_mm"], abs=0.5)
+    # (`max_needle_stitch_mm` is no longer compared to the committed 3.14: the cross underlay, folded
+    # into the code 2026-11-20, lays 4 mm stitches. `test_the_hoop_fits...` bounds it by MAX_RECORD_MM.)
     assert new["max_record_axis_mm"] == pytest.approx(old["max_record_axis_mm"], abs=0.2)
     for key in ("extent_mm", "x_range_mm", "y_range_mm"):
         assert new[key] == pytest.approx(old[key], abs=0.5), key
