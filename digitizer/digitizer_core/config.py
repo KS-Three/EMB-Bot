@@ -4217,11 +4217,15 @@ class PipelineConfig:
     satin_overlap_run: bool = True
     # `lettering_columns_through_last` (built OFF 2026-11-19 as
     # `cfg.extra["lettering_columns_through_last"]`, Gaulke vs the pro, `columns._through_last_walk`):
-    # T/E junctions sewn whole. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".
-    # Evidence (review pack, 66 cells): 15 moved, no visible change, +2 trims. Promoted
-    # from `cfg.extra` to a field; False is the engine as it was, pinned in PRE_FLIP
-    # (`FLIP_FOUR_2026_11_19_OFF`) and `tests/engine_2026_10_27.json`. Tests: `tests/test_through_last.py`.
-    lettering_columns_through_last: bool = True
+    # T/E junctions sewn whole. Promoted from `cfg.extra` to a field but **left OFF**
+    # (default False) in the 2026-11-19 four-flag flip: Kent ruled it ON ("satin_overlap_run
+    # (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"), but it is
+    # the one flag of the four that raises `test_chaining`'s benchmark bare-thread floor
+    # (enthusiast_logo 93 mm left chest, chain off: 4.28 -> 4.54 mm; the other four leave
+    # 4.28), one walk-in leg of the reordered letter S6ac679b7 lying 0.26 mm further on bare
+    # cloth (ROADMAP gate 3's instrument; "we are not going backwards"). Flip it once its walk
+    # buries that leg. Tests: `tests/test_through_last.py`.
+    lettering_columns_through_last: bool = False
     # `lettering_columns_e_top_arm` + `lettering_columns_top_slab` (built OFF 2026-11-19 as
     # `cfg.extra` keys, `outline_cut.e_top_scope` / `top_slab_scope`, #1689): the pro's E top
     # band and sheared top slab. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".
