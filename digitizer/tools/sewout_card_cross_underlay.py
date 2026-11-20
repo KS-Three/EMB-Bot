@@ -60,8 +60,12 @@ DEFAULT_CUTS = DEFAULT_OUT / "cuts"
 #: card -> the Studio garment it is sewn on
 GARMENTS = {"hat": "hat_front", "polo": "left_chest"}
 #: arms in tooth order: (label, overrides)
-ARMS = (("preset", {"fill_underlay_cross": False}),
-        ("cross", {"fill_underlay_cross": True}))
+#: `fill_underlay_cross` is folded into the code (cross ON since 2026-10-23), so the
+#: preset arm pins the garment's own fabric underlay by name instead
+#: (`PRESET_UNDERLAY`, resolved per garment in `arm_config`).
+PRESET_UNDERLAY = "preset"
+ARMS = (("preset", {"underlay_style": PRESET_UNDERLAY}),
+        ("cross", {}))
 
 PLATE_W_MM, PLATE_H_MM, PPM = 41.0, 20.0, 20
 FIELD = (1.0, 1.0, 27.0, 19.0)       # x0, y0, x1, y1 mm: 26 x 18
@@ -88,6 +92,10 @@ def plate_image() -> np.ndarray:
 
 
 def arm_config(garment_id: str, overrides: dict) -> PipelineConfig:
+    if overrides.get("underlay_style") == PRESET_UNDERLAY:
+        from digitizer_core import fabrics
+        overrides = {**overrides, "underlay_style": fabrics.get_fabric(
+            fabrics.GARMENT_FABRIC[garment_id]).fill_underlay}
     return PipelineConfig(target_width_mm=PLATE_W_MM, forced_class="flat", thread_wt=WT,
                           garment_id=garment_id, **overrides)
 

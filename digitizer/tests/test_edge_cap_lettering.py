@@ -1,5 +1,5 @@
-"""No edge cap on lettering — `cfg.edge_cap_skip_lettering` (lettering
-construction plan step 5, 2026-09-19).
+"""No edge cap on lettering — `edge_cap_skip_lettering`, folded into the code
+(lettering construction plan step 5, 2026-09-19).
 
 The design-silhouette cap (`cfg.edge_cap`) sews only the stretches of the
 outline nothing linear already covers, and on a satin-sewn letter that is
@@ -20,8 +20,8 @@ byte-identical either way — the negative half of the rule.
 
 **Built OFF and FLIPPED ON the same day** (Kent's call 2026-09-19, over
 those numbers, the render and the nine-logo sheet: five logos move for −12
-trims / −319 stitches, uncovered area unchanged on all nine). `False` is the
-pre-flip cap byte for byte, and this file pins both sides.
+trims / −319 stitches, uncovered area unchanged on all nine). The flag is
+folded into the code since 2026-11-20; the OFF arm is gone from this file.
 """
 from __future__ import annotations
 
@@ -77,12 +77,6 @@ def _run(**kw):
 
 
 @pytest.fixture(scope="module")
-def off():
-    """The pre-flip cap, explicitly."""
-    return _run(edge_cap_skip_lettering=False)
-
-
-@pytest.fixture(scope="module")
 def on():
     """The default since the flip."""
     return _run()
@@ -125,19 +119,6 @@ def _uncovered(cfg, result, plan) -> float:
     return float(pf["metrics"].get("uncovered_total_mm2") or 0.0)
 
 
-def test_the_default_is_on():
-    """Built OFF and flipped ON the same day — Kent's call (plan step 5).
-    False stays reachable: it is the pre-flip cap, pinned below."""
-    assert PipelineConfig().edge_cap_skip_lettering is True
-    assert PipelineConfig(edge_cap_skip_lettering=False).edge_cap_skip_lettering is False
-
-
-def test_explicit_on_is_the_default_byte_for_byte(on):
-    _cfg, _result, default = on
-    _c, _r, explicit = _run(edge_cap_skip_lettering=True)
-    assert ([r.points for _b, r in explicit.iter_runs()]
-            == [r.points for _b, r in default.iter_runs()])
-
 
 # Deleted 2026-11-19 (satin construction flags folded into the engine): the
 # OFF-arm finding this flag rests on -- "the cap is patching the letters' bare
@@ -145,8 +126,11 @@ def test_explicit_on_is_the_default_byte_for_byte(on):
 # deltas (trims 23 -> 7, cap runs 18 -> 1). With tip caps, the crown cover and
 # the junction stack always on, this fixture's letters have no bare corners for
 # the cap to patch: both arms sew the same 2,388 stitches, 19 trims and one
-# cap run of 35 stitches, none on a letter. `test_on_no_cap_sample...` and
-# `test_on_only_the_cap_moves` still pin the flag's contract.
+# cap run of 35 stitches, none on a letter. `test_on_no_cap_sample...` still
+# pins the rule's contract. Deleted 2026-11-20 (flag folded into the code, B5):
+# `test_the_default_is_on`, `test_explicit_on_is_the_default_byte_for_byte`,
+# `test_on_only_the_cap_moves` and `test_a_design_with_no_lettering_is_untouched`,
+# which compared an `edge_cap_skip_lettering=False` arm that no longer exists.
 
 def test_on_no_cap_sample_stands_on_a_satin_letter(on):
     """A typed glyph gets no cap: ON, not one cap sample lies within a
@@ -156,16 +140,6 @@ def test_on_no_cap_sample_stands_on_a_satin_letter(on):
     assert len(letters) >= 5
     on_letters, _total = _cap_stitches_on(letters, plan)
     assert on_letters == 0
-
-
-def test_on_only_the_cap_moves(off, on):
-    """Every run that is not the cap is what it was: the flag reaches the
-    cap's `omit` and nothing else."""
-    _c1, _r1, p_off = off
-    _c2, _r2, p_on = on
-    art_off = [r.points for _b, r in p_off.iter_runs() if r.shape_id != "__edge_cap__"]
-    art_on = [r.points for _b, r in p_on.iter_runs() if r.shape_id != "__edge_cap__"]
-    assert art_on == art_off
 
 
 # --- the negative half, on synthetic geometry --------------------------------
@@ -202,14 +176,6 @@ def _cap_block(plan):
         if any(r.shape_id == "__edge_cap__" for r in b.runs):
             return b
     return None
-
-
-def test_a_design_with_no_lettering_is_untouched():
-    """Two abutting fields, no text candidate anywhere: the flag has no
-    input and the plan is what it was."""
-    both = [_region(_bar(15, 30, cx=-7.5), "L", 3, 0),
-            _region(_bar(15, 30, cx=7.5), "R", 5, 1)]
-    assert _points(_plan_for(both, edge_cap_skip_lettering=False)) == _points(_plan_for(both))
 
 
 # --- the helper reads the runs, not a verdict --------------------------------

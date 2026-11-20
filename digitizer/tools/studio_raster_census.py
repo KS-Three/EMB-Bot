@@ -22,11 +22,10 @@ pixel given the RGB of its nearest opaque pixel — the cure for the
 under-alpha rewrite), `studio_high` / `studio_high_bleed` (the candidate
 Studio fix), `native_black` (the file with RGB zeroed under alpha == 0 — the
 hostile exporter, what a canvas does minus its partial-alpha noise). Arms:
-today's defaults, then each lettering flip OFF against them (plus
-`fill_bridge_cut`, whose trade was read on the file too). (The `extend*`
-arms, the three forms of stage 1's alpha edge extension, went with the
-switches when it was folded into the engine; the gated form is `default`.
-`docs/flag-history/tier-b4-edges.md`.) One `build_generation` per raster; a
+today's defaults, then each remaining lettering flip OFF against them (the
+`edge_cap_skip_lettering` and `fill_bridge_cut` arms are gone: folded; so are the `extend*`
+arms, the three forms of stage 1's alpha edge extension, folded with their switches: the
+gated form is `default`, `docs/flag-history/tier-b4-edges.md`). One `build_generation` per raster; a
 stage-6/7 arm finishes from a fork, which is identical to a fresh build for
 those flags (checked 2026-09-20 on three of them); the stage-1 arm rebuilds. Per row: stitches, trims, lettering trims by cause (the
 2026-09-19 census's rule, with `_graph_travel` spied for refusals), exposed
@@ -70,12 +69,10 @@ FIXTURES = [
 ]
 NINE = ["tires", "enthusiast", "fremont", "bridge", "golden_tee", "gaulke", "drone", "screenshot", "becker"]
 
-# Each lettering flip OFF against today's defaults; the bridge cut rides along.
+# Each remaining lettering flip OFF against today's defaults.
 ARMS: dict[str, dict] = {
     "default": {},
     "euler": {"satin_stroke_order": "nearest"},
-    "cap_skip": {"edge_cap_skip_lettering": False},
-    "bridge_cut": {"fill_bridge_cut": False},
 }
 # Stage-1 arms (they rebuild the generation): none since the alpha extension was folded.
 PREFIX_ARMS: set[str] = set()

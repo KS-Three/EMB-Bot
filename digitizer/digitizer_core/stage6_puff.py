@@ -726,7 +726,7 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
                 ineligible(p, "no room for a foam tack-down")
             continue
         # The tack-down is ordinary flat stitching: stage 7's own tie rule,
-        # and its run-start locks go when stage 7's do (`cfg.tie_in_off`).
+        # and its run-start locks go when stage 7's do.
         tack[0].jump = tack[0].trim = True
         apply_ties(tack)
         top: list[StitchRun] = []
@@ -754,7 +754,7 @@ def puff_pass(planned, cfg, chart, design_class: str = "flat"
             st.runs[0].jump = st.runs[0].trim = True
             blk = StitchBlock(thread_index=t_index, thread_number=thread.number,
                               rgb=tuple(thread.rgb), runs=st.runs)
-            if st.code == PUFF_TACKDOWN_CODE and cfg.tie_in_off:
+            if st.code == PUFF_TACKDOWN_CODE:
                 drop_tie_ins([blk])
             blk.step = st.as_meta(len(blocks) + 1, thread.number)
             blocks.append(blk)

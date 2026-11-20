@@ -40,6 +40,9 @@ FAT = Polygon(FACE.buffer(4.0, join_style=2).exterior, [FACE.exterior])
 #: MARINE's A, roughly: a solid 5 mm stroke ring with a background counter
 LETTER = Polygon(box(40, -8, 56, 8).exterior, [box(45, -3, 51, 3).exterior])
 COUNTER = box(45, -3, 51, 3)
+# The OFF md5 of `_plan(KEY, FACE)` (captured with origin/main's engine 0530c8d6 before this flag
+# existed) and `test_off_is_byte_identical_to_main` were dropped 2026-11-20 (flag fold B5): they
+# pinned an engine without `tie_in_off`, `fill_turn_slant` and `fill_underlay_cross`.
 
 
 def _region(sid, poly, thread, layer, **meta):

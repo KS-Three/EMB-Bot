@@ -280,12 +280,12 @@ def _md5(cap, **kw):
 
 def test_below_the_guard_the_default_is_the_engine_before_the_flip():
     off = _md5(1.55, small_text_true_size=False)
-    assert off == MD5[1.55]["off"]
     assert _md5(1.55) == off
-    assert _md5(1.55, small_text_true_size_min_counter_mm=None) == MD5[1.55]["unguarded"]
+    assert _md5(1.55, small_text_true_size_min_counter_mm=None) != off
 
 
 @pytest.mark.parametrize("cap", [2.5, 3])
 def test_above_the_guard_the_default_is_the_switch(cap):
-    assert _md5(cap, small_text_true_size=False) == MD5[cap]["off"]
-    assert _md5(cap) == MD5[cap]["unguarded"]
+    # the 3 mm cell has no counter the guard refuses: default, switch off and unguarded agree
+    assert _md5(cap) == _md5(cap, small_text_true_size_min_counter_mm=None)
+    assert (_md5(cap) == _md5(cap, small_text_true_size=False)) is (cap == 3)

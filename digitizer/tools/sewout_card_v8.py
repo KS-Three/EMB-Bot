@@ -136,8 +136,6 @@ PIN = {
     "lettering_columns_small_bold": True,
     "bean_only_lines": True,
     "dark_ink_bean": True,
-    "trim_bury_under_later": True,
-    "tie_in_off": True,
     # Rebuilt 2026-11-08 on main 2ce938eb: the six flips that landed since the
     # 11-01 cut (3896a7ae) are pinned at their ON values, so arm (a) is today's
     # defaults and a later flip moves no re-cut.

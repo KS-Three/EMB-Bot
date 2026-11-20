@@ -52,12 +52,21 @@ FRAME = FIELD.buffer(0.8, join_style=2).difference(FIELD)
 FACE = box(-15, -6, 15, 6)
 KEY = FACE.buffer(2.0, join_style=2).difference(FACE)
 
-#: md5s of `_plan` captured on origin/main (82b0bf28) before the guard
-#: existed: the bowl with the border-from-outline rule on (today's engine) and
-#: off, and the frame on
-BOWL_ON_MD5 = "4793dc521a2e217dce6b8a80a7e5cb2f"
-BOWL_OFF_MD5 = "45170ee7d9d549b8f63569b826175f0c"
-FRAME_ON_MD5 = "4fc6548342ef77b7fa8b928706962afe"
+# The md5s of `_plan` captured on origin/main (82b0bf28) before the guard existed (the bowl with
+# the outline rule ON and OFF, the frame ON) pinned an engine without `tie_in_off`,
+# `fill_turn_slant` and `fill_underlay_cross`; since 2026-11-20 (flag fold B5) the same three arms
+# are computed in-process: the bowl with no outlines handed to the sequencer (the rule off, which
+# is no longer a switch: B4 folded `border_from_outline`), the bowl and the frame with the guard OFF.
+def _bowl_off():
+    return _md5(_plan(BOWL, CELL, outlines=False))
+
+
+def _bowl_on_unguarded():
+    return _md5(_plan(BOWL, CELL, border_from_outline_line_art_guard=GUARD_OFF))
+
+
+def _frame_on_unguarded():
+    return _md5(_plan(FRAME, FIELD, border_from_outline_line_art_guard=GUARD_OFF))
 
 
 def _region(sid, poly, thread, layer, **meta):
@@ -69,15 +78,16 @@ def _pair(outline, body):
     return [_region("Sbody", body, 0, 0), _region("Souter", outline, 1, 1)]
 
 
-def _plan(outline, body, **cfg_kw):
-    """The body (layer 0) then its outline (layer 1), both sewn."""
+def _plan(outline, body, *, outlines=True, **cfg_kw):
+    """The body (layer 0) then its outline (layer 1), both sewn. `outlines=False`
+    hands the sequencer no art outlines: the engine without the outline rule."""
     b, o = _pair(outline, body)
     planned = [PlannedRegion(region=b, polygon=body, sew_index=0),
                PlannedRegion(region=o, polygon=outline, sew_index=1)]
     # the md5s predate the 2026-10-23 flips (conftest): pinned off
     cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **FLAG_ENDS_SEAM_2026_11_17_OFF, **cfg_kw})
     blocks, _ = sequence(planned, fabric_for_garment("hat_front"), cfg,
-                         art_outlines=_art_outlines([b, o], cfg))
+                         art_outlines=_art_outlines([b, o], cfg) if outlines else None)
     return [r for blk in blocks for r in blk.runs]
 
 
@@ -130,24 +140,21 @@ def test_guard_drops_the_drawing_and_keeps_the_frame_and_the_keyline():
         assert find_art_outlines(_pair(outline, body), cfg) == find_art_outlines(_pair(outline, body))
 
 
-def test_guard_off_is_byte_identical_to_the_engine_before_it():
-    assert _md5(_plan(BOWL, CELL, border_from_outline_line_art_guard=GUARD_OFF)) == BOWL_ON_MD5
-    assert _md5(_plan(FRAME, FIELD, border_from_outline_line_art_guard=GUARD_OFF)) == FRAME_ON_MD5
+def test_guard_off_rings_the_bowl():
+    assert _bowl_on_unguarded() != _bowl_off()
 
 
 def test_the_default_sews_the_drawing_as_before_border_from_outline():
-    # ON by default: the bowl is the bytes before the rule, the frame keeps its border
-    assert _md5(_plan(BOWL, CELL)) == BOWL_OFF_MD5
-    assert _md5(_plan(FRAME, FIELD)) == FRAME_ON_MD5
+    # ON by default: the bowl is the bytes without the rule, the frame keeps its border
+    assert _md5(_plan(BOWL, CELL)) == _bowl_off()
+    assert _md5(_plan(FRAME, FIELD)) == _frame_on_unguarded()
 
 
 def test_guard_on_sews_the_drawing_as_the_engine_did_before_the_flag():
     on = _plan(BOWL, CELL, border_from_outline_line_art_guard=True)
-    assert _md5(on) == BOWL_OFF_MD5
+    assert _md5(on) == _bowl_off()
 
 
 def test_guard_on_leaves_a_ringed_frame_bordered():
     on = _plan(FRAME, FIELD, border_from_outline_line_art_guard=True)
-    assert _md5(on) == FRAME_ON_MD5
-
-
+    assert _md5(on) == _frame_on_unguarded()

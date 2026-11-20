@@ -1,10 +1,10 @@
-"""Beanie knockdown (`cfg.beanie_knockdown`, ON since Kent's 2026-10-21 flip; `knockdown.py`).
+"""Beanie knockdown (ON since Kent's 2026-10-21 flip, folded into the code; `knockdown.py`).
 
 Rule R9 of `docs/pro-digitizer-rules-2026-10-21.md`: on every beanie in the
 professional's zip the first colour block is a sparse tatami (0.5 mm rows, no
 underlay) over the whole design grown ~1.5 mm, in the garment's colour. These
 pin the construction, the colour choice, that it only ever touches a beanie,
-and that OFF is the engine byte for byte.
+and that a beanie with no known garment colour is the plain design.
 """
 from __future__ import annotations
 
@@ -45,20 +45,15 @@ def _cfg(**kw):
     for k, v in {**FLIP_2026_10_23, **FLIP_2026_10_26, **TEXT_GAPS_2026_11_15_OFF,
                  **FLAG_ENDS_SEAM_2026_11_17_OFF, **SATIN_RECTANGLES_2026_11_19_OFF}.items():
         kw.setdefault(k, v)
-    return PipelineConfig(garment_id="beanie", garment_rgb=KHAKI, **kw)
+    return PipelineConfig(**{"garment_id": "beanie", "garment_rgb": KHAKI, **kw})
 
 
 # --- construction -----------------------------------------------------------------
 
-def test_flag_is_on_since_kents_flip():
-    assert PipelineConfig().beanie_knockdown is True
-
-
 def test_only_a_beanie_gets_one():
-    assert knockdown.applies(_cfg(beanie_knockdown=True))
-    assert not knockdown.applies(_cfg(beanie_knockdown=False))
+    assert knockdown.applies(_cfg())
     for g in ("hat_front", "left_chest", None):
-        assert not knockdown.applies(replace(_cfg(beanie_knockdown=True), garment_id=g))
+        assert not knockdown.applies(replace(_cfg(), garment_id=g))
 
 
 def test_outline_grows_by_the_margin_bridges_near_gaps_and_fills_holes():
@@ -84,7 +79,7 @@ def test_an_island_inside_a_wide_counter_is_not_a_second_piece():
 
 
 def test_block_is_sparse_rows_no_underlay_in_the_garment_cone():
-    block, rep = knockdown.knockdown_block([box(0, 0, 30, 12)], _cfg(beanie_knockdown=True), 3.0)
+    block, rep = knockdown.knockdown_block([box(0, 0, 30, 12)], _cfg(), 3.0)
     assert rep["applied"] and rep["pieces"] == 1
     want = CHART.nearest_index(rgb_to_lab(np.array([KHAKI], dtype=float))[0])
     assert block.thread_index == want
@@ -102,7 +97,7 @@ def test_block_is_sparse_rows_no_underlay_in_the_garment_cone():
 
 
 def test_row_pitch_is_the_knockdowns():
-    block, _ = knockdown.knockdown_block([box(0, 0, 40, 20)], _cfg(beanie_knockdown=True), 3.0)
+    block, _ = knockdown.knockdown_block([box(0, 0, 40, 20)], _cfg(), 3.0)
     pts = np.array([p for r in block.runs if r.kind == stitches.FILL for p in r.points])
     # rows are parallel lines; project onto the normal of the longest stitch direction
     d = np.diff(pts, axis=0)
@@ -119,7 +114,7 @@ def test_row_pitch_is_the_knockdowns():
 
 def test_no_garment_colour_no_knockdown():
     block, rep = knockdown.knockdown_block([box(0, 0, 10, 10)],
-                                           replace(_cfg(beanie_knockdown=True), garment_rgb=None), 3.0)
+                                           replace(_cfg(), garment_rgb=None), 3.0)
     assert block is None and rep["reason"] == "no garment colour"
 
 
@@ -142,17 +137,17 @@ def test_prepend_is_its_own_block_unless_the_first_is_the_same_cone():
 # --- through the pipeline ------------------------------------------------------------
 
 FIXTURE = "logo_alpha.png"
-#: `logo_alpha.png` at 60 mm on a khaki beanie, flag OFF: the plan before this
-#: flag existed (captured from `git archive 2e873933`, module absent, under
-#: conftest's OPENCV_IPP=avx2). HAT_MD5 is the same art on a hat_front.
-BEANIE_OFF_MD5 = "f3cdf273aa9e21adbddef7ddbd52bd2b"
-HAT_MD5 = "19a77b6b5ad43ff5528f4ddd590cfeb0"
+#: `logo_alpha.png` at 60 mm on a beanie. "off" is the same beanie with no garment colour
+#: (`knockdown.applies` is true, `knockdown_block` returns None: a design-coloured halo is
+#: worse than none), which is the plan without the knockdown. The flag that used to switch
+#: it is folded; the md5s the OFF arm and the hat_front were pinned to (the engine
+#: before the flag existed) described an engine that no longer exists and are dropped.
 
 
 @pytest.fixture(scope="module")
 def runs():
     out = {}
-    for name, kw in {"off": {"beanie_knockdown": False}, "on": {}}.items():
+    for name, kw in {"off": {"garment_rgb": None}, "on": {}}.items():
         out[name] = digitize(TESTDATA / FIXTURE, _cfg(target_width_mm=60.0, **kw))[1]
     return out
 
@@ -177,17 +172,13 @@ def test_on_covers_every_design_stitch(runs):
     assert len(outside) <= 0.01 * len(design)
 
 
-def test_off_is_byte_identical(runs):
-    assert _md5(runs["off"]) == BEANIE_OFF_MD5
-
-
 def test_on_other_garments_changes_nothing():
     base = dict(target_width_mm=60.0, garment_rgb=KHAKI, garment_id="hat_front",
                 **FLIP_2026_10_23, **FLIP_2026_10_26, **TEXT_GAPS_2026_11_15_OFF,
                 **FLAG_ENDS_SEAM_2026_11_17_OFF, **SATIN_RECTANGLES_2026_11_19_OFF)
-    off = digitize(TESTDATA / FIXTURE, PipelineConfig(beanie_knockdown=False, **base))[1]
+    off = digitize(TESTDATA / FIXTURE, PipelineConfig(**{**base, "garment_rgb": None}))[1]
     on = digitize(TESTDATA / FIXTURE, PipelineConfig(**base))[1]
-    assert _md5(on) == _md5(off) == HAT_MD5
+    assert _md5(on) == _md5(off)
 
 
 def test_a_lift_inside_the_knockdown_becomes_travel_along_the_edge():

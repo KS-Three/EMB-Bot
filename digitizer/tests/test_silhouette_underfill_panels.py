@@ -44,10 +44,8 @@ ON = dict(silhouette_underfill=True, sew_enclosed_white=True)
 
 #: captured on origin/main cdb96d63 (main's `su.apply`, no riders), and
 #: reproduced on this branch with the flag off
-OFF_MD5 = {"panel_off": "4743a430dd2677f2724593708c4d9f2a",
-           "panel_underfill": "52bdd7bf2159110c6821b9fcfa3aaf92",
-           "mfab_underfill": "a429f57a0a79155e7d63ffea56fdabc6",
-           "becker_underfill": "cd652df0ebca32d933202309b29e2bc4"}
+# (These md5s and `test_off_is_byte_identical_to_main` were dropped 2026-11-20, flag fold B5: they
+# pinned an engine without `tie_in_off`, `fill_turn_slant` and `fill_underlay_cross`.)
 
 
 def _reg(sid, poly, thread, layer, **meta):
@@ -102,19 +100,12 @@ def test_flag_default_is_on():
     assert PipelineConfig().silhouette_underfill_panels is True
 
 
-def test_off_is_byte_identical_to_main():
-    assert _panel_md5() == OFF_MD5["panel_off"]
-    assert _panel_md5(**ON) == OFF_MD5["panel_underfill"]
-    assert _md5(_sew(mfab(), silhouette_underfill=True)[3]) == OFF_MD5["mfab_underfill"]
-    assert _md5(_sew(becker(), silhouette_underfill=True)[3]) == OFF_MD5["becker_underfill"]
-
-
 def test_inert_without_the_white_sewn_or_the_underfill():
     assert (_panel_md5(silhouette_underfill_panels=True, silhouette_underfill=True)
             == _panel_md5(silhouette_underfill=True))
     assert (_panel_md5(silhouette_underfill_panels=True, sew_enclosed_white=True)
             == _panel_md5(sew_enclosed_white=True))
-    assert _panel_md5(silhouette_underfill_panels=True) == OFF_MD5["panel_off"]
+    assert _panel_md5(silhouette_underfill_panels=True) == _panel_md5()
 
 
 def test_on_the_riders_are_not_merged_and_sew_after_the_white():
