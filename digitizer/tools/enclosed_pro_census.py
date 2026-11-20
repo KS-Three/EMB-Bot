@@ -94,13 +94,7 @@ ARMS = {
     "off": {"sew_enclosed_white": False},
     "white": {"sew_enclosed_white": True},                    # the 2026-10-23 census's ON
     "white_keyline": {"sew_enclosed_white": True, "enclosed_white_keyline": True},
-    # the keyline as #1059 measured it, before `border_from_outline` (ON since
-    # 2026-10-24) took the band over
-    "white_keyline_nobfo": {"sew_enclosed_white": True, "enclosed_white_keyline": True,
-                            "border_from_outline": False},
     "on": dict(WHITE3),                                       # all three white switches
-    "on_nobfo": {**WHITE3, "border_from_outline": False},
-    "off_nobfo": {"sew_enclosed_white": False, "border_from_outline": False},
 }
 
 #: (slug, width override, art override). Width None: the pro's file width.
@@ -241,7 +235,7 @@ def digitize_cell(slug: str, arm: str, cache: Path, width: float | None = None,
             "trims": d.plan.stats.trims, "rembg": rembg, "dst_offset_mm": offset,
             "cfg": {k: getattr(d.cfg, k, None) for k in
                     ("sew_enclosed_white", "enclosed_white_keyline",
-                     "sew_enclosed_white_fields_fill", "border_from_outline", "garment_id",
+                     "sew_enclosed_white_fields_fill", "garment_id",
                      "fill_angle_deg", "target_width_mm")},
             "blocks": [{"thread": b.thread_number, "rgb": list(b.rgb)} for b in d.plan.blocks],
             "regions": rows, "runs": runs}
@@ -749,8 +743,7 @@ def table_cmd(a) -> int:
     lines = ["# enclosed_pro_census", ""]
     for title, jobs, arm in (("Calibration: the 2026-10-23 census, arm `white`", CALIBRATION_JOBS, "white"),
                              ("Score: `sew_enclosed_white` alone, arm `white`", SCORE_JOBS, "white"),
-                             ("Score: all three white switches, arm `on`", SCORE_JOBS, "on"),
-                             ("Score: arm `on_nobfo` (border_from_outline False)", SCORE_JOBS, "on_nobfo")):
+                             ("Score: all three white switches, arm `on`", SCORE_JOBS, "on")):
         lines += [f"## {title}", "",
                   "| job | region | mm² | min dim | holes | holder | role | plan | pro | ours OFF | "
                   "ours | agree |",

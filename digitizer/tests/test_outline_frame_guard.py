@@ -46,8 +46,8 @@ def test_a_keyline_is_not_a_field():
 
 
 def test_a_field_gets_no_loop_and_sews_as_a_fill():
-    off = _plan(FIELD, FACE, border_from_outline=True, outline_frame_guard=False)
-    on = _plan(FIELD, FACE, border_from_outline=True, outline_frame_guard=True)
+    off = _plan(FIELD, FACE, outline_frame_guard=False)
+    on = _plan(FIELD, FACE, outline_frame_guard=True)
     loops_off = [r for r in off if r.shape_id == "Souter" and r.kind == stitches.SATIN]
     assert loops_off                                     # the loop hugging the knockout
     assert not [r for r in on if r.shape_id == "Souter" and r.kind == stitches.SATIN]
@@ -58,5 +58,5 @@ def test_a_field_gets_no_loop_and_sews_as_a_fill():
 
 
 def test_a_keyline_plan_is_byte_identical_on():
-    assert (_md5(_plan(KEY, FACE, border_from_outline=True, outline_frame_guard=False))
-            == _md5(_plan(KEY, FACE, border_from_outline=True, outline_frame_guard=True)))
+    assert (_md5(_plan(KEY, FACE, outline_frame_guard=False))
+            == _md5(_plan(KEY, FACE, outline_frame_guard=True)))

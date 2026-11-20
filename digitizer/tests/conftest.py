@@ -779,7 +779,6 @@ FLIP_2026_10_23 = {
     # flags and the corner fold, so every site that pins "before the 10-23 flips"
     # pins them too.
     "border_by_size": False,
-    "enclosed_alpha_hole_parts": False,
     "lettering_columns_corner_fold": False,
     # The bean rule (`bean_only_lines`, built OFF and flipped ON by Kent the
     # same day, 2026-10-27, #1165): every site that pins "before the 10-23
@@ -813,12 +812,6 @@ PRE_FLIP["detail_spoke_scale"] = None
 # mm"). None is the even 0.45 pitch, the engine before that call. The
 # tests ABOUT it are `tests/test_bean_straight.py`.
 PRE_FLIP["bean_letter_straight_mm"] = None
-# Native-read corner runs (Kent's ruling 2026-10-20, MASTER_SCOPE item 41):
-# one side-line fit per corner run, an unread vertex takes its read
-# neighbours' offset, a vertex landing behind its predecessor drops. False is
-# the pre-flip engine: Becker's outline at 1.8 px/mm carries 7.1 reversals
-# per 100 mm. The tests ABOUT it are in `tests/test_subpixel_corner_runs.py`.
-PRE_FLIP["subpixel_corner_runs"] = False
 # The lowercase shoulder cut (Kent's flip 2026-10-20, after PR #986's sewn
 # judge): a lettering piece that folds its crosses through a shoulder takes a
 # second look, judged sewn. False is the pre-flip lane. The tests ABOUT it are
@@ -845,11 +838,9 @@ PRE_FLIP["lettering_columns_rail_axis"] = False
 # `tests/test_clip_keep_pieces.py`.
 PRE_FLIP["clip_keep_pieces"] = False
 # Kent's wave-2 flips (2026-10-24, from the flip sheet of PR #1069), for the
-# reason every entry above gives. `border_from_outline` (#1065): an art outline
-# sews as one satin loop per body at the outline's width, its bodies as fills.
+# reason every entry above gives.
 # `small_text_cap_reach_edges` (#1066): the re-set reaches a line on the
 # design's edge; inert while the re-set itself is unset.
-PRE_FLIP["border_from_outline"] = False
 PRE_FLIP["small_text_cap_reach_edges"] = False
 # Three lettering flags Kent flipped ON 2026-10-24 ("Flip it ON", then "Ship
 # 3, fix white next" on 2026-10-25), for the reason every entry above gives:

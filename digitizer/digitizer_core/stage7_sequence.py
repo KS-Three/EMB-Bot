@@ -3745,7 +3745,7 @@ def sequence(
     if _rect_lock and not tie_kw:
         tie_kw = {"small_letters": set()}
     _lock_ids = tie_kw.get("small_letters")
-    # `cfg.border_from_outline` (built OFF, 2026-10-24): an outline in the
+    # The art's own outline (2026-10-24): an outline in the
     # art that sews (its id in `planned`) loops every looped hole at the
     # width of the body it holds (`outline_holes`); its bodies sew as plain
     # fills under it, never satin and never a border of their own -- the
@@ -3764,7 +3764,7 @@ def sequence(
     # it leaves the shape, sewn as split travel when it stays on it
     # (`lift_piece`). Off, never read past this line.
     piece_lift = bool(cfg.inshape_piece_lift)
-    if art_outlines and cfg.border_from_outline:
+    if art_outlines:
         _sewn = {_p.shape_id for _p in planned}
         _planned_by_id = {_p.shape_id: _p for _p in planned}
         for _oid, _bodies in art_outlines.items():
@@ -4143,7 +4143,7 @@ def sequence(
                     return runs, report, False
                 tier = "auto"
                 outline_tried = True
-            # `cfg.border_from_outline` (built OFF, 2026-10-24): the art's own
+            # The art's own outline (2026-10-24):
             # outline sewn the pro's way -- one satin loop round each body it
             # holds, rail on the body's edge, crosses out across the outline
             # at his width (`art_outline.outline_width_mm`: the art outline's

@@ -58,8 +58,7 @@ def _plan(width_mm: float, *, outline_meta: dict | None = None, extra=(), **cfg_
     planned = [PlannedRegion(region=r, polygon=r.polygon, sew_index=r.meta["layer"]) for r in regions]
     cfg = PipelineConfig(underlay=False, **{FLAG: False, **cfg_kw})   # OFF unless the test says
     outlines = _art_outlines(regions, cfg)
-    if cfg.border_from_outline:
-        assert outlines and "Souter" in outlines, "the fixture must read as an art outline"
+    assert outlines and "Souter" in outlines, "the fixture must read as an art outline"
     blocks, warnings = sequence(planned, fabric_for_garment("hat_front"), cfg, art_outlines=outlines)
     return [r for blk in blocks for r in blk.runs], warnings
 
@@ -384,12 +383,6 @@ def test_on_a_wider_outline_is_byte_identical(width_mm):
 def test_on_a_tier_the_user_set_is_left_alone():
     off, _ = _plan(0.4, outline_meta={"tier": "fill"})
     on, _ = _plan(0.4, outline_meta={"tier": "fill"}, **{FLAG: True})
-    assert _md5(on) == _md5(off)
-
-
-def test_on_without_border_from_outline_does_nothing():
-    off, _ = _plan(0.4, border_from_outline=False)
-    on, _ = _plan(0.4, border_from_outline=False, **{FLAG: True})
     assert _md5(on) == _md5(off)
 
 

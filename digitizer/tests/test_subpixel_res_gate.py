@@ -1,12 +1,11 @@
 """`cfg.subpixel_edges_min_px_per_mm`: a resolution floor under the native
-edge read (`subpixel_edges_upscaled`), built 2026-10-11, default None.
+edge read (the upscaled-source read, now in the engine), built 2026-10-11, default None.
 
 The contracts. None is today's pipeline byte for byte — the default, and an
 explicit None, trace exactly what they traced before the field existed (the
 committed goldens hold the whole-pipeline half of that). Set, a source that
 stage 1 upscaled and that delivers LESS than the floor skips the read and
-keeps the pre-flip polygon, exactly as `subpixel_edges_upscaled=False`
-would; a source at or above it takes the read as today. The evidence for
+keeps the pixel-centre polygon (no read); a source at or above it takes the read as today. The evidence for
 where the floor belongs is `docs/subpixel-res-gate-2026-10-11.md`.
 """
 from __future__ import annotations
@@ -69,13 +68,11 @@ def test_a_floor_of_3_skips_the_read_at_1_8_and_takes_it_at_3_and_5(tmp_path, pp
     assert p.upscale[0] > 1.0                                        # the regime under test
     assert p.input_px_per_mm == pytest.approx(ppm, rel=0.02)
     _p, on = _run(art, ppm)
-    _p, off = _run(art, ppm, subpixel_edges_upscaled=False)
-    assert _wkts(on) != _wkts(off)                                   # the read moves this disc
     if taken:
         assert _wkts(gated) == _wkts(on)
         assert all("subpixel_accepted" in r.meta for r in gated)
     else:
-        assert _wkts(gated) == _wkts(off)
+        assert _wkts(gated) != _wkts(on)                             # the read moves this disc
         assert not any("subpixel_accepted" in r.meta for r in gated)
 
 

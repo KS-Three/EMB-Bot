@@ -750,15 +750,15 @@ def classify(image: str | Path | bytes | np.ndarray, cfg: PipelineConfig,
         return result
 
     rgb, alpha = _load(image, cfg.crop)
-    # In step with stage 1 (`cfg.alpha_edge_extend`): the signals below mask
+    # In step with stage 1 (alpha edge extension): the signals below mask
     # to `fg`, but `_gradient_smoothness`'s kernel sits on the edge and reads
     # what is under the alpha whatever the mask says — Becker with black
     # underneath classified "gradient" from a raster stage 1 had already
     # extended (measured 2026-09-20).
-    # Stage 0 reads the extension wherever the file has alpha when
-    # `alpha_edge_extend_stage0_whole` (Kent's pick 2026-09-20); stage 1 keeps
-    # the resolution-floor gate for the pixels it sews. `alpha_edge.py` says why.
-    if extension_applies(cfg, alpha, ignore_gate=cfg.alpha_edge_extend_stage0_whole):
+    # Stage 0 reads the extension wherever the file has alpha (Kent's pick
+    # 2026-09-20); stage 1 keeps the resolution-floor gate for the pixels it
+    # sews. `alpha_edge.py` says why.
+    if extension_applies(cfg, alpha, ignore_gate=True):
         rgb = extend_opaque_colour(
             rgb, alpha, cfg.alpha_edge_extend_px,
             **({"keep_interior": True}

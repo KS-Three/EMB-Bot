@@ -381,12 +381,11 @@ def vectorize(
     # `curve_turn_deg`: None, 0 and negatives all mean "today's polygon", and
     # so does a resolution under `_CURVE_MIN_PX_PER_MM` (see there).
     curve_turn = cfg.curve_turn_deg if (cfg.curve_turn_deg or 0.0) > 0.0 else None
-    # `subpixel_edges` (plan §3, PR 2): the raw contour's vertices move to
+    # Sub-pixel edges (plan §3, PR 2): the raw contour's vertices move to
     # where the image's anti-alias ramp crosses halfway between the two side
     # colours before Douglas-Peucker sees them — see `subpixel.py`. It needs
     # every boundary pixel (CHAIN_APPROX_NONE) and the prepped image in Lab,
-    # converted once here. OFF, none of this runs and the trace is
-    # byte-identical.
+    # converted once here.
     # Not on a source stage 1 UPSCALED to the resolution floor: the Lanczos
     # ramp is manufactured, about twice the width of the coverage ramp the
     # step reads and ringing at both ends, and the edge it locates is the
@@ -398,7 +397,7 @@ def vectorize(
     # §8 decision 3 (Becker-class sources); until it is measured on real
     # upscaled art the step declines there, and the polygon is today's.
     upscaled = bool(p.input_px_per_mm) and p.px_per_mm > p.input_px_per_mm * (1.0 + 1e-6)
-    # `subpixel_edges_upscaled`: the declined regime read at the SOURCE's
+    # The upscaled regime, read at the SOURCE's
     # own resolution instead — the ramp is real there, it is only the
     # resample's that is manufactured. Each raw vertex is handed down to the
     # source's frame, read against the source's pixels (with its alpha as a
@@ -407,10 +406,9 @@ def vectorize(
     # `subpixel_edges_min_px_per_mm`: a source delivering less than that
     # skips the read and keeps the staircase polygon (None: no floor).
     floor = cfg.subpixel_edges_min_px_per_mm
-    native = (upscaled and bool(cfg.subpixel_edges) and bool(cfg.subpixel_edges_upscaled)
-              and p.native_rgb is not None
+    native = (upscaled and p.native_rgb is not None
               and (floor is None or p.input_px_per_mm >= float(floor)))
-    subpixel = bool(cfg.subpixel_edges) and (not upscaled or native)
+    subpixel = not upscaled or native
     # The refinement's resolution gate (`_CURVE_MIN_PX_PER_MM`) is what keeps
     # its one-pixel floor from reading raster texture as arcs. With the
     # profile reading on, the floor is keyed to acceptance chord by chord
@@ -502,7 +500,7 @@ def vectorize(
 
         def ring_source(contour: np.ndarray) -> tuple[np.ndarray, float | None, np.ndarray | None]:
             """The points Douglas-Peucker simplifies for one ring — the raw
-            pixel centres, or with `subpixel_edges` the sub-pixel vertices
+            pixel centres, or with sub-pixel edges the sub-pixel vertices
             — the share of them accepted (None when the step did not run),
             and the per-point accepted mask the refinement keys its floor
             to. The near-floor lettering exemption below is judged on the
@@ -518,7 +516,7 @@ def vectorize(
             if native:
                 moved, accepted, corner = _native_subpixel(raw_int, lab_img, padded, (x0 - 1, y0 - 1),
                                                            p, cfg.merge_delta_e,
-                                                           corner_runs=bool(cfg.subpixel_corner_runs))
+                                                           corner_runs=True)
                 # A rejected run is measured in vertices, and the trace
                 # carries `upscale` of them per source pixel.
                 run_max = int(round(DROP_REJECTED_RUN_MAX * max(p.upscale)))
@@ -527,7 +525,7 @@ def vectorize(
                                                            min_contrast_de=cfg.merge_delta_e)
                 run_max = DROP_REJECTED_RUN_MAX
             share = float(accepted.mean()) if len(accepted) else 0.0
-            if native and cfg.subpixel_corner_runs:
+            if native:
                 # A moved vertex that lands behind the one before it, along
                 # the trace's own direction, folds the ring: dropped here.
                 moved, accepted, corner = drop_folds(
@@ -1453,8 +1451,7 @@ def garment_sews_enclosed(p: Prep, cfg: PipelineConfig) -> tuple[bool, float | N
     return de > float(cfg.enclosed_by_garment_de00), de
 
 
-def tag_enclosed_background(regions: list[Region], p: Prep, *,
-                            alpha_hole_parts: bool = False) -> None:
+def tag_enclosed_background(regions: list[Region], p: Prep) -> None:
     """Post-vectorization pass: mark `region.meta["enclosed_background"]`
     True for every Region that is (nearly) the same shape as one connected
     component of `Prep.enclosed_mask` — the bg-colored-but-not-border-
@@ -1492,10 +1489,10 @@ def tag_enclosed_background(regions: list[Region], p: Prep, *,
     original bug (a hole nobody can review), so uncertainty always resolves
     to "keep stitching it".
 
-    `alpha_hole_parts` (`cfg.enclosed_alpha_hole_parts`, 2026-10-23): on the
+    The alpha-hole rule (2026-10-23): on the
     ALPHA path only, a region is tagged when it is mostly inside one
     transparent component — the first ratio alone. A transparent hole has no
-    colour of its own, and `alpha_edge_extend` paints it with the nearest
+    colour of its own, and the alpha extension paints it with the nearest
     opaque colour, so a counter inside a two-tone letter vectorizes as two
     (or more) regions, each under 0.6 of its hole, and every one of them
     failed open and sewed in the letter's thread (Precision Drone's O at
@@ -1506,7 +1503,7 @@ def tag_enclosed_background(regions: list[Region], p: Prep, *,
     mask = p.enclosed_mask
     if mask is None or not mask.any():
         return
-    parts_rule = bool(alpha_hole_parts and p.bg_from_alpha)
+    parts_rule = bool(p.bg_from_alpha)
     h, w = mask.shape
     x0, y0, x1, y1 = p.art_bbox
     cx, cy = (x0 + x1) / 2.0, (y0 + y1) / 2.0

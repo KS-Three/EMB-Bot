@@ -71,7 +71,6 @@ FLAGS: dict[str, object] = {
     "lettering_columns_rail_axis": False,   # 2026-10-20, Proseal E arm
     "bean_letter_straight_mm": None,        # 2026-10-20, Kent: "ON at 0.7 mm"
     "detail_spoke_scale": None,             # 2026-10-20, Kent: "Star is too big" (half)
-    "subpixel_corner_runs": False,          # 2026-10-20, Kent's flip (item 41)
     "lettering_columns_small_stem": False,  # 2026-10-20, Kent's flip (item 52)
     "clip_keep_pieces": False,              # 2026-10-20, Kent's flip (item 46, after the halo lever)
     "detail_spokes": False,                 # 2026-10-16, Kent's flip ("ON, tightened")
@@ -89,7 +88,6 @@ FLAGS: dict[str, object] = {
     "lettering_columns_ink_link": False,    # 2026-10-13, Kent's flip
     "lettering_columns_skip_blobs": False,  # 2026-10-13, Kent's flip
     "enclosed_by_garment": False,       # 2026-09-10
-    "subpixel_edges": False,            # 2026-09-09
     "curve_turn_deg": None,             # 2026-09-03
     "edge_cap": "off",                  # 2026-09-01, flipped to "bean" 09-11
     "borders_last": False,              # 2026-08-31, just outside but cheap
