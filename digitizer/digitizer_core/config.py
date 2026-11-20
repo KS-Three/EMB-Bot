@@ -4184,6 +4184,23 @@ class PipelineConfig:
     # (SATIN_RECTANGLES_2026_11_19_OFF) pins it False.
     # Tests: `tests/test_satin_rectangles.py`.
     satin_rectangles: bool = True
+    # `satin_stars` (2026-11-19, Kent: "a triangle needs 3 points", "make sure
+    # the star has flow"): a regular pointed star (`stage6_satin.read_star`:
+    # 4-8 points alternating with inner corners round a centre, tips and
+    # corners each within 15% of their mean radius, outline within 0.12 mm of
+    # the ideal star, every point's base within the satin ceiling) sews point
+    # by point (`star_satin`): one satin pass per point, crosses square to its
+    # axis down to 0.15 mm, a needle on every tip, entered and left on tips.
+    # Flag.webp's 50 stars (3.3 mm at 113.5 mm) came tagged as lettering and
+    # sewed blunt: the lane stopped each point ~0.8 mm short of its tip under
+    # the 0.5 mm cross floor. Flag trims 42 -> 22. 1 of 44 sweep runs moves
+    # (ENTHUSIAST's four-point star: rounded X today, pointed after).
+    # **ON since 2026-11-19** (Kent, shown the flag's stars at 113.5 and 96 mm
+    # and ENTHUSIAST before | after: "Flip ON (Recommended)"). How a 0.15 mm
+    # tip cross sews on cloth is a sew-out question (gate 1). False is the
+    # engine as it was; PRE_FLIP (SATIN_STARS_2026_11_19_OFF) pins it False.
+    # Tests: `tests/test_satin_stars.py`.
+    satin_stars: bool = True
     # Lettering as Columns (`digitizer_core/outline_cut.py`,
     # `digitizer_core/columns.py`; the lettering-lane architecture,
     # `docs/lettering-architecture-rd-2026-10-07.md` §5 L4/L5, Kent's pick

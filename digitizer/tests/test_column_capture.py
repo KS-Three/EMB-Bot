@@ -328,7 +328,9 @@ def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
     from digitizer_core import columns
 
     path = TESTDATA / "photo/enthusiast_logo.png"
-    kw = dict(target_width_mm=80.0, garment_id="left_chest", max_colors=6)
+    # `satin_stars` (ON since 2026-11-19) off: the ink link's difference on this
+    # fixture IS its four-point star, which the star path now sews before the lane
+    kw = dict(target_width_mm=80.0, garment_id="left_chest", max_colors=6, satin_stars=False)
 
     def md5(cfg):
         res = run_stages(path, cfg)

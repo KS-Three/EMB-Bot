@@ -1270,6 +1270,11 @@ PRE_FLIP.update(SATIN_RECTANGLES_2026_11_19_OFF)
 # `tests/test_absorb_unsewn.py`.
 ABSORB_UNSEWN_2026_11_19_OFF = {"lettering_columns_absorb_unsewn": False}
 PRE_FLIP.update(ABSORB_UNSEWN_2026_11_19_OFF)
+# `satin_stars` (Kent 2026-11-19, shown the flag's 50 stars at 113.5 and 96 mm and
+# ENTHUSIAST's four-point star, before | after: "Flip ON (Recommended)"): a star
+# sews point by point with a needle on every tip. `tests/test_satin_stars.py`.
+SATIN_STARS_2026_11_19_OFF = {"satin_stars": False}
+PRE_FLIP.update(SATIN_STARS_2026_11_19_OFF)
 # `seam_hold_skips_outline_bodies` (2026-11-19, regression repair of #1641 on Ahora's gear;
 # Kent: "We need to make sure we are not going backwards"): `tests/test_seam_hold_bodies.py`.
 SEAM_HOLD_BODIES_2026_11_19_OFF = {"seam_hold_skips_outline_bodies": False}

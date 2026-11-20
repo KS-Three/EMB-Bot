@@ -262,6 +262,7 @@
  "satin_seam_hold": false,
  "satin_free_end_chord_aim": false,
  "satin_rectangles": false,
+ "satin_stars": false,
  "stripe_underfill": false,
  "satin_hairline_tier": false,
  "satin_hop_under_column": false,
