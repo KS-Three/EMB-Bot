@@ -13,6 +13,18 @@ pointer; if it isn't there, treat it as superseded until re-measured.
 
 ---
 
+**Last updated:** 2026-11-20 (scope refresh, main `df50b217` to `713660bf`, PRs #1709 to #1732) — branch `claude/note-0a5296`
+
+Snapshots, not live status:
+
+- **Flips on 2026-11-19, all default ON** (Kent): `satin_rectangles` (#1712, Flag.webp at 113.5 mm, ends square to 0.04 mm, 9 of 44 runs move), `satin_stars` (#1717), `lettering_columns_absorb_unsewn` (#1714), `stage0_grain_needs_texture` (#1720, 2 of 44 move), `rescue_needs_drawn_edge` enclosed specks only (#1723, 8 of 44 move, sunset 106 -> 90 trims), `seam_hold_skips_outline_bodies` (#1722, repair of the #1641 regression on Ahora's gear), `lettering_columns_sew_dropped_hairline` + `underfill_keeps_thin_letters` + `dark_ink_line_one_lane` (#1687; the first moves 17 of 82 designs), `satin_overlap_run` + `outline_loop_split_shared` + `e_top_arm` + `top_slab` (#1728), `through_last` (#1729: held OFF because it lifted the chaining bare thread 4.28 -> 4.54 mm, flipped after the walk-in leg fix, benchmark 4.28 again; ON vs OFF 8 of 44 move), `satin_rect_lock_in_column` + `read_primitives` (#1725). Built OFF: `keyline_fragment_subpixel`.
+- **Flag consolidation on main by 2026-11-20:** plumbing and tier D (6 deleted) #1724; tier A 9 of 20 folded #1730; B1 16 satin flags folded #1726; each byte-identical over the 44 `fold_check` jobs. The other 11 tier-A flags and the rest of tier B were in sibling sessions, unmerged.
+- **Flip queue 2026-11-20 (#1731):** `dark_ink_bean_by_core` 0 of 44 moved; `photo_enclosed_rim` 1 of 44 (`summit_badge`, -1,427 stitches).
+- **OFF-flag census (#1732), 1089931d:** 105 flags, 38 move nothing alone; 10 of those move with prerequisites ON, 28 stay dead.
+- **Speed pass (#1721):** four exact cuts on the slow hat jobs, CPU -16% to -22%, stitches md5-identical. **Tangle fault reader (#1715):** kappa +0.37, CI [-0.02, +0.46] on the grader's agreed faults; reporting only.
+
+---
+
 **Last updated:** 2026-11-16 (digitize seconds at full clock) — branch `claude/speed-clock` on main `4f0dd6d5`
 
 Snapshots, not live status:
