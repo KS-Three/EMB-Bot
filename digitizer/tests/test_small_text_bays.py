@@ -158,6 +158,8 @@ def glyphs(regions):
 #: `md5` of `scene()` re-set WITHOUT the switch -- regions and report --
 #: captured on main's engine (84e1592f's small_text.py), before this switch
 #: existed; this branch's engine gives the same.
+# pin-rides-defaults: pins `enlarge_small_text` with explicit arguments (the switch is its own
+# `bay_mouth` argument); the one PipelineConfig in this file only reads the pipeline's call.
 OFF_MD5 = "2b1d5e0606d63dc35e7fb49b1dfffd39"
 LETTERS = Path(__file__).resolve().parents[1] / "testdata" / "bay_mouth_letters.json"
 ZIP = Path(__file__).resolve().parents[2] / "Embroidery Files.zip"

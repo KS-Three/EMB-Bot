@@ -1189,7 +1189,7 @@ BUNDLE_ON = {name: True for name in COLOUR_BUNDLE}
 
 
 def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=False,
-                  bind=False, two_tone=False, strip=False):
+                  bind=False, two_tone=False, strip=False, thin=False):
     """The engine as it was before seven colour switches were folded into the
     code (2026-11-20, `docs/flag-history/tier-b3-colour.md`), for a test whose
     PREMISE is the engine one of their False paths made. Each patch is exactly
@@ -1203,6 +1203,9 @@ def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=F
       bind         `bind_resnap_all_classes`: only photo classes bind the re-snap
       two_tone     `two_tone_snap`: no black-and-white snap
       strip        `strip_letterbox`: letterbox bars stay in the raster
+      thin         `keep_thin_strokes` (folded 2026-11-20, `docs/flag-history/tier-b2-lettering.md`):
+                   no thin-ink population on the gradient lane, and stage 3's contrast
+                   rescue not asked (a sub-floor region is absorbed into what it touches)
     """
     import numpy as np
 
@@ -1239,10 +1242,47 @@ def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=F
     if strip:
         for mod in (s0, s1):
             patch(mod, "strip_letterbox", lambda rgb, alpha=None: (rgb, alpha))
+    if thin:
+        real_small, real_seg = pl.resolve_small_regions, pl.photo_segment
+        patch(pl, "resolve_small_regions",
+              lambda *a, **kw: real_small(*a, **{**kw, "keep_contrast_rescue": False}))
+        patch(pl, "photo_segment",
+              lambda *a, **kw: real_seg(*a, **{**kw, "thin_population": False}))
 
 
-#: The six the old `PRE_FLIP` held False (everything but `design_ramp`, which it never pinned).
-PRE_FLIP_FOLDED = dict(robust=True, snap=True, dissolve=True, bind=True, two_tone=True, strip=True)
+#: The seven the old `PRE_FLIP` held False (everything but `design_ramp`, which it never pinned).
+PRE_FLIP_FOLDED = dict(robust=True, snap=True, dissolve=True, bind=True, two_tone=True, strip=True,
+                       thin=True)
+
+
+def legacy_lettering(mp, *, small_bold=True, corner_fold=True, text_lean=True):
+    """The Column lane as it was before `lettering_columns_small_bold`,
+    `lettering_columns_corner_fold` and `lettering_columns_text_lean` were folded
+    into the code (2026-11-20, `docs/flag-history/tier-b2-lettering.md`), for a test whose
+    numbers were read with `FLIP_2026_10_23` / `LETTERING_2026_10_24_OFF` holding them False:
+    stage 7's call to `lettering_columns_shape` drops the keyword each False branch
+    left out. `mp` is a `pytest.MonkeyPatch`; pass False to keep one of the three."""
+    import digitizer_core.stage7_sequence as s7
+
+    real = s7.lettering_columns_shape
+
+    def wrapped(*a, **kw):
+        if small_bold:
+            kw.pop("small_bold", None)
+        if corner_fold:
+            kw.pop("corner_fold", None)
+        if text_lean:
+            kw.pop("text_lean_deg", None)
+        return real(*a, **kw)
+    mp.setattr(s7, "lettering_columns_shape", own_thread_only(wrapped, real))
+
+
+def legacy_lettering_module_gen():
+    """A whole module on `legacy_lettering()`, module-scoped (see `pre_flip_module_gen`):
+    `legacy_lettering_module = pytest.fixture(autouse=True, scope="module")(legacy_lettering_module_gen)`."""
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_lettering(mp)
+        yield
 
 
 def on_the_pre_flip_engine(fn):

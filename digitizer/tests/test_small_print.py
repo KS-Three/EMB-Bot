@@ -165,7 +165,9 @@ def test_a_small_ring_letter_keeps_more_of_its_counter_open():
 
 # --- the done-test: the synthetic word at a 3 mm cap ---------------------------
 
-def test_counters_open_on_the_synthetic_word_at_three_millimetres():
+def test_counters_open_on_the_synthetic_word_at_three_millimetres(monkeypatch):
+    from tests.conftest import legacy_lettering
+    legacy_lettering(monkeypatch)       # small_bold, corner_fold, text_lean: folded 2026-11-20
     ref = json.loads((TESTDATA / "small_print_synthetic_ref.json").read_text())
     image = small_print.synthetic_text()
     width = round(3.0 / ref["cap"], 2)
@@ -384,7 +386,9 @@ def _counter_crossings(result, plan, cfg):
     return out
 
 
-def test_no_stitch_crosses_a_counter_on_fremonts_tagline_at_three_millimetres():
+def test_no_stitch_crosses_a_counter_on_fremonts_tagline_at_three_millimetres(monkeypatch):
+    from tests.conftest import legacy_lettering
+    legacy_lettering(monkeypatch)       # small_bold, corner_fold, text_lean: folded 2026-11-20
     """DONE-TEST, part 3. Measured 2026-10-13 (Windows): OFF 4 stitches over
     a counter (up to 1.96 mm), #878's ON 4 (up to 2.16 mm), now none."""
     image = small_print.load("fremont_tagline")

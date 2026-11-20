@@ -475,6 +475,13 @@ _BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23, "bean_only_line
 @pytest.fixture(scope="module")
 def fremont_off():
     from tools import fremont_triage as ft
+    from tests.conftest import legacy_lettering
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_lettering(mp)    # small_bold, corner_fold, text_lean: folded 2026-11-20, the pins predate them
+        return _run_fremont_off(ft)
+
+
+def _run_fremont_off(ft):
     return ft.run_arm("main", 80.0, None, preflight=False,
                       overrides={"detail_spokes": False, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
                                  **WAVE3_2026_10_26_OFF,    # fine bars moves Fremont's separators
@@ -488,6 +495,13 @@ def fremont_off():
 @pytest.fixture(scope="module")
 def fremont_on():
     from tools import fremont_triage as ft
+    from tests.conftest import legacy_lettering
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_lettering(mp)    # as the OFF arm: this prices the spokes
+        return _run_fremont_on(ft)
+
+
+def _run_fremont_on(ft):
     return ft.run_arm("main", 80.0, None, preflight=False,
                       overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
                                  **WAVE3_2026_10_26_OFF,

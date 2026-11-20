@@ -656,6 +656,7 @@ def resolve_small_regions(
     protect_layers: frozenset | None = None,
     page_fringe: np.ndarray | None = None,
     src_rgb: np.ndarray | None = None,
+    keep_contrast_rescue: bool = True,
 ) -> tuple[list[RegionMask], list[dict]]:
     """Absorb or drop sub-sewable regions. Returns (kept, warnings).
 
@@ -851,7 +852,9 @@ def resolve_small_regions(
     dot_floor_px = machine.DOT_RUNG_MIN_LOOP_MM * px_per_mm
     # `small_dot_rung_lettering` (folded in, 2026-10-20): the rung admits only a
     # dot with a stem under it (`has_stem_below`).
-    keep_contrast = layer_lab is not None      # `keep_thin_strokes`, folded in
+    # `keep_thin_strokes` (folded in 2026-11-20): the contrast rescue is always asked;
+    # `keep_contrast_rescue=False` is a test hook (`tests/conftest.legacy_engine`).
+    keep_contrast = bool(keep_contrast_rescue) and layer_lab is not None
 
     def drawn_edge(i: int, win, sub: np.ndarray, halo: np.ndarray, host: int) -> bool:
         """`cfg.rescue_needs_drawn_edge`: does the ARTWORK step in colour

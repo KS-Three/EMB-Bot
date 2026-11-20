@@ -179,7 +179,7 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # thread price under it reads 17,041 against a 16,981 ceiling (CI, PR #863).
 # The engine these claims were measured on has the skeleton tier.
 PRE_FLIP_RC = {"border_by_size": False, "enclosed_alpha_hole_parts": False,
-               "robust_region_colour": False, "lettering_columns": False}
+               "lettering_columns": False}
 
 
 @pytest.fixture(scope="module")
