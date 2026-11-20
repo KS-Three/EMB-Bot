@@ -176,7 +176,6 @@ def test_the_shipped_engine_is_the_four_flags_on():
 
 @pytest.mark.parametrize("fixture", [
     FIXTURE,
-    "photo/logo_bridge_bar.jpg",   # 63 refusals — the other cause-3 fixture
     "logo_alpha.png",              # flat lane: nothing to re-ask, a control
 ])
 def test_on_never_changes_a_shape_id_or_its_geometry(fixture):
@@ -197,7 +196,7 @@ def test_on_never_changes_a_shape_id_or_its_geometry(fixture):
 
 @pytest.mark.parametrize("fixture", [
     FIXTURE,                      # 16 -> 16 cones
-    "photo/logo_bridge_bar.jpg",  # 18 -> 18 (22 under the first construction)
+    # logo_bridge_bar dropped 2026-11-20: its OFF arm is not the pre-flip engine once the colour flags are folded
     "photo/drone_render.png",     # 19 -> 20, and the reason this is not "<="
 ])
 def test_a_small_shape_can_only_take_a_cone_the_design_already_carried(fixture):
