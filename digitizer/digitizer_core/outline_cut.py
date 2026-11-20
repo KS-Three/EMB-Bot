@@ -43,7 +43,7 @@ from . import deadline
 from .columns import Column
 
 SIMPLIFY_MM = 0.12       # lumps under this (or W/16) are the trace, not the letter
-# `small_bold` (`cfg.lettering_columns_small_bold`): a letter under 5 mm
+# `small_bold` (`lettering_columns_small_bold`): a letter under 5 mm
 # simplifies at half that floor. 0.12 mm is 3% of a 4 mm letter and cut the
 # grown Fremont serifs' corners into slants the construction then fanned
 # (crossed legs 26 -> 16, jumps 4 -> 2 on the tagline, EST 1895 and THE).
@@ -2550,7 +2550,7 @@ def _fan_ends(st, piece: Polygon, u, pitch_mm: float, W: float):
     return st
 
 
-# `cfg.lettering_columns_square_ends` (`mitre_ends`): a slanted end face is
+# `lettering_columns_square_ends` (`mitre_ends`): a slanted end face is
 # mitred when it stands at least this far off square to the column (under it
 # the square cap's own rule is the end) and no more than this far (past it the
 # face runs nearly along the column and is a side, `columns.END_FACE_DEG`).
@@ -2580,7 +2580,7 @@ def _ring_arc(ring: LineString, d0: float, d1: float, avoid: float, step: float)
 
 
 def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
-    """`cfg.lettering_columns_square_ends`: a column whose END is one straight
+    """`lettering_columns_square_ends`: a column whose END is one straight
     outline edge running across it at a slant -- the N's diagonal foot on the
     baseline, where both sides draw in and `_fan_ends` does not fire -- ends
     with its last cross ON that edge, a `CAP_INSET_MM` inside it, the way a
@@ -2681,7 +2681,7 @@ def _mitre_ends(st, piece: Polygon, u, cut_lines, pitch_mm: float, W: float):
 # second looks build columns from a dozen sites, and each takes the letter's
 # reading of the rule from here rather than through a dozen signatures.
 _RAIL_AXIS: contextvars.ContextVar[bool] = contextvars.ContextVar("rail_axis", default=False)
-# `small_bold` the same way (`cfg.lettering_columns_small_bold`, stage 7 under
+# `small_bold` the same way (`lettering_columns_small_bold`, stage 7 under
 # `machine.SATIN_UNDERLAY_MIN_EXTENT_MM`): see `build_column`.
 _SMALL_BOLD: contextvars.ContextVar[bool] = contextvars.ContextVar("small_bold", default=False)
 # `small_bold`'s simplify floor for this cut when not `SMALL_BOLD_SIMPLIFY_MM`
@@ -2802,7 +2802,7 @@ def _absorb_serifs(columns: list, cuts: list, W: float, pitch_mm: float,
     return cols, cuts
 
 
-# `corner_fold` (`cfg.lettering_columns_corner_fold`, 2026-10-23): one column
+# `corner_fold` (`lettering_columns_corner_fold`, 2026-10-23): one column
 # round an L corner. Read off the professional's DSTs (Fremont HOTEL FREMONT
 # 7.5 mm, Drone PRECISION 6.3, Proseal PROSEAL 9.4, MFab AND WELDING 7.1; 57
 # corners, the scratch reader's rules in the PR): at a lone concave corner
@@ -3369,7 +3369,7 @@ def _straight_rescan(piece: Polygon, cut_lines, W: float, pitch_mm: float,
 def build_column(piece: Polygon, cut_lines, W: float, pitch_mm: float,
                  mitre_ends: bool = False, rail_axis: bool | None = None) -> Column | None:
     """One piece -> its Column, or None when neither construction fits it.
-    `mitre_ends` (`cfg.lettering_columns_square_ends`): see `_mitre_ends`.
+    `mitre_ends` (`lettering_columns_square_ends`): see `_mitre_ends`.
     `rail_axis` (`cfg.lettering_columns_rail_axis`): see `straight_axis`;
     None reads the enclosing `letter_columns` call's. Inside a letter, once
     per exact key (`_MEMO`); the caller always gets its own copy."""
@@ -3923,12 +3923,12 @@ def _refine(pc: Polygon, cut_lines, W: float, pitch_mm: float, depth: int,
     """Yield (piece, cut lines, new cuts). The junction rules missed a cut
     wherever a piece still sews over-long; look again at that piece's own
     concave corners and keep the one cut that most reduces it. With
-    `fold_cuts` (`cfg.lettering_columns_fold_cuts`, default ON since 2026-10-20) a piece
+    `fold_cuts` (`lettering_columns_fold_cuts`, default ON since 2026-10-20) a piece
     that is not over-long but folds its crosses gets the same second look
     (`_fold_refine`); off, this is the shipped function, step for step.
     `mitre_ends` is read only with `fold_cuts`: the fold look then judges
     each candidate on the columns `letter_columns` will build, mitred ends
-    and all (`cfg.lettering_columns_square_ends`). `judge`: the fold look's
+    and all (`lettering_columns_square_ends`). `judge`: the fold look's
     sewn judge (`_fold_refine`), read only with `fold_cuts`."""
     long0, tot0 = _overlong(build_column(pc, cut_lines, W, pitch_mm), W)
     if depth >= 3 or tot0 <= 0 or long0 / tot0 < REFINE_TRIGGER:
@@ -4058,11 +4058,11 @@ def letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = False
     """See `_letter_columns`. `rail_axis` (`cfg.lettering_columns_rail_axis`):
     every straight piece of this letter reads its axis by `straight_axis`'s
     rail rule. False is the pre-flip cut, byte for byte.
-    `small_bold` (`cfg.lettering_columns_small_bold`): no column of this
+    `small_bold` (`lettering_columns_small_bold`): no column of this
     letter pivots past `SMALL_BOLD_FAN_DEG` (`build_column`). False is the
     pre-flag cut, byte for byte. `simplify_mm` (`small_bold` only): this
     cut's simplify floor instead of `SMALL_BOLD_SIMPLIFY_MM`.
-    `corner_fold` (`cfg.lettering_columns_corner_fold`): the two columns
+    `corner_fold` (`lettering_columns_corner_fold`): the two columns
     either side of each L corner joined into one that folds round it
     (`_fold_corners`). False is the cut as it is, byte for byte."""
     if corner_fold:
@@ -4096,8 +4096,8 @@ def _letter_columns(poly: Polygon, pitch_mm: float = 0.4, fold_cuts: bool = Fals
     itself (`machine.SATIN_SPACING_MM`): a station is one cross, and the
     crosses sit `pitch_mm` apart whichever rail each starts from.
     `fold_cuts`: see `_fold_refine` and `_drop_stalls`
-    (`cfg.lettering_columns_fold_cuts`).
-    `mitre_ends`: see `_mitre_ends` (`cfg.lettering_columns_square_ends`).
+    (`lettering_columns_fold_cuts`).
+    `mitre_ends`: see `_mitre_ends` (`lettering_columns_square_ends`).
     `judge` (read only with `fold_cuts`): `judge(columns, poly)` -> the
     (station folds, short legs, crossed legs) the letter sews with those
     columns (`columns.lettering_columns_shape` sews them through

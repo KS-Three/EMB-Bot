@@ -11,8 +11,10 @@ off is the shipped plan exactly.
 """
 from __future__ import annotations
 
+import contextlib
 from collections import Counter
 from types import SimpleNamespace
+from unittest import mock
 
 from shapely import affinity
 from shapely.geometry import Polygon
@@ -20,6 +22,7 @@ from shapely.geometry import Polygon
 from digitizer_core import PipelineConfig, get_fabric, machine
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import resolve_overlaps
+import digitizer_core.stage7_sequence as s7
 from digitizer_core.stage7_sequence import _cap_fold_host, sequence
 from digitizer_core.stitches import StitchBlock, StitchPlan, StitchRun
 from digitizer_core.threads import CHART
@@ -38,13 +41,24 @@ def region(poly: Polygon, sid: str, thread: int, layer: int) -> Region:
                   meta={"layer": layer})
 
 
-def plan_for(regions, **cfg_kw):
+@contextlib.contextmanager
+def merge_off():
+    """The engine before the adjacent merge became unconditional (2026-11-20):
+    the merge, the hoist and the edge cap's seam join do nothing."""
+    with (mock.patch.object(s7, "_merge_adjacent_same_thread", lambda blocks, trim_at: blocks),
+          mock.patch.object(s7, "_hoist_same_thread", lambda blocks, trim_at, margin_mm: blocks),
+          mock.patch.object(s7, "_cap_seam_joins", lambda blocks, c_index, cfg: False)):
+        yield
+
+
+def plan_for(regions, merge=True, **cfg_kw):
     cfg_kw.setdefault("border_by_size", False)  # synthetic bars: the order, not the by-size ring (2026-10-23 flip)
     cfg_kw.setdefault("bean_only_lines", False)  # the fold is about the bean cap; the rule (ON 2026-10-27) sews none
     cfg_kw.setdefault("edge_cap", "bean")        # ...and the default is "none" since 2026-10-29
     c = PipelineConfig(**cfg_kw)
     planned, _ = resolve_overlaps(regions, FAB, c)
-    blocks, warnings = sequence(planned, FAB, c)
+    with (contextlib.nullcontext() if merge else merge_off()):
+        blocks, warnings = sequence(planned, FAB, c)
     return SimpleNamespace(blocks=blocks, warnings=warnings)
 
 
@@ -77,11 +91,11 @@ def test_off_every_cap_run_sits_in_a_cap_only_block_after_the_artwork():
     """The shipped structure the flag departs from, pinned on both fixtures:
     cap-only blocks after the artwork, except that a stretch in the LAST
     artwork block's cone sews at that block's end (`_cap_seam_joins`, under
-    `merge_adjacent_same_thread`), which moves nothing past anything. With
+    the adjacent merge), which moves nothing past anything. With
     that merge off, every cap run is in a cap-only block."""
     for regions in (APART, ABUT):
         for merge in (False, True):
-            blocks = plan_for(regions, merge_adjacent_same_thread=merge).blocks
+            blocks = plan_for(regions, merge=merge).blocks
             kinds = [all(is_cap(r) for r in b.runs if r.points)
                      for b in blocks]
             first = kinds.index(True)
@@ -144,7 +158,7 @@ def test_a_stretch_something_later_sews_near_keeps_its_own_block():
     of R's block, `_cap_seam_joins`; without that join, four blocks)."""
     off = plan_for(ABUT)
     on = plan_for(ABUT, edge_cap_fold_into_colour=True)
-    assert len(plan_for(ABUT, merge_adjacent_same_thread=False).blocks) == 4
+    assert len(plan_for(ABUT, merge=False).blocks) == 4
     assert len(off.blocks) == 3
     assert len(on.blocks) == 3
     assert [b.thread_index for b in on.blocks] == [3, 5, 3]

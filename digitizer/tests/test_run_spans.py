@@ -37,7 +37,7 @@ def _design(plan, name):
 
 @pytest.fixture(scope="module")
 def becker():
-    """Becker's marine logo at 80 mm, WITH the border tier on.
+    """Becker's marine logo at 100 mm, WITH the border tier on.
 
     Real customer artwork, and the border switch is what makes it the right
     second fixture: `cfg.border` defaults to "off" for a flat-class design, so
@@ -47,15 +47,13 @@ def becker():
     `border_runs`, the emitter whose own default role is ROLE_BORDER, which is
     exactly the collision the cap has to survive.
     """
-    # Pre-flip corners on purpose: with `subpixel_corner_runs` (ON since
-    # 2026-10-20, Kent's ruling) Becker's cleaner outline leaves the border
-    # tier no per-shape column at 80 mm, only the cap's, and the role this
-    # fixture exists to pin would go untested (`PRE_FLIP`). White pinned OFF for
-    # the same reason: with `sew_enclosed_white` (ON since 2026-10-26) the faces
+    # 100 mm, not the 80 it was written at: with the outline rule and the
+    # corner-run read in the engine (folded 2026-11-20) Becker keeps no
+    # per-shape border column at 60 or 80 mm, and one at 100.
+    # White pinned OFF: with `sew_enclosed_white` (ON since 2026-10-26) the faces
     # sew under the outline loop and Becker keeps no per-shape border column.
-    cfg = PipelineConfig(target_width_mm=80.0, garment_id="left_chest",
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest",
                          border="auto", edge_cap="satin",
-                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"],
                          sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
                          # and `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline
                          outline_redraw_k=PRE_FLIP["outline_redraw_k"])

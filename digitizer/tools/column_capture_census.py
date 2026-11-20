@@ -56,8 +56,11 @@ TRUTH = TESTDATA / "lettering_truth.json"
 
 # The lane's three guards, ON by default since 2026-10-13. Every lane arm below
 # pins them OFF so the census still measures the unguarded lane.
-GUARD_FLAGS = ("lettering_columns_skip_blobs", "lettering_columns_ink_link",
-               "lettering_columns_icon_guard")
+# The three guards (`lettering_columns_skip_blobs`, `_ink_link`, `_icon_guard`) were
+# folded into the code 2026-11-20: no guard flag is left to pin OFF, so a census
+# arm "guards OFF" is no longer reproducible and `--guard` takes only a flag that
+# still exists.
+GUARD_FLAGS: tuple[str, ...] = ()
 GUARDS_PINNED_OFF = {f: False for f in GUARD_FLAGS}
 
 # The truth file names fixtures by corpus case; map to the scorecard file so a
@@ -185,7 +188,7 @@ def census_one(fixture: str, cfg_kw: dict, truth_case: str | None = None,
 
 # --- `--signals`: which shape signal separates a false capture from a letter?
 #
-# The candidates measured for `cfg.lettering_columns_icon_guard` (PR body
+# The candidates measured for `lettering_columns_icon_guard` (PR body
 # has the table). Each is read off a tagged shape; `margins` then sets the
 # lane's NOT-LETTER house-only captures against every hand-labelled letter
 # and against the house-only shapes the lane takes on an unlabelled fixture

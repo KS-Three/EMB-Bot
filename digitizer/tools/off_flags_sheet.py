@@ -5,7 +5,6 @@ cropped to where the two differ, each panel labelled with the flag, fixture
 and stitches / trims / colour changes OFF -> ON. Evidence only: it flips no
 default.
 
-    .venv/bin/python -m tools.off_flags_sheet --flag two_tone_snap OUT_DIR
     .venv/bin/python -m tools.off_flags_sheet --flag satin_tip_corner_gate OUT_DIR
     .venv/bin/python -m tools.off_flags_sheet --flag lettering_columns OUT_DIR
     .venv/bin/python -m tools.off_flags_sheet --json-pair off.json on.json \\
@@ -32,13 +31,6 @@ ROOT = HERE.parent
 
 # flag -> (config overrides when ON (each False when OFF, so a flag flipped on by default still has an OFF side), [(fixture name in REAL_ART or testdata path, width mm, garment)])
 FLAGS: dict[str, tuple[dict, list[tuple[str, float, str]]]] = {
-    "two_tone_snap": ({"two_tone_snap": True}, [
-        ("art/logo_mfab_lc.png", 80.0, "left_chest"),
-        ("art/logo_toat_machine.png", 80.0, "left_chest"),
-        ("art/logo_golke_roofing.png", 80.0, "left_chest"),
-        ("art/logo_toat_beanie.png", 80.0, "left_chest"),
-        ("art/logo_mfab_hat.png", 80.0, "left_chest"),
-    ]),
     "satin_tip_corner_gate": ({"satin_tip_corner_gate": True}, [
         ("becker_marine_logo.png", 100.0, "left_chest"),
         ("photo/enthusiast_logo.png", 80.0, "left_chest"),

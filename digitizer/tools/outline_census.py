@@ -5,7 +5,7 @@ The #1043 census found the pro borders by size; #1052 found the real
 separator: his bordered letters carry an outline in the customer's art, and
 his border is that outline widened to 2.0-2.5 mm. This asks it of every shape
 on the paired jobs with ONE rule on ONE side -- `art_outline.find_art_outlines`,
-the detector `cfg.border_from_outline` sews from -- against the census's own
+the detector the border-from-outline rule sews from -- against the census's own
 reading of the pro's file (`border_census.analyse`, class BORDER).
 
   python tools/outline_census.py measure [--cache DIR] [--only SLUG ...] [--line-art-guard]
@@ -22,10 +22,12 @@ listed apart). Label: the pro's class is BORDER. Feature: the shape is a body
 the rule finds an outline round. Cohen's kappa beside the raw agreement
 (ROADMAP gate 4). The five Becker files are one artwork; so are each pair's.
 
-`digitize` digitizes one job once and plans it twice, OFF and with
-`border_from_outline` ON (stage 7 only), into two `border_census` caches
-(and, with --guard, a third: ON with `border_from_outline_line_art_guard`);
-`prove` censuses both and prints, OFF / ON against the pro: our BORDER vs
+`digitize` digitizes one job once and plans it twice (stage 7 only) into two
+`border_census` caches: `--off` with the line-art guard off and, with --guard,
+a third with `border_from_outline_line_art_guard` on. (The pre-rule engine,
+`border_from_outline` off, is folded into the code and no longer reachable: the
+2026-10-24 OFF caches stay the record.) `prove` censuses both and prints,
+OFF / ON against the pro: our BORDER vs
 his BORDER (kappa, same population) and our border width vs his on the
 outlined bodies.
 
@@ -217,10 +219,37 @@ def measure_cmd(args) -> int:
 
 
 # ------------------------------------------------------------ OFF / ON proof
+def _plan_with_guard(result, cfg, guard: bool):
+    """`plan_stitches` with the line-art guard `guard`. The guard is no longer
+    a config switch (it is unconditional since 2026-11-20), so the unguarded
+    arm patches `pipeline._art_outlines` to read the art's outlines with
+    `line_art_guard=False`."""
+    from unittest import mock
+    from digitizer_core import pipeline
+    from digitizer_core.art_outline import find_art_outlines, outline_width_mm
+    from digitizer_core.pipeline import plan_stitches
+    if guard:
+        return plan_stitches(result, cfg)
+
+    def unguarded(regions, cfg, source_pixels=None):
+        if source_pixels is not None and getattr(source_pixels, "design_ramp", None) is not None:
+            from digitizer_core.stage6_blend import region_rides_design_ramp
+            regions = [r for r in regions
+                       if not region_rides_design_ramp(r.polygon, source_pixels)]
+        by_id = {r.shape_id: r for r in regions}
+        out = {}
+        for oid, bodies in find_art_outlines(regions, cfg, line_art_guard=False).items():
+            width = outline_width_mm(by_id[oid], [(by_id[b], h) for b, h in bodies])
+            out[oid] = [(b, h, width) for b, h in bodies]
+        return out or None
+
+    with mock.patch.object(pipeline, "_art_outlines", unguarded):
+        return plan_stitches(result, cfg)
+
+
 def digitize_cmd(args) -> int:
     from tools import border_census as bc
     from tools import pro_pair as pp
-    from digitizer_core.pipeline import plan_stitches
     row = next(r for r in bc.PAIRS if r[0] == args.slug)
     pro, art = bc.find_pair(*row[:3])
     # --width when the pro's file is out of reach (Drive unmounted): his
@@ -228,9 +257,8 @@ def digitize_cmd(args) -> int:
     width = args.width if args.width else pp.pro_counts(pro)["width_mm"]
     extra = json.loads(args.extra) if args.extra else {}
     d = pp.digitize(art, width, row[3], extra)
-    from dataclasses import replace
-    # the flag is ON by default since 2026-10-24, so the OFF arm names it
-    plan_off = plan_stitches(d.result, replace(d.cfg, border_from_outline=False))
+    # the rule is in the engine since 2026-10-24: the baseline arm is the unguarded rule
+    plan_off = _plan_with_guard(d.result, d.cfg, False)
     bc.write_ours(Path(args.off) / args.slug, args.slug, row[3], width, pro, art, d.result, plan_off, d.secs)
     import pickle
     (Path(args.off) / args.slug / "result.pkl").write_bytes(
@@ -240,7 +268,7 @@ def digitize_cmd(args) -> int:
     for tag, out, guard in (("on", args.on, False), ("guard", args.guard, True)):
         if out is None:
             continue
-        plan = plan_stitches(d.result, replace(d.cfg, border_from_outline=True))
+        plan = _plan_with_guard(d.result, d.cfg, guard)
         bc.write_ours(Path(out) / args.slug, args.slug, row[3], width, pro, art, d.result, plan, d.secs)
         plans.append((tag, plan))
     for tag, plan in plans:
@@ -253,11 +281,9 @@ def replan_cmd(args) -> int:
     """Plan a `digitize` run's pickled result again with the flag ON (stage 7
     only, seconds rather than minutes) into --on."""
     import pickle
-    from dataclasses import replace
     from tools import border_census as bc
-    from digitizer_core.pipeline import plan_stitches
     k = pickle.loads((Path(args.off) / args.slug / "result.pkl").read_bytes())
-    plan = plan_stitches(k["result"], replace(k["cfg"], border_from_outline=True))
+    plan = _plan_with_guard(k["result"], k["cfg"], args.line_art_guard)
     bc.write_ours(Path(args.on) / args.slug, args.slug, k["garment"], k["width"], k["pro"], k["art"],
                   k["result"], plan, k["secs"])
     print(args.slug, "on:", sum(len(r.points or []) for _b, r in plan.iter_runs()), "points")

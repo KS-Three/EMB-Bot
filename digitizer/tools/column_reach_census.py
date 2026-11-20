@@ -662,11 +662,11 @@ def guard_reason(region, cfg) -> str | None:
         return None
     if getattr(cfg, "sew_enclosed_white_fields_fill", False) and m.get("sew_enclosed_white"):
         return "guard:white_field"
-    if getattr(cfg, "lettering_columns_skip_blobs", False) and is_solid_blob(region.polygon):
+    if is_solid_blob(region.polygon):
         return "guard:solid_blob"
-    if getattr(cfg, "lettering_columns_ink_link", False) and m.get("lettering_ink_stray"):
+    if m.get("lettering_ink_stray"):
         return "guard:ink_stray"
-    if (getattr(cfg, "lettering_columns_icon_guard", False) and m.get("lettering_group")
+    if (m.get("lettering_group")
             and not m.get("text_candidate") and is_drawing_fragment(region.polygon)):
         return "guard:icon"
     return "guard:?"

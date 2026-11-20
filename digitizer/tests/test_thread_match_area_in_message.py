@@ -132,7 +132,7 @@ def test_the_shard_no_longer_condemns_and_the_field_still_does():
     either — the shard was that thread's only offender), while drone's
     big field blocks exactly as before, with its size stated.
 
-    RE-MEASURED 2026-09-13, `cfg.keep_thin_strokes` ON by default (Kent's
+    RE-MEASURED 2026-09-13, `keep_thin_strokes` ON by default (Kent's
     ruling): drone's worst blocking field is 1,456 mm² / 48.5% of the
     scored area, where the pre-flip engine read 1,664.6 mm² / 54.6%. The
     contrast this test is about is unchanged — a sub-floor shard says
@@ -193,7 +193,7 @@ def test_no_severity_moved(fixture, expected):
     `subpixel_edges`; `test_thread_match_better_spool.py`'s SEVERITY note has
     that bisect) and HUGE 4.
 
-    RE-PINNED 2026-09-13 for `cfg.keep_thin_strokes` ON by default (Kent's
+    RE-PINNED 2026-09-13 for `keep_thin_strokes` ON by default (Kent's
     ruling), the same way this file re-pinned for `subpixel_edges`: HUGE
     2 -> 5 and HOLES 1 -> 2; TINY stays 0. Read the HUGE move as a real
     cost, not bookkeeping — drone gains three BLOCKING thread findings while

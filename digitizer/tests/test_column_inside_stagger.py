@@ -1,6 +1,6 @@
 """`cfg.lettering_columns_inside_stagger` (2026-10-23, built OFF): the inside
 of a satin pivot in the Column lane -- an L fold's corner
-(`cfg.lettering_columns_corner_fold`), an S's curl -- sewn the professional's
+(`lettering_columns_corner_fold`, folded in 2026-11-20), an S's curl -- sewn the professional's
 way instead of by `stage6_satin._short_stitch_guard`.
 
 Read with one rule on his hat DSTs and ours (`tools/inside_stagger.py`,

@@ -56,8 +56,6 @@ TESTDATA = ROOT / "testdata"
 # merely close. `all` is the combination nobody had measured.
 ARMS: dict[str, dict] = {
     "off": {},
-    "halo": {"dissolve_phantom_blends": True},
-    "resnap_bind": {"bind_resnap_all_classes": True},
     "satin_stroke": {"satin_per_stroke": True},
     "satin_patch": {"satin_patch_junctions": True},
     # Added 2026-09-09 (item 5 PR 2). The same holes as `satin_patch`, sewn
@@ -88,52 +86,20 @@ ARMS: dict[str, dict] = {
     # into the fewest columns in total; non-lettering satin gets the lean
     # rule. Priced here because it moves every flat-lane fill at once.
     "design_angle": {"design_angle": True},
-    # Added 2026-09-10 (Kent's pick after item 9). The colour each SLIC-lane
-    # region hands the palette: a robust centre of its pixels instead of
-    # the plain mean that #442's test run caught handing Bridge Bar's
-    # yellow disc to Limelight. Every gradient/photo palette can move under
-    # it, which is exactly what this sheet exists to price. Flipped ON the
-    # same day (PR #445 built it OFF; the PR after flipped it on Kent's
-    # ruling over the rows at 12 and 6), so against `off` this arm is now
-    # byte-identical -- kept so the published rows in `build/flip_sheet_rc*`
-    # stay nameable; `off_rc` below is the engine they were measured on.
-    "region_colour": {"robust_region_colour": True},
     # --- combinations -------------------------------------------------------
     # `all` answers "flip everything"; nobody flips everything. These are the
     # combinations someone would actually ship, and the reason they are arms
     # rather than arithmetic is the header above: a combination is not the sum
     # of its rows, and this sheet's OWN recommendation was three flags nobody
     # had run together.
-    "rec3": {
-        "bind_resnap_all_classes": True,
-        "satin_patch_junctions": True,
-    },
     "rec4": {
-        "bind_resnap_all_classes": True,
         "satin_patch_junctions": True,
         "satin_per_stroke": True,
-    },
-    # The only pair in the ten that takes any fixture down a grade. `halo`
-    # splits `logo_script_tires` into two more satin strokes and `satin_patch`
-    # then finds junctions to fill that do not exist without it; neither flag
-    # alone moves that fixture off A 100. Kept as an arm so the interaction is
-    # reproducible rather than a number in a doc.
-    "halo_patch": {
-        "dissolve_phantom_blends": True,
-        "satin_patch_junctions": True,
     },
     "all": {
-        "dissolve_phantom_blends": True,
-        "bind_resnap_all_classes": True,
         "satin_per_stroke": True,
         "satin_patch_junctions": True,
     },
-    # 2026-09-10, later the same day: `robust_region_colour` flipped ON too
-    # (see `region_colour` above), so this arm is the engine before THAT
-    # flip -- the `off` every row in `build/flip_sheet_rc*` was measured
-    # against. `off` read against `off_rc` is the flip's price on the
-    # shipped engine, sign reversed.
-    "off_rc": {"robust_region_colour": False},
     # 2026-10-02: `keep_counters` — a letter's counter on a coloured ground
     # stays a hole instead of being absorbed by the small-region floor
     # (`config.py`). Built OFF; this arm is its price on the corpus.
@@ -152,11 +118,9 @@ SINGLES = [a for a, kw in ARMS.items() if len(kw) == 1]
 # here: does the bundle still have work to do on the flat lane? They live
 # outside ARMS so `forced_class` never counts as a "single" in the
 # interaction tables, and `report` reads each proxy against `flat_off`,
-# never against `off`. Run them by name: `--arm flat_off --arm flat_halo`.
+# never against `off`. Run them by name: `--arm flat_off`.
 PROXIES: dict[str, dict] = {
     "flat_off": {"forced_class": "flat"},
-    "flat_resnap_bind": {"forced_class": "flat", **ARMS["resnap_bind"]},
-    "flat_halo": {"forced_class": "flat", **ARMS["halo"]},
 }
 
 

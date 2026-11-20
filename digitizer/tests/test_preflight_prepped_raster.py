@@ -40,7 +40,7 @@ def _cfg(**kw) -> PipelineConfig:
     # default since 2026-11-13. With the texture kill alone the raw and the
     # prepped grade agree here (no findings on either), which tests nothing.
     return PipelineConfig(target_width_mm=80.0, forced_class="photo_scene",
-                          legibility_check=False, photo_prep_tone=True, **kw)
+                          photo_prep_tone=True, **kw)
 
 
 @pytest.fixture(scope="module")

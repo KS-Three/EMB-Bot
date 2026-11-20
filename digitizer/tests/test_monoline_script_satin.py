@@ -84,9 +84,9 @@ def test_fixtures_sit_where_the_rule_reads():
     assert not monoline_stroke(_region(THICK_THIN), cfg, 5.0)
 
 
-def test_off_is_byte_identical():
-    assert _md5(_runs(MONO)) == OFF_MD5["mono"]
-    assert _md5(_runs(THICK_THIN)) == OFF_MD5["thick_thin"]
+def test_off_sews_the_monoline_word_as_fill():
+    # (The OFF md5 pins `OFF_MD5` were dropped 2026-11-20: they pinned the engine without
+    # `tie_in_off`, `fill_turn_slant` and `fill_underlay_cross`, folded into the code.)
     assert "fill" in _kinds(_runs(MONO))
 
 
@@ -97,7 +97,7 @@ def test_on_sews_the_monoline_satin():
 
 
 def test_on_leaves_a_thick_thin_stroke_to_the_fill():
-    assert _md5(_runs(THICK_THIN, monoline_script_satin=True)) == OFF_MD5["thick_thin"]
+    assert _md5(_runs(THICK_THIN, monoline_script_satin=True)) == _md5(_runs(THICK_THIN))
 
 
 def test_prediction_agrees_with_the_emitter():

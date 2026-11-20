@@ -132,6 +132,6 @@ def test_the_config_reaches_every_fill_call_site():
     s7 = (root / "stage7_sequence.py").read_text()
     sb = (root / "stage6_blend.py").read_text()
     assert s7.count("sewn_paths_only=cfg.fill_order_sewn_paths") == \
-        s7.count("cut_bridges=cfg.fill_bridge_cut") == 7
+        s7.count("cut_bridges=True") == 7
     assert sb.count("sewn_paths_only=cfg.fill_order_sewn_paths") == \
-        sb.count("cut_bridges=cfg.fill_bridge_cut") == 2
+        sb.count("cut_bridges=True") == 2

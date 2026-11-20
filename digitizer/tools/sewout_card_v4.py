@@ -80,7 +80,7 @@ CUTS = {
 #: nothing. Kept so `--cut` can re-check that after an engine change.
 DROPPED_CUTS = {
     "skel_on": {"small_lettering_skeleton": True},
-    "folds_off": {"lettering_columns_fold_cuts": False},
+    "folds_off": {},
 }
 #: word -> fremont_triage.ROIS key; every cut saves every box
 WORDS = {"EST": ("est", ()), "1895": ("1895", ()), "THE": ("the", ()), "TAG": ("tagline", ()),

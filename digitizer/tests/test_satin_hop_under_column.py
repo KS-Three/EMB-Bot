@@ -8,12 +8,14 @@ it. ON sews that hop needle-down as buried travel; OFF is the shipped pass.
 from __future__ import annotations
 
 import math
+from contextlib import contextmanager
 from pathlib import Path
+from unittest import mock
 
 import pytest
 from shapely.geometry import LineString
 
-from digitizer_core import PipelineConfig, machine, stitches
+from digitizer_core import PipelineConfig, machine, stitches, stage7_sequence
 from tests.conftest import FLIP_2026_10_23, FLIP_FOUR_2026_11_19_OFF  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
 from tools.satin_islands import islands
@@ -26,8 +28,9 @@ def _cfg(**kw) -> PipelineConfig:
     # ON by default since Kent's 2026-10-12 flip) walks MARINE's letters
     # itself, so the satin tier's hop rule priced here has nothing to bury.
     kw.setdefault("lettering_columns", False)
-    # ...and the 2026-10-23 flips (`trim_bury_under_later` buries the same hops
-    # this flag prices, `tie_in_off` moves the locks the pairing reads)
+    # ...and the 2026-10-23 flips that are still flags. (`trim_bury_under_later`, which buries
+    # the same hops this flag prices, is folded into the code: `_unburied` below stubs its pass
+    # out so the arms are priced on the engine they were measured on.)
     for k, v in FLIP_2026_10_23.items():
         kw.setdefault(k, v)
     # ...and the 2026-11-19 four (Kent: "satin_overlap_run (Recommended), outline_loop_split_shared,
@@ -38,12 +41,19 @@ def _cfg(**kw) -> PipelineConfig:
     return PipelineConfig(target_width_mm=100.0, garment_id="left_chest", **kw)
 
 
+@contextmanager
+def _unburied():
+    with mock.patch.object(stage7_sequence, "_bury_trims_under_later", return_value=0):
+        yield
+
+
 @pytest.fixture(scope="module")
 def arms():
     gen = build_generation(str(BECKER), _cfg())
     out = {}
     for arm, cfg in (("off", _cfg()), ("on", _cfg(satin_hop_under_column=True))):
-        out[arm] = plan_stitches(finish_generation(gen.fork(), cfg), cfg)
+        with _unburied():
+            out[arm] = plan_stitches(finish_generation(gen.fork(), cfg), cfg)
     return out
 
 
@@ -58,7 +68,8 @@ def test_the_flag_is_off_by_default():
 
 def test_off_is_the_shipped_plan(arms):
     cfg = _cfg()
-    fresh = plan_stitches(finish_generation(build_generation(str(BECKER), cfg), cfg), cfg)
+    with _unburied():
+        fresh = plan_stitches(finish_generation(build_generation(str(BECKER), cfg), cfg), cfg)
     assert _runs(arms["off"]) == _runs(fresh)
 
 

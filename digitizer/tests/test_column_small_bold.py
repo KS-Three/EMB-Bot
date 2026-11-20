@@ -1,4 +1,4 @@
-"""`cfg.lettering_columns_small_bold` (2026-10-21, built OFF): the Column lane
+"""`lettering_columns_small_bold` (2026-10-21, built OFF, folded in 2026-11-20): the Column lane
 sews a letter under 5 mm like the pro's ~4 mm bold satin letters.
 
 Kent ruled "match the pro" for Fremont's small words: `small_text_cap_mm`
@@ -21,7 +21,7 @@ from pathlib import Path
 import pytest
 from shapely.geometry import Point, Polygon
 
-from digitizer_core import PipelineConfig, machine, stitches
+from digitizer_core import machine, stitches
 from digitizer_core import columns
 from digitizer_core import outline_cut as oc
 
@@ -91,11 +91,6 @@ def on(small):
 
 
 # --- OFF ------------------------------------------------------------------------
-
-def test_flag_is_on_by_default_since_2026_10_23():
-    # flipped with the flip sheet's `small_text_set` arm (PR #1047)
-    assert PipelineConfig().lettering_columns_small_bold is True
-
 
 def test_off_is_byte_identical_to_base(letters):
     assert lane_md5(letters) == OFF_LANE_MD5
@@ -177,7 +172,4 @@ def test_a_thin_bar_sews_at_the_floor():
 
 def test_stage7_passes_it_only_under_5mm():
     # the 6.8 mm HOTEL FREMONT is never touched: stage 7 gates on `_small`
-    src = (Path(__file__).resolve().parent.parent / "digitizer_core" / "stage7_sequence.py").read_text(
-        encoding="utf-8")
-    assert 'if cfg.lettering_columns_small_bold and _small else {}' in src
     assert machine.SATIN_UNDERLAY_MIN_EXTENT_MM == 5.0

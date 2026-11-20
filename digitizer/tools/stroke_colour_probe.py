@@ -27,7 +27,7 @@ in off-shades; `logo_toat_beanie` not cured; `drone_render`,
 teal 227 -> 1,882 stitches — because its thin bands are JPEG ringing, and a
 halo wants dissolving where a stroke wants its ink.
 
-THE RULE PLUS `cfg.dissolve_phantom_blends` (`--dissolve`, measured
+THE RULE PLUS the phantom-blend dissolve (`--dissolve`, since removed: the switch is in the code now; measured
 2026-10-06) does not combine. Cones as base / rule / dissolve / both: golke
 5 / 2 / 4 / 3, toat_beanie 6 / 6 / 4 / 5, mfab_lc 6 / 6 / 6 / 5, bridge 6 in
 every arm with the teal still painted. Each logo wants a different arm, so
@@ -44,7 +44,7 @@ and changes nothing in the engine.
     .venv/bin/python -m tools.stroke_colour_probe                    # nine gradient logos
     .venv/bin/python -m tools.stroke_colour_probe --fixture art/logo_mfab_lc.png
     .venv/bin/python -m tools.stroke_colour_probe --max-src-px 0     # no width gate
-    .venv/bin/python -m tools.stroke_colour_probe --dissolve --render build/stroke_pair
+    .venv/bin/python -m tools.stroke_colour_probe --render build/stroke_pair
     .venv/bin/python -m tools.stroke_colour_probe --json build/stroke_colour.json
 """
 from __future__ import annotations
@@ -182,9 +182,6 @@ def main(argv: list[str]) -> int:
     ap.add_argument("--side", choices=("absolute", "relative"), default="absolute",
                     help="which end a region takes: light when its mean grey is >= 128 "
                          "(absolute), or >= the midpoint of its own p10..p90 (relative)")
-    ap.add_argument("--dissolve", action="store_true",
-                    help="run BOTH arms with cfg.dissolve_phantom_blends on, so the "
-                         "table reads dissolve alone -> dissolve plus the rule")
     ap.add_argument("--render", type=Path, default=None,
                     help="directory for base | probe thread renders, one PNG per fixture")
     ap.add_argument("--json", type=Path, default=None)
@@ -193,9 +190,8 @@ def main(argv: list[str]) -> int:
     names = args.fixture or list(FIXTURES)
     print(f"rule: p10..p90 span >= {args.span:g}, "
           f"width <= {args.max_src_px:g} source px" + (" (no gate)" if args.max_src_px <= 0 else "")
-          + f", side {args.side}"
-          + (", dissolve_phantom_blends ON in both arms" if args.dissolve else ""))
-    cfg_kw = {"dissolve_phantom_blends": True} if args.dissolve else {}
+          + f", side {args.side}")
+    cfg_kw = {}
     print("| fixture (class) | cones base → probe | stitches base → probe "
           "| wide-span regions / mm² | rewritten / mm² |")
     print("|---|---|---|---|---|")

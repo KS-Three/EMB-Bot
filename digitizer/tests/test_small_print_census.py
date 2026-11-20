@@ -35,7 +35,7 @@ def test_the_neighbouring_flags_sit_at_their_shipped_defaults():
     from tools.flip_eight_proof import BEFORE
     assert census.OFF_FLIPS == {"small_text_true_size": False, **BEFORE}
     cfg = PipelineConfig(**census.OFF_FLIPS)
-    assert census.PINNED == {"small_glyph_keep": True, "small_lettering_skeleton": False,
+    assert census.PINNED == {"small_lettering_skeleton": False,
                              "small_text_cap_mm": None, "small_text_restore_mm": None}
     for k, v in census.PINNED.items():
         assert getattr(cfg, k) == v, k
@@ -75,10 +75,13 @@ def test_the_synthetic_60wt_off_row_at_three_millimetres(monkeypatch):
     assert m["cap_mm"] == pytest.approx(3.0, abs=0.05)
     # stitches and dust re-pinned 2026-11-19 on the engine with the B1 satin
     # flags folded in (532 / 0.100 before them: the small-solid and rescue
-    # constructions that are always on now sew this row's marks differently)
-    assert m["stitches"] == pytest.approx(389, abs=40)
+    # constructions that are always on now sew this row's marks differently);
+    # stitches re-pinned again 2026-11-20 with `lettering_columns_small_bold`
+    # (389 / counter_open 0.34 / col_min 0.64 before: OFF_FLIPS pinned it False,
+    # and it is the code now)
+    assert m["stitches"] == pytest.approx(333, abs=40)
     assert m["counters"] == 10 and 7 <= m["counters_shut"] <= 9
-    assert m["counter_open"] == pytest.approx(0.34, abs=0.06)
+    assert m["counter_open"] == pytest.approx(0.27, abs=0.06)
     assert m["dust"] == pytest.approx(0.046, abs=0.02)
-    assert m["col_min_mm"] == pytest.approx(0.64, abs=0.05)
+    assert m["col_min_mm"] == pytest.approx(0.57, abs=0.05)
     assert m["cross_min_mm"] >= 0.45

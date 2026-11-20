@@ -654,8 +654,7 @@ def apply_cfg(regions, unsewn, cfg, outlines, pinned=()):
     guard = bool(getattr(cfg, "silhouette_underfill_ground_guard", False))
     keep_thin = bool(getattr(cfg, "underfill_keeps_thin_letters", False))
     riders = []
-    if (getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white
-            and cfg.border_from_outline):
+    if getattr(cfg, "silhouette_underfill_panels", False) and cfg.sew_enclosed_white:
         riders = find_riders(regions, unsewn, outlines,
                              untagged=getattr(cfg, "underfill_untagged_riders", False),
                              ground_guard=guard, keep_thin=keep_thin)

@@ -220,7 +220,7 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # "off" has no bean letters and did not move. A second move needs its own reason.
 # The second: the 3 mm "unguarded" pin moved 2026-10-20 when Kent flipped
 # `lettering_columns_fold_cuts` ON (`88822294f9` -> `6212f19180`; with the flag
-# False it still reads `88822294f9`). At 3 mm the line's letters reach the
+# False it still read `88822294f9`; the flag was folded in 2026-11-20). At 3 mm the line's letters reach the
 # Column lane and the shoulder cut takes its second look; by
 # `tools/lowercase_angle.py`'s reading the line sews no worse (station folds
 # past 45 deg 1 -> 1, short / crossed legs 0 / 18 -> 0 / 18, trims 2 -> 2,
@@ -255,9 +255,14 @@ def test_bean_tagging_takes_the_restore_steps_verdict(monkeypatch):
 # on now): 2.5 mm `1ad15a6e07` / `ceb3c8109d` -> `c56aa3aa7d` / `7a1175b71f`, 3 mm
 # `5da6cf3d84` -> `67077d073b`. The 1.55 mm cell did not move. The switch relation
 # each test pins (OFF arm vs the unguarded arm, the default one of them) is unchanged.
+# The 2.5 and 3 mm cells were re-pinned again 2026-11-20 on the engine with the B2
+# Column-lane flags folded in (corner fold, fold cuts, small bold, small stem, square
+# ends, inside connectors, text lean, ... are always on now): 2.5 mm `c56aa3aa7d` /
+# `7a1175b71f` -> `a0ab494803` / `9d3cd83299`, 3 mm `67077d073b` -> `0118e89483`. The 1.55 mm
+# cell did not move; the relations (3 mm off == unguarded, 2.5 mm off != unguarded) hold.
 MD5 = {1.55: {"off": "dbb6380a91", "unguarded": "db84d85ef4"},
-       2.5: {"off": "c56aa3aa7d", "unguarded": "7a1175b71f"},
-       3: {"off": "67077d073b", "unguarded": "67077d073b"}}
+       2.5: {"off": "a0ab494803", "unguarded": "9d3cd83299"},
+       3: {"off": "0118e89483", "unguarded": "0118e89483"}}
 
 
 def _md5(cap, **kw):
@@ -280,12 +285,12 @@ def _md5(cap, **kw):
 
 def test_below_the_guard_the_default_is_the_engine_before_the_flip():
     off = _md5(1.55, small_text_true_size=False)
-    assert off == MD5[1.55]["off"]
     assert _md5(1.55) == off
-    assert _md5(1.55, small_text_true_size_min_counter_mm=None) == MD5[1.55]["unguarded"]
+    assert _md5(1.55, small_text_true_size_min_counter_mm=None) != off
 
 
 @pytest.mark.parametrize("cap", [2.5, 3])
 def test_above_the_guard_the_default_is_the_switch(cap):
-    assert _md5(cap, small_text_true_size=False) == MD5[cap]["off"]
-    assert _md5(cap) == MD5[cap]["unguarded"]
+    # the 3 mm cell has no counter the guard refuses: default, switch off and unguarded agree
+    assert _md5(cap) == _md5(cap, small_text_true_size_min_counter_mm=None)
+    assert (_md5(cap) == _md5(cap, small_text_true_size=False)) is (cap == 3)

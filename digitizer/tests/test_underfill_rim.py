@@ -111,16 +111,11 @@ def test_the_rail_is_on_the_edge_not_the_crosses_far_end():
 from tests.test_silhouette_underfill import _md5, _sew, becker, mfab  # noqa: E402
 
 #: captured on origin/main 37c676c2 (before this flag), the under-fill ON
-OFF_MD5 = {"mfab": "a429f57a0a79155e7d63ffea56fdabc6", "becker": "cd652df0ebca32d933202309b29e2bc4"}
 
 
-def test_off_is_the_plan_as_it_was():
-    # OFF_MD5 predates the 2026-11-19 four (Kent: "satin_overlap_run (Recommended),
-    # outline_loop_split_shared, through_last, e_top_arm + top_slab"); Becker's bytes move with
-    # them, so pin them off (conftest), as `_sew` does for the earlier flips
-    from tests.conftest import FLIP_FOUR_2026_11_19_OFF
-    assert _md5(_sew(mfab(), silhouette_underfill=True, **FLIP_FOUR_2026_11_19_OFF)[1]) == OFF_MD5["mfab"]
-    assert _md5(_sew(becker(), silhouette_underfill=True, **FLIP_FOUR_2026_11_19_OFF)[1]) == OFF_MD5["becker"]
+
+# `OFF_MD5` and `test_off_is_the_plan_as_it_was` were dropped 2026-11-20 (flag fold B5): they pinned an
+# engine without `tie_in_off`, `fill_turn_slant` and `fill_underlay_cross`.
 
 
 def test_off_never_reaches_the_rim(monkeypatch):

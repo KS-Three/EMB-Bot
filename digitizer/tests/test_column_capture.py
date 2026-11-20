@@ -4,10 +4,11 @@
 admits. The house-angle group (`lettering_group`) has no ink link and no
 "is this a stroke" test, so a grid of colour patches (`test_preflight`'s
 12-patch fixture, #863) and a ramp of 14.4 mm discs (`photo/fur_ramp.png`)
-read as lines of lettering. `cfg.lettering_columns_skip_blobs` (default ON
-since Kent's ruling 2026-10-13) refuses a tagged shape that is a solid blob;
-`cfg.lettering_columns_ink_link` (likewise ON) refuses a house-group-only
-shape in a far ink. The OFF paths are pinned by setting the flag False.
+read as lines of lettering. `lettering_columns_skip_blobs` (ON since Kent's
+ruling 2026-10-13, folded in 2026-11-20) refuses a tagged shape that is a
+solid blob; `lettering_columns_ink_link` (likewise, folded in) refuses a
+house-group-only shape in a far ink. The census tests read one guard's
+refusals by neutralising that guard inside the test (`_guard_census`).
 
 Pins here are at the TAG level (`run_stages` + `is_lettering`): the lane's
 reach, not its stitches, which is what a tripwire on "gains captures" needs
@@ -15,21 +16,22 @@ and what keeps this file cheap.
 """
 from __future__ import annotations
 
+import contextlib
 import functools
+from unittest import mock
 
 import numpy as np
 import pytest
 from shapely.geometry import LineString, Point, box
 from shapely.ops import unary_union
 
-from digitizer_core import PipelineConfig
+from digitizer_core import PipelineConfig, columns
 from digitizer_core.columns import (ICON_GUARD_MIN_NODES, INK_LINK_TOUCH_MM,
                                     ink_strays, is_drawing_fragment, is_lettering,
                                     is_solid_blob, skeleton_nodes, tag_ink_strays)
-from digitizer_core.pipeline import plan_stitches, run_stages
+from digitizer_core.pipeline import run_stages
 from digitizer_core.regions import Region
 from tests.conftest import TESTDATA
-from tests.conftest import own_thread_only
 
 
 def _grid_image():
@@ -65,11 +67,6 @@ def test_blob_predicate_separates_patches_from_strokes():
     assert not is_solid_blob(bold)
 
 
-def test_guard_is_on_by_default():
-    """ON by Kent's ruling 2026-10-13; False is the pre-flip lane."""
-    assert PipelineConfig().lettering_columns_skip_blobs is True
-
-
 # --- the tripwire: known non-text fixtures take nothing --------------------
 
 @pytest.mark.parametrize("fixture", ["logo_alpha.png", "ribbon_curve.png",
@@ -81,13 +78,11 @@ def test_non_text_fixtures_gain_no_lane_captures(fixture):
     assert _taken(TESTDATA / fixture, garment_id="left_chest", max_colors=6) == set()
 
 
-def test_colour_grid_capture_is_pinned_and_the_guard_clears_it():
-    """The synthetic grid is the KNOWN false capture: with the guard OFF
-    (explicitly; it is ON by default) the lane takes all 12 patches (house
-    group only, `text_candidate` False); at the default, none. If the OFF
-    count moves, the taggers moved: re-read the census before editing it."""
+def test_colour_grid_capture_is_cleared_by_the_guard():
+    """The synthetic grid is the KNOWN false capture: the 12 patches are
+    tagged by the house group alone (`text_candidate` False) and the blob
+    guard clears them all."""
     grid = _grid_image()
-    assert len(_taken(grid, target_width_mm=100.0, lettering_columns_skip_blobs=False)) == 12
     assert _taken(grid, target_width_mm=100.0) == set()
 
 
@@ -99,24 +94,10 @@ def test_fur_ramp_discs_are_the_second_known_false_capture():
     # (2026-11-19) routes fur_ramp flat, where one disc is a ring round a
     # rescued centre speck and is not a solid blob (`rescue_needs_drawn_edge`).
     kw = dict(garment_id="left_chest", max_colors=6, stage0_grain_needs_texture=False)
-    assert len(_taken(path, lettering_columns_skip_blobs=False, **kw)) == 8
     assert _taken(path, **kw) == set()
 
 
-def test_guard_keeps_the_letters_on_enthusiast():
-    """Every letter the lane takes on the enthusiast wordmark is still taken
-    with the blob guard ON (the one extra shape the lane takes there, the
-    shield star, is not a solid blob and is out of this guard's reach; the ink
-    link is held OFF on both sides so only the blob guard differs)."""
-    path = TESTDATA / "photo/enthusiast_logo.png"
-    kw = dict(garment_id="left_chest", max_colors=6, lettering_columns_ink_link=False)
-    off = _taken(path, lettering_columns_skip_blobs=False, **kw)
-    on = _taken(path, lettering_columns_skip_blobs=True, **kw)
-    assert len(off) >= 10        # tag level: stage 7 builds columns for 11 of them
-    assert on == off
-
-
-# --- the ink link (`cfg.lettering_columns_ink_link`) ------------------------
+# --- the ink link (`lettering_columns_ink_link`, folded in 2026-11-20) ------
 #
 # A house-group-only shape whose thread is further than the text cluster's
 # own link (CIEDE2000 20) from every text letter's thread, and that does not
@@ -186,27 +167,25 @@ def test_ink_link_never_refuses_a_text_letter_nor_fails_closed():
     assert ink_strays(_word() + [unknown], CHART) == []
 
 
-def test_ink_link_is_on_by_default_and_reads_its_key_only_when_on():
-    """ON by Kent's ruling 2026-10-13; False reads no key."""
-    assert PipelineConfig().lettering_columns_ink_link is True
-    star = _r("star", box(-10, 0, -5, 5), 2, lettering_group=True)
-    assert tag_ink_strays(_word() + [star], CHART) == 1
-    assert star.meta["lettering_ink_stray"] is True
-    assert not is_lettering(star, PipelineConfig())
-    assert not is_lettering(star, PipelineConfig(lettering_columns_ink_link=True))
-    # (the 5 mm box is also a solid blob, so the blob guard is held off here)
-    assert is_lettering(star, PipelineConfig(lettering_columns_ink_link=False,
-                                             lettering_columns_skip_blobs=False))
+def test_ink_link_tags_the_stray_and_is_lettering_then_refuses_it():
+    """ON by Kent's ruling 2026-10-13 (folded in 2026-11-20). A thin bar, not
+    a solid blob, so only the ink link can be what refuses it."""
+    bar = _r("bar", box(-12, 0, -6, 1.5), 2, lettering_group=True)
+    assert is_lettering(bar, PipelineConfig())          # tagged, not yet judged
+    assert tag_ink_strays(_word() + [bar], CHART) == 1
+    assert bar.meta["lettering_ink_stray"] is True
+    assert not is_lettering(bar, PipelineConfig())
 
 
 @functools.lru_cache(maxsize=None)
 def _case_regions(case):
     """(regions, settings, labelled letter ids or None) for a corpus case at
-    its labelled settings, from ONE `run_stages` with the ink link ON (its
-    tag pass only writes a key; every other guard here is read in
-    `is_lettering`), shared by every census test in this process.
-    `dissolve_phantom_blends` is held OFF (ON since Kent's 2026-10-20 flip,
-    item 46): the hand labels are shape ids read on the engine without it,
+    its labelled settings, from ONE `run_stages` (the ink link's tag pass only
+    writes a key; every guard here is read in `is_lettering`), shared by every
+    census test in this process.
+    The phantom-blend dissolve is held OFF (ON since Kent's 2026-10-20 flip,
+    item 46; folded into the code 2026-11-20, `legacy_engine` patches its False
+    path back): the hand labels are shape ids read on the engine without it,
     and on the screenshot the dissolve re-cuts the regions they name.
     `speck_prune` is held OFF for the same reason (ON since Kent's tick,
     2026-11-16): a pruned speck's pixels join the shape round it, which
@@ -216,9 +195,10 @@ def _case_regions(case):
     from tools.thin_strokes import REAL_ART
     rel, width, garment = REAL_ART[case]
     base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
-    res = run_stages(TESTDATA / rel, PipelineConfig(**base, lettering_columns_ink_link=True,
-                                                    dissolve_phantom_blends=False,
-                                                    speck_prune=False))
+    from tests.conftest import legacy_engine
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, dissolve=True)
+        res = run_stages(TESTDATA / rel, PipelineConfig(**base, speck_prune=False))
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
     letters = None
@@ -230,20 +210,44 @@ def _case_regions(case):
     return tuple(res.regions), base, letters
 
 
-def _guard_census(case, flag="lettering_columns_ink_link", already=()):
+@contextlib.contextmanager
+def _guards_neutralised(regions, *, blob=False, ink=False, icon=False):
+    """Read `is_lettering` with the named guards switched off, the way the
+    pre-fold config switches did (all three are unconditional since
+    2026-11-20): the blob and icon predicates answer False, and the ink
+    link's tag is stripped from the regions' meta (restored on exit)."""
+    stripped = []
+    with contextlib.ExitStack() as stack:
+        if blob:
+            stack.enter_context(mock.patch.object(columns, "is_solid_blob", lambda _p: False))
+        if icon:
+            stack.enter_context(mock.patch.object(columns, "is_drawing_fragment",
+                                                  lambda _p: False))
+        if ink:
+            for r in regions:
+                if "lettering_ink_stray" in r.meta:
+                    stripped.append((r, r.meta.pop("lettering_ink_stray")))
+        try:
+            yield
+        finally:
+            for r, v in stripped:
+                r.meta["lettering_ink_stray"] = v
+
+
+def _guard_census(case, guard="ink"):
     """(regions, labelled letter ids or None, refused ids): the shapes
-    `is_lettering` admits with the `already` flags ON (every other lane
-    guard pinned OFF, whatever its default) and refuses once `flag` is ON
-    too. The ink link's OFF reading is the same regions read with the flag
-    off (`test_ink_link_off_never_reaches_the_new_code`)."""
+    `is_lettering` admits with `guard` ("ink" or "icon") neutralised and
+    refuses with it live. The ink link is read with the blob and icon guards
+    neutralised too, as it was censused before they were folded in; the icon
+    guard is read with the blob guard and the ink link live."""
     regions, base, letters = _case_regions(case)
-    pins = {k: False for k in (*GUARDS_ON, ICON)}
-    pins.update({k: True for k in already})
-    off = PipelineConfig(**base, **{**pins, flag: False})
-    on = PipelineConfig(**base, **{**pins, flag: True})
-    refused = {r.shape_id for r in regions
-               if is_lettering(r, off) and not is_lettering(r, on)}
-    return regions, letters, refused
+    cfg = PipelineConfig(**base)
+    held = dict(blob=True, icon=True) if guard == "ink" else {}
+    with _guards_neutralised(regions, **held):
+        on = {r.shape_id for r in regions if is_lettering(r, cfg)}
+    with _guards_neutralised(regions, **held, **{guard: True}):
+        off = {r.shape_id for r in regions if is_lettering(r, cfg)}
+    return regions, letters, off - on
 
 
 def test_ink_link_refuses_the_enthusiast_star_and_keeps_every_letter():
@@ -300,52 +304,15 @@ def test_ink_link_sees_the_screenshot_icons_once_the_text_clusters_are_one_ink()
         assert SCREENSHOT_CAPTURES <= refused
 
 
-def test_ink_link_off_never_reaches_the_new_code(monkeypatch):
-    """OFF (set explicitly; the default is ON since 2026-10-13) is
-    byte-identical to the pre-flip lane by construction: the tag pass is never
-    called (it raises here), no key is written, and is_lettering's branch is
-    behind the flag. The default (ON) stream differs (the star), so the pin
-    has teeth."""
-    import hashlib
-    import json
-    from digitizer_core import columns
-
-    path = TESTDATA / "photo/enthusiast_logo.png"
-    # `satin_stars` (ON since 2026-11-19) off: the ink link's difference on this
-    # fixture IS its four-point star, which the star path now sews before the lane
-    kw = dict(target_width_mm=80.0, garment_id="left_chest", max_colors=6, satin_stars=False)
-
-    def md5(cfg):
-        res = run_stages(path, cfg)
-        keys = sum("lettering_ink_stray" in r.meta for r in res.regions)
-        plan = plan_stitches(res, cfg)
-        coords = [[round(x, 4), round(y, 4), r.kind, r.jump, r.trim]
-                  for _, r in plan.iter_runs() for x, y in r.points]
-        return hashlib.md5(json.dumps(coords).encode()).hexdigest(), keys
-
-    on, on_keys = md5(PipelineConfig(**kw))
-    assert PipelineConfig(**kw).lettering_columns_ink_link is True
-
-    def boom(*_a, **_k):
-        raise AssertionError("tag_ink_strays reached with the flag OFF")
-    monkeypatch.setattr(columns, "tag_ink_strays",
-                        own_thread_only(boom, columns.tag_ink_strays))
-    off, off_keys = md5(PipelineConfig(**kw, lettering_columns_ink_link=False))
-    assert off_keys == 0 and on_keys == 1
-    assert on != off
-
-
-# --- the icon guard (`cfg.lettering_columns_icon_guard`) --------------------
+# --- the icon guard (`lettering_columns_icon_guard`, folded in 2026-11-20) --
 #
 # A house-group-only shape whose pruned medial axis has
 # `ICON_GUARD_MIN_NODES` or more junctions plus free ends is a piece of
 # drawing. Census 2026-10-13 (PR body, `tools/column_capture_census.py
 # --signals`): the phone screenshot's three captures read 36-45, the 130
 # labelled letters <= 13, golden_tee's swashes <= 8. Judged with the two
-# other guards ON (their default since Kent's ruling 2026-10-13).
+# other guards live (their default since Kent's ruling 2026-10-13).
 
-GUARDS_ON = ("lettering_columns_skip_blobs", "lettering_columns_ink_link")
-ICON = "lettering_columns_icon_guard"
 # The three captures #881 found and #885 could not reach.
 SCREENSHOT_CAPTURES = {"S4a2d12c4", "Sf90dec39", "S84f354eb"}
 
@@ -388,13 +355,13 @@ def test_icon_predicate_is_size_free_and_fails_open():
     assert skeleton_nodes(Point(0, 0).buffer(0)) == 0                            # empty
 
 
-def test_icon_guard_is_on_by_default_and_judges_house_only_shapes():
-    assert PipelineConfig().lettering_columns_icon_guard is True
+def test_icon_guard_judges_house_only_shapes():
     on = PipelineConfig()
-    off = PipelineConfig(lettering_columns_icon_guard=False)
     house = _r("h", _hatch(), 1, lettering_group=True)
     text = _r("t", _hatch(), 1, lettering_group=True, text_candidate=True)
-    assert is_lettering(house, off) and not is_lettering(house, on)
+    with mock.patch.object(columns, "is_drawing_fragment", lambda _p: False):
+        assert is_lettering(house, on)                 # the guard neutralised
+    assert not is_lettering(house, on)
     assert is_lettering(text, on)                  # the text cluster is not judged
     assert not is_lettering(_r("u", _hatch(), 1), on)   # untagged stays untagged
 
@@ -405,7 +372,7 @@ def test_icon_guard_refuses_the_screenshot_captures_and_no_letter():
     labelled letter. (The pre-flip tagger arm, where the link could not see
     the captures and the icon guard refused them, went with the switch
     `text_cluster_rescued_ink_link`, folded 2026-11-19.)"""
-    regions, letters, refused = _guard_census("screenshot", ICON, GUARDS_ON)
+    regions, letters, refused = _guard_census("screenshot", "icon")
     assert letters and not (refused & letters)
     by_id = {r.shape_id: r for r in regions}
     for sid in refused:
@@ -418,22 +385,5 @@ def test_icon_guard_refuses_the_screenshot_captures_and_no_letter():
 def test_icon_guard_refuses_nothing_on_the_other_lettering_fixtures(case):
     """golden_tee's three house-only swashes (4, 4, 8 nodes) are kept, and
     no labelled letter anywhere is refused: nothing is."""
-    _regions, _letters, refused = _guard_census(case, ICON, GUARDS_ON)
+    _regions, _letters, refused = _guard_census(case, "icon")
     assert refused == set()
-
-
-def test_icon_guard_off_never_reaches_the_predicate(monkeypatch):
-    """OFF is byte-identical by construction: `is_lettering` never asks."""
-    from digitizer_core import columns
-    regions, base, _letters = _case_regions("screenshot")
-
-    def boom(*_a, **_k):
-        raise AssertionError("is_drawing_fragment reached with the flag OFF")
-    monkeypatch.setattr(columns, "is_drawing_fragment",
-                        own_thread_only(boom, columns.is_drawing_fragment))
-    cfg = PipelineConfig(**base, **{k: True for k in GUARDS_ON}, **{ICON: False})
-    assert sum(is_lettering(r, cfg) for r in regions) > 0
-    # ... and ON (the default) does reach it: the OFF test above is not vacuous.
-    with pytest.raises(AssertionError, match="reached with the flag OFF"):
-        for r in regions:
-            is_lettering(r, PipelineConfig(**base))

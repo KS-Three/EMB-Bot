@@ -39,7 +39,7 @@ Finding (2026-10-13): no capital station cross leans past 45 deg at 80 or
 120 mm; lowercase ones do (1.4% at both), every one at a SHOULDER -- the
 u's bowl into its right stem, the b's and g's bowl into the stem, the m's
 first arch -- which the junction rules leave uncut. That is
-`cfg.lettering_columns_fold_cuts` (`--fold-cuts`). On the four corpus
+`lettering_columns_fold_cuts` (`--fold-cuts`). On the four corpus
 logos with lowercase the lowercase is script or UI text the taggers do not
 send to the Column lane at all (34 of ~3,000 crosses), and the flag moves
 none of them.
@@ -332,14 +332,14 @@ def _glyph_at(meta, px, py):
 def measure_synthetic(width_mm: float, columns: bool = True, base: Path = FIXTURE,
                       fold_cuts: bool = False, **cfg_kw):
     """-> (report dict, result, plan) for the fixture at `width_mm`.
-    `fold_cuts` digitizes with `cfg.lettering_columns_fold_cuts`; `cfg_kw`
+    `fold_cuts` is inert since `lettering_columns_fold_cuts` was folded into the
+    code (2026-11-20): every run folds; `cfg_kw`
     go to the PipelineConfig as well (`--true-size-off`: TRUE_SIZE_OFF)."""
     from digitizer_core import PipelineConfig, digitize
     from digitizer_core.columns import is_lettering
     meta = json.loads(base.with_suffix(".json").read_text(encoding="utf-8"))
     cfg = PipelineConfig(target_width_mm=width_mm, forced_class="flat",
                          lettering_columns=columns,
-                         lettering_columns_fold_cuts=fold_cuts,
                          **cfg_kw)
     result, plan = digitize(base.with_suffix(".png"), cfg)
     to_px, s = mm_to_px(result, meta["image"])
@@ -567,8 +567,7 @@ def measure_corpus(name: str, fold_cuts: bool = False) -> dict:
     path = ROOT / "testdata" / rel
     with Image.open(path) as im:
         wh = im.size
-    cfg = PipelineConfig(target_width_mm=width, garment_id=garment,
-                         lettering_columns_fold_cuts=fold_cuts)
+    cfg = PipelineConfig(target_width_mm=width, garment_id=garment)
     result, plan = digitize(path, cfg)
     to_px, _s = mm_to_px(result, wh)
     letters = {r.shape_id for r in result.regions if is_lettering(r, cfg)}

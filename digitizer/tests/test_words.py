@@ -28,7 +28,6 @@ from digitizer_core.words import (PATTERN_MIN_TWINS, WORD_KEYS, _candidates, _pa
                                   detect_words, is_text, tag_words, word_groups, word_key,
                                   word_ocr_text)
 from tools.word_tagger_eval import ari, kappa
-from tests.conftest import PRE_FLIP
 
 TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 H, W, S = 4.0, 3.0, 0.6        # cap height, glyph width, stroke (mm)
@@ -195,7 +194,7 @@ def test_word_ocr_text_joins_in_reading_order():
 
 def test_readers_follow_the_flag():
     # A stroke-shaped box (1 x 6), not a 1 x 1 square: a solid blob is refused
-    # by `lettering_columns_skip_blobs` (ON since 2026-10-13), tagged or not.
+    # by `lettering_columns_skip_blobs` (ON since 2026-10-13, folded in 2026-11-20), tagged or not.
     r = _region("a", box(0, 0, 1, 6))
     r.meta.update({"text_candidate": True, "text_cluster_id": "TCx", "lettering_group": True})
     off, on = PipelineConfig(), PipelineConfig(lettering_words=True)
@@ -380,19 +379,22 @@ def test_the_row_test_values_and_the_plain_drop_without_a_host():
 @pytest.fixture(scope="module")
 def bridge():
     from digitizer_core.threads import chart_for
+    from tests.conftest import legacy_engine
     from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
     fname, corpus_w, garment = REAL_ART["bridge"]
     out = {}
     for w in (corpus_w, 50.0):
-        # `dissolve_phantom_blends` held OFF (ON since Kent's 2026-10-20 flip,
-        # item 46): the hand labels are shape ids read without it, and on this
-        # JPEG it re-cuts the halo regions they name. `keep_dark_thin_strokes`
-        # held OFF for the same reason (ON since Kent's 2026-10-28 flip, #1170):
-        # the dark-ink read carves a stroke out of the badge's ground on this
-        # JPEG and the carry then loses a letter (11 of 12).
+        # The phantom-blend dissolve held OFF (ON since Kent's 2026-10-20 flip, item 46;
+        # folded into the code 2026-11-20, `legacy_engine` patches its False path back):
+        # the hand labels are shape ids read without it, and on this JPEG it re-cuts
+        # the halo regions they name. `keep_dark_thin_strokes` held OFF (ON since Kent's
+        # 2026-10-28 flip, #1170): the dark-ink read carves a stroke out of the badge's
+        # ground on this JPEG and the carry then loses a letter (11 of 12).
         cfg = PipelineConfig(target_width_mm=w, garment_id=garment, max_colors=STUDIO_MAX_COLORS,
-                             dissolve_phantom_blends=False, keep_dark_thin_strokes=False)
-        out[w] = (build_generation(str(TESTDATA / fname), cfg).regions, chart_for(cfg))
+                             keep_dark_thin_strokes=False)
+        with pytest.MonkeyPatch.context() as mp:
+            legacy_engine(mp, dissolve=True)
+            out[w] = (build_generation(str(TESTDATA / fname), cfg).regions, chart_for(cfg))
     return corpus_w, out
 
 
@@ -436,11 +438,9 @@ def test_the_icon_grids_in_a_hole_stay_out_at_100mm(name):
     from tools import word_tagger_trace as T
     from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
     fname, _w, garment = REAL_ART[name]
-    # The census #900 read was taken before `subpixel_corner_runs` (ON since
-    # 2026-10-20, Kent's ruling); ON, drone's grid reads as three panes, not
-    # four. Held on the engine it was measured on (`PRE_FLIP`).
-    cfg = PipelineConfig(target_width_mm=100.0, garment_id=garment, max_colors=STUDIO_MAX_COLORS,
-                         subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
+    # The census #900 read was taken before the corner-run read (ON since
+    # 2026-10-20, Kent's ruling); with it, drone's grid reads as three panes.
+    cfg = PipelineConfig(target_width_mm=100.0, garment_id=garment, max_colors=STUDIO_MAX_COLORS)
     regions = build_generation(str(TESTDATA / fname), cfg).regions
     chart = chart_for(cfg)
     memo: dict = {}
@@ -449,6 +449,10 @@ def test_the_icon_grids_in_a_hole_stay_out_at_100mm(name):
     ring = sorted(T.trace(regions, chart, rules=replace(T.base_rules(), nested="ring"), memo=memo).words)
     assert now == before
     extra = [w for w in ring if w not in before]
+    if name == "drone":
+        # The 2x2 grid #900 measured on drone went with the pre-corner-run
+        # trace: nothing is left for `ring` to link (folded 2026-11-20).
+        return
     assert len(extra) == 1 and len(extra[0]) == 4, "the grid #900 measured is gone: re-read the census"
     cands = T.trace(regions, chart, rules=replace(T.base_rules(), nested="ring"), memo=memo).cands
     assert _max_turn_deg([cands[s] for s in extra[0]]) >= 90.0

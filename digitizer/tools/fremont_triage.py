@@ -25,7 +25,7 @@ on it, never size a constant on it.
 
     # one arm (writes <out>/<arm>.json and <arm>_design.json)
     .venv/Scripts/python -m tools.fremont_triage --arm main --out DIR
-    .venv/Scripts/python -m tools.fremont_triage --arm guards_off --out DIR
+    .venv/Scripts/python -m tools.fremont_triage --arm lane_off --out DIR
     # the pre-#863 core, extracted with `git archive 0f03f6fc^1 ...`:
     PYTHONPATH=<extract>/digitizer .venv/Scripts/python -m tools.fremont_triage \
         --arm pre863 --core <extract>/digitizer --out DIR
@@ -89,33 +89,11 @@ def studio_request(width_mm: float = KENT_WIDTH_MM) -> dict:
 # Studio request; `pre863` is the core as of 0f03f6fc^1 (run with --core).
 ARMS = {
     "main": {},
-    "ink_link_off": {"lettering_columns_ink_link": False},
-    "skip_blobs_off": {"lettering_columns_skip_blobs": False},
-    "guards_off": {"lettering_columns_ink_link": False,
-                   "lettering_columns_skip_blobs": False},
     "lane_off": {"lettering_columns": False},
     "pre863": {},
-    # The 1895 loss: `cfg.small_glyph_keep` OFF (it is ON by default since
-    # 2026-10-13, Kent's ruling). The ON arm is "main". Kent's job also
-    # predates `small_text_true_size` (ON since 2026-10-14) and the spoked
-    # detail mark on the Wisconsin star (`detail_spokes`, ON since
-    # 2026-10-16, one more shape), the small stem and the scoped dot rung,
-    # the photo lane's phantom-blend dissolve (`dissolve_phantom_blends`) and
-    # stage 5's cut-off pieces (`clip_keep_pieces`), all ON since 2026-10-20,
-    # so this arm, the engine as he sewed it, has those OFF too -- and the
-    # white-keyline recipe, on every job since 2026-10-27.
-    "small_glyph_keep_off": {"small_glyph_keep": False, "small_text_true_size": False,
-                             "bean_only_lines": False,   # his job predates the bean rule (2026-10-27)
-                             "edge_cap": "bean",   # ...and the "none" default (2026-10-29)
-                             "keep_dark_thin_strokes": False,   # ...and the dark-ink read (ON 2026-10-28)
-                             "rope_band": False,   # ...and the rope as one band (2026-11-17)
-                             "detail_spokes": False, "lettering_columns_small_stem": False,
-                             "dissolve_phantom_blends": False, "clip_keep_pieces": False,
-                             **{k: False for k in (
-                                 "silhouette_underfill", "enclosed_white_keyline",
-                                 "silhouette_underfill_panels", "silhouette_underfill_rim",
-                                 "keyline_fold_slivers", "skip_covered_shapes",
-                                 "keyline_loop_chain", "absorb_fragments")}},
+    # (The `small_glyph_keep_off` arm, Kent's job as he sewed it, went with the
+    # flag 2026-11-20: `small_glyph_keep` is the code now. The 1895 loss it
+    # reproduced is in `docs/flag-history/tier-b2-lettering.md`.)
 }
 ARM_ORDER = list(ARMS)
 

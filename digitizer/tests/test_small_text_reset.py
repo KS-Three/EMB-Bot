@@ -5,7 +5,7 @@ the cap, the gaps between them closed to a visible gap, each letter widened
 into what that frees, the line as wide as room allows, bars of the line
 moved to the middle of their room.
 
-Measured at 92.5 mm Hat with `lettering_columns_small_bold`
+Measured at 92.5 mm Hat with `lettering_columns_small_bold` (folded in 2026-11-20)
 (`tools/small_text_columns.py`, both machine files read the same way, each in
 its own frame): condensed growth sewed Fremont's EAT, STAY, PLAY and 1895
 letter into letter (visible gap 0) and left Drone's AND DRONE at 2.2 mm (no

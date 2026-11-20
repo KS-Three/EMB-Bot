@@ -376,7 +376,7 @@ _COVERAGE_FLOOR_UNITS = 0.25
 _COVERAGE_MIN_PATCH_MM2 = 25.0
 
 # Legibility on the render (quality review 2026-09-08 item 11, built
-# 2026-09-10 behind `cfg.legibility_check`, DEFAULT OFF): per text cluster,
+# 2026-09-10 behind `legibility_check`, DEFAULT OFF): per text cluster,
 # the edit similarity between what tesseract reads off the artwork and off
 # the thread render (`legibility.measure`; 1.0 the thread says what the art
 # says). RULED by Kent 2026-09-10 (option A of docs/superpowers/plans/
@@ -1698,7 +1698,7 @@ def _ground_sewn_findings(p, result: PipelineResult,
 
     thread = chart_for(cfg)[biggest.thread_index]
     # The artwork's own page colour, read off the raster's border. Under
-    # `cfg.alpha_edge_extend` the raster's border carries nearest-opaque
+    # the alpha extension the raster's border carries nearest-opaque
     # colour (stage 1 extends it under the transparency for every reader);
     # the file's own colour there is `p.raw_rgb`, which is what this
     # finding has always read and must keep reading.
@@ -1846,7 +1846,7 @@ def _color_stop_findings(plan: StitchPlan) -> tuple[list[dict], int]:
     #
     # A repeat is worth saying on its own, and FIRST: merging two blocks that
     # already wear the same cone costs no color fidelity at all, where any
-    # other merge trades some. `cfg.merge_duplicate_cones` (default ON since
+    # other merge trades some. Merging duplicate cones (default since
     # 2026-09-01) folds these upstream, so a survivor here means a specialty
     # step put its own stop in — still a real, free saving for the operator.
     cones: dict[str, dict] = {}
@@ -4415,7 +4415,7 @@ def _glyph_legibility_metrics(p, result: PipelineResult, plan: StitchPlan,
 
 
 def _two_tone_view(p, plan: StitchPlan, cfg: PipelineConfig):
-    """The stage-1 re-read as the pipeline SEWED it: when `cfg.two_tone_snap`
+    """The stage-1 re-read as the pipeline SEWED it: when the two-tone snap
     fired (defect 58), a snapped copy of `p` (`two_tone.apply`, the
     pipeline's own stage 1.3); otherwise `p` itself, untouched.
 
@@ -4430,7 +4430,7 @@ def _two_tone_view(p, plan: StitchPlan, cfg: PipelineConfig):
     1.25's PHOTO_DETECTED on the plan (`_is_photo_class`'s re-read of the
     same warning). Stage 0's photo CLASS is not a gate there, so it is not
     one here (`logo_mfab_hat` snaps)."""
-    if not cfg.two_tone_snap or cfg.is_photographic is True:
+    if cfg.is_photographic is True:
         return p
     if cfg.is_photographic is None and any(
             w.get("code") == _PHOTO_DETECTED for w in plan.warnings):
@@ -4576,10 +4576,10 @@ def run_preflight(result: PipelineResult, plan: StitchPlan,
 
     # Legibility on the render — what the thread SAYS against what the art
     # says, per text cluster. Needs the artwork, the regions (the clusters)
-    # and the tesseract binary; `cfg.legibility_check` (ON by default since
+    # and the tesseract binary; `legibility_check` (ON by default since
     # 2026-09-10, Kent's ruling), and the report says whether it ran either
     # way.
-    if (cfg.legibility_check and p is not None and result is not None
+    if (p is not None and result is not None
             and _legibility.tesseract_available()):
         leg_findings, leg_metrics = _legibility_findings(p, result, plan, cfg)
         findings.extend(leg_findings)

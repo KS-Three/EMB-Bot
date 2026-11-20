@@ -285,10 +285,10 @@ class PipelineResult:
     # The gate's whole read, per region (`fur_regions.read_regions`): the
     # census a tool reports. None when the gate did not run.
     hair_fur_read: dict | None = None
-    # `cfg.white_keyline_art_recipe` (built OFF): `finish_generation` read this
+    # `finish_generation` read this
     # art as white-keyline art (`white_keyline_art.detect`), so `plan_stitches`
     # folds the recipe into its caller's config the way it folds the photo
-    # verdict. False on a hand-built result and whenever the flag was off.
+    # verdict. False on a hand-built result.
     white_keyline_art: bool = False
     # The raster stage 1.5's photo prep handed to segmentation and stage 4's
     # thread revalidation (`p.rgb` after `photo_prep`): a REFERENCE to the
@@ -683,7 +683,7 @@ def build_generation(
             )
         )
 
-    # Stage 1.3 — two-tone snap (`cfg.two_tone_snap`, defect 58). Before any
+    # Stage 1.3 — two-tone snap (defect 58). Before any
     # region former, so every lane reads two inks. Never on a photograph,
     # declared or detected (`cfg.is_photographic` carries both by now), whose
     # greys are its picture; a logo stage 0 merely CLASSES photo_scene
@@ -698,7 +698,7 @@ def build_generation(
     # The whole of it lives in `two_tone.apply`, which preflight's thread
     # grader replays on its own stage-1 re-read so it judges the raster the
     # pipeline sewed.
-    if cfg.two_tone_snap and cfg.is_photographic is not True:
+    if cfg.is_photographic is not True:
         two_tone.apply(p)
 
     # Stage 1.5 — photo prep (plan §2 rows 3-4; build step 3 first slice).
@@ -912,10 +912,9 @@ def build_generation(
     # and None whenever the fit's gate refuses (`design_ramp.py` names the
     # three numbers and the fixtures each one turns away), so every other
     # class — and a gradient design with no fitting ramp — is byte-identical
-    # to before by construction. `cfg.design_ramp=False` is the pre-2026-09-04
-    # lane, kept reachable (see the flag's own comment).
+    # to before by construction.
     design_ramp = (fit_design_ramp(p)
-                   if classification.class_ == "gradient" and cfg.design_ramp else None)
+                   if classification.class_ == "gradient" else None)
 
     # `cfg.open_cored_counters` (2026-10-19): the core mask both stage-3
     # calls below read, kept to the cores a glyph holds (`cored_counter_core`
@@ -952,14 +951,14 @@ def build_generation(
                 split_tonal=effective_split_tonal(cfg, classification.class_),
                 shade_demand=shade_demand,
                 design_ramp=design_ramp,
-                # The thin population (`cfg.keep_thin_strokes`, `thin_ink.py`)
+                # The thin population (`keep_thin_strokes`, folded in; `thin_ink.py`)
                 # is for LOGOS the classifier sent down this lane. Measured
                 # 2026-09-08 over the committed photo fixtures: on a
                 # photograph it is not empty at any ring share that keeps
                 # Fremont's lettering whole (owl 199 mm, chrome 230 mm of
                 # "strokes" at 0.75), so the photo classes keep today's path
                 # until that residue is understood — byte-identical ON.
-                thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient"),
+                thin_population=bool(classification.class_ == "gradient"),
                 # Dark thin strokes read by lightness (`cfg.keep_dark_thin_
                 # strokes`): the same gate, for the same reason.
                 dark_population=bool(cfg.keep_dark_thin_strokes and classification.class_ == "gradient"),
@@ -967,7 +966,7 @@ def build_generation(
                 # measurement behind it is a white icon on a sweep (Kent's
                 # Instagram file, 2026-09-30), and the photo classes keep
                 # today's path until a photograph has been looked at.
-                snap_edges=bool(cfg.snap_region_edges and classification.class_ == "gradient"),
+                snap_edges=bool(classification.class_ == "gradient"),
                 # Logos only, the same gate again: a photograph's fragments
                 # enclose each other everywhere.
                 keep_counters=bool(cfg.keep_counters and classification.class_ == "gradient"),
@@ -993,7 +992,7 @@ def build_generation(
     deadline.check("stage 2")
     masks = seg.segment(q, p, cfg)
     deadline.check("stage 3")
-    # `layer_lab` arms `cfg.keep_thin_strokes` (see `resolve_small_regions`):
+    # `layer_lab` arms `keep_thin_strokes` (folded in; see `resolve_small_regions`):
     # the quantiser's own cluster colours, one per layer, so a contrasting
     # sub-floor stroke is kept rather than absorbed into what it touches. The
     # photo segmenters make their own call without it, on purpose.
@@ -1072,7 +1071,7 @@ def build_generation(
     # derived every generation — like `layer`, unlike the review-screen
     # fields a resent `shape_overrides` carries forward on a stable id — so it
     # belongs before shape edits, not after.
-    tag_enclosed_background(regions, p, alpha_hole_parts=cfg.enclosed_alpha_hole_parts)
+    tag_enclosed_background(regions, p)
     # A kept counter (`cfg.keep_counters`) wears the same tag, and `counter`
     # beside it to say which kind: it is a gap in the letter round it that
     # shows the cloth unless switched on, which is everything that tag means
@@ -1119,8 +1118,7 @@ def build_generation(
     # stage-5 coverage plan sees the order actually sewn. Runs here — same
     # generation step as the re-snap it corrects, before anything reads
     # layers — and never touches user recolors (see its docstring).
-    if cfg.rehome_resnapped:
-        rehome_resnapped_regions(regions, list(q.thread_indices))
+    rehome_resnapped_regions(regions, list(q.thread_indices))
 
     # "Colors (max N)" is a promise about what the machine will be threaded
     # with, and until now the SLIC+RAG lane did not keep it — see
@@ -1278,9 +1276,9 @@ def build_generation(
                            letter_gap_mm=cfg.small_text_cap_letter_gap_mm,
                            bold_scale=cfg.small_text_cap_bold_scale,
                            reach_edges=True,
-                           # each bay's mouth kept open (W3-02, ON since 2026-10-26):
-                           # False, the call as it was word for word
-                           **({"bay_mouth": True} if cfg.small_text_bay_mouth else {}),
+                           # each bay's mouth kept open (W3-02; `small_text_bay_mouth`,
+                           # folded in)
+                           bay_mouth=True,
                            # the height classes of a lowercase line re-set on one
                            # baseline (2026-11-13, ON since 2026-11-14, Kent's flip):
                            # False, the call as it was
@@ -1404,11 +1402,11 @@ def build_generation(
     set_lettering_house_angle(regions, p, fourfold=True,
                               from_line=True,
                               anchor=True, groups=house_groups)
-    # The Column lane's ink link (`cfg.lettering_columns_ink_link`, default
-    # ON by Kent's ruling 2026-10-13): a house-group-only shape in a far ink
+    # The Column lane's ink link (`lettering_columns_ink_link`, folded in; Kent's
+    # ruling 2026-10-13): a house-group-only shape in a far ink
     # is not a letter of the text. Here, once both old taggers have written
-    # their keys. Off, it is never called and no key is written.
-    if cfg.lettering_columns_ink_link and not cfg.lettering_words:
+    # their keys.
+    if not cfg.lettering_words:
         from .columns import tag_ink_strays
         tag_ink_strays(regions, chart_for(cfg))
     # A text-cluster member off its cluster's line is not a letter
@@ -1634,7 +1632,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # a review `stitched` still wins over it, exactly as over the default.
     sews_by_garment, garment_de00 = garment_sews_enclosed(p, cfg)
     shape_overrides = cfg.shape_overrides or {}
-    # `cfg.white_keyline_art_recipe` (built OFF, Kent 2026-10-26: "Gate to
+    # White-keyline art recipe (Kent 2026-10-26: "Gate to
     # MFab art first"): white-keyline art -- a dark host round a white field
     # outlining letters -- turns its recipe on here, before the first of its
     # switches (`sew_enclosed_white`, just below) acts; the verdict rides the
@@ -1749,8 +1747,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
             for w in prep_own_warnings]
 
     thread_indices, layer_warnings = compact_layers(regions, quant_indices)
-    # One cone, one layer (cfg.merge_duplicate_cones, default OFF — defect
-    # 18). Two quantized COLOURS can snap to one physical thread, and
+    # One cone, one layer (defect 18). Two quantized COLOURS can snap to one physical thread, and
     # nothing downstream deduped them: the palette declared the spool
     # twice and its second, smaller layer sewed a fragment late over
     # finished work. Folded HERE, immediately after compaction and before
@@ -1759,10 +1756,9 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # still beats it, and stage 5 plans coverage against the order
     # actually sewn — see the function's own docstring for why the
     # equivalent downstream repair (`_hoist_same_thread`) cannot do this.
-    if cfg.merge_duplicate_cones:
-        thread_indices, dup_warnings = merge_duplicate_cone_layers(
-            regions, thread_indices)
-        layer_warnings = layer_warnings + dup_warnings
+    thread_indices, dup_warnings = merge_duplicate_cone_layers(
+        regions, thread_indices)
+    layer_warnings = layer_warnings + dup_warnings
     # Photo depth sequencing (plan §2 row 14): photo-classified designs (or
     # an explicit cfg.extra["photo_sequencing"] opt-in) replace stage 2's
     # largest-area-first layer order with background→foreground, dark→light,
@@ -2082,7 +2078,7 @@ def finish_generation(gen: Generation, cfg: PipelineConfig | None = None) -> Pip
     # drawn outline carry `meta["hairline_outline"]`, sewn or not, so the
     # Studio can point at them and ask. Read after every recolour above (the
     # gate is per thread). A mark only: nothing here changes a stitch.
-    if cfg.border_from_outline_hairline_run and cfg.border_from_outline:
+    if cfg.border_from_outline_hairline_run:
         _outlines = _art_outlines(regions, cfg, source_pixels)
         if _outlines:
             # nothing thinner than the art can draw: 1.5 SOURCE pixels, the
@@ -2240,8 +2236,8 @@ def _fill_inside_satin_border(regions, cfg, design_class):
 
 
 def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
-    """`cfg.border_from_outline`: {outline id: [(body id, hole, width mm)]}
-    from `art_outline.find_art_outlines`, or None with the flag off.
+    """The art's own outlines: {outline id: [(body id, hole, width mm)]}
+    from `art_outline.find_art_outlines`.
 
     A region that RIDES the design's ramp (Kent's gradient ruling 2026-09-04,
     `stage6_blend.region_rides_design_ramp`) is part of the sweep and sews its
@@ -2250,8 +2246,6 @@ def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
     looped the sweep square round the white frame in satin, one thread where
     the source shades fuchsia to orange (found by the full suite the day the
     flag flipped ON, 2026-10-24)."""
-    if not cfg.border_from_outline:
-        return None
     from .art_outline import find_art_outlines, outline_width_mm
     if source_pixels is not None and getattr(source_pixels, "design_ramp", None) is not None:
         from .stage6_blend import region_rides_design_ramp
@@ -2268,7 +2262,7 @@ def _art_outlines(regions, cfg, source_pixels=None) -> dict | None:
 def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> StitchPlan:
     """Stages 5-7: regions -> stitches. Safe to re-run on one PipelineResult."""
     cfg = cfg or PipelineConfig()
-    # `cfg.white_keyline_art_recipe` (built OFF): the verdict `finish_generation`
+    # The verdict `finish_generation`
     # read, folded in before anything below reads the recipe's switches (the
     # loop mitre's scope is the first). Read with getattr: the scope tests
     # hand this a stand-in result (None, a bare object).
@@ -2370,6 +2364,17 @@ def plan_stitches(result: PipelineResult, cfg: PipelineConfig | None = None) -> 
         if (getattr(result, "design_class", "flat") in PHOTO_CLASSES
                 and getattr(cfg, "outline_inlets_kept", False)):
             cfg = replace(cfg, outline_inlets_kept=False)
+        # `satin_seam_hold`: logos only, never a photo class (Kent's ruling
+        # 2026-11-20, "Keep it off photos (Recommended)": "Hold satin_seam_hold
+        # off for photo-class designs only, as point_touch_split and
+        # outline_inlets already are; logos keep the gains."). Evidence: on
+        # photo/photo_scene_stub.png at 80 mm left_chest the hold cost 11 extra
+        # trims (62 -> 73) and 1.0 mm extra bare thread (1.0 -> 2.0), while its
+        # measured gains (Golden Tee -11% stitches, Gaulke -3%) are logos.
+        # Stages 5-7 all read it inside this function, after this point.
+        if (getattr(result, "design_class", "flat") in PHOTO_CLASSES
+                and getattr(cfg, "satin_seam_hold", False)):
+            cfg = replace(cfg, satin_seam_hold=False)
         # the result the plan in hand is sewn from: the guard below replans
         # THIS one, so a re-tier here survives its replan (review 2026-11-14:
         # it replanned `result`, and a gear the inlet rule had moved to fill
@@ -2731,7 +2736,7 @@ def _plan_stitches(result: PipelineResult, cfg: PipelineConfig) -> StitchPlan:
                                         **({"keyline_beans": keyline_beans}
                                            if keyline_beans is not None else {}))
 
-    # `cfg.beanie_knockdown` (built OFF): a sparse fill under the whole design,
+    # Beanie knockdown: a sparse fill under the whole design,
     # sewn first, on a beanie with a known garment colour — `knockdown.py`.
     if knockdown.applies(cfg):
         kd, _kd_report = knockdown.knockdown_block(

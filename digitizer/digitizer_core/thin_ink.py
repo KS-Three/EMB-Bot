@@ -1,4 +1,4 @@
-"""Thin ink on the photo lane — the third population `cfg.keep_thin_strokes` adds.
+"""Thin ink on the photo lane — the third population `keep_thin_strokes` adds.
 
 PR 3 of `docs/superpowers/plans/2026-09-08-real-logo-lane-and-thin-strokes.md`
 (§4c). The gradient and photo lanes segment with SEEDS superpixels of

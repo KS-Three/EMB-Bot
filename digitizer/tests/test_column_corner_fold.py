@@ -1,4 +1,4 @@
-"""`cfg.lettering_columns_corner_fold` (2026-10-23, built OFF): the Column
+"""`lettering_columns_corner_fold` (2026-10-23, built OFF, folded in 2026-11-20): the Column
 lane folds ONE satin column round an L-shaped corner the way the
 professional's files do, instead of cutting the outline there and butting
 two columns.
@@ -23,7 +23,7 @@ from pathlib import Path
 import pytest
 from shapely.geometry import LineString, Point, Polygon
 
-from digitizer_core import PipelineConfig, columns
+from digitizer_core import columns
 from digitizer_core import outline_cut as oc
 
 W = 1.4
@@ -61,11 +61,6 @@ def _drone_letters():
     return out
 
 
-def test_flag_is_on_by_default():
-    # Kent 2026-10-23 ("add to flip-two"), by the pro's fold count; False is the off arm
-    assert PipelineConfig().lettering_columns_corner_fold is True
-
-
 def test_off_never_reaches_the_new_code(monkeypatch):
     def boom(*_a, **_k):
         raise AssertionError("corner_fold code reached with the flag off")
@@ -74,12 +69,6 @@ def test_off_never_reaches_the_new_code(monkeypatch):
         _cut(poly)
     poly, kw = next(iter(_drone_letters().values()))
     columns.lettering_columns_shape(poly, "off", **kw)
-
-
-def test_stage7_wires_the_flag_and_nothing_else():
-    src = (Path(__file__).resolve().parent.parent / "digitizer_core" / "stage7_sequence.py").read_text(
-        encoding="utf-8")
-    assert '**({"corner_fold": True} if cfg.lettering_columns_corner_fold else {})' in src
 
 
 # --- OFF: the defect, pinned ---------------------------------------------------------

@@ -49,7 +49,7 @@ What this does, on logos (not photographs):
 5. **Survives stage 5.** Every such bar, redrawn or not, is tagged
    `meta[FINE_BAR_KEY]`; when the clip against the colours already down
    would leave under `KEEP_FRAC` of its own art, it sews its art over them
-   instead (`stage5_overlap.resolve_overlaps`), as `cfg.small_glyph_keep`
+   instead (`stage5_overlap.resolve_overlaps`), as `small_glyph_keep`
    does for a rescued glyph. On the hat the field sewn first had become an
    under-fill (`silhouette_underfill`) whose polygon covered the bar.
 

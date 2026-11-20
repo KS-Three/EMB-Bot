@@ -1,14 +1,15 @@
-"""`cfg.keep_thin_strokes` — absorb by colour, not by adjacency (flat lane).
+"""`keep_thin_strokes` — absorb by colour, not by adjacency (flat lane).
 
-**DEFAULT ON since 2026-09-13** (Kent's ruling on
-`docs/thin-strokes-flip-2026-09-13.md`). `test_flag_defaults_on` pins that;
-every OFF arm below now names `keep_thin_strokes=False` explicitly rather
-than leaning on the default, so the two arms stay two arms and the pre-flip
-engine stays reachable and tested instead of dead-by-default.
+**ON since 2026-09-13** (Kent's ruling on
+`docs/thin-strokes-flip-2026-09-13.md`); **folded into the code 2026-11-20**:
+the config field is gone, and `resolve_small_regions` keeps a contrasting
+sub-floor region whenever it is handed the layer colours (`layer_lab`). The
+pre-flip engine is no longer reachable by config, so the OFF arms the module
+used to carry are deleted; the unit tests here still pin
+`resolve_small_regions`'s own behaviour with and without `layer_lab` on the
+same masks (without it, how the photo segmenters call it, nothing is kept).
 
-The contract, in four parts. OFF is the pre-flip engine: the unit tests here
-pin `resolve_small_regions`'s own behaviour with and without the flag on the
-same masks. ON, a sub-floor region touching a neighbour of ANOTHER colour
+The contract, in four parts. A sub-floor region touching a neighbour of ANOTHER colour
 that clears the run tier's floors is kept for the run tier; a same-colour
 sliver is absorbed as before; a contrasting speck under the floors is
 absorbed as before; and without layer colours (how the photo segmenters call
@@ -90,32 +91,20 @@ def test_the_scene_is_what_its_docstring_says():
     assert np.linalg.norm(lab[1] - lab[0]) > PipelineConfig().merge_delta_e
 
 
-def test_flag_defaults_on():
-    """FLIPPED 2026-09-13 — Kent's ruling on the flip sheet
-    `docs/thin-strokes-flip-2026-09-13.md` and its renders: "Flip it — take
-    gaulke and becker as the price". This asserted False until then.
-
-    What it buys, from that sheet: Fremont 18 -> 3 lost thin strokes (85.2% ->
-    92.5%, the sub-0.5 mm band 52.2% -> 92.0%) and C 64 -> B 76 as TRIM_HEAVY
-    clears; drone's `AND DRONE` subline goes from not sewn at all to sewn. The
-    price Kent took knowingly, on designs the flag cannot help: gaulke 2 -> 4
-    cones for zero recall change, becker a second cone on a one-cone design,
-    Golden Tee raw -32 -> -50, bridge_bar +29 regions / +28 trims. False
-    remains the pre-flip engine, reachable and tested — every OFF arm in this
-    module names it."""
-    assert PipelineConfig().keep_thin_strokes is True
+# FLIPPED 2026-09-13 — Kent's ruling on the flip sheet
+# `docs/thin-strokes-flip-2026-09-13.md` and its renders: "Flip it — take
+# gaulke and becker as the price".
+#
+# What it buys, from that sheet: Fremont 18 -> 3 lost thin strokes (85.2% ->
+# 92.5%, the sub-0.5 mm band 52.2% -> 92.0%) and C 64 -> B 76 as TRIM_HEAVY
+# clears; drone's `AND DRONE` subline goes from not sewn at all to sewn. The
+# price Kent took knowingly, on designs the flag cannot help: gaulke 2 -> 4
+# cones for zero recall change, becker a second cone on a one-cone design,
+# Golden Tee raw -32 -> -50, bridge_bar +29 regions / +28 trims.
 
 
-def test_flag_off_every_small_region_is_absorbed_into_the_panel():
-    kept, warnings = resolve_small_regions(_scene(), PipelineConfig(keep_thin_strokes=False),
-                                           PX_PER_MM, layer_lab=rgb_to_lab(RGB))
-    assert len(kept) == 1
-    assert kept[0].layer == 0 and kept[0].area == 160 * 160 + 120
-    assert ABSORBED_SMALL_SHAPES in {w["code"] for w in warnings}
-
-
-def test_flag_on_keeps_the_contrasting_stroke_and_still_absorbs_the_sliver_and_the_speck():
-    cfg = PipelineConfig(keep_thin_strokes=True)
+def test_the_contrasting_stroke_is_kept_and_still_absorbs_the_sliver_and_the_speck():
+    cfg = PipelineConfig()
     kept, _warnings = resolve_small_regions(_scene(), cfg, PX_PER_MM, layer_lab=rgb_to_lab(RGB))
     by_layer = {k.layer: k for k in kept}
     assert set(by_layer) == {0, 1}, [k.layer for k in kept]
@@ -125,13 +114,11 @@ def test_flag_on_keeps_the_contrasting_stroke_and_still_absorbs_the_sliver_and_t
     assert by_layer[0].area == 160 * 160 - 180 + 120
 
 
-def test_without_layer_colours_the_flag_is_inert_which_is_the_photo_lanes_contract():
-    cfg = PipelineConfig(keep_thin_strokes=True)
-    on, w_on = resolve_small_regions(_scene(), cfg, PX_PER_MM, layer_lab=None)
-    off, w_off = resolve_small_regions(_scene(), PipelineConfig(keep_thin_strokes=False),
-                                       PX_PER_MM, layer_lab=None)
-    assert [(k.layer, k.area, k.origin) for k in on] == [(k.layer, k.area, k.origin) for k in off]
-    assert w_on == w_off
+def test_without_layer_colours_every_small_region_is_absorbed_which_is_the_photo_lanes_contract():
+    kept, warnings = resolve_small_regions(_scene(), PipelineConfig(), PX_PER_MM, layer_lab=None)
+    assert len(kept) == 1
+    assert kept[0].layer == 0 and kept[0].area == 160 * 160 + 120
+    assert ABSORBED_SMALL_SHAPES in {w["code"] for w in warnings}
 
 
 def test_a_contrasting_stroke_that_fails_the_loop_proxy_is_absorbed_as_before():
@@ -140,38 +127,29 @@ def test_a_contrasting_stroke_that_fails_the_loop_proxy_is_absorbed_as_before():
     100 px with a 20 px proxy, under the floor, and colour never decides."""
     stub = (slice(60, 70), slice(60, 70))
     panel = _mask(slice(20, 180), slice(20, 180), 0, carve=[stub])
-    kept, _ = resolve_small_regions([panel, _mask(*stub, 1)], PipelineConfig(keep_thin_strokes=True),
+    kept, _ = resolve_small_regions([panel, _mask(*stub, 1)], PipelineConfig(),
                                     PX_PER_MM, layer_lab=rgb_to_lab(RGB))
     assert [k.layer for k in kept] == [0]
     assert kept[0].area == 160 * 160
 
 
-def test_on_the_primary_golden_off_absorbs_the_teal_patch_and_on_keeps_it_as_a_run():
+def test_on_the_primary_golden_the_teal_patch_is_kept_as_a_run():
     """The plan predicted the flag would change nothing here: the teal patch
     "differs in colour but fails the loop proxy (2 mm against 2.2)". Measured
     2026-09-08, it does not fail it — the patch is 10 px = 1.19 mm at 80 mm,
     2 * max(w, h) = 2.38 mm — so ON it is what the rule says a contrasting
     small element that clears the floors is: kept, tagged rescued, sewn as a
-    run in its own thread. Since the 2026-09-13 flip ON is the shipped answer
-    and the flat golden pins it; OFF is named explicitly here so the pre-flip
-    arm stays tested. The orange dot is isolated and drops either way."""
+    run in its own thread. The flat golden pins it too. The orange dot is
+    isolated and drops. (The OFF arm, which absorbed the patch, is gone with
+    the config field, folded in 2026-11-20.)"""
     # `small_solids_satin` (folded into the code 2026-11-19) sews the kept
     # patch as a satin blob, not a run
-    off, off_plan = digitize(TESTDATA / "logo_whitebg.png",
-                             PipelineConfig(target_width_mm=80.0, keep_thin_strokes=False, **FLIP_2026_10_23))
     on, on_plan = digitize(TESTDATA / "logo_whitebg.png",
-                           PipelineConfig(target_width_mm=80.0, keep_thin_strokes=True, **FLIP_2026_10_23))
-    assert ABSORBED_SMALL_SHAPES in codes(off) and DROPPED_SMALL_SHAPES in codes(off)
-    assert [r for r in off.regions if r.thread_number == "4531"] == [], "OFF: teal survived"
+                           PipelineConfig(target_width_mm=80.0, **FLIP_2026_10_23))
     teal = [r for r in on.regions if r.thread_number == "4531"]
-    assert len(teal) == 1 and teal[0].meta.get("rescued_small_shape"), "ON: the teal patch is kept"
+    assert len(teal) == 1 and teal[0].meta.get("rescued_small_shape"), "the teal patch is kept"
     assert 1.0 < teal[0].area_mm2 < 1.6, teal[0].area_mm2
     assert ABSORBED_SMALL_SHAPES not in codes(on) and DROPPED_SMALL_SHAPES in codes(on)
-    # Everything else is the same design: one more region, one more colour
-    # block, a run's worth of stitches.
-    assert len(on.regions) == len(off.regions) + 1
-    assert len(on_plan.blocks) == len(off_plan.blocks) + 1
-    assert 0 < on_plan.stats.stitch_count - off_plan.stats.stitch_count < 60
     kinds = {run.kind for _b, run in on_plan.iter_runs() if run.shape_id == teal[0].shape_id}
     assert kinds == {"satin"}, kinds
 
@@ -195,12 +173,7 @@ def test_on_a_fixture_built_for_it_the_kept_marks_are_sewn_in_their_own_colour(t
 
     art = tmp_path / "strokes_on_panel.png"
     _strokes_on_a_panel(art)
-    off = ts.run(art, 50.0, "left_chest", forced_class="flat",
-                 flag=["keep_thin_strokes=false", *_PRE_FLIP_SPECS])
-    on = ts.run(art, 50.0, "left_chest", forced_class="flat", flag=["keep_thin_strokes", *_PRE_FLIP_SPECS])
-    # The instrument sees six thin strokes either way (it reads the artwork);
-    # OFF they are panel-coloured thread, so every one is lost.
-    assert off["thin_strokes"] == 6 and on["thin_strokes"] == 6, (off["thin_strokes"], on["thin_strokes"])
-    assert off["recall"] == 0.0, off["recall"]
+    on = ts.run(art, 50.0, "left_chest", forced_class="flat", flag=[*_PRE_FLIP_SPECS])
+    # The instrument reads six thin strokes in the artwork.
+    assert on["thin_strokes"] == 6, on["thin_strokes"]
     assert on["recall"] >= 0.8, on["recall"]
-    assert on["regions"] >= off["regions"] + 6

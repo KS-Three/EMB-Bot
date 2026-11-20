@@ -1,5 +1,5 @@
 """The photo lane's thin population (`digitizer_core/thin_ink.py`, PR 3 of
-the thin-stroke plan) — `cfg.keep_thin_strokes` on the gradient/photo lanes.
+the thin-stroke plan) — `keep_thin_strokes` (folded into the code 2026-11-20) on the gradient/photo lanes.
 
 Four contracts. `find_thin_ink` reads strokes and refuses bands: on a panel
 carrying six 0.6 x 3 mm bars it finds the six, with or without the one-ground
@@ -113,16 +113,11 @@ def test_on_the_photo_lane_the_bars_a_superpixel_swallows_are_sewn_with_the_flag
 
     art = tmp_path / "bars.png"
     _strokes_on_a_panel(art)
-    # `keep_thin_strokes` is DEFAULT ON since 2026-09-13 (Kent's ruling), so
-    # the OFF arm names it: without that, both arms would be the same engine
-    # and this pair would pass by agreeing with itself.
-    off = ts.run(art, 50.0, "left_chest", forced_class="gradient",
-                 flag=["keep_thin_strokes=false", *_PRE_FLIP_SPECS])
-    on = ts.run(art, 50.0, "left_chest", forced_class="gradient", flag=["keep_thin_strokes", *_PRE_FLIP_SPECS])
-    assert off["thin_strokes"] == 6 and on["thin_strokes"] == 6, (off["thin_strokes"], on["thin_strokes"])
-    assert off["recall"] < 0.2, off["recall"]
+    # `keep_thin_strokes` is folded into the code (2026-11-20), so there is no
+    # OFF arm to read the lift against; the ON arm's own claim stays.
+    on = ts.run(art, 50.0, "left_chest", forced_class="gradient", flag=[*_PRE_FLIP_SPECS])
+    assert on["thin_strokes"] == 6, on["thin_strokes"]
     assert on["recall"] >= 0.8, on["recall"]
-    assert on["regions"] >= off["regions"] + 5, (off["regions"], on["regions"])
 
 
 def _quant_digest(q) -> tuple:
@@ -139,7 +134,7 @@ def test_where_nothing_is_thin_the_flag_on_is_byte_identical_to_off(fixture):
     a label — the same invariant the photo golden pins for OFF."""
     path = TESTDATA / fixture
     off_cfg = PipelineConfig(target_width_mm=80.0)
-    on_cfg = PipelineConfig(target_width_mm=80.0, keep_thin_strokes=True)
+    on_cfg = PipelineConfig(target_width_mm=80.0)
     p = prep(str(path), off_cfg)
     assert find_thin_ink(p, on_cfg, _foreground(p)) is None, "the population is not empty here"
     assert _quant_digest(segment(p, off_cfg)) == _quant_digest(
@@ -156,6 +151,6 @@ def test_the_population_is_gated_to_the_gradient_class_at_the_call_site():
     from digitizer_core import pipeline
 
     src = inspect.getsource(pipeline.build_generation)
-    assert 'thin_population=bool(cfg.keep_thin_strokes and classification.class_ == "gradient")' in src
+    assert 'thin_population=bool(classification.class_ == "gradient")' in src
     sig = inspect.signature(segment)
     assert sig.parameters["thin_population"].default is False

@@ -1,5 +1,5 @@
-"""`cfg.white_keyline_art_recipe` (built OFF 2026-10-26): white-keyline art turns
-its own recipe on.
+"""The white-keyline art recipe (built OFF 2026-10-26, a switch until it was folded
+into the code 2026-11-20): white-keyline art turns its own recipe on.
 
 Kent, 2026-10-26: "Gate to MFab art first (Recommended)". The recipe
 (`white_keyline_art.RECIPE`) as a default for all art damaged four of 20 other
@@ -46,13 +46,7 @@ def keyline_art(field_meta=None, letter_meta=None, ring=True):
     return regs
 
 
-ON = PipelineConfig(white_keyline_art_recipe=True)
-
-
-def test_on_by_default_kent_2026_10_26():
-    # "Gate to MFab art first (Recommended)": the recipe turns on by default
-    # only on white-keyline art
-    assert PipelineConfig().white_keyline_art_recipe is True
+ON = PipelineConfig()
 
 
 def test_the_recipe_is_the_default_on_every_job_kent_2026_10_27():
@@ -80,8 +74,6 @@ def test_white_keyline_art_reads():
 
 
 @pytest.mark.parametrize("why, regs, cfg", [
-    ("flag off", keyline_art(), PipelineConfig(white_keyline_art_recipe=False)),
-    ("no outline pass", keyline_art(), replace(ON, border_from_outline=False)),
     ("field is not background", keyline_art(field_meta={}), ON),
     ("letters are not text", keyline_art(letter_meta={}), ON),
     ("letters are background (Becker's white faces)",
@@ -94,8 +86,6 @@ def test_each_part_refuses_alone(why, regs, cfg):
 
 def test_any_other_art_leaves_the_config_the_same_object():
     assert wka.apply(ON, False) is ON
-    off = PipelineConfig(white_keyline_art_recipe=False)
-    assert wka.apply(off, True) is off              # the flag off: a verdict changes nothing
 
 
 def test_the_recipe_is_every_switch_on():
@@ -154,7 +144,7 @@ def _verdict(art, width_mm, garment):
     from tools import pro_pair as pp
     data = (TESTDATA / art).read_bytes()
     cfg = PipelineConfig(**_parse_config(json.dumps(
-        pp.request(width_mm, garment, {"white_keyline_art_recipe": True}))))
+        pp.request(width_mm, garment, {}))))
     gen = build_generation(_decode(data), cfg, exif_source=data)
     return finish_generation(gen.fork(), cfg).white_keyline_art
 
