@@ -1,22 +1,20 @@
-"""Stage 5's clip cutting a shape in two (defect 61): two settings.
+"""Stage 5's clip cutting a shape in two (defect 61): two halves.
 
 Stage 5 clips each grown shape by the colours already sewn. Where a later
 colour's artwork overlaps an earlier one's right across, the clip cuts the
 later shape in pieces, and the engine before this fix kept only the largest
 (`_largest_polygon`): the rest of the artwork was never sewn and nothing said
-so. Two settings, one per half of the cure:
+so. Two halves, one per half of the cure:
 
-* `cfg.clip_parent_keeps_ink` (default ON, Kent 2026-10-12): the shape keeps
-  the piece carrying the most ARTWORK, not the most sewn area. It adds no
-  region and no warning.
+* The parent keeps its ink (Kent 2026-10-12; the `clip_parent_keeps_ink`
+  switch is folded into the engine): the shape keeps the piece carrying the
+  most ARTWORK, not the most sewn area. It adds no region and no warning.
 * `cfg.clip_keep_pieces` (default ON, Kent 2026-10-20, item 46): every
   other piece whose ARTWORK clears the stage-4 region floor sews as its own
   region of the same thread and tier, planned right after its parent;
   smaller ones are dropped as before and counted in `CLIP_DROPPED_SLIVER`.
   `INK_ONLY` below is the default before that flip: the parent keeps its
   ink and the other pieces drop.
-
-Both off is the engine before it, byte for byte.
 """
 from __future__ import annotations
 
@@ -28,20 +26,16 @@ from shapely.geometry import box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, digitize, run_stages
-from digitizer_core import stage5_overlap as s5
 from digitizer_core.fabrics import get_fabric
 from digitizer_core.pipeline import fabric_for
 from digitizer_core.regions import Region
 from digitizer_core.stage5_overlap import (CLIP_PIECE_OF_KEY, clip_piece_floor_mm2,
                                            resolve_overlaps)
 from digitizer_core.warnings_codes import CLIP_DROPPED_SLIVER
-from tests.conftest import own_thread_only
 
 FABRIC = get_fabric("pique_knit")
 ROOT = Path(__file__).resolve().parents[1]
 
-# The engine before defect 61.
-LEGACY = dict(clip_parent_keeps_ink=False, clip_keep_pieces=False)
 # The default from 2026-10-12 to 2026-10-20: the parent keeps its ink, the
 # other pieces drop.
 INK_ONLY = dict(clip_keep_pieces=False)
@@ -78,14 +72,13 @@ def _strip():
 
 def test_defaults():
     cfg = PipelineConfig()
-    assert cfg.clip_parent_keeps_ink is True
     # Kent's flip 2026-10-20 (MASTER_SCOPE item 46, PR #1003's pricing).
     assert cfg.clip_keep_pieces is True
 
 
 def test_off_drops_the_smaller_piece_on_keeps_it():
     regs = _cross(0.0)
-    off, off_w = _plan(regs, **LEGACY)
+    off, off_w = _plan(regs, **INK_ONLY)
     b_off = [p for p in off if p.region.thread_number == "2000"]
     assert len(b_off) == 1
     # OFF: only the right piece sews -- the 40 mm² left of A is gone.
@@ -116,15 +109,13 @@ def test_off_drops_the_smaller_piece_on_keeps_it():
 
 
 def test_parent_ink_alone_adds_no_region():
-    """The default before 2026-10-20: `clip_parent_keeps_ink` on,
-    `clip_keep_pieces` off. Where the largest piece is also the inkiest -- B's right piece --
-    the plan is the legacy plan byte for byte, and the 40 mm² left of A
-    still drops: this setting never adds a region."""
+    """The default before 2026-10-20: the parent keeps its ink,
+    `clip_keep_pieces` off. Where the largest piece is also the inkiest -- B's
+    right piece -- B sews that piece alone, and the 40 mm² left of A still
+    drops: this setting never adds a region."""
     regs = _cross(0.0)
-    legacy, _ = _plan(regs, **LEGACY)
     default, default_w = _plan(regs, **INK_ONLY)
-    assert [p.shape_id for p in default] == [p.shape_id for p in legacy]
-    assert [p.polygon.wkb for p in default] == [p.polygon.wkb for p in legacy]
+    assert [p.shape_id for p in default if p.region.thread_number == "2000"] == ["B"]
     assert not any(w["code"] == CLIP_DROPPED_SLIVER for w in default_w)
 
 
@@ -133,7 +124,7 @@ def test_a_sliver_under_the_floor_is_dropped_and_counted():
     # 0.04 mm x 10 mm = 0.4 mm² of artwork left of A: under the floor.
     regs = _cross(3.96)
     assert 0.4 < floor
-    off, _ = _plan(regs, **LEGACY)
+    off, _ = _plan(regs, **INK_ONLY)
     on, on_w = _plan(regs, clip_keep_pieces=True)
     assert [p.polygon.wkb for p in on] == [p.polygon.wkb for p in off]
     slivers = [w for w in on_w if w["code"] == CLIP_DROPPED_SLIVER]
@@ -142,47 +133,25 @@ def test_a_sliver_under_the_floor_is_dropped_and_counted():
     assert w["count"] == 1 and w["ids"] == ["B"]
     assert w["total_mm2"] == pytest.approx(0.4, abs=1e-3)
     assert w["floor_mm2"] == pytest.approx(floor, abs=1e-4)
-    # Parent keeps ink alone (`INK_ONLY`) drops it exactly as before, and
-    # says nothing: it keeps no pieces, so it counts none.
-    default, default_w = _plan(regs, **INK_ONLY)
-    assert [p.polygon.wkb for p in default] == [p.polygon.wkb for p in off]
-    assert not any(w["code"] == CLIP_DROPPED_SLIVER for w in default_w)
+    # The ink-only plan (`INK_ONLY`) drops it and says nothing: it keeps no
+    # pieces, so it counts none.
+    _off, off_w = _plan(regs, **INK_ONLY)
+    assert not any(w["code"] == CLIP_DROPPED_SLIVER for w in off_w)
 
 
 def test_the_shape_keeps_its_ink_not_its_largest_piece():
     """The drone case (`S53adc87e`, 2026-10-12): the strip's underlap tongue
-    is cut off its artwork and is the BIGGER piece. The legacy engine sews
-    the tongue -- no artwork in it -- and drops every square millimetre of
-    the strip's ink. The parent keeps the ink, with or without the pieces,
-    and adds no region."""
+    is cut off its artwork and is the BIGGER piece. (Before the parent kept its
+    ink the engine sewed the tongue -- no artwork in it -- and dropped every
+    square millimetre of the strip's ink.) The parent keeps the ink, with or
+    without the pieces, and adds no region."""
     regs, kw = _strip()
-    off, _ = _plan(regs, **LEGACY, **kw)
-    b_off = [p for p in off if p.region.thread_number == "2000"]
-    assert len(b_off) == 1 and b_off[0].polygon.intersection(regs[1].polygon).area < 1e-6
     for extra in (INK_ONLY, {}):
         on, on_w = _plan(regs, **kw, **extra)
         b_on = [p for p in on if p.region.thread_number == "2000"]
         assert [p.shape_id for p in b_on] == ["B"]
         assert b_on[0].polygon.intersection(regs[1].polygon).area == pytest.approx(3.0, abs=1e-6)
         assert not any(w["code"] == CLIP_DROPPED_SLIVER for w in on_w)
-
-
-def test_keeping_pieces_does_not_need_the_ink_rule():
-    """The two settings are independent: pieces on, parent-by-ink off keeps
-    the largest piece as the shape (the legacy parent) and the others as
-    regions."""
-    regs = _cross(0.0)
-    legacy, _ = _plan(regs, **LEGACY)
-    plan, _ = _plan(regs, clip_parent_keeps_ink=False, clip_keep_pieces=True)
-    assert [p.shape_id for p in plan if p.region.thread_number == "2000"] == ["B", "B-clip2"]
-    assert plan[1].polygon.equals_exact(
-        [p for p in legacy if p.shape_id == "B"][0].polygon, 0.0)
-    # And on the strip it keeps the tongue, as legacy: the setting that
-    # decides the parent is the one left off.
-    sregs, kw = _strip()
-    p2, _ = _plan(sregs, clip_parent_keeps_ink=False, clip_keep_pieces=True, **kw)
-    b = [p for p in p2 if p.shape_id == "B"][0]
-    assert b.polygon.intersection(sregs[1].polygon).area < 1e-6
 
 
 def test_a_piece_of_pure_growth_is_not_ink_and_is_not_counted():
@@ -198,30 +167,6 @@ def test_a_piece_of_pure_growth_is_not_ink_and_is_not_counted():
 def test_the_floor_is_stage_fours():
     cfg = PipelineConfig()
     assert clip_piece_floor_mm2(cfg) == pytest.approx(0.25 * cfg.min_detail_mm ** 2)
-
-
-def test_both_off_never_leaves_largest_polygon(monkeypatch):
-    """Both settings off is `_largest_polygon` at every split, byte for byte:
-    `_split_clip` is not even called, and a run with `_split_clip` replaced
-    by its definition (the largest piece, nothing else) plans the same."""
-    def boom(*a, **k):
-        raise AssertionError("_split_clip reached with both settings off")
-
-    reference = {}
-    for name, (regs, kw) in {"cross": (_cross(0.0), {}), "strip": _strip()}.items():
-        plan, w = _plan(regs, **LEGACY, **kw)
-        reference[name] = ([p.shape_id for p in plan], [p.polygon.wkb for p in plan])
-    with monkeypatch.context() as m:
-        m.setattr(s5, "_split_clip", own_thread_only(boom, s5._split_clip))
-        for name, (regs, kw) in {"cross": (_cross(0.0), {}), "strip": _strip()}.items():
-            plan, _ = _plan(regs, **LEGACY, **kw)
-            assert ([p.shape_id for p in plan], [p.polygon.wkb for p in plan]) == reference[name]
-    # The parent-keeps-ink setting alone equals that reference wherever the
-    # largest piece is the inkiest -- the cross -- and only differs on the
-    # strip.
-    regs = _cross(0.0)
-    plan, _ = _plan(regs, **INK_ONLY)
-    assert ([p.shape_id for p in plan], [p.polygon.wkb for p in plan]) == reference["cross"]
 
 
 def _inkless_parents(planned, regions) -> list[str]:
@@ -240,12 +185,12 @@ def _inkless_parents(planned, regions) -> list[str]:
     return out
 
 
-def test_gaulke_roof_line_is_sewn_by_default_and_lost_legacy():
+def test_gaulke_roof_line_is_sewn():
     """The real case (2026-10-12): on `logo_gaulke_roofing.png` the black
     roof-line stroke's largest clip piece is its underlap tongue -- no ink --
-    so the legacy engine sews the tongue under the white and the whole roof
-    line is missing. Read without shape ids, which move per platform. The
-    default (the parent keeps its ink) sews it, and so does the full path."""
+    so an engine that kept the largest piece sewed the tongue under the white
+    and the whole roof line was missing. Read without shape ids, which move
+    per platform. The parent keeps its ink, and so does the full path."""
     art = ROOT / "testdata" / "photo" / "logo_gaulke_roofing.png"
     base = dict(target_width_mm=80.0, garment_id="left_chest")
     # Held before the flag ends/seam trio (ON since 2026-11-17, Kent): with it
@@ -260,9 +205,6 @@ def test_gaulke_roof_line_is_sewn_by_default_and_lost_legacy():
     result = run_stages(art, cfg)
     regions = [r for r in result.regions if r.meta.get("stitched", True)]
     fabric = fabric_for(cfg)
-    off, _ = resolve_overlaps(regions, fabric, PipelineConfig(**kw, **LEGACY),
-                              result.design_class)
-    assert _inkless_parents(off, regions), "the fixture no longer exercises the drop"
     for extra in (INK_ONLY, {}):
         on, _ = resolve_overlaps(regions, fabric, PipelineConfig(**kw, **extra),
                                  result.design_class)
@@ -292,10 +234,9 @@ def test_legacy_default_and_nothing_to_keep_are_byte_identical(rel):
     path = ROOT / "testdata" / rel
     md5 = {}
     for tag, extra in (("default", {}),
-                       ("legacy", LEGACY),
                        ("ink_only", INK_ONLY)):
         md5[tag] = _plan_md5(digitize(path, PipelineConfig(target_width_mm=80.0, **extra))[1])
-    assert md5["default"] == md5["legacy"] == md5["ink_only"]
+    assert md5["default"] == md5["ink_only"]
 
 
 def test_coverage_kappa_is_chance_corrected():

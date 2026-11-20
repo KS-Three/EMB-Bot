@@ -333,9 +333,9 @@ def test_the_hoist_moves_no_stitches_and_changes_no_pixels_on_the_owl():
     # blocks and the plan the hoist argument needs is the pre-flip one.
     off = digitize(img, PipelineConfig(target_width_mm=100.0,
                                        hoist_same_thread_margin_mm=0.0,
-                                       subpixel_edges=False, **PRE_FLIP))[1]
+                                       **PRE_FLIP))[1]
     on = digitize(img, PipelineConfig(target_width_mm=100.0,
-                                      subpixel_edges=False, **PRE_FLIP))[1]
+                                      **PRE_FLIP))[1]
 
     assert len(on.blocks) < len(off.blocks), "no revisit was hoisted at all"
     n_off = sum(len(r.points) for b in off.blocks for r in b.runs)

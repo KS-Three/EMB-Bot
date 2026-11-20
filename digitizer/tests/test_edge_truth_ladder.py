@@ -76,7 +76,6 @@ def test_parse_flag_reads_values_and_refuses_unknown_fields():
     assert el.parse_flag("curve_turn_deg=15") == ("curve_turn_deg", 15)
     assert el.parse_flag("forced_class=flat") == ("forced_class", "flat")
     assert el.parse_flag("satin_per_stroke") == ("satin_per_stroke", True)
-    assert el.parse_flag("subpixel_edges") == ("subpixel_edges", True)     # PR 2's flag, since 2026-09-09
     with pytest.raises(ValueError):
         el.parse_flag("no_such_flag")
 
@@ -84,12 +83,12 @@ def test_parse_flag_reads_values_and_refuses_unknown_fields():
 @pytest.fixture(scope="module")
 def rungs(tmp_path_factory):
     work = tmp_path_factory.mktemp("ladder")
-    # The pre-flip baseline the plan's criterion is stated against: the
-    # flag OFF explicitly, since 2026-09-09's flip made ON the default.
+    # The engine as it ships (sub-pixel edges, since 2026-09-09; the plan's
+    # pre-flip baseline is no longer reachable)
     # ...and on the pre-2026-10-01 tracing grid: the 400 px rung is 4.2 px/mm,
     # which `work_px_per_mm` now enlarges to 8 before stage 4 ever sees it.
     with held_on_source_line():
-        return {w: el.measure_rung("whitebg", w, "flat", work, flag="subpixel_edges=false") for w in (400, 1600)}
+        return {w: el.measure_rung("whitebg", w, "flat", work) for w in (400, 1600)}
 
 
 def test_every_truth_shape_is_produced_and_matched_from_400_px_up(rungs):
@@ -133,8 +132,8 @@ def test_the_ribbon_polygon_is_the_same_polygon_at_400_and_1600_px(tmp_path):
     400 px to 1600 px, flag OFF (37 vertices and 0.06 mm on 2026-09-08).
     That floor is the simplification's, not the pixel's — the reading the
     plan's acceptance criterion had to be corrected by."""
-    lo = el.measure_rung("ribbon", 400, "flat", tmp_path, flag="subpixel_edges=false")["rows"][0]
-    hi = el.measure_rung("ribbon", 1600, "flat", tmp_path, flag="subpixel_edges=false")["rows"][0]
+    lo = el.measure_rung("ribbon", 400, "flat", tmp_path)["rows"][0]
+    hi = el.measure_rung("ribbon", 1600, "flat", tmp_path)["rows"][0]
     assert lo["produced"] and hi["produced"]
     assert abs(lo["vertices"] - hi["vertices"]) <= 3, (lo["vertices"], hi["vertices"])
     assert abs(lo["spread_mm"] - hi["spread_mm"]) < 0.02, (lo["spread_mm"], hi["spread_mm"])

@@ -610,17 +610,8 @@ def test_the_envelope_reaches_the_far_edge_where_the_gap_is_long_and_nowhere_els
                                        # the envelope is the skeleton tier's; the
                                        # Column lane (ON since 2026-10-12) has none
                                        lettering_columns=False,
-                                       # measured before `subpixel_corner_runs`
-                                       # (ON 2026-10-20): ON, the envelope's reach
-                                       # is 5.36 -> 5.07% bare, under the 0.5 pt
-                                       # this arm was sized on (`PRE_FLIP`)
-                                       subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"],
                                        # ... and `outline_redraw_k` (0.75 since 2026-11-14)
                                        outline_redraw_k=PRE_FLIP["outline_redraw_k"],
-                                       # ... and, the same way, `border_from_outline` (ON
-                                       # 2026-10-24) sews Becker's faces as fills, so the
-                                       # satin rails this prices are gone
-                                       border_from_outline=PRE_FLIP["border_from_outline"],
                                        # ... and white sewn (ON 2026-10-26): the faces' fill
                                        # changes the bare this arm was sized on
                                        sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],

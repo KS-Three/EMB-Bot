@@ -69,9 +69,8 @@ RECIPE_EXTRA = ("absorb_fragments",)
 
 def detect(regions, cfg) -> bool:
     """`cfg.white_keyline_art_recipe`: is this white-keyline art (module docstring)?
-    False with the flag off, or without `border_from_outline` (the loops the
-    recipe sews are that pass's)."""
-    if not getattr(cfg, "white_keyline_art_recipe", False) or not cfg.border_from_outline:
+    False with the flag off."""
+    if not getattr(cfg, "white_keyline_art_recipe", False):
         return False
     if not any(r.meta.get("enclosed_background") and r.polygon is not None
                and r.polygon.geom_type == "Polygon" and r.polygon.interiors for r in regions):

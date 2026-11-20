@@ -24,7 +24,7 @@ if str(DIGITIZER) not in sys.path:
 from tools._console import utf8_console  # noqa: E402
 
 SLUGS = ["hotel_fremont_hat", "becker_hat_large", "mfab_hat", "precision_drone", "gaulke_roofing_hat"]
-OFF = {"border_by_size": False, "enclosed_alpha_hole_parts": False}
+OFF = {"border_by_size": False}
 BANDS = ((4, 6), (6, 10), (10, 999))
 
 

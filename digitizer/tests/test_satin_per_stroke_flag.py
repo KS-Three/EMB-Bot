@@ -66,7 +66,7 @@ def test_on_moves_the_sewn_result_where_the_measurement_said_it_would():
     # pinned OFF likewise (`sew_enclosed_white`, ON since 2026-10-26): the faces
     # it sews are fills the rung does not promote, measured here as its cost.
     # `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline: held OFF, the same rule.
-    kw = dict(target_width_mm=100.0, garment_id="left_chest", subpixel_edges_upscaled=False,
+    kw = dict(target_width_mm=100.0, garment_id="left_chest",
               sew_enclosed_white=False, outline_redraw_k=PRE_FLIP["outline_redraw_k"])
     _off_r, off = digitize(art, PipelineConfig(**kw))
     _on_r, on = digitize(art, PipelineConfig(**kw, satin_per_stroke=True))
@@ -153,14 +153,10 @@ def test_the_cap_is_a_veto_not_a_vote_and_leaves_no_bare_cloth():
     art = TESTDATA / "becker_marine_logo.png"
     got = {}
     for on in (False, True):
-        # On the engine the guard was measured on (`PRE_FLIP`). With
-        # `subpixel_corner_runs` ON (2026-10-20) this flag left 8.3 mm2
-        # bare against 6.8 off. Re-read 2026-10-29 on main: 14.4 / 14.4 on
-        # the defaults, 13.6 / 13.6 on this pin
+        # Re-read 2026-10-29 on main: 14.4 / 14.4 on the defaults
         # (`docs/satin-fill-remeasure-2026-10-29.md` §4).
         cfg = PipelineConfig(target_width_mm=100.0, garment_id="left_chest",
-                             satin_per_stroke=on,
-                             subpixel_corner_runs=PRE_FLIP["subpixel_corner_runs"])
+                             satin_per_stroke=on)
         result = run_stages(str(art), cfg)
         plan = plan_stitches(result, cfg)
         m = run_preflight(result, plan, cfg, image=str(art))["metrics"]
@@ -219,7 +215,7 @@ def test_is_satin_candidate_forwards_the_flag():
     """
     art = TESTDATA / "becker_marine_logo.png"
     # Pre-flip polygons, as in `test_on_moves_the_sewn_result_...` above.
-    result, _plan = digitize(art, PipelineConfig(target_width_mm=100.0, subpixel_edges_upscaled=False,
+    result, _plan = digitize(art, PipelineConfig(target_width_mm=100.0,
                                                  garment_id="left_chest", outline_redraw_k=PRE_FLIP["outline_redraw_k"]))
     smax = machine.SATIN_MAX_WIDTH_MM
     moved = [r.shape_id for r in result.regions

@@ -1698,7 +1698,7 @@ def _ground_sewn_findings(p, result: PipelineResult,
 
     thread = chart_for(cfg)[biggest.thread_index]
     # The artwork's own page colour, read off the raster's border. Under
-    # `cfg.alpha_edge_extend` the raster's border carries nearest-opaque
+    # the alpha extension the raster's border carries nearest-opaque
     # colour (stage 1 extends it under the transparency for every reader);
     # the file's own colour there is `p.raw_rgb`, which is what this
     # finding has always read and must keep reading.

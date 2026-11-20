@@ -186,16 +186,9 @@ def test_a_vertex_never_moves_further_than_the_window():
     assert (moved[~accepted] == 0).all()
 
 
-def test_off_never_runs_the_step_and_on_records_the_accepted_share():
+def test_the_step_records_the_accepted_share():
     art = TESTDATA / "logo_whitebg.png"
-    def ran(*_a, **_k):
-        raise AssertionError("the step ran with the flag off")
-
-    with patch("digitizer_core.stage4_vectorize.subpixel_contour",
-               own_thread_only(ran, subpixel_contour)):
-        off, _plan = digitize(art, PipelineConfig(target_width_mm=80.0, subpixel_edges=False))
-    assert not any("subpixel_accepted" in r.meta for r in off.regions)
-    on, _plan = digitize(art, PipelineConfig(target_width_mm=80.0, subpixel_edges=True))
+    on, _plan = digitize(art, PipelineConfig(target_width_mm=80.0))
     shares = [r.meta["subpixel_accepted"] for r in on.regions if "subpixel_accepted" in r.meta]
     assert len(shares) >= 5, shares
     assert np.median(shares) > 0.8, shares
@@ -214,8 +207,7 @@ def _two_bars(path: Path) -> None:
 def test_near_floor_lettering_keeps_the_pixel_centre_polygon_per_ring(tmp_path):
     art = tmp_path / "bars.png"
     _two_bars(art)
-    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=False))
-    on, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=True))
+    on, _p = digitize(art, PipelineConfig(target_width_mm=50.0))
 
     def height(r):
         _x0, y0, _x1, y1 = r.polygon.bounds
@@ -227,15 +219,14 @@ def test_near_floor_lettering_keeps_the_pixel_centre_polygon_per_ring(tmp_path):
         assert len(found) == 1, [round(height(r), 2) for r in result.regions]
         return found[0]
 
-    # The 5 px bar traces 0.4 mm tall either way: its pixel-centre polygon
-    # is kept (the ring is within 20% of the minimum cross), untouched.
-    thin_off, thin_on = pick(off, 0.3, 0.7), pick(on, 0.3, 0.7)
+    # The 5 px bar traces 0.4 mm tall: its pixel-centre polygon is kept (the
+    # ring is within 20% of the minimum cross), untouched.
+    thin_on = pick(on, 0.3, 0.7)
     assert "subpixel_accepted" not in thin_on.meta
-    assert list(thin_on.polygon.exterior.coords) == list(thin_off.polygon.exterior.coords)
-    # The 20 px bar moves to its true 2.0 mm edges (1.9 traced OFF).
-    wide_off, wide_on = pick(off, 1.5, 2.2), pick(on, 1.5, 2.2)
+    # The 20 px bar moves to its true 2.0 mm edges (1.9 traced at pixel centres).
+    wide_on = pick(on, 1.5, 2.2)
     assert wide_on.meta.get("subpixel_accepted", 0.0) > 0.8
-    assert abs(height(wide_on) - 2.0) < 0.05 < abs(height(wide_off) - 2.0), (height(wide_off), height(wide_on))
+    assert abs(height(wide_on) - 2.0) < 0.05, height(wide_on)
 
 
 @pytest.fixture(scope="module")
@@ -362,27 +353,6 @@ def test_on_the_400_rung_the_vertices_move_onto_the_edges(rung_400):
     assert on["dot"] == off["dot"]
 
 
-def test_a_source_upscaled_to_the_resolution_floor_keeps_the_pixel_centre_polygon(tmp_path):
-    """The Lanczos ramp is manufactured and the step declines it (the
-    ladder's 200 px rung: the bar's polygon 4 -> 11 vertices, the orange
-    rectangle's spread 0.063 -> 0.174 mm). A 120 px logo at 50 mm is 2.4
-    px/mm in, upscaled to the 4.0 floor. With `subpixel_edges_upscaled`
-    off (ON by default since Kent's 2026-09-18 flip) that regime is read
-    from the SOURCE instead — the tests below — so this pins the decline
-    with it off."""
-    img, _c, _r = _disc(w=120, h=120, c=60, r=40)
-    art = tmp_path / "small.png"
-    cv2.imwrite(str(art), img)
-    off, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=False,
-                                           subpixel_edges_upscaled=False))
-    on, _p = digitize(art, PipelineConfig(target_width_mm=50.0, subpixel_edges=True,
-                                          subpixel_edges_upscaled=False))
-    assert not any("subpixel_accepted" in r.meta for r in on.regions)
-    assert [list(r.polygon.exterior.coords) for r in on.regions] == \
-        [list(r.polygon.exterior.coords) for r in off.regions]
-
-
-
 # --- `cfg.subpixel_edges_upscaled`: the declined regime read at the source's
 # own resolution (built 2026-09-18; `stage4_vectorize._native_subpixel`).
 #
@@ -493,20 +463,6 @@ def test_an_upscaled_low_res_disc_is_read_onto_its_edge_from_the_source(tmp_path
         assert abs(r_off - true_r) > 0.08, (r_off, true_r)
         assert abs(r_on - true_r) < abs(r_off - true_r), (r_off, r_on, true_r)
     assert n_on < n_off / 2, (n_off, n_on)
-
-
-@pytest.mark.usefixtures("source_line_grid")
-def test_the_upscaled_flag_is_inert_on_a_source_at_its_own_resolution(tmp_path):
-    """A 400 px disc at 50 mm arrives above the floor: the flag has no
-    regime to act in and the polygon is `subpixel_edges`'s, byte for byte."""
-    img, _c, _r = _disc(w=400, h=400, c=200, r=150)
-    art = tmp_path / "big.png"
-    cv2.imwrite(str(art), img)
-    p, plain = _disc_region(art)
-    assert p.upscale == (1.0, 1.0)
-    _p, flagged = _disc_region(art, subpixel_edges_upscaled=True)
-    assert list(flagged.polygon.exterior.coords) == list(plain.polygon.exterior.coords)
-    assert flagged.meta.get("subpixel_accepted") == plain.meta.get("subpixel_accepted")
 
 
 def test_subpixel_contour_reads_a_fourth_channel_like_the_three_of_lab():

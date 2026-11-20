@@ -219,17 +219,6 @@ FLAGS: dict[str, dict] = {
                 "OFF -> 6,101 / 24 ON, pro 5,555 / 10. In the word: under-1 mm stitches 2,515 -> "
                 "548 (pro 43), fill -> satin square to the stroke 0.00 -> 0.88 (pro 0.85). PR #1063 "
                 "was open when rendered: run from a local merge with main (not committed)."},
-    "border_from_outline": {
-        "base": dict(_WHITE_SEWN), "base_name": "white_sewn",
-        "sets": {**_WHITE_SEWN, "border_from_outline": True},
-        "fixtures": ["becker_hat_small", "mfab_hat", "gaulke_roofing_hat"],
-        "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1065,
-        "note": "Rendered with sew_enclosed_white and enclosed_white_keyline ON (Kent flipped both "
-                "2026-10-24); it does nothing on MFab without white sewn. PR #1065 with white sewn: "
-                "Becker small 8,512 / 21 -> 11,100 / 25 (faces fill, loops on top; pro 8,694 / 40), "
-                "MFab hat 25,512 / 108 -> 20,219 / 89 (pro 17,568 / 46); Gaulke no outline, same "
-                "bytes. Bridge NOT rendered: its pro files are only on G:, unmounted. PR #1065 was "
-                "open when rendered: run from a local merge with main (not committed)."},
     "silhouette_underfill": {
         "base": dict(_WHITE_SEWN), "base_name": "white_sewn",
         "sets": {**_WHITE_SEWN, "silhouette_underfill": True},
@@ -265,8 +254,7 @@ FLAGS: dict[str, dict] = {
                 "`outline_loop_mitre` (#1093): the whole recipe. Same rembg pin as above."},
     # ---- wave 3 (2026-10-25)
     "border_from_outline_line_art_guard": {
-        "base": {"border_from_outline": True},
-        "sets": {"border_from_outline": True, "border_from_outline_line_art_guard": True},
+        "sets": {"border_from_outline_line_art_guard": True},
         "fixtures": ["bridge_hat", "bridge_lc", "becker_hat_small"],
         "metric": "satin_loops", "about": "closed satin loops (borders)", "pr": 1078,
         "note": "Acts only with border_from_outline (ON since #1070), so OFF is today's engine. "

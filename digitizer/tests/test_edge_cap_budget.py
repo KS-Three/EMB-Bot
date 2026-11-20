@@ -99,16 +99,10 @@ def _run(fixture: str, width: float, cap: str = "bean",
                        # ...and the bean cap at all (`bean_only_lines`, ON since
                        # Kent's 2026-10-27 flip, sews none): this prices the bill
                        bean_only_lines=PRE_FLIP["bean_only_lines"],
-                       # held on the engine the bill was measured on: ON since
-                       # 2026-10-24, `border_from_outline` sews Becker's keyline
-                       # as one loop per face and the faces as fills, which
-                       # moves the cap's rings and its bill
-                       border_from_outline=PRE_FLIP["border_from_outline"],
                        # ...and white sewn (`sew_enclosed_white`, ON since Kent's
                        # 2026-10-26 flip): Becker's faces and whitebg's ring hole
                        # sew, which moves the silhouette the cap rings
                        sew_enclosed_white=PRE_FLIP["sew_enclosed_white"],
-                       subpixel_edges_upscaled=False,
                        # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent)
                        # re-fits the upscaled outline the cap rings
                        outline_redraw_k=PRE_FLIP["outline_redraw_k"],
