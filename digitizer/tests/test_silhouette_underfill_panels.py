@@ -24,7 +24,7 @@ from shapely.geometry import LineString, Polygon, box
 from shapely.ops import unary_union
 
 from digitizer_core import PipelineConfig, silhouette_underfill as su, stitches
-from tests.conftest import (FLAG_ENDS_SEAM_2026_11_17_OFF, FLIP_2026_10_23, FLIP_2026_10_26,
+from tests.conftest import (FLAG_ENDS_SEAM_2026_11_17_OFF, FLIP_FOUR_2026_11_19_OFF, FLIP_2026_10_23, FLIP_2026_10_26,
                             INLETS_2026_11_15_OFF, RECIPE_2026_10_27)
 from digitizer_core.fabrics import fabric_for_garment
 from digitizer_core.regions import Region
@@ -83,7 +83,7 @@ def _sew(regs, outlines=None, **kw):
     # (and `outline_inlets_kept`, Kent's tick 2026-11-15: these are panel md5s, not inlets)
     cfg = PipelineConfig(underlay=False, **{**FLIP_2026_10_23, **FLIP_2026_10_26, **RECIPE_2026_10_27,
                                             **INLETS_2026_11_15_OFF,
-                                            **FLAG_ENDS_SEAM_2026_11_17_OFF, **kw})
+                                            **FLAG_ENDS_SEAM_2026_11_17_OFF, **FLIP_FOUR_2026_11_19_OFF, **kw})
     report = None
     if cfg.silhouette_underfill:
         regs, report, outlines = su.apply_cfg(regs, (), cfg, outlines)
