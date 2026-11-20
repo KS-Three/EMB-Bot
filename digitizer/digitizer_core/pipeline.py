@@ -1058,6 +1058,13 @@ def build_generation(
     regions: list[Region]
     regions, dropped_areas = vectorize(masks, q.thread_indices, p, cfg)
     deadline.check("stage 4")
+    # `cfg.read_primitives` (ON since 2026-11-19, Kent: "a square needs to be
+    # square", like shapes sew alike): a region whose outline is within
+    # tolerance of a rectangle, circle or triangle becomes that ideal shape
+    # (`primitives.read_regions`). Logos only. Off: untouched.
+    if cfg.read_primitives and classification.class_ not in PHOTO_CLASSES:
+        from .primitives import read_regions
+        regions = read_regions(regions)
 
     # Post-vectorization: tag any Region that is substantially the enclosed
     # bg-colored area stage 1 found (see `tag_enclosed_background`'s

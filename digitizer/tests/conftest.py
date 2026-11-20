@@ -339,7 +339,9 @@ def whitebg_pre_flip():
     reporting, the bare-core gate's false-alarm analysis): the posture
     `PRE_FLIP` below documents, as a fixture because three tests in two
     files need the same run."""
-    return run_stages(TESTDATA / "logo_whitebg.png", cfg(keep_thin_strokes=False))
+    # `FLOW_2026_11_19_OFF` too (`read_primitives` snaps whitebg's discs, moving
+    # the bare-core radii these claims were measured on)
+    return run_stages(TESTDATA / "logo_whitebg.png", cfg(keep_thin_strokes=False, **FLOW_2026_11_19_OFF))
 
 
 @pytest.fixture(scope="session")
@@ -1283,6 +1285,11 @@ PRE_FLIP.update(SATIN_STARS_2026_11_19_OFF)
 # Kent: "We need to make sure we are not going backwards"): `tests/test_seam_hold_bodies.py`.
 SEAM_HOLD_BODIES_2026_11_19_OFF = {"seam_hold_skips_outline_bodies": False}
 PRE_FLIP.update(SEAM_HOLD_BODIES_2026_11_19_OFF)
+# `satin_rect_lock_in_column` and `read_primitives` (Kent 2026-11-19, shown the
+# flow pack, "Which should I flip ON?": "satin_rect_lock_in_column
+# (Recommended), read_primitives"): `tests/test_flow_followups.py`.
+FLOW_2026_11_19_OFF = {"satin_rect_lock_in_column": False, "read_primitives": False}
+PRE_FLIP.update(FLOW_2026_11_19_OFF)
 # Four flags (Kent 2026-11-19, shown the OFF | ON review pack, 66 design x size cells per flag;
 # Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab"):
 # `tests/test_satin_overlap_run.py`, `test_outline_loop_split_shared.py`, `test_through_last.py`, `test_marine_match.py`.

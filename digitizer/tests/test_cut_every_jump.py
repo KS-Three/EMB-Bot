@@ -363,8 +363,11 @@ def roofing_hat():
     data = (TESTDATA / "art" / "logo_golke_roofing.png").read_bytes()
     # Measured on the engine before the 2026-10-23 flips (`trim_bury_under_later` and the
     # rest were OFF): pin them off so "off" below is still the arm this flag is priced against.
-    from .conftest import FLIP_2026_10_23
-    conf = PipelineConfig(**{**_parse_config(json.dumps(request(127.0, "hat_front"))), **FLIP_2026_10_23})
+    from .conftest import FLIP_2026_10_23, FLOW_2026_11_19_OFF
+    # `read_primitives` / `satin_rect_lock_in_column` (ON 2026-11-19) leave 127 mm with nothing
+    # sewn down too: held off, so the bury is still exercised.
+    conf = PipelineConfig(**{**_parse_config(json.dumps(request(127.0, "hat_front"))), **FLIP_2026_10_23,
+                             **FLOW_2026_11_19_OFF})
     gen = build_generation(_decode(data), conf, exif_source=data)
     out = {}
     for name, kw in (("off", {}), ("on", {"cut_every_jump": True}),

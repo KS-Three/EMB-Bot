@@ -8,7 +8,7 @@ from digitizer_core import PipelineConfig, run_stages
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.regions import match_shape_ids
 
-from .conftest import TESTDATA, cfg, requires_tesseract
+from .conftest import FLOW_2026_11_19_OFF, TESTDATA, cfg, requires_tesseract
 
 
 def fingerprint(result) -> list[tuple[str, str, float]]:
@@ -168,9 +168,10 @@ def test_simplify_tol_mm_stays_fine_across_the_real_target_width_range():
         return sum(len(r.polygon.exterior.coords) - 1 for r in result.regions
                     if r.polygon and not r.polygon.is_empty)
 
-    small = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=40.0))
-    mid = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=90.0))
-    big = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=150.0))
+    # `read_primitives` (ON 2026-11-19) swaps a circle for a 64-gon; this pins the tracer, so it is OFF
+    small = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=40.0, **FLOW_2026_11_19_OFF))
+    mid = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=90.0, **FLOW_2026_11_19_OFF))
+    big = run_stages(TESTDATA / "logo_whitebg.png", cfg(target_width_mm=150.0, **FLOW_2026_11_19_OFF))
 
     v_small, v_mid, v_big = vtx_total(small), vtx_total(mid), vtx_total(big)
     # Re-pinned 2026-09-09 for `subpixel_edges` ON by default: the same

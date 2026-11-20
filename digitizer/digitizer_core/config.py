@@ -3803,6 +3803,29 @@ class PipelineConfig:
     # engine as it was; PRE_FLIP (SATIN_STARS_2026_11_19_OFF) pins it False.
     # Tests: `tests/test_satin_stars.py`.
     satin_stars: bool = True
+    # `satin_rect_lock_in_column` (2026-11-19, the flag's "red dot"): a
+    # stripe's last cross was followed by `stitches.tie_off`'s 0.8 mm bounce
+    # ALONG that cross (the cap face), which the preview draws as a nub at
+    # every stripe's finish end on the last-sewn colour. ON, a rectangle
+    # bar's satin run is locked by walking back over its own last cross
+    # (`stitches.COLUMN_LOCK_TAG`). 3 of 42 sweep runs move (the flag
+    # stand-in, logo_alpha, logo_whitebg), all better, the nub gone.
+    # **ON since 2026-11-19** (Kent, shown the flow pack, "Which should I flip
+    # ON?": "satin_rect_lock_in_column (Recommended), read_primitives"). False
+    # is the engine as it was; PRE_FLIP (FLOW_2026_11_19_OFF) pins it False.
+    # Tests: `tests/test_flow_followups.py`.
+    satin_rect_lock_in_column: bool = True
+    # `read_primitives` (2026-11-19, Kent: "a square needs to be square",
+    # like shapes sew alike): a region whose traced outline lies within
+    # 0.2 mm (triangle 0.32) of a rectangle, circle or triangle becomes that
+    # ideal shape right after vectorize (`primitives.read_regions`), so twin
+    # shapes reach every tier as one shape. Logos only. 13 of 42 sweep runs
+    # move: fur_ramp better (a starburst disk sews as a round fill),
+    # gradient_ramp_radial mixed, 11 the same.
+    # **ON since 2026-11-19** (Kent, same ruling as above). False is the
+    # engine as it was; PRE_FLIP (FLOW_2026_11_19_OFF) pins it False.
+    # Tests: `tests/test_flow_followups.py`.
+    read_primitives: bool = True
     # `satin_overlap_run` (built OFF 2026-11-19 as `cfg.extra["satin_overlap_run"]`, MFab top
     # line, `column_overlap.overlap_run`): a satin stretch lying wholly on its own earlier
     # satin is sewn as running stitch. **ON since 2026-11-19, Kent's flip**: Kent, 2026-11-19, shown the OFF | ON review pack (66 design x size cells per flag) and asked "Which of these flags should I flip ON?": "satin_overlap_run (Recommended), outline_loop_split_shared, through_last, e_top_arm + top_slab".

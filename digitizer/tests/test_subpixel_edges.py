@@ -28,7 +28,7 @@ from digitizer_core import stage4_vectorize as s4
 from digitizer_core.subpixel import ACCEPT_WINDOW_PX, drop_isolated_rejects, subpixel_contour
 from digitizer_core.threads import rgb_to_lab
 
-from .conftest import PRE_FLIP, TESTDATA, held_on_source_line
+from .conftest import FLOW_2026_11_19_OFF, PRE_FLIP, TESTDATA, held_on_source_line
 
 HERE = Path(__file__).resolve().parent
 sys.path.insert(0, str(HERE.parent / "tools"))
@@ -323,7 +323,7 @@ def test_the_resolution_gate_lifts_only_with_the_flag_on(tmp_path):
     # ...and `outline_redraw_k` (0.75 since 2026-11-14, Kent) re-fits every upscaled outline (x2 here),
     # the baseline included.
     old = dict(flat_page_fringe_soft_ramp=False, flat_ramp_blend_dissolve=False,
-               outline_redraw_k=PRE_FLIP["outline_redraw_k"])
+               outline_redraw_k=PRE_FLIP["outline_redraw_k"], **FLOW_2026_11_19_OFF)
     no_turn, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=0.0, subpixel_edges=False, **old))
     off, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=False, **old))
     on, _p = digitize(art, PipelineConfig(target_width_mm=20.0, curve_turn_deg=15.0, subpixel_edges=True, **old))
@@ -430,6 +430,8 @@ def _disc_region(art: Path, **cfg_kw):
     # OFF arm here is no staircase (rms 0.016 mm), so the flag's lift is read
     # against the engine it was measured on (`PRE_FLIP`).
     cfg_kw.setdefault("outline_redraw_k", PRE_FLIP["outline_redraw_k"])
+    # `read_primitives` (ON 2026-11-19) swaps the disc for an ideal one: this reads the tracer's edge
+    cfg_kw.update(FLOW_2026_11_19_OFF)
     cfg = PipelineConfig(target_width_mm=50.0, **cfg_kw)
     gen = build_generation(str(art), cfg)
     result = finish_generation(gen.fork(), cfg)
