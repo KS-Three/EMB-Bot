@@ -1310,6 +1310,29 @@ def legacy_engine(mp, *, design_ramp=False, robust=False, snap=False, dissolve=F
 PRE_FLIP_FOLDED = dict(robust=True, snap=True, dissolve=True, bind=True, two_tone=True, strip=True)
 
 
+def on_the_pre_flip_engine(fn):
+    """Run one function (a test, or a cached helper a module's tests share) with
+    `legacy_engine(**PRE_FLIP_FOLDED)` in force, then put everything back."""
+    import functools
+
+    @functools.wraps(fn)
+    def wrapper(*args, **kwargs):
+        with pytest.MonkeyPatch.context() as mp:
+            legacy_engine(mp, **PRE_FLIP_FOLDED)
+            return fn(*args, **kwargs)
+    return wrapper
+
+
+def pre_flip_module_gen():
+    """A whole module on the pre-flip engine (`legacy_engine(**PRE_FLIP_FOLDED)`),
+    module-scoped so its other module-scoped fixtures and `lru_cache`d runs see
+    it too. In the module: `pre_flip_module = pytest.fixture(autouse=True,
+    scope="module")(pre_flip_module_gen)`."""
+    with pytest.MonkeyPatch.context() as mp:
+        legacy_engine(mp, **PRE_FLIP_FOLDED)
+        yield
+
+
 @pytest.fixture
 def pre_flip_engine(monkeypatch):
     """`legacy_engine(**PRE_FLIP_FOLDED)`: for a module whose numbers were read
