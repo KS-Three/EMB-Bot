@@ -2568,7 +2568,12 @@ def column_runs(columns: list[Column], poly: Polygon, shape_id: str, *,
                 _THROUGH_LAST.reset(token)
             kb = _walk_cost(base_runs, start_near, end_near, trim_at_mm)
             kp = _walk_cost(pro_runs, start_near, end_near, trim_at_mm)
-            if kp[0] <= kb[0] and kp[1] <= kb[1]:
+            # ...and its hop in from where the needle arrives is no longer: the entry walk
+            # (3b) is skipped when it would be under a tiny stitch, and the walk then jumps
+            # straight to its start. Enthusiast's E at 93 mm: 0.97 mm in (entry walk, 0.66 mm)
+            # became a 1.19 mm drag across bare cloth, the chaining benchmark's bare thread
+            # 4.28 -> 4.54 mm (`kp[4]` is that reach, `kb[4]` the walk it replaces').
+            if kp[0] <= kb[0] and kp[1] <= kb[1] and kp[4] <= kb[4] + 1e-6:
                 pro_rep["through_last"] = 1
                 return pro_runs, pro_rep
             return base_runs, base_rep
