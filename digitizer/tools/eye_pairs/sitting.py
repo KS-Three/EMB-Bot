@@ -56,6 +56,22 @@ TESTDATA = ROOT / "testdata"
 DEFAULT_SPEC = REPO / "docs" / "eye-pairs-2026-10-13" / "wok42" / "spec.json"
 PHOTO_PREP_VENV = Path("digitizer") / "rembg_isolated" / "venv"
 
+# Flags whose DEFAULT flipped after some sittings were registered, with the ISO date
+# of the flip. An arm in a spec registered BEFORE that date that sets the flag to its
+# new default was a real arm when it was sat: a valid historical record, not an
+# arm identical to base. One entry per line, ALPHABETICAL.
+FLIPPED_SINCE: dict[str, str] = {
+    "script_strokes_drawn_width": "2026-11-20",
+    "text_cluster_nest_guard": "2026-11-20",
+    "text_cluster_nest_guard_rotated": "2026-11-20",
+}
+
+
+def flipped_since_registered(flag: str, spec: dict) -> bool:
+    """True when `flag`'s default flipped after `spec` was registered."""
+    when = FLIPPED_SINCE.get(flag)
+    return bool(when) and str(spec.get("registered", "")) < when
+
 KINDS = frozenset({"client_art_already_committed", "synthetic_generator", "synthetic_committed",
                    "pro_paired_job", "commons_lettering"})
 POPULATIONS = frozenset({"A", "B"})
@@ -123,6 +139,8 @@ def _check_arm(name: str, arm: dict, spec: dict, fields: set, defaults: dict,
             problems.append(f"arm {name!r}: {k!r} is not a PipelineConfig field")
             continue
         base_v = spec["base_flags"].get(k, defaults.get(k))
+        if base_v == v and k not in spec["base_flags"] and flipped_since_registered(k, spec):
+            continue   # the default flipped after this sitting was registered (`FLIPPED_SINCE`)
         if base_v == v:
             problems.append(f"arm {name!r}: {k}={v!r} is what the base already runs, so it "
                             "would be identical to base")
