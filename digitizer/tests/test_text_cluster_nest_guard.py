@@ -174,8 +174,8 @@ def test_on_a_small_frame_still_nests():
 
 # --- wiring and OFF -----------------------------------------------------------------
 
-def test_the_flag_is_off_and_the_pipeline_passes_nothing_when_off():
-    assert PipelineConfig().text_cluster_nest_guard is False
+def test_the_flag_ships_on_and_the_function_default_stays_off():
+    assert PipelineConfig().text_cluster_nest_guard is True     # ON since 2026-11-20 (Kent)
     assert inspect.signature(tc.detect_text_clusters).parameters["nest_guard"].default is False
     from digitizer_core import pipeline
     src = inspect.getsource(pipeline)
