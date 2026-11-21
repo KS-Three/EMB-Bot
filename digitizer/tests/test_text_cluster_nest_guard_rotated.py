@@ -238,8 +238,8 @@ def test_on_a_level_scene_is_unchanged():
 
 # --- wiring and OFF -----------------------------------------------------------------
 
-def test_the_flag_is_off_and_the_pipeline_passes_nothing_when_off():
-    assert PipelineConfig().text_cluster_nest_guard_rotated is False
+def test_the_flag_ships_on_and_the_function_default_stays_off():
+    assert PipelineConfig().text_cluster_nest_guard_rotated is True     # ON since 2026-11-20 (Kent)
     assert inspect.signature(tc._drop_nested).parameters["rotated"].default is False
     assert inspect.signature(tc.detect_text_clusters).parameters["nest_guard_rotated"].default is False
     from digitizer_core import pipeline
