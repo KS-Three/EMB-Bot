@@ -49,17 +49,16 @@ TESTDATA = Path(__file__).resolve().parent.parent / "testdata"
 DRONE = TESTDATA / "photo" / "drone_render.png"
 
 
-def _digitize(fold: bool, snap: bool = True, plain_mean: bool = False, **kw):
+def _digitize(fold: bool, snap: bool = True, **kw):
     """Drone @ 80 mm through the whole pipeline. `fold=False` patches the fold out
     (it hands `thread_indices` back and merges nothing: what `merge_duplicate_cones=False`
-    did); `snap=False` patches the edge snap out the same way (`snap_region_edges=False`);
-    `plain_mean=True` hands each region's palette colour back as its RGB mean
-    (`robust_region_colour=False`)."""
+    did); `snap=False` patches the edge snap out the same way (`snap_region_edges=False`).
+    2026-11-20 (bundle roll-forward): the `plain_mean` arm (RGB-mean palette colour, what
+    `robust_region_colour=False` did) is gone with `legacy_engine`; the whole-pipeline
+    claims are read on today's engine."""
     import digitizer_core.pipeline as pl
     import digitizer_core.stage2_photo_segment as ps
-    from tests.conftest import legacy_engine
     with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, robust=plain_mean)
         if not fold:
             real = pl.merge_duplicate_cone_layers
             mp.setattr(pl, "merge_duplicate_cone_layers",
@@ -150,9 +149,9 @@ def test_three_declarations_of_one_cone_all_land_on_the_first():
 # trades 21 stitches for 56 mm less flying (16,324 -> 16,345 stitches,
 # needle-up 1,568 -> 1,512 mm, 112 lifts either way; measured 2026-09-10).
 # "Fewer stitches AND less needle-up" is a fact of the engine it was
-# measured on, so the fixtures hold that engine (`plain_mean`: the switch is
-# folded into the code 2026-11-20, `legacy_engine` patches its False path back)
-# and say so here -- the posture `conftest.PRE_FLIP` documents.
+# measured on, so the fixtures held that engine (`plain_mean`). The switch is folded
+# into the code (2026-11-20) and the arm is retired (bundle roll-forward): the fixtures
+# run on today's engine.
 # `keep_thin_strokes` joined that posture 2026-09-13 (flipped ON by Kent's
 # ruling; folded into the code 2026-11-20, so it is no longer held off here
 # and the fixtures run with it) for the same reason: ON, drone keeps 33 more sub-floor regions, an
@@ -184,12 +183,12 @@ PRE_FLIP_RC = {"border_by_size": False,
 
 @pytest.fixture(scope="module")
 def drone_off():
-    return _digitize(False, plain_mean=True, **PRE_FLIP_RC)
+    return _digitize(False, **PRE_FLIP_RC)
 
 
 @pytest.fixture(scope="module")
 def drone_on():
-    return _digitize(True, plain_mean=True, **PRE_FLIP_RC)
+    return _digitize(True, **PRE_FLIP_RC)
 
 
 def test_the_fixture_still_declares_duplicate_cones(drone_off):
@@ -271,7 +270,7 @@ def test_an_explicit_layer_override_still_beats_the_fold(drone_on):
     # third block or later, so "sooner" holds whichever thread of layer 0 leads
     sid = next(s for s in sewn if s in by_id and by_id[s].thread_index not in layer0
                and first_block(plan, s) >= 2)
-    _r2, pinned = _digitize(True, plain_mean=True, shape_overrides={sid: {"layer": 0}}, **PRE_FLIP_RC)
+    _r2, pinned = _digitize(True, shape_overrides={sid: {"layer": 0}}, **PRE_FLIP_RC)
     k = first_block(pinned, sid)
     lead = next(r.shape_id for r in pinned.blocks[k].runs if r.shape_id)
     assert lead == sid, "a shape pinned to layer 0 must lead its own thread's block"

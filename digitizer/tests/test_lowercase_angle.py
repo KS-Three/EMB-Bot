@@ -33,7 +33,7 @@ from digitizer_core import stage7_sequence as s7
 from tests.conftest import FLIP_2026_10_23  # the 2026-10-23 flips, pinned off: this file prices another flag
 from digitizer_core.columns import lettering_columns_shape
 from tools import lowercase_angle as la
-from tests.conftest import EDGE_WALK_2026_11_14_OFF, LETTERING_2026_10_24_OFF, own_thread_only
+from tests.conftest import EDGE_WALK_2026_11_14_OFF, own_thread_only
 from tests.conftest import TEXT_GAPS_2026_11_15_OFF
 
 SHOULDERS = "ubgma"         # glyphs that fold OFF and come apart ON (120 mm)
@@ -462,13 +462,13 @@ def word():
     # code 2026-11-20, so these arms were measured without the stem and the
     # corner fold, and the pre-fix arm without the fold cuts. So were the 2026-10-23/24
     # small-bold and text-lean flips the other fixtures here pin off
-    # (`FLIP_2026_10_23`, `LETTERING_2026_10_24_OFF`). Each is now stage 7
+    # (`FLIP_2026_10_23`, and the lettering flips `LETTERING_2026_10_24_OFF` once held). Each is now stage 7
     # answering as before: `is_thin_stem` says no, and the Column-lane call
     # carries `corner_fold` False (both arms) and `fold_cuts` False (the "off"
     # arm), and omits `small_bold` and `text_lean_deg` -- the keyword defaults of
     # `lettering_columns_shape`.
     kw = dict(target_width_mm=80.0, forced_class="flat",
-              **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,     # nor with the 2026-10-23/24 flips
+              **FLIP_2026_10_23,     # nor with the 2026-10-23 flips
               **EDGE_WALK_2026_11_14_OFF,     # nor edge-walk (ON 2026-11-14): one more trim on the word
               **TEXT_GAPS_2026_11_15_OFF)     # nor the six 2026-11-15 text/gap flips
 
@@ -487,7 +487,7 @@ def word():
             mp.setattr(s7, "is_thin_stem", own_thread_only(lambda *_a, **_k: False, s7.is_thin_stem))
             return digitize(la.FIXTURE.with_suffix(".png"), PipelineConfig(**kw))
     # `lettering_columns_inside_stagger` (folded 2026-11-20) was held False here
-    # (`LETTERING_2026_10_24_OFF`): the Column-lane call carries `inside_stagger`
+    # (the retired `LETTERING_2026_10_24_OFF`): the Column-lane call carries `inside_stagger`
     # False in both arms, which is what its False path was.
     off_r, off = digitize_with(corner_fold=False, fold_cuts=False, inside_stagger=False)
     _on_r, on = digitize_with(corner_fold=False, inside_stagger=False)

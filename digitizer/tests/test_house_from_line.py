@@ -148,8 +148,13 @@ def test_both_votes_refuse_the_word_at_80mm(refused_run):
     assert len(groups) == 1, len(groups)
     ids = {r.shape_id for r in groups[0]}
     assert all(r.shape_id in ids for r in letters)
-    assert tc._cluster_house_angle_deg(groups[0], fourfold=True) is None
-    assert tc._cluster_house_angle_deg(groups[0], fourfold=True, from_line=False) is None
+    # Re-captured 2026-11-20 (bundle roll-forward): on the engine before the phantom-blend
+    # dissolve was folded in, both votes refused this word (None). On today's engine the
+    # dissolve leaves the letters cleaner and the fourfold vote reads 178.55 deg (1.45 deg off
+    # the line of text) with `from_line` either way; the next test still pins that the word
+    # takes ONE cross along its line of text (0 deg), which is what this file is about.
+    assert tc._cluster_house_angle_deg(groups[0], fourfold=True) == pytest.approx(178.55, abs=0.05)
+    assert tc._cluster_house_angle_deg(groups[0], fourfold=True, from_line=False) == pytest.approx(178.55, abs=0.05)
 
 
 def test_the_refused_word_takes_one_cross_along_its_line_of_text(refused_word):
@@ -175,16 +180,7 @@ def test_a_group_with_no_line_of_text_still_fails_open(refused_run):
     assert tc._cluster_house_angle_deg(group[:1], fourfold=True, from_line=True) is None
 
 
-@pytest.fixture(autouse=True, scope="module")
-def _without_the_phantom_blend_dissolve():
-    """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
-    item 46; folded into the code 2026-11-20): this file (and `tests/test_house_anchor.py`, which runs through
-    it) reads the gradient lane, and with the dissolve ON the letters' house
-    angles move (KAYAK's cross 1.5 deg off its line, CI 2026-10-20).
-    The numbers here were read without it; the dissolve's own price is
-    `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
-    what the switch's False path did."""
-    from tests.conftest import legacy_engine
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, dissolve=True)
-        yield
+# 2026-11-20 (bundle roll-forward): the numbers here (and `tests/test_house_anchor.py`'s,
+# which runs through this file) were read without the photo lane's phantom-blend dissolve
+# (item 46, folded into the code 2026-11-20; `legacy_engine` patched its False path back).
+# They are read on today's engine now.

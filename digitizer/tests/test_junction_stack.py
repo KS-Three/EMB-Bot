@@ -218,15 +218,6 @@ def test_asking_for_the_satin_cover_is_the_engine_as_shipped(monkeypatch):
     assert plan_asked == plan_unasked
 
 
-@pytest.fixture(autouse=True, scope="module")
-def _without_the_phantom_blend_dissolve():
-    """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
-    item 46; folded into the code 2026-11-20): this fixture reads the gradient lane, and with the dissolve ON MARINE at 80 mm folds one
-    letter (6 crossing pairs against 0, measured 2026-10-20).
-    The numbers here were read without it; the dissolve's own price is
-    `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
-    what the switch's False path did."""
-    from tests.conftest import legacy_engine
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, dissolve=True)
-        yield
+# 2026-11-20 (bundle roll-forward): the numbers here were read without the photo lane's
+# phantom-blend dissolve (item 46, folded into the code 2026-11-20; `legacy_engine` patched
+# its False path back). They are read on today's engine now.

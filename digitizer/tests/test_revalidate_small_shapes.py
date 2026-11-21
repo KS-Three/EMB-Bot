@@ -38,16 +38,17 @@ from digitizer_core.stage4_vectorize import (
 from digitizer_core.pipeline import plan_stitches
 from digitizer_core.warnings_codes import THREAD_RESNAPPED_AFTER_DRIFT
 
-from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 from tests.conftest import own_thread_only
 
 # The fixture the defect was traced on. Its worst thread finding is a 177-px
 # shape — inside the band, and the largest single dE00 the corpus offers.
 FIXTURE = "photo/screenshot_phone_ui_golke.jpg"
 
-# Named because the assertions below are about THIS shape, not "some shape":
-# 0.94 mm2, 177 px, artwork (252,252,252), wearing 0111 Whale.
-DRIFTED = "S43831dcd"
+# Named because the assertions below are about THESE shapes, not "some shape" (re-pointed
+# 2026-11-20 from the engine-before-the-folds' `S43831dcd`, 177 px, wearing 0111 Whale):
+# 0.997 and 0.960 mm2, wearing 1776 off, 0020 on.
+DRIFTED = ("Sf93252d9", "Sc68b9586")
 
 
 def _cfg(**kw) -> PipelineConfig:
@@ -71,33 +72,7 @@ class _Case(NamedTuple):
 
 
 @lru_cache(maxsize=None)
-def _digest(fixture: str, **kw) -> tuple:
-    """A pipeline run under exactly `kw`, for the shipped-engine contract:
-    no keyword at all against the four colour flags spelled out True."""
-    cfg = _cfg(**kw)
-    result = run_stages(TESTDATA / fixture, cfg)
-    plan = plan_stitches(result, cfg)
-    coords = [
-        (round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
-        for _b, run in plan.iter_runs()
-        for x, y in run.points
-    ]
-    return (hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords))
-
-
-@lru_cache(maxsize=None)
 def _case(fixture: str, small: bool) -> _Case:
-    """`_case_run` on the engine its numbers were read on: the colour switches
-    folded into the code 2026-11-20 (`docs/flag-history/tier-b3-colour.md`) were
-    False in `PRE_FLIP`, and gaulke's grey halo this file takes as its premise is
-    what they removed, so `legacy_engine` patches their False paths back."""
-    from tests.conftest import PRE_FLIP_FOLDED, legacy_engine
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, **PRE_FLIP_FOLDED)
-        return _case_run(fixture, small)
-
-
-def _case_run(fixture: str, small: bool) -> _Case:
     """One pipeline run per (fixture, flag), reused by every test.
 
     WHY THE CACHE. Written straight through, this file ran `run_stages` about
@@ -174,17 +149,6 @@ def test_the_gap_between_the_two_floors_is_the_defect():
     )
 
 
-def test_the_shipped_engine_is_the_four_flags_on():
-    """The contract every flag here carries, restated for the flip: the
-    DEFAULT config (no keyword at all) against the four colour flags spelled
-    out True, so a change to any of the four defaults is caught as a
-    difference rather than silently agreeing with itself. Worth the one
-    extra pipeline run: it is this file's core contract. (Every other test
-    here prices the flag ALONE over the pre-flip engine -- `_case` -- which
-    is the engine its numbers were measured on.)"""
-    assert _digest(FIXTURE) == _digest(FIXTURE, **BUNDLE_ON)
-
-
 @pytest.mark.parametrize("fixture", [
     FIXTURE,
     "logo_alpha.png",              # flat lane: nothing to re-ask, a control
@@ -247,19 +211,26 @@ def test_the_two_cause_3_fixtures_gain_no_cone_at_all(fixture):
     assert len(_case(fixture, True).cones) == len(_case(fixture, False).cones)
 
 
-def test_on_resnaps_the_shape_the_measurement_named():
-    """The 177-px shape wearing `0111 Whale` over (252,252,252) artwork.
+def test_on_resnaps_the_shapes_the_measurement_named():
+    """Two sub-200-px shapes wearing `1776` over 0020-coloured artwork.
 
     Asserted by SHAPE, not by count: a count would pass on any seven shapes
-    moving, and the point of the flag is this one.
+    moving, and the point of the flag is these.
+
+    Re-pointed 2026-11-20 (bundle roll-forward, #1740/B3 folds): the original shape
+    (`S43831dcd`, 177 px, `0111 Whale` over (252,252,252), re-snapped 32.7 dE00 -> `0015`)
+    existed only on the engine before robust colour, edge snap, the dissolve and the
+    colour cap were folded into the code. On today's engine the same two-spool band holds
+    `Sf93252d9` (0.997 mm2) and `Sc68b9586` (0.960 mm2): `1776` OFF, `0020` ON, each
+    re-snapped by 11.78 dE00; nothing re-snaps OFF. Re-captured 2026-11-20.
     """
     off, on = _case(FIXTURE, False), _case(FIXTURE, True)
-    assert DRIFTED in off.threads, "fixture drifted; re-derive from the tool"
-
-    assert off.threads[DRIFTED] == "0111"
-    assert on.threads[DRIFTED] == "0015"
-    assert DRIFTED not in off.resnapped
-    assert on.resnapped[DRIFTED] > 30.0
+    for sid in DRIFTED:
+        assert sid in off.threads, "fixture drifted; re-derive from the tool"
+        assert off.threads[sid] == "1776"
+        assert on.threads[sid] == "0020"
+        assert sid not in off.resnapped
+        assert on.resnapped[sid] == pytest.approx(11.78, abs=0.05)
 
 
 def test_on_reports_which_floor_produced_the_list():

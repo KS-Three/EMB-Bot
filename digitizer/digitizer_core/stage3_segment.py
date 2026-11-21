@@ -853,7 +853,8 @@ def resolve_small_regions(
     # `small_dot_rung_lettering` (folded in, 2026-10-20): the rung admits only a
     # dot with a stem under it (`has_stem_below`).
     # `keep_thin_strokes` (folded in 2026-11-20): the contrast rescue is always asked;
-    # `keep_contrast_rescue=False` is a test hook (`tests/conftest.legacy_engine`).
+    # `keep_contrast_rescue=False` was a test hook of `tests/conftest.legacy_engine`, retired
+    # 2026-11-20; nothing passes it now (the pipeline never does).
     keep_contrast = bool(keep_contrast_rescue) and layer_lab is not None
 
     def drawn_edge(i: int, win, sub: np.ndarray, halo: np.ndarray, host: int) -> bool:

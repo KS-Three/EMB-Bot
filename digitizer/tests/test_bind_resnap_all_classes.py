@@ -29,7 +29,7 @@ from digitizer_core import pipeline as pl
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import plan_stitches, run_stages
 
-from .conftest import BUNDLE_ON, PRE_FLIP, TESTDATA
+from .conftest import PRE_FLIP, TESTDATA
 from tests.conftest import own_thread_only
 
 # Two gradient fixtures with a measured escape (7 and 5 cones).
@@ -93,23 +93,10 @@ def _case(fixture: str) -> _Case:
     )
 
 
-@lru_cache(maxsize=None)
-def _digest(fixture: str, **kw) -> tuple:
-    """A pipeline run under exactly `kw`, for the shipped-engine contract."""
-    cfg = _cfg(**kw)
-    result = run_stages(TESTDATA / fixture, cfg)
-    plan = plan_stitches(result, cfg)
-    coords = [(round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
-              for _b, run in plan.iter_runs() for x, y in run.points]
-    return hashlib.sha256(repr(coords).encode()).hexdigest()[:20], len(coords)
-
-
-@pytest.mark.parametrize("fixture", ["photo/drone_render.png", "logo_alpha.png"])
-def test_the_shipped_engine_is_the_three_flags_on(fixture):
-    """No keyword at all against the three spelled out True, so a change to
-    any of the three defaults shows up as a difference rather than silently
-    agreeing with itself. One escaper the bundle moves, one flat control."""
-    assert _digest(fixture) == _digest(fixture, **BUNDLE_ON)
+# Retired 2026-11-20 (bundle roll-forward): `test_the_shipped_engine_is_the_three_flags_on`
+# compared the default engine with `BUNDLE_ON`, which is empty now that the colour bundle
+# is folded, so it compared a run with itself. `test_on_closes_the_escape` below is the
+# ON behaviour.
 
 
 @pytest.mark.parametrize("fixture", ESCAPERS)

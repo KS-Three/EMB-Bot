@@ -35,7 +35,7 @@ from tests.conftest import FLIP_2026_10_23
 from digitizer_core import PipelineConfig, digitize
 from digitizer_core import columns, stage7_sequence
 from digitizer_core.columns import is_lettering, is_thin_stem
-from tests.conftest import EDGE_WALK_2026_11_14_OFF, GROUP_2026_11_14_OFF, LETTERING_2026_10_24_OFF, own_thread_only
+from tests.conftest import EDGE_WALK_2026_11_14_OFF, GROUP_2026_11_14_OFF, own_thread_only
 from tests.conftest import TEXT_GAPS_2026_11_15_OFF
 
 #: `tools/stem_trace.py --word tsivyl 15.9` / `--word HILTIL`: the fixture's
@@ -86,7 +86,6 @@ def run(tmp_path_factory, word, small_stem):
     # ...and edge-walk (ON 2026-11-14, Kent): it re-orders the letters' walk.
     cfg = PipelineConfig(target_width_mm=width, forced_class="flat",
                          **FLIP_2026_10_23, **EDGE_WALK_2026_11_14_OFF,
-                         **LETTERING_2026_10_24_OFF,        # the 2026-10-24 flips, as pinned
                          **GROUP_2026_11_14_OFF,
                          **TEXT_GAPS_2026_11_15_OFF)   # the six 2026-11-15 text/gap flips: these pins predate them
     if small_stem:

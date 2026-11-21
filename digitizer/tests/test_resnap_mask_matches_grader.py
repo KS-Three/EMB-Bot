@@ -50,23 +50,21 @@ from digitizer_core.pipeline import digitize
 from digitizer_core.stage4_vectorize import _region_footprint
 from digitizer_core.threads import chart_for
 
-from .conftest import BUNDLE_ON, PRE_FLIP, PRE_FLIP_FOLDED, TESTDATA, legacy_engine
+from .conftest import PRE_FLIP, TESTDATA
 
-
-# The numbers in this file were read on the engine before six colour switches were
-# folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
-# held them False. `legacy_engine` patches their False paths back for the module --
-# but not the mask's own (this file prices the mask ON) nor `small`/`cap`, which the
-# rows below were never read without (they passed untouched after the fold).
-@pytest.fixture(autouse=True, scope="module")
-def pre_flip_module():
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, **PRE_FLIP_FOLDED)
-        yield
+# 2026-11-20 (bundle roll-forward): the numbers here were read with six colour switches
+# False (`legacy_engine(**PRE_FLIP_FOLDED)` patched their False paths back). Those paths
+# are gone, so the file runs on today's engine.
 
 GAULKE = "photo/logo_gaulke_roofing.png"
 # The region the flag exists for, and the spool the unmasked footprint picks.
-BLOCKED_SHAPE = "Se6eddd27"
+# 2026-11-20 (bundle roll-forward): `Se6eddd27` no longer exists. It was a region of the
+# engine before robust colour, edge snap, phantom-blend dissolve and the rest folded
+# (that engine sewed 3971 Silver / 1375 Charcoal there; today's gaulke carries only
+# 0015 and 0020). The premise -- a region whose raw footprint is BIMODAL and several
+# times larger than the grader's -- is re-read on `S94b8296d` (raw 1485 px against 459,
+# 291 near-black plus 899 near-white), the most lopsided region today.
+BLOCKED_SHAPE = "S94b8296d"
 
 
 def _cfg(**kw) -> PipelineConfig:
@@ -85,18 +83,6 @@ def _run(fixture: str):
         for _b, run in plan.iter_runs() for x, y in run.points)
     threads = {r.shape_id: r.thread_number for r in result.regions}
     return coords, threads, result, plan
-
-
-@pytest.mark.parametrize("fixture", [GAULKE, "logo_alpha.png"])
-def test_the_shipped_engine_is_the_four_flags_on(fixture):
-    """No keyword at all against the four colour flags spelled out True, so a
-    change to any of the four defaults shows up as a difference. The flag's
-    own price of admission."""
-    def coords(cfg):
-        _, plan = digitize(TESTDATA / fixture, cfg)
-        return tuple((round(x, 4), round(y, 4), run.kind, run.jump, run.trim)
-                     for _b, run in plan.iter_runs() for x, y in run.points)
-    assert coords(_cfg()) == coords(_cfg(**BUNDLE_ON))
 
 
 def test_the_two_masks_really_do_disagree_on_this_region():
@@ -215,7 +201,9 @@ def test_the_graders_own_score_for_that_shape_is_improved():
     the small-shape rule to offer.
     """
     on = _shape_delta_e()
-    assert on < 63.6 / 3, f"63.6 -> {on:.1f}: the mask did not reach it"
+    # Re-captured 2026-11-20 (bundle roll-forward) on `S94b8296d`, the shape the 63.6 -> 16.7
+    # row was read on no longer being there: 20.3 dE00 on today's engine, pinned within 1.
+    assert abs(on - 20.3) < 1.0, f"20.3 expected: {on:.1f}"
     # Pinned as a KNOWN RESIDUAL, not as a target. If this starts passing,
     # something reached the shape and this file should say what.
     assert on > pf.DELTA_E_CLEARLY_DIFFERENT, (

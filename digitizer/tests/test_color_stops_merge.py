@@ -25,14 +25,13 @@ from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 from digitizer_core.threads import rgb_to_lab
 
-from .conftest import PRE_FLIP, TESTDATA, on_the_pre_flip_engine
+from .conftest import PRE_FLIP, TESTDATA
 
 HEAVY = "photo/logo_bridge_bar.jpg"     # 17 changes, 18 distinct cones
 QUIET = "logo_alpha.png"                # far under COLOR_STOPS_MAX
 
 
 @lru_cache(maxsize=None)
-@on_the_pre_flip_engine
 def _run(fixture: str):
     """One digitize + preflight per fixture, reused by every test here.
     Read-only; take an uncached run if one ever needs to mutate."""
@@ -46,7 +45,7 @@ def _run(fixture: str):
     # bundle's four and `robust_region_colour`) are held OFF here because
     # this file documents a fact of the engine before those flips
     # (conftest.PRE_FLIP says why); six of them are folded into the code since
-    # 2026-11-20, so `on_the_pre_flip_engine` patches their False paths back.
+    # 2026-11-20, so this file is read on today's engine (bundle roll-forward).
     result, plan = digitize(art, cfg)
     report = pf.run_preflight(result, plan, cfg, image=art)
     hits = [f for f in report["findings"]
@@ -62,7 +61,9 @@ def test_a_quiet_design_reports_nothing():
 
 
 def test_the_finding_names_a_pair():
-    hits, _ = _run(HEAVY)
+    # 2026-11-20 (bundle roll-forward): on today's engine bridge repeats cone 0703 (the repeated-cone
+    # branch, tested below), so the pair message is read on `PAIRED`.
+    hits, _ = _run(PAIRED)
     assert len(hits) == 1
     f = hits[0]
     assert f["severity"] == "warn"          # unchanged
@@ -106,7 +107,8 @@ def test_the_pair_is_never_one_cone_with_itself():
 def test_distinct_cones_is_not_the_block_count():
     """The payload reports the DISTINCT cone count, which is what an operator
     loads — `color_changes` counts machine stops and can exceed it."""
-    hits, plan = _run(HEAVY)
+    # `PAIRED`, not bridge: bridge repeats 0703 on today's engine (2026-11-20 re-point).
+    hits, plan = _run(PAIRED)
     extra = hits[0]["extra"]
     assert extra["distinct_cones"] == len({str(p["number"])
                                            for p in plan.palette})
@@ -137,7 +139,13 @@ def test_the_closest_pair_is_closer_than_the_visible_threshold():
 #
 # Both cost a real machine stop, and both are free to merge. Recorded as a
 # THIRD spool-revisit mechanism (MASTER_SCOPE 18 calls itself the second).
-REPEATER = "photo/region_blobs.png"
+#
+# Re-pointed 2026-11-20 (bundle roll-forward, the colour folds): on today's engine
+# `region_blobs` no longer repeats a cone (closest pair 0182 / 3770 at 5.7 dE00, no
+# repeats: it is now the PAIRED fixture) and bridge repeats `0703` (12 stops, 12 cones,
+# closest pair 0501 / 0713 at 2.5 dE00), so the two fixtures swap roles.
+REPEATER = "photo/logo_bridge_bar.jpg"
+PAIRED = "photo/region_blobs.png"
 
 
 def test_a_repeated_cone_is_reported_and_named_first():
