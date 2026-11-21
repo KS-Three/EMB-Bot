@@ -4719,6 +4719,12 @@ class PipelineConfig:
     # finished fill, and is cheaper with the hidden travel free. No new
     # constant. Off, byte-identical. `stage6_fill._seam_aware_sections`;
     # tests: `tests/test_fill_seam_aware_sections.py`.
+    # PARKED OFF 2026-11-21 (Kent, "Park them OFF"): too slow to ship. Each
+    # hidden-reach probe costs 0.15-0.9 s and a shape asks 100-7,500 of them
+    # (measured 2026-11-20 on 7 corpus designs), so the designs it improved
+    # took 5-35 min and heraldic crest 5.4 h. A cProfile shows no repeated
+    # work to cache away; a probe cap changes the very designs it helped.
+    # DOCTRINE "Measured negatives", 2026-11-21.
     fill_seam_aware_sections: bool = False
 
     # The fill column-order scorer prices only what `emit` sews (2026-10-08,
