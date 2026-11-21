@@ -321,3 +321,68 @@ def test_an_opaque_bar_under_an_alpha_channel_is_still_stripped():
     alpha = np.full(rgb.shape[:2], 255, np.uint8)
     out, out_a = strip_letterbox(rgb, alpha)
     assert out.shape[0] < rgb.shape[0] and out_a.shape == out.shape[:2]
+
+
+# --- JPEG ringing at the bar's edge (2026-11-21, tools/delivery_jpeg.py) -----
+
+def _jpeg(rgb: np.ndarray, quality: int) -> np.ndarray:
+    ok, buf = cv2.imencode(".jpg", cv2.cvtColor(rgb, cv2.COLOR_RGB2BGR),
+                           [cv2.IMWRITE_JPEG_QUALITY, quality])
+    assert ok
+    return cv2.cvtColor(cv2.imdecode(buf, cv2.IMREAD_COLOR), cv2.COLOR_BGR2RGB)
+
+
+def test_screenshot_survives_the_jpeg_a_customer_would_send():
+    """The q30 save rings one line (mean ~10 on a black bar) above the top
+    bar's edge. That line ended the uniform run one line short of the step,
+    so the top bar was voided; with only the bottom bar left, the inner
+    ring read black and the bottom bar was refused as a margin. Stage 1
+    then took black as the page and SEWED the white logo band (4,534 ->
+    12,774 stitches). Every quality must find the bars the master does."""
+    master = detect_letterbox(_load_rgb(SCREENSHOT))
+    for q in (95, 75, 50, 30):
+        assert detect_letterbox(_jpeg(_load_rgb(SCREENSHOT), q)) == master, q
+
+
+def test_ringing_lines_go_with_the_bar():
+    """Uniform lines between the run and the step are the transition: the
+    bar ends AT the step, so the interior never starts on a bar-coloured
+    line."""
+    rgb = np.full((300, 200, 3), 250, np.uint8)
+    rgb[:60] = 0
+    rgb[60] = 12          # one ringing line, uniform along itself
+    rgb[-60:] = 0
+    rgb[-61] = 12
+    assert detect_letterbox(rgb) == (61, 61, 0, 0)
+
+
+def test_ringing_lookahead_stops_at_one_jpeg_block():
+    """Seven transition lines are within one 8x8 block; eight are not an
+    edge's ringing but a soft edge, and a soft edge is not a bar."""
+    def bars(n_ring):
+        rgb = np.full((400, 200, 3), 250, np.uint8)
+        rgb[:60] = 0
+        rgb[60:60 + n_ring] = 12
+        rgb[-60:] = 0
+        rgb[-60 - n_ring:-60] = 12
+        return detect_letterbox(rgb)
+    assert bars(7) == (67, 67, 0, 0)
+    assert bars(8) == (0, 0, 0, 0)
+
+
+def test_a_ragged_edge_is_not_ringing():
+    """A dark ground whose edge breaks up (a silhouette) is not a bar: the
+    lookahead only crosses lines uniform in themselves. A sunset photo's
+    60% q70 thumbnail read a 55-line bottom bar before this guard."""
+    rng = np.random.default_rng(1)
+    rgb = np.full((400, 200, 3), 250, np.uint8)
+    rgb[-60:] = 0
+    # Two ragged lines whose MEAN stays near the bar (so they are not a
+    # step themselves) but whose spread is far past LINE_TOL, then the
+    # hard step to white: only the uniformity guard refuses this.
+    rgb[-62:-60] = rng.choice(np.array([0, 24], np.uint8), (2, 200, 1)).repeat(3, axis=2)
+    _, bottom, _, _ = detect_letterbox(rgb)
+    assert bottom == 0
+    rgb[-62:-60] = 12                            # the same lines, uniform: ringing
+    _, bottom, _, _ = detect_letterbox(rgb)
+    assert bottom == 62

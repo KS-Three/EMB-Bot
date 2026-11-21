@@ -92,10 +92,16 @@ MIN_INTERIOR_DELTA = 40.0
 # (Lab dE76) from the band's ground. Equal to stage 1's own flood tolerance,
 # `PipelineConfig.bg_tolerance_lab`, on purpose — see `detect_edge_strips`.
 EDGE_STRIP_DELTA_E = 6.0
+# How far past the end of a bar's uniform run its hard edge may lie. Not a
+# tuned number: JPEG codes 8x8 blocks, so the ringing a hard edge leaves
+# stays inside the block holding that edge, at most BLOCK - 1 lines before
+# it. A q30 save of the Golke screenshot rings ONE line (mean 9.8 on a
+# black bar) above the edge, and that line alone used to void the bar.
+JPEG_RING_LINES = 7
 
 
 def _run_length(lines: np.ndarray, tol: float,
-                step_min: float = 24.0) -> int:
+                step_min: float = 24.0, ring: int = JPEG_RING_LINES) -> int:
     """How many leading `lines` form one near-uniform bar ending in a STEP.
 
     `lines` is (n, m, 3): n lines to walk, each m pixels wide. A line joins
@@ -125,8 +131,30 @@ def _run_length(lines: np.ndarray, tol: float,
         n += 1
     if n == 0 or n >= len(lines):
         return n
-    nxt = lines[n].reshape(-1, 3).astype(np.float64).mean(axis=0)
-    return n if float(np.linalg.norm(nxt - ref)) > step_min else 0
+    # The step may sit up to JPEG_RING_LINES past the run's end: the lines
+    # between are compression ringing round the edge, and they go WITH the
+    # bar (crop through the transition), or they would be read as the
+    # interior's first lines and colour its border like the bar. A clean
+    # file's step is line n itself and is judged exactly as before.
+    # Past line n, two more conditions keep this to ringing and nothing else:
+    # - the step is HARD against the line before it, not only far from the
+    #   bar: a ramp's uniform lines drift away from the bar's colour within
+    #   a few lines (0..255 over 200 rows crosses 24 by line 11) but never
+    #   jump;
+    # - the lines crossed are uniform in themselves, as ringing along a
+    #   STRAIGHT edge is (std 1.5 on the Golke q30 save); a ragged edge is
+    #   not a bar's.
+    prev = None
+    for j in range(n, min(len(lines), n + 1 + ring)):
+        px = lines[j].reshape(-1, 3).astype(np.float64)
+        mean = px.mean(axis=0)
+        if float(np.linalg.norm(mean - ref)) > step_min and (
+                prev is None or float(np.linalg.norm(mean - prev)) > step_min):
+            return j
+        if px.std(axis=0).max() > tol:
+            return 0
+        prev = mean
+    return 0
 
 
 def _dominant(px: np.ndarray) -> np.ndarray:
