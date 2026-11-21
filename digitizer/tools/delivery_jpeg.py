@@ -33,6 +33,7 @@ whose art box moves more than 3 mm is refused as a different design, as
 
     .venv/bin/python -m tools.delivery_jpeg                       # every logo, every delivery
     .venv/bin/python -m tools.delivery_jpeg --logos tires drone --deliveries q50 q30 --json out.json
+    .venv/bin/python -m tools.delivery_jpeg --set bg_structural=true     # price an OFF flag on deliveries
 """
 from __future__ import annotations
 
@@ -102,7 +103,7 @@ def deliver(raw: np.ndarray, steps: list[tuple[float, int | None]]) -> np.ndarra
 
 
 def _one(args) -> dict:
-    logo, rel, width, delivery, plan_too, scratch = args
+    logo, rel, width, delivery, plan_too, scratch, overrides = args
     from digitizer_core import PipelineConfig
     from digitizer_core.pipeline import build_generation, finish_generation, plan_stitches
     from digitizer_core.threads import chart_for
@@ -113,7 +114,7 @@ def _one(args) -> dict:
         img = deliver(raw, DELIVERIES[delivery])
         path = Path(scratch) / f"{logo}__{delivery}.png"     # lossless carrier of the decoded JPEG
         cv2.imwrite(str(path), img)
-    cfg = PipelineConfig(target_width_mm=width, garment_id="left_chest", max_colors=6)
+    cfg = PipelineConfig(target_width_mm=width, garment_id="left_chest", max_colors=6, **overrides)
     gen = build_generation(str(path), cfg)
     result = finish_generation(gen.fork(), cfg)
     chart = chart_for(cfg)
@@ -142,6 +143,16 @@ def cone_diff(ref_rgb: list, arm_rgb: list) -> tuple[int, int]:
     return int((d.min(axis=0) > SAME_COLOUR_DE).sum()), int((d.min(axis=1) > SAME_COLOUR_DE).sum())
 
 
+def parse_override(s: str) -> tuple[str, object]:
+    """`field=value` -> (field, value), value read as JSON when it parses
+    (true, 0.5, null), else as the bare string."""
+    k, _, v = s.partition("=")
+    try:
+        return k, json.loads(v)
+    except json.JSONDecodeError:
+        return k, v
+
+
 def main(argv: list[str] | None = None) -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0])
     ap.add_argument("--logos", nargs="+", default=list(LOGOS), choices=list(LOGOS))
@@ -150,13 +161,16 @@ def main(argv: list[str] | None = None) -> int:
     ap.add_argument("--no-plan", action="store_true")
     ap.add_argument("--workers", type=int, default=4)
     ap.add_argument("--json", type=Path)
+    ap.add_argument("--set", nargs="*", default=[], metavar="FIELD=VALUE",
+                    help="PipelineConfig overrides for every arm, reference included (e.g. bg_structural=true)")
     a = ap.parse_args(argv)
+    overrides = dict(parse_override(s) for s in a.set)
 
     with tempfile.TemporaryDirectory() as scratch:
         jobs = []
         for logo in a.logos:
-            jobs.append((logo, LOGOS[logo], a.width, "ref", not a.no_plan, scratch))
-            jobs += [(logo, LOGOS[logo], a.width, d, not a.no_plan, scratch) for d in a.deliveries]
+            jobs.append((logo, LOGOS[logo], a.width, "ref", not a.no_plan, scratch, overrides))
+            jobs += [(logo, LOGOS[logo], a.width, d, not a.no_plan, scratch, overrides) for d in a.deliveries]
         with ProcessPoolExecutor(max_workers=a.workers) as ex:
             done = list(ex.map(_one, jobs))
 
@@ -165,6 +179,8 @@ def main(argv: list[str] | None = None) -> int:
         by_logo.setdefault(d["row"]["logo"], []).append(d)
     rows = []
     print(f"at {a.width:g} mm, left chest, each delivery scored against the logo as committed")
+    if overrides:
+        print(f"overrides: {overrides}")
     print(f"{'logo':11s} {'arm':10s} {'class':10s} {'reg':>4s} {'thr':>3s} {'+':>2s} {'-':>2s} "
           f"{'stitches':>8s} {'trims':>5s} {'agree':>6s} {'fine':>6s}")
     for logo, ds in by_logo.items():
