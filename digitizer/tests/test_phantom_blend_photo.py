@@ -320,29 +320,26 @@ def test_page_side_halo_is_returned_to_the_background():
 
 @pytest.fixture(scope="module")
 def bridge_pair():
-    from tests.conftest import PRE_FLIP_COLOUR, legacy_engine
+    import digitizer_core.stage2_photo_segment as ps
+    from tests.conftest import own_thread_only
 
     def run(on: bool):
-        # PRE_FLIP: the dissolve flag alone, over the engine it was measured
-        # on (the colour flags Kent flipped ON on 2026-09-10 -- the bundle's
-        # four and `robust_region_colour` -- held OFF; conftest.PRE_FLIP
-        # says why). Against the shipped engine the cap and
-        # the bind already take most of these greys, which the decision sheet
-        # prices as colour5 over colour4.
-        # `work_px_per_mm=None` for the same reason (ON since 2026-10-01,
-        # Kent's flip): bridge is 3.5 px/mm, and traced at 8 the halo is
-        # segmented differently in BOTH arms — 62 regions against 59, where
-        # this fixture's bar is "much less".
-        # Both arms are the engine before the colour switches were folded
-        # into the code (2026-11-20): `legacy_engine` patches back what their
-        # False paths did. The OFF arm also hands the merged labels back (the
-        # dissolve switch's False path; ON since Kent's flip 2026-10-20,
-        # MASTER_SCOPE item 46, PR #1003's pricing).
+        # 2026-11-20 (bundle roll-forward): both arms now run on TODAY's engine, the
+        # colour switches (cap, bind, robust colour, ...) folded into the code since
+        # 2026-11-20 being in force in both; `legacy_engine(**PRE_FLIP_COLOUR)` used to
+        # patch them back. Only the dissolve's own arm is built here: the OFF arm hands
+        # the merged labels back (the dissolve switch's False path; ON since Kent's flip
+        # 2026-10-20, MASTER_SCOPE item 46, PR #1003's pricing).
+        # `work_px_per_mm=None` (ON since 2026-10-01, Kent's flip): bridge is 3.5 px/mm,
+        # and traced at 8 the halo is segmented differently in BOTH arms.
         cfg = PipelineConfig(
             target_width_mm=80.0, max_colors=6, satin=True,
             garment_id="left_chest", work_px_per_mm=None, **PRE_FLIP)
         with pytest.MonkeyPatch.context() as mp:
-            legacy_engine(mp, **{**PRE_FLIP_COLOUR, "dissolve": not on})
+            if not on:
+                real = ps.dissolve_phantom_blends
+                mp.setattr(ps, "dissolve_phantom_blends", own_thread_only(
+                    lambda merged, valid, *a, **kw: (merged, None, []), real))
             return digitize(BRIDGE, cfg)
     return run(False), run(True)
 
@@ -353,21 +350,31 @@ def test_bridge_bar_loses_its_grey_cones(bridge_pair):
     today as 12 hairline shards, and this test should not have to change when
     that residual is closed."""
     (_off_r, off_p), (_on_r, on_p) = bridge_pair
-    off_cones = {c.get("number") for c in off_p.palette}
     on_cones = {c.get("number") for c in on_p.palette}
+    # Re-pointed 2026-11-20 (bundle roll-forward): the OFF arm no longer carries these greys
+    # (`assert grey in off_cones` is retired). They went with the colour-cap fold: OFF is
+    # held to the six colours now and spends them on {0020, 0111, 0501, 1375, 1720, 4531}
+    # (measured 2026-11-20), so the dissolve has nothing left to remove from the cone list;
+    # what it still buys is in `test_bridge_bar_costs_much_less`.
     for grey in ("0145", "0182", "0465", "3971", "0108"):
-        assert grey in off_cones, f"{grey} should be there to lose"
         assert grey not in on_cones, f"{grey} still sewing halo"
 
 
 def test_bridge_bar_costs_much_less(bridge_pair):
     """Bounds with headroom around the measured 32 / 64 / 11,524 / 11, so a
-    real regression trips them and ordinary engine drift does not."""
+    real regression trips them and ordinary engine drift does not.
+
+    Re-captured 2026-11-20 (bundle roll-forward) on today's engine: regions 95 -> 23,
+    trims 82 -> 30, stitches 15,731 -> 12,497, blocks 6 -> 7 (the ON arm sews cone 0501
+    twice; six distinct cones either way). The first three bounds hold as written; the
+    block count no longer falls, so it is read as distinct cones."""
     (off_r, off_p), (on_r, on_p) = bridge_pair
     assert len(on_r.regions) < len(off_r.regions) * 0.55
     assert on_p.stats.trims < off_p.stats.trims * 0.75
     assert on_p.stats.stitch_count < off_p.stats.stitch_count * 0.9
-    assert len(on_p.blocks) < len(off_p.blocks)
+    distinct = lambda p: len({b.thread_index for b in p.blocks})
+    assert distinct(on_p) <= distinct(off_p)
+    assert len(on_p.blocks) <= len(off_p.blocks) + 1
 
 
 def test_bridge_bar_keeps_its_artwork(bridge_pair):
@@ -406,7 +413,10 @@ def test_bridge_bar_palette_fits_the_design_better(bridge_pair):
                 return w["max_excess_de00"]
         return None
 
-    assert excess(on_r) < excess(off_r) / 3
+    # Re-captured 2026-11-20 (bundle roll-forward): on today's engine the OFF arm is already
+    # held to six colours, so its worst excess is 9.92, not 20.76; ON reads 7.23. The bound
+    # becomes "at least a fifth better" (0.73 measured) instead of 3x.
+    assert excess(on_r) < excess(off_r) * 0.8
 
 
 def test_bridge_bar_silhouette_barely_moves(bridge_pair):

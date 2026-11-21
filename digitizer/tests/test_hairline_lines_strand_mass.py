@@ -22,13 +22,14 @@ from digitizer_core.stage6_hairline_lines import extract_strands, strand_blocks
 from tests.test_hairline_lines import _md5
 from tests.test_hairline_lines_strand_test import (OWL, _bars, _ground, _sewable, _sp,
                                                    _strands, _zones)
-from tests.conftest import LETTERING_2026_10_24_OFF, TEXT_GAPS_2026_11_15_OFF, legacy_lettering_module_gen
+from tests.conftest import TEXT_GAPS_2026_11_15_OFF
 from tests.test_thread_profile import GOLDEN_MD5, TESTDATA, _coords_md5
 from tools.hairline_strand_mass import (dark_runs, drawn_kept, mane_image, s882_image,
                                         syn_cfg)
 
-# the md5s predate small_bold, corner_fold and text_lean (folded into the code 2026-11-20)
-legacy_lettering_module = pytest.fixture(autouse=True, scope="module")(legacy_lettering_module_gen)
+# 2026-11-20 (bundle roll-forward): the md5s predated small_bold, corner_fold and text_lean
+# and the phantom-blend dissolve (all folded into the code 2026-11-20); `legacy_lettering`
+# and `legacy_engine` held them back. The file runs on today's engine now.
 
 LINES = dict(hairline=True, hairline_from_lines=True)
 TEST = dict(LINES, hairline_lines_strand_test=True)
@@ -57,7 +58,7 @@ HOLDS_OFF = dict(bean_letter_counter_hold_mm=None, bean_letter_bay_hold=None,
                  clip_keep_pieces=False,
                  bean_letter_straight_mm=None,
                  # the 2026-10-23 flips and the 2026-10-24 lettering flips: the md5s predate both
-                 **FLIP_2026_10_23, **LETTERING_2026_10_24_OFF,
+                 **FLIP_2026_10_23,
                  **TEXT_GAPS_2026_11_15_OFF,   # the six 2026-11-15 text/gap flips: these pins predate them
                  # 2026-11-19: the lane sews a dropped branch itself; the md5s predate it
                  lettering_columns_sew_dropped_hairline=False)
@@ -219,16 +220,3 @@ def test_owl_breast_and_bristles_hold():
     assert mass["beak_bristles"] == test["beak_bristles"] == 5
     assert mass["elsewhere"] >= test["elsewhere"]
     assert census["exempt_mass"]["dark"] == 0
-
-
-@pytest.fixture(autouse=True, scope="module")
-def _without_the_phantom_blend_dissolve():
-    """The md5 pins above predate the phantom-blend dissolve (ON since Kent's
-    2026-10-20 flip, item 46; folded into the code 2026-11-20), which moves the
-    drawn mane's `mane_lines` stream (`451c0177...` with it and `clip_keep_pieces`
-    on, CI 2026-10-20). `legacy_engine` patches back what the switch's False path
-    did, so the pins are still read on the engine they were taken on."""
-    from tests.conftest import legacy_engine
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, dissolve=True)
-        yield

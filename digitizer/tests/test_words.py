@@ -379,22 +379,19 @@ def test_the_row_test_values_and_the_plain_drop_without_a_host():
 @pytest.fixture(scope="module")
 def bridge():
     from digitizer_core.threads import chart_for
-    from tests.conftest import legacy_engine
     from tools.thin_strokes import REAL_ART, STUDIO_MAX_COLORS
     fname, corpus_w, garment = REAL_ART["bridge"]
     out = {}
     for w in (corpus_w, 50.0):
-        # The phantom-blend dissolve held OFF (ON since Kent's 2026-10-20 flip, item 46;
-        # folded into the code 2026-11-20, `legacy_engine` patches its False path back):
-        # the hand labels are shape ids read without it, and on this JPEG it re-cuts
-        # the halo regions they name. `keep_dark_thin_strokes` held OFF (ON since Kent's
+        # 2026-11-20 (bundle roll-forward): the hand labels were shape ids read without the
+        # phantom-blend dissolve (item 46, folded into the code 2026-11-20; `legacy_engine`
+        # patched its False path back); they are read on today's engine now.
+        # `keep_dark_thin_strokes` held OFF (ON since Kent's
         # 2026-10-28 flip, #1170): the dark-ink read carves a stroke out of the badge's
         # ground on this JPEG and the carry then loses a letter (11 of 12).
         cfg = PipelineConfig(target_width_mm=w, garment_id=garment, max_colors=STUDIO_MAX_COLORS,
                              keep_dark_thin_strokes=False)
-        with pytest.MonkeyPatch.context() as mp:
-            legacy_engine(mp, dissolve=True)
-            out[w] = (build_generation(str(TESTDATA / fname), cfg).regions, chart_for(cfg))
+        out[w] = (build_generation(str(TESTDATA / fname), cfg).regions, chart_for(cfg))
     return corpus_w, out
 
 

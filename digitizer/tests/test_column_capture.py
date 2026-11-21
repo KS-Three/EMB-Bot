@@ -183,10 +183,9 @@ def _case_regions(case):
     its labelled settings, from ONE `run_stages` (the ink link's tag pass only
     writes a key; every guard here is read in `is_lettering`), shared by every
     census test in this process.
-    The phantom-blend dissolve is held OFF (ON since Kent's 2026-10-20 flip,
-    item 46; folded into the code 2026-11-20, `legacy_engine` patches its False
-    path back): the hand labels are shape ids read on the engine without it,
-    and on the screenshot the dissolve re-cuts the regions they name.
+    2026-11-20 (bundle roll-forward): the hand labels were shape ids read without the
+    phantom-blend dissolve (item 46, folded into the code 2026-11-20); a label set that
+    no longer names regions of today's engine is "stale" below and not scored.
     `speck_prune` is held OFF for the same reason (ON since Kent's tick,
     2026-11-16): a pruned speck's pixels join the shape round it, which
     moves Golden Tee's S643e40d2 and the screenshot's captures off the ids
@@ -195,10 +194,7 @@ def _case_regions(case):
     from tools.thin_strokes import REAL_ART
     rel, width, garment = REAL_ART[case]
     base = dict(target_width_mm=width, garment_id=garment, max_colors=6)
-    from tests.conftest import legacy_engine
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, dissolve=True)
-        res = run_stages(TESTDATA / rel, PipelineConfig(**base, speck_prune=False))
+    res = run_stages(TESTDATA / rel, PipelineConfig(**base, speck_prune=False))
     truth = json.loads((TESTDATA / "lettering_truth.json").read_text(encoding="utf-8"))
     lab = truth["fixtures"].get(case)
     letters = None

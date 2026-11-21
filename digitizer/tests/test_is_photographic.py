@@ -21,7 +21,7 @@ from digitizer_core import PipelineConfig
 from digitizer_core.config import PHOTO_CLASSES, is_photographic
 from digitizer_core.pipeline import plan_stitches, run_stages
 from digitizer_core.preflight import run_preflight
-from tests.conftest import PRE_FLIP, TESTDATA, on_the_pre_flip_engine
+from tests.conftest import PRE_FLIP, TESTDATA
 
 OWL = TESTDATA / "photo" / "owl_kent.jpg"
 
@@ -56,7 +56,6 @@ def test_one_canonical_photo_class_tuple():
     assert stage6_satin._PHOTO_CLASSES is PHOTO_CLASSES
 
 
-@on_the_pre_flip_engine
 def test_declaring_a_gradient_photograph_brings_it_inside_max_colors():
     """The defect this flag exists to close, end to end.
 
@@ -89,7 +88,10 @@ def test_declaring_a_gradient_photograph_brings_it_inside_max_colors():
     assert res_a.design_class == res_b.design_class == "gradient"
 
     spools = lambda p: len({b.thread_index for b in p.blocks})
-    assert spools(plan_a) > plain.max_colors, "the defect should still be visible undeclared"
+    # 2026-11-20 (bundle roll-forward): `enforce_color_cap` is in the code, so the owl sews
+    # 12 spools undeclared too (it sewed 14 on the engine before the cap) and the "defect
+    # visible undeclared" assertion (`spools(plan_a) > max_colors`) is retired with it.
+    assert spools(plan_a) <= plain.max_colors, "the colour cap holds undeclared too"
     assert spools(plan_b) <= declared.max_colors, "declaring it must bring it to budget"
 
     grade = lambda r, p, c: run_preflight(r, p, c, image=OWL)

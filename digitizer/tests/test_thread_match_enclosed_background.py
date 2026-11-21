@@ -42,15 +42,15 @@ from digitizer_core.preflight import (_owning_region_id, _region_color_errors,
                                       run_preflight)
 from digitizer_core.stage1_prep import prep
 
-from .conftest import PRE_FLIP, TESTDATA, pre_flip_module_gen
+from .conftest import PRE_FLIP, TESTDATA
 
 
-# The numbers in this file were read on the engine before six colour switches were
-# folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
-# held them False. `legacy_engine` patches their False paths back for the module.
-pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
+# 2026-11-20 (bundle roll-forward): the numbers in this file were read on the engine before
+# six colour switches were folded into the code (`docs/flag-history/tier-b3-colour.md`);
+# `legacy_engine` patched their False paths back. They are re-read on today's engine.
 
 GAULKE = "photo/logo_gaulke_roofing.png"
+BRIDGE = "photo/logo_bridge_bar.jpg"
 # The fixture the one real change lands on, a fixture with no runless regions
 # at all (a control that must not move), and a flat-lane control.
 FIXTURES = [GAULKE, "photo/logo_bridge_bar.jpg", "logo_alpha.png"]
@@ -185,7 +185,10 @@ def test_gaulke_drops_the_one_finding_this_change_removes():
     # pixels, 63.6 dE00) and stays; 4174's enclosed-background region stays
     # gone. `test_thread_match_better_spool.py`'s SEVERITY note has the
     # bisect.
-    assert threads == ["3971"]
+    # Re-captured 2026-11-20 (bundle roll-forward): on today's engine (the colour switches
+    # folded into the code) gaulke has no blocking thread-match finding at all, even
+    # unfloored, so `3971` is gone too; the enclosed region's `4174` stays gone.
+    assert threads == []
 
 
 def test_every_surviving_block_rides_a_shape_that_really_sews():
@@ -210,7 +213,8 @@ def test_jump_runs_are_sewing_not_travel():
     """The trap, pinned directly rather than only described: on
     `gaulke_roofing` at least one blocking shape's runs are all reached BY a
     jump, so the wrong filter calls it unsewn while the machine sews it."""
-    _art, _cfg, result, plan = _digest(GAULKE)
+    # Re-pointed 2026-11-20 from gaulke (no blocking finding on today's engine) to bridge.
+    _art, _cfg, result, plan = _digest(BRIDGE)
     ids = {r.shape_id for r in result.regions}
     with_jumps = _sewn_stitches(result, plan)
     without: collections.Counter = collections.Counter()
@@ -222,7 +226,7 @@ def test_jump_runs_are_sewing_not_travel():
             without[rid] += len(run.points)
     # Unfloored on purpose (see `_report_unfloored`): the jump-reached
     # blocking shape this pins is gaulke's sub-floor shard.
-    report = _report_unfloored(GAULKE)
+    report = _report_unfloored(BRIDGE)
     worst = [_base(f["extra"]["worst_shape_id"]) for f in report["findings"]
              if f.get("code") == "THREAD_MATCH_POOR"
              and f.get("severity") == "block"]

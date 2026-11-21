@@ -42,7 +42,7 @@ from digitizer_core.stitches import RUN, StitchBlock, StitchRun
 from digitizer_core.threads import chart_for, rgb_to_lab
 from digitizer_core.warnings_codes import DETAIL_SPOKES_SEWN
 
-from .conftest import (FLAT_GOLDEN_MD5, PRE_FLIP, RECIPE_2026_10_27, LETTERING_2026_10_24_OFF, TESTDATA,
+from .conftest import (FLAT_GOLDEN_MD5, PRE_FLIP, RECIPE_2026_10_27, TESTDATA,
                        ROPE_BAND_2026_11_17_OFF)
 
 
@@ -475,15 +475,14 @@ _BEAN_PIN = {"bean_letter_straight_mm": None, **FLIP_2026_10_23, "bean_only_line
 @pytest.fixture(scope="module")
 def fremont_off():
     from tools import fremont_triage as ft
-    from tests.conftest import legacy_lettering
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_lettering(mp)    # small_bold, corner_fold, text_lean: folded 2026-11-20, the pins predate them
-        return _run_fremont_off(ft)
+    # 2026-11-20 (bundle roll-forward): small_bold, corner_fold and text_lean are folded
+    # into the code; `legacy_lettering` used to hold them back for the pins.
+    return _run_fremont_off(ft)
 
 
 def _run_fremont_off(ft):
     return ft.run_arm("main", 80.0, None, preflight=False,
-                      overrides={"detail_spokes": False, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
+                      overrides={"detail_spokes": False, **_BEAN_PIN,
                                  **RECIPE_2026_10_27,        # the recipe sews its ground under them
                                  **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
                                  **TEXT_GAPS_2026_11_15_OFF, **ROPE_BAND_2026_11_17_OFF,
@@ -494,15 +493,12 @@ def _run_fremont_off(ft):
 @pytest.fixture(scope="module")
 def fremont_on():
     from tools import fremont_triage as ft
-    from tests.conftest import legacy_lettering
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_lettering(mp)    # as the OFF arm: this prices the spokes
-        return _run_fremont_on(ft)
+    return _run_fremont_on(ft)
 
 
 def _run_fremont_on(ft):
     return ft.run_arm("main", 80.0, None, preflight=False,
-                      overrides={"detail_spokes": True, **_BEAN_PIN, **LETTERING_2026_10_24_OFF,
+                      overrides={"detail_spokes": True, **_BEAN_PIN,
                                  **RECIPE_2026_10_27,      # as the OFF arm: this prices the spokes
                                  **FLIP_2026_10_30, **EDGE_WALK_2026_11_14_OFF,
                                  **TEXT_GAPS_2026_11_15_OFF, **ROPE_BAND_2026_11_17_OFF,

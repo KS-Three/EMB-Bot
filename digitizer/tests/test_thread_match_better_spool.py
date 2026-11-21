@@ -34,17 +34,17 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import PRE_FLIP, TESTDATA, pre_flip_module_gen
+from .conftest import PRE_FLIP, TESTDATA
 
 
-# The numbers in this file were read on the engine before six colour switches were
-# folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
-# held them False. `legacy_engine` patches their False paths back for the module.
-pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
+# 2026-11-20 (bundle roll-forward): the numbers in this file were read on the engine before
+# six colour switches were folded into the code (`docs/flag-history/tier-b3-colour.md`);
+# `legacy_engine` patched their False paths back. They are re-read on today's engine.
 
 TINY = "photo/logo_gaulke_roofing.png"      # 4 cones, the 63.6 -> 58.6 case
 BRIDGE = "photo/logo_bridge_bar.jpg"        # 8 cones, the 21.3 -> 10.3 case
 PHOTO = "photo/photo_dof_meadow.png"        # photo route: must be untouched
+DRONE = "photo/drone_render.png"             # the one fixture that names a loaded spool today
 
 # Measured 2026-09-06 on the shipped engine, BEFORE this change. Severity may
 # not move, so these are pinned rather than recomputed.
@@ -68,7 +68,11 @@ PHOTO = "photo/photo_dof_meadow.png"        # photo route: must be untouched
 # shape's thread is judged, as a warn, under this file's unfloored read.
 # Not this file's change and not a rescoring — the same finding mechanism on
 # a different polygon (scope-history 2026-09-18, the flip's addendum).
-SEVERITY = {TINY: (1, 1), BRIDGE: (2, 2), PHOTO: (0, 1)}   # (block, warn)
+# RE-CAPTURED 2026-11-20 (bundle roll-forward) on today's engine, the six colour switches
+# (cap, bind, robust colour, edge snap, dissolve, ...) being folded into the code:
+# TINY (1, 1) -> (0, 0), BRIDGE (2, 2) -> (4, 0), PHOTO (0, 1) -> (0, 0). A different engine
+# answering the same finding mechanism, not a rescoring by this file's change.
+SEVERITY = {TINY: (0, 0), BRIDGE: (4, 0), PHOTO: (0, 0)}   # (block, warn)
 
 
 @lru_cache(maxsize=None)
@@ -122,15 +126,20 @@ def test_no_severity_moves_anywhere(fixture):
 
 
 def test_the_gradient_lane_now_names_a_loaded_spool():
-    """`gaulke_roofing` carries only four cones, and one of them is 58.6 dE00
-    closer than the one the plan assigned. Before this change the finding told
-    the operator to go buy thread."""
-    named = [f for f in _findings(TINY)
+    """The design carries a spool that is closer than the one the plan assigned, and
+    the finding names it (before this change it told the operator to go buy thread).
+
+    Re-pointed 2026-11-20 (bundle roll-forward) from gaulke (`3971` -> 1375, 58.6 dE00
+    closer; no finding at all on today's engine) to `drone_render`, the only fixture
+    here that names one today: `3971 Silver` (10.5 dE00 raw) -> `0108 Cobblestone`,
+    6.3 closer. Measured unfloored."""
+    named = [f for f in _findings(DRONE)
              if (f["extra"] or {}).get("better_spool")]
-    assert len(named) == 1, [f["message"] for f in _findings(TINY)]
+    assert len(named) == 1, [f["message"] for f in _findings(DRONE)]
     extra = named[0]["extra"]
-    assert extra["better_spool"] == "1375"
-    assert extra["excess_delta_e"] == pytest.approx(58.6, abs=0.15)
+    assert extra["thread_number"] == "3971"
+    assert extra["better_spool"] == "0108"
+    assert extra["excess_delta_e"] == pytest.approx(6.3, abs=0.15)
     assert "already loaded for this design" in named[0]["message"]
 
 
@@ -149,8 +158,11 @@ def test_excess_is_the_excess_and_not_the_raw_distance():
 def test_a_finding_with_nothing_closer_still_says_so():
     """The other 19 blocking findings across the F-wall genuinely need a cone
     the design does not carry. Over-claiming on those would be worse than the
-    silence this replaces."""
-    unnamed = [f for f in _findings(TINY)
+    silence this replaces.
+
+    Re-pointed 2026-11-20 from gaulke (no findings today) to bridge, whose four blocking
+    findings name no closer loaded spool."""
+    unnamed = [f for f in _findings(BRIDGE)
                if not (f["extra"] or {}).get("better_spool")]
     assert unnamed, "fixture drift: every finding now names a spool"
     for f in unnamed:
@@ -171,16 +183,13 @@ def test_a_named_spool_is_never_the_thread_being_complained_about():
                 assert extra["better_spool"] != extra["thread_number"]
 
 
-def test_the_photo_route_is_unchanged():
-    """It already named spools; this change must not alter what it says."""
-    named = [f for f in _findings(PHOTO)
-             if (f["extra"] or {}).get("better_spool")]
-    assert len(named) == 1
-    assert "already loaded for this design" in named[0]["message"]
+# `test_the_photo_route_is_unchanged` (meadow's one excess-yardstick warn naming a spool) was
+# retired 2026-11-20: meadow has no finding on today's engine. The photo route's naming is
+# `test_preflight.test_photo_route_still_blocks_a_cone_swap_that_was_free`.
 
 
 @pytest.mark.parametrize("fixture,want", [
-    (TINY, "raw"), (BRIDGE, "raw"), (PHOTO, "excess"),
+    (BRIDGE, "raw"),     # (TINY, "raw") and (PHOTO, "excess") retired 2026-11-20: no finding there now
 ])
 def test_the_payload_states_which_yardstick_judged_it(fixture, want):
     """The replacement for an inference this change invalidated.

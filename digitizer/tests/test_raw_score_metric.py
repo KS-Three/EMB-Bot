@@ -21,15 +21,17 @@ from digitizer_core import preflight as pf
 from digitizer_core.config import PipelineConfig
 from digitizer_core.pipeline import digitize
 
-from .conftest import PRE_FLIP, TESTDATA, pre_flip_module_gen
+from .conftest import PRE_FLIP, TESTDATA
 
 
-# The numbers in this file were read on the engine before six colour switches were
-# folded into the code (2026-11-20, `docs/flag-history/tier-b3-colour.md`): `PRE_FLIP`
-# held them False. `legacy_engine` patches their False paths back for the module.
-pre_flip_module = pytest.fixture(autouse=True, scope="module")(pre_flip_module_gen)
+# 2026-11-20 (bundle roll-forward): the numbers in this file were read on the engine before
+# six colour switches were folded into the code (`docs/flag-history/tier-b3-colour.md`);
+# `legacy_engine` patched their False paths back. They are re-read on today's engine.
 
-FLOORED = "photo/screenshot_phone_ui_golke.jpg"   # score 0, raw -272 (-62 under the 2026-09-10 patch floor)
+# Re-pointed 2026-11-20 (bundle roll-forward): the screenshot (score 0, raw -272, -62 under the
+# 2026-09-10 patch floor) is no longer floored on today's engine (score 22). Bridge is: its raw
+# score is -38 in `testdata/corpus_scorecard_baseline.json` (2026-11-12, left_chest, defaults).
+FLOORED = "photo/logo_bridge_bar.jpg"
 CLEAN = "logo_alpha.png"                          # score 100, raw 100
 
 
@@ -63,12 +65,13 @@ def test_a_floored_design_reports_its_real_depth():
     rep = _report(FLOORED)
     assert rep["score"] == 0
     assert rep["metrics"]["raw_score"] < 0
-    # -272 on 2026-09-06; -62 since 2026-09-10 on the same pre-flip engine,
-    # because `THREAD_MATCH_POOR`'s patch floor (quality review item 11)
-    # took the screenshot's sub-5 mm2 shards out of the judging — the
-    # design is still under water, three blocking findings deep, and this
-    # is exactly the move `raw_score` exists to show (the printed 0 did not).
-    assert rep["metrics"]["raw_score"] == pytest.approx(-62, abs=30)
+    # The screenshot read -272 on 2026-09-06 and -62 since 2026-09-10 (the pre-flip
+    # engine; `THREAD_MATCH_POOR`'s patch floor, quality review item 11, took its sub-5 mm2
+    # shards out of the judging) -- under water, three blocking findings deep, which is
+    # exactly the move `raw_score` exists to show (the printed 0 did not). Re-pointed
+    # 2026-11-20 to bridge: -38 in the scorecard baseline (defaults), -158 here under the
+    # still-held `PRE_FLIP` flags (measured 2026-11-20).
+    assert rep["metrics"]["raw_score"] == pytest.approx(-158, abs=30)
 
 
 @pytest.mark.parametrize("fixture", [FLOORED, CLEAN])

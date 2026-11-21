@@ -119,15 +119,6 @@ def test_the_fixture_stays_covered(on):
     assert pf_on["metrics"].get("uncovered_total_mm2", 0.0) <= 5.0
 
 
-@pytest.fixture(autouse=True, scope="module")
-def _without_the_phantom_blend_dissolve():
-    """Without the photo lane's phantom-blend dissolve (ON since Kent's 2026-10-20 flip,
-    item 46; folded into the code 2026-11-20): this fixture reads the gradient lane, and with the dissolve ON the pruner's ON arm
-    sews 25 trims against its OFF arm's 23 (CI 2026-10-20).
-    The numbers here were read without it; the dissolve's own price is
-    `tests/test_phantom_blend_photo.py`'s and PR #1005's. `legacy_engine` patches back
-    what the switch's False path did."""
-    from tests.conftest import legacy_engine
-    with pytest.MonkeyPatch.context() as mp:
-        legacy_engine(mp, dissolve=True)
-        yield
+# 2026-11-20 (bundle roll-forward): the numbers here were read without the photo lane's
+# phantom-blend dissolve (item 46, folded into the code 2026-11-20); `legacy_engine`
+# patched its False path back. They are read on today's engine now.
