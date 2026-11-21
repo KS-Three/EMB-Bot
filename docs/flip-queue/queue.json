@@ -21,6 +21,22 @@
       "moved": 1,
       "runs": 44,
       "note": "Only summit_badge moved (-1427 stitches), and only along the grey ground's ragged edge; by eye the same. mfab_hat/mfab_lc, its target, are byte-identical. A known MFab 35-40 mm black-patch regression (memory robust-pc-sweep-2026-11-13) is outside the population."
+    },
+    "satin_junction_block": {
+      "status": "pictured",
+      "date": "2026-11-21",
+      "dir": "docs/renders/flip-queue-2026-11-21/satin_junction_block",
+      "moved": 9,
+      "runs": 44,
+      "note": "cfg.extra key, swept at true (the 'short' variant not swept). No visible change at print size: trims, jumps, needle-up identical on all 9 movers, stitches -59 at most; 7 of 9 renders pixel-identical at the 0.6 mm locator. mfab_hat slightly worse at zoom (a small nick in a column edge)."
+    },
+    "outline_redraw_native": {
+      "status": "pictured",
+      "date": "2026-11-21",
+      "dir": "docs/renders/flip-queue-2026-11-21/outline_redraw_native",
+      "moved": 28,
+      "runs": 44,
+      "note": "Mixed. Better: Gaulke '&' sewn whole on hat and beanie. Worse: region_blobs (white seam pink/blue, travel stitch across blue), hotel_fremont_hat (small lump at a junction). Trims +6 net over 28 movers. Builder's note says not recommended (and_pizza satin unpredictable)."
     }
   }
 }
