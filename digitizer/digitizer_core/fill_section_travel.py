@@ -1,6 +1,12 @@
 """Sew a fill's sections without cutting between them, travelling under the
 rows still to come (`cfg.extra["fill_section_travel"]`, built OFF 2026-10-25).
 
+**PARKED OFF 2026-11-21 (Kent), with `fill_section_cuts_first`: too slow.**
+On comic halftone each ran past 20 minutes against a 14-minute base render
+(off-flag renders 2026-11-20), and the same planner family under
+`fill_seam_aware_sections` takes 5 minutes to 5.4 hours a design. DOCTRINE
+"Measured negatives", 2026-11-21.
+
 **Why.** Over five paired hat jobs (Fremont, Becker large, MFab, Precision
 Drone, Gaulke) we cut 108 times INSIDE one sewn piece where the professional
 cuts 25, and the largest class he never has is the travel between two

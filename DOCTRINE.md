@@ -940,6 +940,26 @@ but ballpoint, so the loops are parted rather than cut. It prints on the workshe
 
 ## Measured negatives — built or proposed, then rejected. Do not rebuild.
 
+- **The hidden-reach fill planners are too slow to ship, and no cache or cap
+  makes them fast without undoing the gain.** Kent parked three flags OFF on
+  2026-11-21 ("Park them OFF"): `fill_seam_aware_sections`,
+  `extra.fill_section_travel` and `extra.fill_section_cuts_first`. In the
+  2026-11-20 off-flag renders they read as hangs, but nothing is stuck. Each
+  hidden-reach probe (`travel_path`, then `fill_section_travel.bridge` as a
+  fallback) costs 0.15–0.9 s, and seam-aware asks 106–7,510 probes per fill
+  shape on the seven corpus designs it changed. That is 5–35 min per design,
+  and 5.4 h for heraldic crest. Kent's bar is that more than a minute is too
+  long. A cProfile of gradient mascot shows the time going to probes that
+  each genuinely need to run, and travel geometry is already memoised per
+  sewn state. Capping the probes per shape would change exactly the designs
+  that gained. The other two flags each ran past 20 min on comic halftone,
+  against a 14-minute base render. **What to do:** do not try to rescue these
+  three flags with a probe cap or a cache. Only a planner that does not
+  re-price a whole route for every candidate at every step could make this
+  idea worth reopening.
+  *(measured 2026-11-20 — off-flag renders `digitizer/eye_pairs_out/off-flags-1120`,
+  reach counts and cProfile on main `2d4e132e`)*
+
 - **Porting SAM2 to ONNX for CPU speed buys nothing. The speed lever is
   DirectML on a GPU.** SAM2.1 tiny, self-exported from Meta's checkpoint and
   run at production AMG settings on 6 photo fixtures, gave masks identical to
