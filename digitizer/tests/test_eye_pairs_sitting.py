@@ -967,8 +967,10 @@ def test_the_dreamsim_confirm_arms_are_six_one_flag_arms_with_two_reserves():
     assert len(spec["arms"]) == 6 and len(spec["reserve_arms"]) == 2
     for name, arm in list(spec["arms"].items()) + [(r["name"], r) for r in spec["reserve_arms"]]:
         (flag, value), = arm["flags"].items()
-        # `apex_cut_on` names a field deleted 2026-11-19: a valid historical record
-        assert flag in RETIRED_FIELDS or defaults[flag] is not value, name
+        # `apex_cut_on` names a field deleted 2026-11-19, and `script_drawn_width_on` a
+        # flag whose default flipped ON 2026-11-20: both valid historical records
+        assert (flag in RETIRED_FIELDS or sitting.flipped_since_registered(flag, spec)
+                or defaults[flag] is not value), name
         assert arm["moves"] == {} and arm["holds"] == [], name
     strata = {a["stratum"] for a in spec["arms"].values()}
     assert all(r["stratum"] in strata for r in spec["reserve_arms"])

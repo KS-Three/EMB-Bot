@@ -4160,7 +4160,11 @@ class PipelineConfig:
     # 1.52, a rotation-aware door is the next lane). The house-angle group
     # (`_lettering_groups`) and the rescued round keep today's drop. False:
     # byte for byte. Tests: `tests/test_text_cluster_nest_guard.py`.
-    text_cluster_nest_guard: bool = False
+    # **ON since 2026-11-20** (Kent, shown the 37 built-OFF flags before | after
+    # on main 7a1ab7da with Claude's picks: "Flip all 3 ON (Recommended)"); the
+    # duotone poster's "50 BEACON ST / BOSTON" sews as the art's bold letters.
+    # False is the engine as it was; PRE_FLIP (PICKS_2026_11_20_OFF) pins it.
+    text_cluster_nest_guard: bool = True
     # A rotated glyph is not its axis-aligned box (2026-11-07, built OFF).
     # The nested-candidate drop above compares axis-aligned bounding boxes,
     # and a shape set at an angle has a box far larger than itself: a badge
@@ -4174,7 +4178,8 @@ class PipelineConfig:
     # door above. Segmentation and tagging, not fabric: layout, judged in
     # the preview. False: byte for byte. Tests:
     # `tests/test_text_cluster_nest_guard_rotated.py`.
-    text_cluster_nest_guard_rotated: bool = False
+    # **ON since 2026-11-20**, flipped with the 6x door above (same ruling).
+    text_cluster_nest_guard_rotated: bool = True
     # A letter turned on a ring joins its line (`textcluster._adopt_turned`,
     # PR #1307; built OFF 2026-11-07 as
     # `cfg.extra["text_cluster_nest_door_aspect"]`). The letter door reads a
@@ -6197,7 +6202,10 @@ class PipelineConfig:
     # pull constant moves, not gate 1.
     # Layout, judged in the preview (Kent, 2026-10-22). False is the plan as it
     # was, byte for byte. Tests: `tests/test_script_strokes.py`.
-    script_strokes_drawn_width: bool = False
+    # **ON since 2026-11-20** (Kent, same ruling as `text_cluster_nest_guard`):
+    # 3 of 32 designs move, letters alike, trims down (devanagari 2.42 -> 1.85
+    # per 1000, Bridge 2.27 -> 2.02). PRE_FLIP (PICKS_2026_11_20_OFF) pins it False.
+    script_strokes_drawn_width: bool = True
     # NOT A FLIP CANDIDATE AS BUILT in mode True. It opens the e and s counters
     # (sewn 19.3 / 33.2 -> 25.9 / 41.2 mm2 against the art's 28.7 / 43.3) but
     # uncovered patches on Tires go 12 -> 220: it is the pull-comp constant, so

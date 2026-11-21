@@ -87,8 +87,9 @@ def _stations_md5(cols) -> str:
 
 
 # ------------------------------------------------------------------- default
-def test_default_off():
-    assert PipelineConfig().script_strokes_drawn_width is False
+def test_the_flag_ships_on():
+    # ON since Kent's 2026-11-20 ruling; the OFF arm is `PICKS_2026_11_20_OFF` in conftest
+    assert PipelineConfig().script_strokes_drawn_width is True
 
 
 def test_off_is_byte_identical():
